@@ -63,8 +63,8 @@ const LAYOUT = {
   house:   { x: 20, z: 9,  w: 3, d: 2, doorX: 21 },
   barn:    { x: 23, z: 1,  w: 3, d: 2, doorX: 24 },
   pasture: { x: 21, z: 4,  width: 5, height: 3 },
-  farm:    { x: 3,  z: 14, blocks: 3, plotSize: 3, gap: 1 }, // 11x11
-  lake:    { x: 11, z: 0,  width: 10, height: 9 },
+  farm:    { x: 8,  z: 14, blocks: 3, plotSize: 3, gap: 1 }, // 11x11，往右 5 格
+  lake:    { x: 6,  z: 3,  width: 10, height: 9 }, // 往左 5 格、往下 3 格
   mountainBand: { x: 0, width: 3 },
 };
 
@@ -152,8 +152,8 @@ MAPS.outside.tiles.forEach(row => row.unshift(...new Array(X_OFFSET).fill(0)));
 [13, 14].forEach(z => { [17, 18, 19].forEach(x => { MAPS.outside.tiles[z][x] = 0; }); });
 
 // 除錯工具抓到另一個舊帳：之前幾輪搬湖的位置，每次只有「在新位置寫水」，
-// 沒有把舊位置清回草地，這裡殘留了一小塊(x=16~18,z=9~10)。順手清掉
-[9, 10].forEach(z => { [16, 17, 18].forEach(x => { MAPS.outside.tiles[z][x] = 0; }); });
+// 沒有把舊位置清回草地，這裡殘留了一小塊(x=16~18,z=8~10)。順手清掉
+[8, 9, 10].forEach(z => { [16, 17, 18].forEach(x => { MAPS.outside.tiles[z][x] = 0; }); });
 
 // 除錯工具抓到的舊 bug：房子 z=9 那排的牆比 z=10 那排少往東一格，
 // 跟 buildings 陣列記錄的 x=20 對不上，門檻本身是對的，單獨修正這一格
