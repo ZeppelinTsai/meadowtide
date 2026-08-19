@@ -105,6 +105,37 @@ node map-debug.js 你的檔案.html --legend
 - 動物、NPC 沒有真的路徑規劃避開新地形變化（例如懸崖/斜坡），目前只在
   已知安全的區域內活動。
 
+## NPC 招募流程 —— 已有第一個實作範例（木匠）
+
+不再是「設計中」，`meadowtide.html` 裡的「木匠抵達」是第一個真正的劇情
+事件，跑在 `livingArea`／`oldVillage`／`port` 三張地圖骨架之上，之後其他
+角色的招募流程可以直接複製這套框架：
+
+- **狀態機**：單一個 `carpenterQuest.stage` 字串，只往前推、不回頭：
+  `not_started → en_route_village → village_scene_done → construction →
+  ready_for_move_in → moved_in`。每個觸碰事件的 `action()` 自己檢查目前
+  stage 該不該反應，不需要另外的「已觸發過」旗標——stage 一旦前進，原本
+  的觸發條件自然就不再成立。
+- **三段對話**：碼頭見面（port）、往舊城鎮路上抵達空屋（oldVillage）、
+  入住當晚（oldVillage），全部用既有的 `showDialogSequence(lines,
+  onComplete)`（這次新加了 `onComplete` 參數，跑完最後一句才呼叫）。目前
+  台詞都是佔位文字，等最終版本確認再填。
+- **材料檢查**：`inventory.wood`/`inventory.stone`（這次新加的通用資源
+  欄位，開局各給 10/5）在第二段對話結束時檢查，足夠就自動從背包扣除、
+  進入 `construction`；不夠則退回 `en_route_village`，可以再次觸發。
+- **天數延遲**：`beginNewDay()` 裡比對 `currentDay -
+  carpenterQuest.constructionStartDay >= CARPENTER_CONSTRUCTION_DAYS`
+  （目前 2 天），到了就轉成 `ready_for_move_in`；空屋在這兩個 stage 期間
+  會多立一個 `makeConstructionSign()` 施工告示牌。
+- **NPC 現身**：`npcDefs` 裡的木匠本來就有 home/schedule，但事件完成前
+  他的 mesh 是 `visible = false`（NPC 移動迴圈、E 鍵互動查詢都會跳過
+  隱藏的 NPC），直到入住場景播完才真正出現、開始照排程走動。
+- **視覺**：沿用 `oldVillage.placeholders` 裡既有的一間空屋（座標見
+  `CARPENTER_HOUSE`），入住後補一顆跟其他建築同一套 `windowMats` 系統
+  驅動的窗戶，晚上自動隨 `nightFactor` 亮燈，不用另外寫特效。
+- **存讀檔**：`carpenterQuest` 整包存進 `saveGame()`/`loadGame()`，讀檔
+  時會一併還原木匠 mesh 的顯示狀態。
+
 ## 建議的工作方式
 
 - 每次調整佈局：先跑一次 `map-debug.js` 看現況 → 改 `LAYOUT` → 再跑一次

@@ -280,6 +280,63 @@
           ],
           playerStart: { x: 3, z: 5 },
         },
+        // 舊城鎮——目前只做骨架：一塊廣場空地＋幾間空屋佔位方塊(makeTownPlaceholder)，
+        // 沒有木匠工坊內裝。playerStart 設在北側，之後往北接港口商業街入口。
+        // 南側跟山區之間預留了以後另一位居民要用的路，這裡不畫、不佔座標。
+        oldVillage: {
+          tiles: [
+            [0, 0, 0, 0, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+          ],
+          placeholders: [
+            { x: 3, z: 4, seed: 0.4 },
+            { x: 10, z: 4, seed: 0.6 },
+            { x: 3, z: 8, seed: 0.25 },
+            { x: 10, z: 8, seed: 0.75 },
+          ],
+          playerStart: { x: 7, z: 2 },
+        },
+        // 港口——北端候船碼頭(makeDock)，南端市場/倉庫佔位方塊，中間一條路連到
+        // 南端的舊城鎮商業街入口。playerStart 在北端碼頭附近。
+        port: {
+          tiles: [
+            [0, 0, 0, 0, 0, 8, 8, 8, 8, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 1, 0, 0, 5, 0, 0, 1, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0],
+          ],
+          placeholders: [
+            { x: 4, z: 6, seed: 0.3 },
+            { x: 10, z: 6, seed: 0.55 },
+            { x: 4, z: 12, seed: 0.7 },
+            { x: 10, z: 12, seed: 0.42 },
+            { x: 4, z: 14, seed: 0.85 },
+            { x: 10, z: 14, seed: 0.15 },
+          ],
+          playerStart: { x: 7, z: 4 },
+        },
       };
 
       // ==============================================================
@@ -585,6 +642,31 @@
       // 清掉休息區入口旁的舊樹，讓人能從行道樹間穿進兩個新區域。
       MAPS.livingArea.tiles[LAYOUT.farm.z + 1][LAYOUT.restArea.x - 1] = 0;
 
+      // 東側沙灘上開一個踏入點，銜接港口地圖北端；此時沙灘/海面已經鋪好，
+      // 這一格原本是沙灘(8)，改成門檻(3)只是換個踩踏標記，還是能走。
+      MAPS.livingArea.tiles[20][40] = 3;
+
+      // ==============================================================
+      // 木匠抵達——第一個真正的劇情事件，之後招募其他角色可以複製這個
+      // 「stage 字串 + 觸碰事件推進 + showDialogSequence(onComplete)」的框架。
+      // stage 一路往前推，不會回頭，觸發點自己檢查 stage 就能防止重複觸發：
+      //   not_started      → 港口觸碰事件觸發碼頭見面
+      //   en_route_village → 舊城鎮空屋觸碰事件觸發抵達空屋 + 材料檢查
+      //   construction     → 空屋旁顯示施工中標記，等 CARPENTER_CONSTRUCTION_DAYS 天
+      //   ready_for_move_in→ 天數到了，晚上回空屋觸發入住場景
+      //   moved_in         → 木匠正式出現在 livingArea，恢復原本的排程走動
+      // 宣告要放在 events 陣列前面：events 是一般陣列常值，裡面的座標會立刻
+      // 求值（不像函式內容那樣延後執行），晚宣告會直接撞到 TDZ 錯誤。
+      // ==============================================================
+      const CARPENTER_HOUSE = { x: 3, z: 4 }; // oldVillage.placeholders 裡指定給木匠的那一間
+      const CARPENTER_DOORSTEP = { x: 3, z: 5 }; // 空屋正前方，兩段劇情共用同一個觸碰點
+      const CARPENTER_MATERIALS = { wood: 10, stone: 5 };
+      const CARPENTER_CONSTRUCTION_DAYS = 2;
+      const carpenterQuest = {
+        stage: "not_started",
+        constructionStartDay: -1,
+      };
+
       const events = [
         {
           map: "livingArea",
@@ -614,6 +696,51 @@
               x: LAYOUT.house.doorX,
               z: LAYOUT.house.z + LAYOUT.house.d + 1,
             }),
+        },
+        // 生活區東側海岸 <-> 港口北端(碼頭附近)
+        {
+          map: "livingArea",
+          x: 40,
+          z: 20,
+          trigger: "touch",
+          action: () => loadMap("port", { x: 7, z: 4 }),
+        },
+        {
+          map: "port",
+          x: 7,
+          z: 2,
+          trigger: "touch",
+          action: () => loadMap("livingArea", { x: 35, z: 20 }),
+        },
+        // 港口南端(市場/倉庫) <-> 舊城鎮
+        {
+          map: "port",
+          x: 7,
+          z: 15,
+          trigger: "touch",
+          action: () => loadMap("oldVillage", { x: 7, z: 2 }),
+        },
+        {
+          map: "oldVillage",
+          x: 7,
+          z: 0,
+          trigger: "touch",
+          action: () => loadMap("port", { x: 7, z: 13 }),
+        },
+        // 木匠抵達事件——港口碼頭見面 + 舊城鎮空屋門口(往返兩段劇情共用同一格)
+        {
+          map: "port",
+          x: 7,
+          z: 3,
+          trigger: "touch",
+          action: () => handleCarpenterDockTouch(),
+        },
+        {
+          map: "oldVillage",
+          x: CARPENTER_DOORSTEP.x,
+          z: CARPENTER_DOORSTEP.z,
+          trigger: "touch",
+          action: () => handleCarpenterDoorstepTouch(),
         },
       ];
 
@@ -717,6 +844,11 @@
         return target;
       }
       function npcLine(npc) {
+        // 木匠抵達事件還沒觸發前，阿姨（=村長）優先講這句引導台詞，帶玩家去港口。
+        // 純粹是提示，不算進任務系統，事件一觸發（stage 離開 not_started）就恢復平常對話。
+        if (npc.id === "aunt" && carpenterQuest.stage === "not_started") {
+          return `${npc.name}：〔佔位台詞：今天有船會靠港，你要不要去碼頭看看？〕`;
+        }
         if (npc.memory <= 0) return `${npc.name}：「哈囉，天氣不錯。」`;
         if (npc.memory < 3)
           return `${npc.name}：「我有看到你在種東西喔，加油。」`;
@@ -726,7 +858,7 @@
       // ==============================================================
       // 4) 遊戲狀態
       // ==============================================================
-      const inventory = { seeds: 1, harvested: 0, fish: 0 };
+      const inventory = { seeds: 1, harvested: 0, fish: 0, wood: 10, stone: 5 };
       const cropState = {};
       let pouchCollectedDay = -1;
       let currentDay = 0;
@@ -2730,6 +2862,76 @@
         }
       }
 
+      // ==============================================================
+      // 木匠抵達——劇情事件的場景/材料/進度邏輯。之後複製這個模式做其他
+      // 角色時，可以照抄「stage 字串 + 觸碰事件呼叫 handleXxxTouch() 內部
+      // 檢查 stage + showDialogSequence(lines, onComplete) 推進」這一套。
+      // ==============================================================
+      function carpenterHasMaterials() {
+        return (
+          inventory.wood >= CARPENTER_MATERIALS.wood &&
+          inventory.stone >= CARPENTER_MATERIALS.stone
+        );
+      }
+      function startCarpenterDockScene() {
+        carpenterQuest.stage = "en_route_village"; // 立刻推進，防止原地重複觸發
+        showDialogSequence([
+          "村長：〔佔位台詞：在碼頭等船〕",
+          "木匠：〔佔位台詞：下船後先蹲下檢查木棧板鬆動〕",
+          "村長：〔佔位台詞：愣住〕",
+          "木匠：〔佔位台詞：說明理由〕",
+        ]);
+      }
+      function handleCarpenterDockTouch() {
+        if (dialogQueue.length) return; // 對話播放中不要被重新觸發打斷
+        if (carpenterQuest.stage === "not_started") startCarpenterDockScene();
+      }
+      function tryStartCarpenterConstruction() {
+        if (!carpenterHasMaterials()) {
+          carpenterQuest.stage = "en_route_village"; // 材料不夠，退回可以再次觸發這段的狀態
+          showDialog(
+            `材料不夠：還需要木材 ${CARPENTER_MATERIALS.wood}、石材 ${CARPENTER_MATERIALS.stone}。`,
+          );
+          return;
+        }
+        inventory.wood -= CARPENTER_MATERIALS.wood;
+        inventory.stone -= CARPENTER_MATERIALS.stone;
+        carpenterQuest.stage = "construction";
+        carpenterQuest.constructionStartDay = currentDay;
+        showDialog("木匠：〔佔位台詞：太好了，材料夠了，我馬上開工！〕");
+      }
+      function startCarpenterVillageScene() {
+        carpenterQuest.stage = "village_scene_done"; // 立刻推進，避免對話播放中重複觸發
+        showDialogSequence(
+          [
+            "木匠：〔佔位台詞：沿路碎念空屋狀態1〕",
+            "木匠：〔佔位台詞：沿路碎念空屋狀態2〕",
+            "木匠：〔佔位台詞：抵達目標空屋〕",
+            "木匠：〔佔位台詞：我蓋過不少房子，這是第一次要蓋自己要住的〕",
+          ],
+          tryStartCarpenterConstruction,
+        );
+      }
+      function startCarpenterMoveInScene() {
+        carpenterQuest.stage = "moved_in";
+        showDialogSequence([
+          "木匠：〔佔位台詞：入住當晚，窗戶第一次亮燈，站在門口的收尾台詞〕",
+        ]);
+        const carpenterNpc = npcs.find((n) => n.id === "carpenter");
+        if (carpenterNpc) carpenterNpc.mesh.visible = true;
+      }
+      function handleCarpenterDoorstepTouch() {
+        if (dialogQueue.length) return;
+        if (carpenterQuest.stage === "en_route_village") {
+          startCarpenterVillageScene();
+        } else if (
+          carpenterQuest.stage === "ready_for_move_in" &&
+          isNightTime()
+        ) {
+          startCarpenterMoveInScene();
+        }
+      }
+
       function beginNewDay(day) {
         currentSeason = getSeasonIndex(day);
         previousWeather = currentWeather;
@@ -2738,6 +2940,13 @@
         updateAvenueTreeColors();
         updateSeasonalTreeColors();
         updateSeasonalGroundColors();
+        if (
+          carpenterQuest.stage === "construction" &&
+          day - carpenterQuest.constructionStartDay >=
+            CARPENTER_CONSTRUCTION_DAYS
+        ) {
+          carpenterQuest.stage = "ready_for_move_in";
+        }
         console.info(
           `[天氣] 第 ${day + 1} 天：${SEASON_NAMES[currentSeason]}季／${WEATHER_NAMES[currentWeather]}`,
         );
@@ -4034,6 +4243,28 @@
         return box;
       }
 
+      // 施工中標記——先用一根柱子+一塊告示牌卡位，不做真的施工動畫。
+      // 木匠事件的空屋在「construction」跟「ready_for_move_in」兩個 stage 都會立這個牌子。
+      function makeConstructionSign(x, z) {
+        const group = new THREE.Group();
+        const post = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.04, 0.05, 0.6, 6),
+          new THREE.MeshStandardMaterial({ color: 0x6b5b4a }),
+        );
+        post.position.y = 0.3;
+        post.castShadow = true;
+        group.add(post);
+        const plank = new THREE.Mesh(
+          new THREE.BoxGeometry(0.5, 0.28, 0.05),
+          new THREE.MeshStandardMaterial({ color: 0xd9a441 }),
+        );
+        plank.position.y = 0.55;
+        plank.castShadow = true;
+        group.add(plank);
+        group.position.set(x, 0, z);
+        return group;
+      }
+
       function makeStone(x, z, seed) {
         const stone = new THREE.Mesh(
           new THREE.IcosahedronGeometry(0.1 + seed * 0.06, 0),
@@ -5189,6 +5420,13 @@
           lastTargetKey: null,
         };
       });
+      // 木匠抵達事件完成前，木匠這個角色還沒「存在」於生活區——先藏起來，
+      // 不參與排程走動；handleCarpenterDoorstepTouch() 完成入住場景時才現身。
+      (() => {
+        const carpenterNpc = npcs.find((n) => n.id === "carpenter");
+        if (carpenterNpc)
+          carpenterNpc.mesh.visible = carpenterQuest.stage === "moved_in";
+      })();
 
       // ==============================================================
       // 9.5) 動物 — 白天在牧草地邊界內隨機遊走，晚上自動走回穀倉門口消失，
@@ -5321,7 +5559,7 @@
           );
           ground.receiveShadow = true;
           mapGroup.add(ground);
-        } else {
+        } else if (mapName === "livingArea") {
           // 地面拆成四塊：高台(x0-10) + 三格階梯緩坡(x11,12,13) + 低地沙灘/海(x14+)。
           // 相鄰方塊高度不同，交界處自然露出垂直側面，那就是「階梯」的視覺來源，
           // 不用額外建模階梯形狀
@@ -5668,11 +5906,62 @@
           plateauGroup = new THREE.Group();
           plateauGroup.position.y = PLATEAU_Y;
           mapGroup.add(plateauGroup);
+        } else {
+          // oldVillage、port 這類獨立小地圖：跟 house 一樣是純平地，沒有懸崖/
+          // 沙灘的高低差，plateauGroup 維持等於 mapGroup，不用另外墊高。
+          const ground = new THREE.Mesh(
+            new THREE.BoxGeometry(cols * TILE, 0.2, rows * TILE),
+            new THREE.MeshStandardMaterial({ color: 0x6ab04c }),
+          );
+          ground.position.set(
+            (cols * TILE) / 2 - TILE / 2,
+            -0.1,
+            (rows * TILE) / 2 - TILE / 2,
+          );
+          ground.receiveShadow = true;
+          mapGroup.add(ground);
         }
 
         (map.buildings || []).forEach((b) =>
           plateauGroup.add(b.style === "barn" ? makeBarn(b) : makeBuilding(b)),
         );
+        (map.placeholders || []).forEach((p) => {
+          plateauGroup.add(makeTownPlaceholder(p.x, p.z, p.seed));
+          // 木匠事件的空屋：不是新蓋一棟，是拿 oldVillage 既有佔位空屋之一
+          // 疊視覺狀態——施工中立牌，或入住後補一顆跟其他房子同一套
+          // windowMats 系統驅動的發光窗戶，晚上自動跟著 nightFactor 亮。
+          if (
+            mapName === "oldVillage" &&
+            p.x === CARPENTER_HOUSE.x &&
+            p.z === CARPENTER_HOUSE.z
+          ) {
+            if (
+              carpenterQuest.stage === "construction" ||
+              carpenterQuest.stage === "ready_for_move_in"
+            ) {
+              plateauGroup.add(makeConstructionSign(p.x + 0.6, p.z + 0.1));
+            } else if (carpenterQuest.stage === "moved_in") {
+              const winMat = new THREE.MeshStandardMaterial({
+                color: 0x2b3a55,
+                emissive: new THREE.Color(0xffcf7a),
+                emissiveIntensity: 0,
+              });
+              const win = new THREE.Mesh(
+                new THREE.BoxGeometry(0.22, 0.22, 0.05),
+                winMat,
+              );
+              win.position.set(p.x, 0.55, p.z + 0.44);
+              plateauGroup.add(win);
+              windowMats.push(winMat);
+            }
+          }
+        });
+        if (mapName === "port") {
+          const dock = makeDock();
+          dock.position.set(7, 0, 1);
+          dock.rotation.y = Math.PI / 2;
+          plateauGroup.add(dock);
+        }
         (map.furniture || []).forEach((item) => {
           const w = item.w || 1,
             d = item.d || 1;
@@ -5706,7 +5995,7 @@
                 mapName === "livingArea" && AVENUE_TREE_KEYS.has(`${x},${z}`)
                   ? makeAvenueTree(x, z)
                   : makeTree(x, z);
-              m.position.y += groundY(x, z);
+              m.position.y += mapName === "livingArea" ? groundY(x, z) : 0;
               mapGroup.add(m);
             } else if (tile === 3) {
               const threshold = new THREE.Mesh(
@@ -5721,7 +6010,7 @@
               mapGroup.add(threshold);
             } else if (tile === 5) {
               const m = makePath(x, z);
-              m.position.y += groundY(x, z);
+              m.position.y += mapName === "livingArea" ? groundY(x, z) : 0;
               mapGroup.add(m);
             }
             // tile === 6（湖）不逐格建置，改成迴圈結束後蓋成一整片有波紋的水面
@@ -6350,9 +6639,13 @@
       // 單句對話還是用上面的 showDialog()，這個只給需要「一來一往」的場景用
       let dialogQueue = [];
       let dialogIndex = 0;
-      function showDialogSequence(lines) {
+      let dialogSequenceOnComplete = null;
+      // onComplete 是選用的：劇情事件(如木匠抵達)要在整段對話跑完後接材料
+      // 檢查/進度推進時傳進來，一般單純的多句對話不用管這個參數
+      function showDialogSequence(lines, onComplete = null) {
         dialogQueue = lines;
         dialogIndex = 0;
+        dialogSequenceOnComplete = onComplete;
         dialogEl.textContent = dialogQueue[0];
         dialogEl.style.display = "block";
       }
@@ -6361,6 +6654,9 @@
         if (dialogIndex >= dialogQueue.length) {
           dialogEl.style.display = "none";
           dialogQueue = [];
+          const onComplete = dialogSequenceOnComplete;
+          dialogSequenceOnComplete = null;
+          if (onComplete) onComplete();
           return;
         }
         dialogEl.textContent = dialogQueue[dialogIndex];
@@ -6383,6 +6679,7 @@
           inventory: { ...inventory },
           crops: JSON.parse(JSON.stringify(cropState)),
           npcMemory: npcs.map((npc) => ({ id: npc.id, memory: npc.memory })),
+          carpenterQuest: { ...carpenterQuest },
         };
         localStorage.setItem(SAVE_KEY_PREFIX + slot, JSON.stringify(data));
         return data;
@@ -6407,6 +6704,12 @@
           const npc = npcs.find((candidate) => candidate.id === savedNpc.id);
           if (npc) npc.memory = savedNpc.memory;
         });
+        if (data.carpenterQuest) {
+          Object.assign(carpenterQuest, data.carpenterQuest);
+          const carpenterNpc = npcs.find((n) => n.id === "carpenter");
+          if (carpenterNpc)
+            carpenterNpc.mesh.visible = carpenterQuest.stage === "moved_in";
+        }
         if (data.player) {
           const targetMap = data.currentMapName || "livingArea";
           if (targetMap !== currentMapName) {
@@ -6482,6 +6785,7 @@
 
         if (currentMapName === "livingArea") {
           const nearby = npcs.find((n) => {
+            if (!n.mesh.visible) return false; // 木匠抵達前不算「在場」，不能對話
             const dx = player.position.x - n.mesh.position.x,
               dz = player.position.z - n.mesh.position.z;
             return Math.sqrt(dx * dx + dz * dz) <= 1.3;
@@ -6785,6 +7089,7 @@
         // --- NPC：先看行程表要去哪，再用 A* 決定「怎麼走」 ---
         const npcSpeed = 1.6;
         npcs.forEach((n) => {
+          if (!n.mesh.visible) return; // 木匠抵達前先不跑排程/路徑，省得算假人的路
           const target = getScheduleTarget(n.schedule, phase);
           const targetKey = `${target.x},${target.z}`;
 
