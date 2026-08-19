@@ -1248,6 +1248,8 @@
       ];
       const SUN_NOON_COLORS = [0xfff4d2, 0xfff0b0, 0xffd3a0, 0xe8f3ff];
       const SUN_HORIZON_COLOR = new THREE.Color(0xff9b61);
+      const SUN_SKY_BLEND_COLOR = new THREE.Color();
+      const SUN_TARGET_COLOR = new THREE.Color();
       const sunSkyGroup = new THREE.Group();
       const sunGlowMat = new THREE.MeshBasicMaterial({
         color: 0xffd796,
@@ -1275,8 +1277,10 @@
         sunCoreMat,
       );
       sunGlow.position.z = -0.04;
+      sunGlow.renderOrder = -0.58;
+      sunCore.renderOrder = -0.56;
       sunSkyGroup.add(sunGlow, sunCore);
-      sunSkyGroup.position.z = -76.5;
+      sunSkyGroup.position.z = -74;
       camera.add(sunSkyGroup);
 
       const skyClouds = [];
@@ -1306,7 +1310,7 @@
         cloud.position.set(
           -52 + seed * 104,
           7 + hash2(i, 3.7) * 12,
-          -75 + i * 0.025,
+          -73.5 + i * 0.025,
         );
         cloud.scale.setScalar(0.72 + hash2(i, 9.2) * 0.75);
         cloud.userData = {
@@ -1346,10 +1350,19 @@
           sunSkyGroup.position.x = 40 - sunProgress * 80;
           sunSkyGroup.position.y = -5.5 + arc * daylight.peak;
           const horizonWarmth = Math.pow(1 - arc, 2.4);
+          SUN_TARGET_COLOR.setHex(SUN_NOON_COLORS[currentSeason]).lerp(
+            SUN_HORIZON_COLOR,
+            horizonWarmth * 0.78,
+          );
+          SUN_SKY_BLEND_COLOR.copy(SKY_DAY_HORIZON)
+            .lerp(SKY_DAY_ZENITH, 0.55)
+            .lerp(SKY_NIGHT_HORIZON, nightFactor);
           sunCoreMat.color
-            .setHex(SUN_NOON_COLORS[currentSeason])
-            .lerp(SUN_HORIZON_COLOR, horizonWarmth * 0.78);
-          sunGlowMat.color.copy(sunCoreMat.color);
+            .copy(SUN_SKY_BLEND_COLOR)
+            .lerp(SUN_TARGET_COLOR, Math.min(1, sunOpacity * 1.15));
+          sunGlowMat.color
+            .copy(SUN_SKY_BLEND_COLOR)
+            .lerp(SUN_TARGET_COLOR, sunOpacity * (0.28 + arc * 0.16));
           sunCoreMat.opacity = Math.min(1, sunOpacity * 1.05);
           sunGlowMat.opacity = sunOpacity * (0.2 + arc * 0.16);
           const pulse = 1 + Math.sin(elapsed * 0.7) * 0.015;
