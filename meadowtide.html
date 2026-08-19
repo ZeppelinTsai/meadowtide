@@ -612,7 +612,7 @@ renderer.toneMappingExposure = 1.1;
 renderer.outputEncoding = THREE.sRGBEncoding;
 document.body.appendChild(renderer.domElement);
 
-let zoom = 6.5;
+let zoom = 4.5;
 const camera = new THREE.OrthographicCamera(-zoom * (innerWidth/innerHeight), zoom * (innerWidth/innerHeight), zoom, -zoom, 0.1, 100);
 scene.add(camera); // 星空遠景層掛在相機下，確保正交視角中穩定可見
 const TILT_DEG = 55;
@@ -691,7 +691,10 @@ function makeSparkleTexture() {
   return texture;
 }
 const STAR_SPARKLE_TEXTURE = makeSparkleTexture();
-const STAR_SPARKLE_COLORS = [0xffffff, 0xcfe7ff, 0xffe7ad, 0xe2d7ff, 0xffd7ca];
+const STAR_SPARKLE_COLORS = [
+  0xffffff, 0xc9e8ff, 0x9fe8ff, 0xaef4dc, 0xffef9f,
+  0xffc98f, 0xffb3c8, 0xe6c4ff, 0xb8c8ff, 0xd8ffd0,
+];
 function starSkyPoint(nx, ny, seasonIndex) {
   // 相機本地座標的遠景天幕：Z 固定在地形後方，X/Y 對應畫面水平與垂直位置。
   return new THREE.Vector3(nx * 28, 4 + ny * 14 + seasonIndex * 0.22, -78);
@@ -726,19 +729,23 @@ function makeSeasonStarGroup(seasonIndex) {
   stars.renderOrder = -0.5;
   group.add(stars);
 
-  // 只抽約 1/9 星點做十字星芒，分成五組錯開相位；底下原星點維持穩定亮度。
+  // 抽約 1/7 星點做強烈十字星芒，分成五組錯開相位；底下原星點維持穩定亮度。
   const sparklePositions = [[], [], [], [], []];
+  const sparkleColors = [[], [], [], [], []];
   for (let i = 0; i < positions.length / 3; i++) {
-    if ((i + seasonIndex * 2) % 9 !== 0) continue;
-    const phaseGroup = Math.floor(i / 9) % sparklePositions.length;
+    if ((i + seasonIndex * 2) % 7 !== 0) continue;
+    const phaseGroup = Math.floor(i / 7) % sparklePositions.length;
     sparklePositions[phaseGroup].push(positions[i * 3], positions[i * 3 + 1], positions[i * 3 + 2]);
+    const color = new THREE.Color(STAR_SPARKLE_COLORS[(i * 3 + seasonIndex * 2) % STAR_SPARKLE_COLORS.length]);
+    sparkleColors[phaseGroup].push(color.r, color.g, color.b);
   }
   const sparkleMaterials = sparklePositions.map((sparklePoints, phaseGroup) => {
     const sparkleGeometry = new THREE.BufferGeometry();
     sparkleGeometry.setAttribute('position', new THREE.Float32BufferAttribute(sparklePoints, 3));
+    sparkleGeometry.setAttribute('color', new THREE.Float32BufferAttribute(sparkleColors[phaseGroup], 3));
     const material = new THREE.PointsMaterial({
-      color: STAR_SPARKLE_COLORS[(phaseGroup + seasonIndex) % STAR_SPARKLE_COLORS.length],
-      map: STAR_SPARKLE_TEXTURE, size: seasonIndex === 3 ? 13.5 : 12,
+      color: 0xffffff, vertexColors: true,
+      map: STAR_SPARKLE_TEXTURE, size: seasonIndex === 3 ? 20 : 17.5,
       sizeAttenuation: false, transparent: true, opacity: 0,
       depthWrite: false, depthTest: true, fog: false,
       blending: THREE.AdditiveBlending,
@@ -783,7 +790,7 @@ function updateSeasonalStars(nightFactor) {
     group.userData.materials[1].opacity = visibility * 0.11;
     group.userData.sparkleMaterials.forEach((material, phaseIndex) => {
       const pulse = Math.max(0, Math.sin(elapsed * 1.8 + phaseIndex * Math.PI * 2 / 5 + seasonIndex * 0.7));
-      material.opacity = visibility * Math.pow(pulse, 9) * 0.92;
+      material.opacity = visibility * Math.pow(pulse, 5) * 1.0;
     });
     group.visible = visibility > 0.008;
     group.rotation.z = currentPhase * 0.08 + seasonIndex * 0.012;
@@ -814,15 +821,25 @@ function updateSkyDome(nightFactor) {
 // ==============================================================
 function makeSoftParticleTexture(shape = 'round') {
   const canvas = document.createElement('canvas');
-  canvas.width = canvas.height = 32;
+  const textureSize = shape === 'petal' ? 64 : 32;
+  canvas.width = canvas.height = textureSize;
   const ctx = canvas.getContext('2d');
   if (shape === 'petal') {
-    ctx.translate(16, 16); ctx.rotate(-0.55);
-    const gradient = ctx.createRadialGradient(-3, -2, 1, 0, 0, 11);
-    gradient.addColorStop(0, 'rgba(255,255,255,1)');
-    gradient.addColorStop(0.55, 'rgba(255,190,215,0.9)');
-    gradient.addColorStop(1, 'rgba(255,160,200,0)');
-    ctx.fillStyle = gradient; ctx.beginPath(); ctx.ellipse(0, 0, 5, 11, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.translate(32, 32); ctx.rotate(-0.48);
+    const gradient = ctx.createLinearGradient(-12, -25, 9, 24);
+    gradient.addColorStop(0, 'rgba(255,247,251,1)');
+    gradient.addColorStop(0.48, 'rgba(255,200,220,0.96)');
+    gradient.addColorStop(1, 'rgba(239,130,170,0.9)');
+    ctx.fillStyle = gradient;
+    ctx.beginPath();
+    ctx.moveTo(0, 25);
+    ctx.bezierCurveTo(-15, 14, -19, -6, -10, -23);
+    ctx.bezierCurveTo(-5, -29, -2, -20, 0, -14); // 花瓣頂端左瓣與凹口
+    ctx.bezierCurveTo(2, -20, 5, -29, 10, -23);
+    ctx.bezierCurveTo(19, -6, 15, 14, 0, 25);
+    ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = 'rgba(205,82,132,0.48)'; ctx.lineWidth = 1.4;
+    ctx.beginPath(); ctx.moveTo(0, 22); ctx.quadraticCurveTo(-1, 4, 0, -13); ctx.stroke();
   } else {
     const gradient = ctx.createRadialGradient(16, 16, 1, 16, 16, 13);
     gradient.addColorStop(0, 'rgba(255,255,255,1)');
@@ -832,24 +849,23 @@ function makeSoftParticleTexture(shape = 'round') {
   }
   return new THREE.CanvasTexture(canvas);
 }
-const WEATHER_BOUNDS = { x: 38, y: 22 };
+const WEATHER_BOUNDS = { minX: -2, maxX: 59, minY: 0.4, maxY: 14, minZ: -7, maxZ: 41 };
 const weatherEffectGroup = new THREE.Group();
-weatherEffectGroup.position.z = -12;
-camera.add(weatherEffectGroup);
+scene.add(weatherEffectGroup);
 
 const MAX_RAIN_DROPS = 360;
 const rainPositions = new Float32Array(MAX_RAIN_DROPS * 6);
 const rainSeeds = new Float32Array(MAX_RAIN_DROPS);
 for (let i = 0; i < MAX_RAIN_DROPS; i++) {
   rainSeeds[i] = hash2(i * 4.17, 8.3);
-  rainPositions[i * 6] = rainPositions[i * 6 + 3] = (hash2(i, 2.1) - 0.5) * WEATHER_BOUNDS.x * 2;
-  rainPositions[i * 6 + 1] = (hash2(i, 7.9) - 0.5) * WEATHER_BOUNDS.y * 2;
+  rainPositions[i * 6] = rainPositions[i * 6 + 3] = WEATHER_BOUNDS.minX + hash2(i, 2.1) * (WEATHER_BOUNDS.maxX - WEATHER_BOUNDS.minX);
+  rainPositions[i * 6 + 1] = WEATHER_BOUNDS.minY + hash2(i, 7.9) * (WEATHER_BOUNDS.maxY - WEATHER_BOUNDS.minY);
   rainPositions[i * 6 + 4] = rainPositions[i * 6 + 1] - 0.65;
-  rainPositions[i * 6 + 2] = rainPositions[i * 6 + 5] = 0;
+  rainPositions[i * 6 + 2] = rainPositions[i * 6 + 5] = WEATHER_BOUNDS.minZ + hash2(i, 12.3) * (WEATHER_BOUNDS.maxZ - WEATHER_BOUNDS.minZ);
 }
 const rainGeometry = new THREE.BufferGeometry();
 rainGeometry.setAttribute('position', new THREE.BufferAttribute(rainPositions, 3));
-const rainMaterial = new THREE.LineBasicMaterial({ color: 0xaed5ef, transparent: true, opacity: 0, depthTest: false });
+const rainMaterial = new THREE.LineBasicMaterial({ color: 0xaed5ef, transparent: true, opacity: 0, depthTest: true });
 const rainEffect = new THREE.LineSegments(rainGeometry, rainMaterial);
 rainEffect.frustumCulled = false; weatherEffectGroup.add(rainEffect);
 
@@ -858,14 +874,66 @@ function makeWeatherPointLayer(count, color, size, texture) {
   const seeds = new Float32Array(count);
   for (let i = 0; i < count; i++) {
     seeds[i] = hash2(i * 5.31, count * 0.17);
-    positions[i * 3] = (hash2(i, 1.7) - 0.5) * WEATHER_BOUNDS.x * 2;
-    positions[i * 3 + 1] = (hash2(i, 6.4) - 0.5) * WEATHER_BOUNDS.y * 2;
+    positions[i * 3] = WEATHER_BOUNDS.minX + hash2(i, 1.7) * (WEATHER_BOUNDS.maxX - WEATHER_BOUNDS.minX);
+    positions[i * 3 + 1] = WEATHER_BOUNDS.minY + hash2(i, 6.4) * (WEATHER_BOUNDS.maxY - WEATHER_BOUNDS.minY);
+    positions[i * 3 + 2] = WEATHER_BOUNDS.minZ + hash2(i, 11.8) * (WEATHER_BOUNDS.maxZ - WEATHER_BOUNDS.minZ);
   }
   const geometry = new THREE.BufferGeometry();
   geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
   const material = new THREE.PointsMaterial({
     color, size, map: texture, transparent: true, opacity: 0,
-    depthWrite: false, depthTest: false, sizeAttenuation: false,
+    depthWrite: false, depthTest: true, sizeAttenuation: false,
+  });
+  const points = new THREE.Points(geometry, material);
+  points.frustumCulled = false; weatherEffectGroup.add(points);
+  return { points, geometry, material, positions, seeds, count };
+}
+function makePetalLayer(count, color, size, texture) {
+  const positions = new Float32Array(count * 3);
+  const seeds = new Float32Array(count);
+  for (let i = 0; i < count; i++) {
+    seeds[i] = hash2(i * 5.31, count * 0.17);
+    positions[i * 3] = WEATHER_BOUNDS.minX + hash2(i, 1.7) * (WEATHER_BOUNDS.maxX - WEATHER_BOUNDS.minX);
+    positions[i * 3 + 1] = WEATHER_BOUNDS.minY + hash2(i, 6.4) * (WEATHER_BOUNDS.maxY - WEATHER_BOUNDS.minY);
+    positions[i * 3 + 2] = WEATHER_BOUNDS.minZ + hash2(i, 11.8) * (WEATHER_BOUNDS.maxZ - WEATHER_BOUNDS.minZ);
+  }
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+  geometry.setAttribute('petalSeed', new THREE.BufferAttribute(seeds, 1));
+  const tint = new THREE.Color(color);
+  const material = new THREE.ShaderMaterial({
+    uniforms: {
+      petalMap: { value: texture }, tint: { value: tint }, opacity: { value: 0 },
+      time: { value: 0 }, pointSize: { value: size },
+    },
+    vertexShader: `
+      attribute float petalSeed;
+      uniform float time; uniform float pointSize;
+      varying float vAngle; varying float vFlip;
+      void main(){
+        float phase=time*(0.65+petalSeed*1.55)+petalSeed*24.0;
+        vAngle=phase*0.72+sin(phase*0.47)*1.15;
+        vFlip=cos(phase*1.36);
+        gl_PointSize=pointSize*(0.84+0.16*sin(phase*0.81));
+        gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);
+      }`,
+    fragmentShader: `
+      uniform sampler2D petalMap; uniform vec3 tint; uniform float opacity;
+      varying float vAngle; varying float vFlip;
+      void main(){
+        vec2 p=gl_PointCoord-0.5;
+        float c=cos(vAngle), s=sin(vAngle);
+        p=mat2(c,-s,s,c)*p;
+        float width=max(0.16,abs(vFlip));
+        p.x/=width;
+        if(vFlip<0.0) p.x=-p.x;
+        vec2 uv=p+0.5;
+        if(uv.x<0.0||uv.x>1.0||uv.y<0.0||uv.y>1.0) discard;
+        vec4 tex=texture2D(petalMap,uv);
+        if(tex.a<0.025) discard;
+        gl_FragColor=vec4(tex.rgb*tint,tex.a*opacity);
+      }`,
+    transparent: true, depthWrite: false, depthTest: true,
   });
   const points = new THREE.Points(geometry, material);
   points.frustumCulled = false; weatherEffectGroup.add(points);
@@ -873,14 +941,14 @@ function makeWeatherPointLayer(count, color, size, texture) {
 }
 const snowEffect = makeWeatherPointLayer(260, 0xf4f8ff, 6.5, makeSoftParticleTexture());
 const petalTexture = makeSoftParticleTexture('petal');
-const petalEffect = makeWeatherPointLayer(360, 0xffc0d8, 13.5, petalTexture);
-const petalForegroundEffect = makeWeatherPointLayer(140, 0xff8fbd, 20, petalTexture);
+const petalEffect = makePetalLayer(360, 0xfff0f5, 13.5, petalTexture);
+const petalForegroundEffect = makePetalLayer(140, 0xffc9dc, 20, petalTexture);
 const weatherFlashLight = new THREE.HemisphereLight(0xeaf3ff, 0x65758b, 0);
 scene.add(weatherFlashLight);
 
-function wrapWeatherParticle(value, bound) {
-  if (value < -bound) return bound;
-  if (value > bound) return -bound;
+function wrapWeatherParticle(value, min, max) {
+  if (value < min) return max;
+  if (value > max) return min;
   return value;
 }
 function updateWeatherEffects(dt, nightFactor) {
@@ -898,7 +966,8 @@ function updateWeatherEffects(dt, nightFactor) {
       const base = i * 6, speed = 14 + rainSeeds[i] * 10;
       let x = rainPositions[base] + rainDrift * dt;
       let y = rainPositions[base + 1] - speed * dt;
-      x = wrapWeatherParticle(x, WEATHER_BOUNDS.x); y = wrapWeatherParticle(y, WEATHER_BOUNDS.y);
+      x = wrapWeatherParticle(x, WEATHER_BOUNDS.minX, WEATHER_BOUNDS.maxX);
+      y = wrapWeatherParticle(y, WEATHER_BOUNDS.minY, WEATHER_BOUNDS.maxY);
       const slant = rainDrift * 0.055, length = currentWeather === 'rain' ? 0.62 : 0.95;
       rainPositions[base] = x; rainPositions[base + 1] = y;
       rainPositions[base + 3] = x - slant; rainPositions[base + 4] = y - length;
@@ -914,9 +983,11 @@ function updateWeatherEffects(dt, nightFactor) {
     for (let i = 0; i < snowEffect.count; i++) {
       const base = i * 3, seed = snowEffect.seeds[i];
       snowEffect.positions[base] = wrapWeatherParticle(snowEffect.positions[base]
-        + ((currentWeather === 'blizzard' ? 10 : 1.2) + Math.sin(elapsed * 1.4 + seed * 20)) * dt, WEATHER_BOUNDS.x);
+        + ((currentWeather === 'blizzard' ? 10 : 1.2) + Math.sin(elapsed * 1.4 + seed * 20)) * dt,
+        WEATHER_BOUNDS.minX, WEATHER_BOUNDS.maxX);
       snowEffect.positions[base + 1] = wrapWeatherParticle(snowEffect.positions[base + 1]
-        - (currentWeather === 'blizzard' ? 5.2 : 1.4 + seed) * dt, WEATHER_BOUNDS.y);
+        - (currentWeather === 'blizzard' ? 5.2 : 1.4 + seed) * dt,
+        WEATHER_BOUNDS.minY, WEATHER_BOUNDS.maxY);
     }
     snowEffect.geometry.attributes.position.needsUpdate = true;
   }
@@ -925,16 +996,18 @@ function updateWeatherEffects(dt, nightFactor) {
   petalEffect.points.visible = petalsVisible;
   petalForegroundEffect.points.visible = petalsVisible;
   if (petalsVisible) {
-    petalEffect.material.opacity = currentWeather === 'cloudy' ? 0.76 : 0.9;
-    petalForegroundEffect.material.opacity = currentWeather === 'cloudy' ? 0.7 : 0.86;
+    petalEffect.material.uniforms.opacity.value = currentWeather === 'cloudy' ? 0.76 : 0.9;
+    petalForegroundEffect.material.uniforms.opacity.value = currentWeather === 'cloudy' ? 0.7 : 0.86;
     [petalEffect, petalForegroundEffect].forEach((layer, layerIndex) => {
+      layer.material.uniforms.time.value = elapsed;
       for (let i = 0; i < layer.count; i++) {
         const base = i * 3, seed = layer.seeds[i];
         const swirl = Math.sin(elapsed * (0.72 + seed * 0.55) + seed * 19 + layerIndex) * (0.55 + layerIndex * 0.35);
         layer.positions[base] = wrapWeatherParticle(layer.positions[base]
-          + (0.7 + swirl) * dt, WEATHER_BOUNDS.x);
+          + (0.7 + swirl) * dt, WEATHER_BOUNDS.minX, WEATHER_BOUNDS.maxX);
         layer.positions[base + 1] = wrapWeatherParticle(layer.positions[base + 1]
-          - (0.5 + seed * 0.68 + Math.sin(elapsed * 1.15 + seed * 13) * 0.18) * dt, WEATHER_BOUNDS.y);
+          - (0.5 + seed * 0.68 + Math.sin(elapsed * 1.15 + seed * 13) * 0.18) * dt,
+          WEATHER_BOUNDS.minY, WEATHER_BOUNDS.maxY);
       }
       layer.geometry.attributes.position.needsUpdate = true;
     });

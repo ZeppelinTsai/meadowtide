@@ -147,8 +147,9 @@ node map-debug.js 你的檔案.html --legend
 - `getSeasonIndex()` 負責季節判斷，目前 `DAYS_PER_SEASON = 3`，所以測試時
   每 3 天換季；正式版暫定改為 21 天。`rollWeatherForSeason()`
   依季節限制每日天氣（含晴、陰、雨、颱風、暴風雨、雪、暴風雪），`beginNewDay()`
-  在 `currentDay` 改變時抽取新天氣。`updateWeatherEffects()` 驅動相機前方的低成本
-  雨線、雪片與春季櫻花粒子；春季晴／陰不分日夜都會飄花瓣，暴風雨另有閃電。
+  在 `currentDay` 改變時抽取新天氣。`updateWeatherEffects()` 驅動固定在場景世界座標的
+  低成本雨線、雪片與春季櫻花粒子（不可掛在相機下，否則會像跟著主角移動）；
+  春季晴／陰不分日夜都會飄花瓣，暴風雨另有閃電。
 - `initializeMusic()` 在第一次鍵盤／滑鼠操作時建立 Web Audio API 音訊圖，
   避開瀏覽器自動播放限制。`updateMusic()` 以 `nightFactor` 選擇季節日曲或
   夜曲；陰天沿用季節曲，其他惡劣天氣選天氣曲取代旋律（暴風雨沿用颱風曲）。
