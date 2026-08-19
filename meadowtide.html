@@ -66,6 +66,9 @@ const LAYOUT = {
   barn:    { x: 23, z: 1,  w: 3, d: 2, doorX: 24 },
   pasture: { x: 18, z: 4,  width: 13, height: 6 }, // 左擴 3、右擴 5、向南擴 3
   orchard: { houseOffsetX: 9.5, houseOffsetZ: -8.5 },
+  houseRoad: { width: 3 },
+  restArea: { x: 25, z: 21, width: 8, height: 6 },
+  garden:  { x: 25, z: 28, width: 8, height: 7 },
   farm:    { x: 5,  z: 17 + NORTH_EXPANSION, blocks: 3, plotSize: 3, gap: 1 }, // 左移 3、南移 3
   lake:    { x: 3,  z: 3, width: 18, height: 17 }, // 再向南擴 3 格
   coast:   { eastExpansion: 5, rampX: 34, rampWidth: 3, sandCols: 10, oceanCols: 10 },
@@ -316,26 +319,27 @@ const TOWN_Z_START = MAPS.outside.tiles.length; // 現在是 25（農田南移�
 MAPS.outside.tiles[LAYOUT.farm.z + 1][LAYOUT.farm.x + 10] = 0;
 MAPS.outside.tiles[LAYOUT.farm.z + 1][LAYOUT.house.doorX] = 0;
 
-// 主屋門外道路改成與門中心對齊，從門外一路筆直延伸到地圖最南端。
+// 主屋門外道路以門中心對齊，寬三格並一路筆直延伸到地圖最南端。
 const HOUSE_ROAD_X = LAYOUT.house.doorX;
 const HOUSE_ROAD_START_Z = LAYOUT.house.z + LAYOUT.house.d + 1;
+const HOUSE_ROAD_HALF_WIDTH = Math.floor(LAYOUT.houseRoad.width / 2);
 for (let z = HOUSE_ROAD_START_Z; z < MAPS.outside.tiles.length; z++) {
-  // 清掉原本偏右一格的門前短路；其他農田與城區道路保留。
-  if (z <= LAYOUT.farm.z - 1 && MAPS.outside.tiles[z][HOUSE_ROAD_X + 1] === 5) {
-    MAPS.outside.tiles[z][HOUSE_ROAD_X + 1] = 0;
+  for (let x = HOUSE_ROAD_X - HOUSE_ROAD_HALF_WIDTH; x <= HOUSE_ROAD_X + HOUSE_ROAD_HALF_WIDTH; x++) {
+    MAPS.outside.tiles[z][x] = 5;
   }
-  MAPS.outside.tiles[z][HOUSE_ROAD_X] = 5;
 }
 
-// 從農田起點往南，在主路左右各留一格路肩後種植行道樹，每兩格一棵。
+// 略過最上方左右各兩棵，從農田起點往南四格後開始種植行道樹。
 const AVENUE_TREE_TILES = [];
-for (let z = LAYOUT.farm.z; z < MAPS.outside.tiles.length; z += 2) {
+for (let z = LAYOUT.farm.z + 4; z < MAPS.outside.tiles.length; z += 2) {
   [HOUSE_ROAD_X - 2, HOUSE_ROAD_X + 2].forEach(x => {
     AVENUE_TREE_TILES.push([x, z]);
     MAPS.outside.tiles[z][x] = 2;
   });
 }
 const AVENUE_TREE_KEYS = new Set(AVENUE_TREE_TILES.map(([x, z]) => `${x},${z}`));
+// 清掉休息區入口旁的舊樹，讓人能從行道樹間穿進兩個新區域。
+MAPS.outside.tiles[LAYOUT.farm.z + 1][LAYOUT.restArea.x - 1] = 0;
 
 const events = [
   { map: 'outside', x: LAYOUT.house.doorX, z: LAYOUT.house.z + LAYOUT.house.d, trigger: 'touch',
@@ -484,10 +488,11 @@ function nearWater() {
     return map.tiles[nz][nx] === 9;
   });
   if (nearOcean) return true;
-  for (let i = 0; i < 16; i++) {
-    const angle = i / 16 * Math.PI * 2;
-    if (isInsideLakeShape(player.position.x + Math.cos(angle) * 0.78,
-      player.position.z + Math.sin(angle) * 0.78)) return true;
+  // 岸石有碰撞後玩家會站得稍遠；加長偵測距離，仍可隔著石頭向湖內拋竿。
+  for (let i = 0; i < 24; i++) {
+    const angle = i / 24 * Math.PI * 2;
+    if (isInsideLakeShape(player.position.x + Math.cos(angle) * 1.35,
+      player.position.z + Math.sin(angle) * 1.35)) return true;
   }
   return false;
 }
@@ -532,6 +537,14 @@ const TILE = 1;
 // 純 2D 網格擋不擋路；階梯用相鄰不同高度的方塊自然產生，不用額外做斜面
 // ==============================================================
 const PLATEAU_Y = 0.55;
+const NORTH_TERRAIN_EXTENSION = 6;
+const NORTH_CLIFF_Z = -5.7;
+function northCliffEdgeZ(x) {
+  return NORTH_CLIFF_Z
+    + Math.sin(x * 0.38) * 0.38
+    + Math.sin(x * 0.91 + 1.7) * 0.18
+    + (hash2(x * 3.1, 7.4) - 0.5) * 0.12;
+}
 function groundY(x) {
   const xi = Math.round(x);
   const rampX = LAYOUT.coast.rampX;
@@ -754,6 +767,7 @@ const windowMats = [];
 const foamMeshes = []; // 沙灘跟海交界的拍岸泡沫，animate() 裡逐幀讓它忽明忽暗
 let oceanMesh = null;  // 整片海面網格，animate() 裡逐頂點做波浪動畫
 let lakeMesh = null;   // 湖面，跟海一樣是合併網格，只是波浪幅度小很多、沒有碎浪
+const lakeShoreColliders = []; // 湖岸石頭的圓形碰撞，建圖時與石頭位置同步
 let seaGlimpseMesh = null; // 北邊的遠方海景背景板，會輕輕起伏
 const fishSchool = []; // 每條魚各自保存尺寸、速度、橢圓半徑、游移與深度參數
 const SEA_FISH_SCALE = 3;
@@ -982,6 +996,7 @@ function makeTree(x, z) {
   group.add(leaf1, leaf2);
   group.position.set(x, 0, z);
   group.rotation.y = r * Math.PI * 2;
+  group.scale.multiplyScalar(2);
   return group;
 }
 const AVENUE_SEASON_COLORS = [0xf3a7c3, 0x3f9446, 0xc94f3d, 0xf2f5f7];
@@ -1125,7 +1140,8 @@ function makeBarn({ x, z, w, d, doorX }) {
   return group;
 }
 function makePath(x, z) {
-  const m = new THREE.Mesh(new THREE.BoxGeometry(TILE * 0.98, 0.04, TILE * 0.98),
+  // 稍微超出單格邊界，讓相鄰路塊無縫接合，看不出棋盤狀格線。
+  const m = new THREE.Mesh(new THREE.BoxGeometry(TILE * 1.02, 0.04, TILE * 1.02),
     new THREE.MeshStandardMaterial({ color: 0xbfa172 }));
   m.position.set(x, 0.01, z); m.receiveShadow = true;
   return m;
@@ -1135,6 +1151,28 @@ function makeWater(x, z) {
     new THREE.MeshStandardMaterial({ color: 0x3f8fd6, roughness: 0.15, metalness: 0.25, transparent: true, opacity: 0.88 }));
   m.position.set(x, 0.0, z);
   return m;
+}
+function makeLakeShoreRock(x, z, seed, isSeat = false) {
+  const group = new THREE.Group();
+  const rockColors = [0x596969, 0x73858a, 0x8d8170, 0x6f7568, 0x9a8d7b, 0x66757f];
+  const colorIndex = Math.min(rockColors.length - 1, Math.floor(seed * rockColors.length));
+  const color = new THREE.Color(rockColors[colorIndex]).offsetHSL(
+    (hash2(seed * 13.1, 4.7) - 0.5) * 0.045,
+    (hash2(seed * 7.3, 8.9) - 0.5) * 0.16,
+    (hash2(seed * 17.7, 1.2) - 0.5) * 0.16
+  );
+  const rock = new THREE.Mesh(new THREE.IcosahedronGeometry(0.42, 1),
+    new THREE.MeshStandardMaterial({ color, flatShading: true, roughness: 0.95 }));
+  const width = isSeat ? 1.05 + seed * 0.18 : 0.76 + seed * 0.36;
+  const height = isSeat ? 0.38 : 0.58 + seed * 0.28;
+  rock.scale.set(width, height, 0.72 + hash2(seed * 8.3, 2.1) * 0.34);
+  rock.rotation.set((seed - 0.5) * 0.16, seed * Math.PI * 2, (0.5 - seed) * 0.12);
+  rock.position.y = isSeat ? 0.16 : 0.21;
+  rock.castShadow = true;
+  rock.receiveShadow = true;
+  group.add(rock);
+  group.position.set(x, 0, z);
+  return group;
 }
 function makeSoil(x, z) {
   const soil = new THREE.Mesh(new THREE.BoxGeometry(TILE * 0.98, 0.05, TILE * 0.98),
@@ -1257,6 +1295,7 @@ function makeFruitTree(x, z, seed) {
     group.add(fruit);
   }
   group.position.set(x, 0, z);
+  group.scale.multiplyScalar(2);
   return group;
 }
 
@@ -1314,6 +1353,80 @@ function makeGardenBed(x, z, seed) {
   }
   group.position.set(x, 0, z);
   return group;
+}
+
+function makeRestArea(area) {
+  const g = new THREE.Group();
+  const base = new THREE.Mesh(new THREE.BoxGeometry(area.width - 0.25, 0.045, area.height - 0.25),
+    new THREE.MeshStandardMaterial({ color: 0xc9b98d, roughness: 0.95 }));
+  base.position.set((area.width - 1) / 2, 0.02, (area.height - 1) / 2);
+  base.receiveShadow = true;
+  g.add(base);
+
+  // 中央聚會桌與長椅。
+  g.add(makePicnicSet(2.1, 2.4));
+  const woodMat = new THREE.MeshStandardMaterial({ color: 0x8c6240 });
+  const darkMat = new THREE.MeshStandardMaterial({ color: 0x34302d, metalness: 0.35, roughness: 0.7 });
+
+  // 有爐盆、烤網與四腳的烤肉架。
+  const grill = new THREE.Group();
+  const bowl = new THREE.Mesh(new THREE.CylinderGeometry(0.27, 0.19, 0.2, 10), darkMat);
+  bowl.position.y = 0.53; bowl.castShadow = true; grill.add(bowl);
+  const grate = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.25, 0.025, 12),
+    new THREE.MeshStandardMaterial({ color: 0x777777, metalness: 0.65, roughness: 0.45 }));
+  grate.position.y = 0.65; grill.add(grate);
+  [-0.14, 0.14].forEach(lx => [-0.09, 0.09].forEach(lz => {
+    const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.022, 0.48, 5), darkMat);
+    leg.position.set(lx, 0.25, lz); grill.add(leg);
+  }));
+  grill.position.set(4.15, 1.55, 0.2); g.add(grill);
+
+  function makeLounger(px, pz, rotation) {
+    const chair = new THREE.Group();
+    const seat = new THREE.Mesh(new THREE.BoxGeometry(0.62, 0.07, 1.05), woodMat);
+    seat.position.y = 0.22; seat.castShadow = true; chair.add(seat);
+    const back = new THREE.Mesh(new THREE.BoxGeometry(0.62, 0.07, 0.72), woodMat);
+    back.position.set(0, 0.5, -0.55); back.rotation.x = -0.7; back.castShadow = true; chair.add(back);
+    [-0.24, 0.24].forEach(lx => {
+      const leg = new THREE.Mesh(new THREE.BoxGeometry(0.045, 0.24, 0.045), woodMat);
+      leg.position.set(lx, 0.12, 0.2); chair.add(leg);
+    });
+    chair.position.set(px, 0, pz); chair.rotation.y = rotation; g.add(chair);
+  }
+  makeLounger(5.7, 1.55, -0.18);
+  makeLounger(5.85, 3.45, 0.18);
+
+  // 靠海側留一棵遮蔭樹，讓個人休息區讀起來更舒適。
+  const shade = makeTree(6.65, 4.5);
+  shade.scale.setScalar(1.35);
+  g.add(shade);
+  g.position.set(area.x, 0, area.z);
+  return g;
+}
+
+function makeSmallGarden(area) {
+  const g = new THREE.Group();
+  const lawn = new THREE.Mesh(new THREE.BoxGeometry(area.width - 0.25, 0.04, area.height - 0.25),
+    new THREE.MeshStandardMaterial({ color: 0x78a95b, roughness: 1 }));
+  lawn.position.set((area.width - 1) / 2, 0.018, (area.height - 1) / 2);
+  lawn.receiveShadow = true; g.add(lawn);
+
+  // 中央碎石步道把上下兩排花圃分開，入口對準行道樹間的空隙。
+  const path = new THREE.Mesh(new THREE.BoxGeometry(area.width - 0.4, 0.035, 0.75),
+    new THREE.MeshStandardMaterial({ color: 0xc8b897, roughness: 1 }));
+  path.position.set((area.width - 1) / 2, 0.045, (area.height - 1) / 2);
+  path.receiveShadow = true; g.add(path);
+  [[1.2, 1.3], [3.25, 1.3], [5.3, 1.3], [1.2, 4.8], [3.25, 4.8], [5.3, 4.8]]
+    .forEach(([bx, bz], i) => g.add(makeGardenBed(bx, bz, 20 + i)));
+
+  // 小型鳥浴盆／花園焦點。
+  const stoneMat = new THREE.MeshStandardMaterial({ color: 0xb8b6ad, roughness: 0.85 });
+  const pedestal = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.13, 0.42, 8), stoneMat);
+  pedestal.position.set(6.55, 0.21, 3); g.add(pedestal);
+  const basin = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.18, 0.09, 10), stoneMat);
+  basin.position.set(6.55, 0.46, 3); basin.castShadow = true; g.add(basin);
+  g.position.set(area.x, 0, area.z);
+  return g;
 }
 
 // 碼頭＋小船——木棧板延伸到海面上，旁邊停一艘簡化的船身
@@ -1820,8 +1933,10 @@ function buildMap(mapName) {
     const zCenter = (rows * TILE) / 2 - TILE / 2;
     function groundSlab(xStart, xEnd, height) {
       const width = xEnd - xStart;
-      const slab = new THREE.Mesh(new THREE.BoxGeometry(width, 0.2, rows * TILE), grassMat);
-      slab.position.set((xStart + xEnd) / 2 - 0.5, height - 0.1, zCenter);
+      const northExtension = NORTH_TERRAIN_EXTENSION;
+      const depth = rows * TILE + northExtension;
+      const slab = new THREE.Mesh(new THREE.BoxGeometry(width, 0.2, depth), grassMat);
+      slab.position.set((xStart + xEnd) / 2 - 0.5, height - 0.1, zCenter - northExtension / 2);
       slab.receiveShadow = true; slab.castShadow = true;
       mapGroup.add(slab);
     }
@@ -1831,7 +1946,7 @@ function buildMap(mapName) {
     const lowlandMat = new THREE.MeshStandardMaterial({ color: 0x6ab04c });
     const cliffMat2 = new THREE.MeshStandardMaterial({ color: 0x8a8478, flatShading: true });
     const pathMat = new THREE.MeshStandardMaterial({ color: 0xbfa172 });
-    for (let z = 0; z < Math.min(rows, TOWN_Z_START); z++) {
+    for (let z = -NORTH_TERRAIN_EXTENSION; z < Math.min(rows, TOWN_Z_START); z++) {
       const inCorridor = z >= RAMP_CORRIDOR_MIN_Z && z <= RAMP_CORRIDOR_MAX_Z;
       if (inCorridor) {
         // 走廊：三級台階，用路面色而不是草色，讀起來像「這是特地留的一條路」
@@ -1855,30 +1970,79 @@ function buildMap(mapName) {
         }
       }
     }
-    const lowland = new THREE.Mesh(new THREE.BoxGeometry(cols - lowlandX, 0.2, rows * TILE),
+    const extendedDepth = rows * TILE + NORTH_TERRAIN_EXTENSION;
+    const lowland = new THREE.Mesh(new THREE.BoxGeometry(cols - lowlandX, 0.2, extendedDepth),
       new THREE.MeshStandardMaterial({ color: 0x6ab04c }));
-    lowland.position.set(lowlandX + (cols - lowlandX) / 2 - 0.5, -0.1, zCenter);
+    lowland.position.set(lowlandX + (cols - lowlandX) / 2 - 0.5, -0.1,
+      zCenter - NORTH_TERRAIN_EXTENSION / 2);
     lowland.receiveShadow = true;
     mapGroup.add(lowland);
+
+    // 右側沙灘也往北補齊，接住延伸後的海面與海堤，不留下綠色斷帶。
+    const northOceanStartX = map.tiles[0].indexOf(9);
+    if (northOceanStartX > lowlandX) {
+      const northSandWidth = northOceanStartX - lowlandX;
+      const northSand = new THREE.Mesh(
+        new THREE.PlaneGeometry(northSandWidth, NORTH_TERRAIN_EXTENSION),
+        new THREE.MeshStandardMaterial({ color: 0xe8d29a })
+      );
+      northSand.rotation.x = -Math.PI / 2;
+      northSand.position.set(lowlandX + northSandWidth / 2 - 0.5, 0.015,
+        -NORTH_TERRAIN_EXTENSION / 2 - 0.5);
+      mapGroup.add(northSand);
+    }
 
     // 北側懸崖 + 遠方海景 —— 純背景，跟西側遠山同一招：z 是負的，isBlocked
     // 本來就會把超出邊界的座標判定為擋路，走不進去，不用額外寫碰撞。
     // 沒有真的把海延伸到北邊（那需要海面系統支援兩塊不相連的水域，成本
     // 不成比例），做的是懸崖峭壁 + 崖底沙灘沿 + 亂石 + 遠方海水色背景板，
     // 「沙灘在崖底止住」這個視覺效果做出來了，但沙灘本身不能走進去
-    const cliff = new THREE.Mesh(new THREE.BoxGeometry(11, PLATEAU_Y, 0.4),
-      new THREE.MeshStandardMaterial({ color: 0x8a8478, flatShading: true }));
-    cliff.position.set(5, PLATEAU_Y / 2, -0.7);
-    cliff.castShadow = true; cliff.receiveShadow = true;
-    mapGroup.add(cliff);
+    const northCliffStartX = -0.5;
+    const northCliffEndX = LAYOUT.coast.rampX + LAYOUT.coast.rampWidth - 0.5;
+    const cliffMat = new THREE.MeshStandardMaterial({ color: 0x8a8478, flatShading: true });
+    const railMat = new THREE.MeshStandardMaterial({ color: 0x594231, flatShading: true, roughness: 0.9 });
+    const cliffEdge = [];
+    for (let x = northCliffStartX; x < northCliffEndX; x += 1) {
+      const centerX = x + 0.5;
+      const edgeZ = northCliffEdgeZ(centerX);
+      const wallHeight = PLATEAU_Y + 0.12 + hash2(centerX * 4.7, 2.3) * 0.28;
+      const wallDepth = 0.48 + hash2(centerX * 2.9, 9.1) * 0.28;
+      const wall = new THREE.Mesh(new THREE.BoxGeometry(1.08, wallHeight, wallDepth), cliffMat);
+      wall.position.set(centerX, wallHeight / 2 - 0.08, edgeZ);
+      wall.rotation.y = (hash2(centerX, 5.6) - 0.5) * 0.08;
+      wall.castShadow = true; wall.receiveShadow = true;
+      mapGroup.add(wall);
+      cliffEdge.push({ x: centerX, z: edgeZ + wallDepth * 0.42, top: wallHeight - 0.08 });
+    }
+    // 木製護欄跟著不規則崖線逐段連接；雙橫桿讓遠景仍看得清楚。
+    cliffEdge.forEach((point, i) => {
+      if (i % 2 === 0) {
+        const post = new THREE.Mesh(new THREE.CylinderGeometry(0.065, 0.075, 0.82, 6), railMat);
+        post.position.set(point.x, point.top + 0.4, point.z);
+        post.castShadow = true;
+        mapGroup.add(post);
+      }
+      if (i === cliffEdge.length - 1) return;
+      const next = cliffEdge[i + 1];
+      const dx = next.x - point.x, dz = next.z - point.z;
+      const length = Math.hypot(dx, dz);
+      [0.28, 0.62].forEach(railHeight => {
+        const rail = new THREE.Mesh(new THREE.BoxGeometry(length + 0.06, 0.075, 0.075), railMat);
+        rail.position.set((point.x + next.x) / 2,
+          (point.top + next.top) / 2 + railHeight, (point.z + next.z) / 2);
+        rail.rotation.y = -Math.atan2(dz, dx);
+        rail.castShadow = true;
+        mapGroup.add(rail);
+      });
+    });
     const sandFringe = new THREE.Mesh(new THREE.PlaneGeometry(13, 2.4),
       new THREE.MeshStandardMaterial({ color: 0xe8d29a }));
     sandFringe.rotation.x = -Math.PI / 2;
-    sandFringe.position.set(5, 0.01, -2.1);
+    sandFringe.position.set(5, 0.01, -7.1);
     mapGroup.add(sandFringe);
     for (let i = 0; i < 6; i++) {
       const bx = hash2(i * 5.1, 2.2), bz = hash2(i * 2.7, 6.6);
-      const boulder = makeStone(bx * 11, -1.2 - bz * 1.5, bx);
+      const boulder = makeStone(bx * 11, -6.2 - bz * 1.5, bx);
       boulder.scale.setScalar(1.4 + bz * 1.8);
       mapGroup.add(boulder);
     }
@@ -1960,6 +2124,9 @@ function buildMap(mapName) {
       // tile === 9（海）不逐格建置，迴圈結束後另外蓋成一整片海面，才能做波浪動畫
       else if (tile === 0 && mapName === 'outside') {
         if (x === POUCH_POS.x && z === POUCH_POS.z) return;
+        const insideArea = area => x >= area.x && x < area.x + area.width
+          && z >= area.z && z < area.z + area.height;
+        if (insideArea(LAYOUT.restArea) || insideArea(LAYOUT.garden)) return;
         if (x >= 14 && x <= 16) return; // 坡道走廊留乾淨，不要長裝飾把路擋亂
         const r = hash2(x * 3.1, z * 7.7);
         const gy = groundY(x);
@@ -1975,6 +2142,7 @@ function buildMap(mapName) {
   foamMeshes.length = 0;
   oceanMesh = null;
   lakeMesh = null;
+  lakeShoreColliders.length = 0;
   seaGlimpseMesh = null;
   fishSchool.length = 0;
   pastureGrassBlades.length = 0;
@@ -1994,13 +2162,15 @@ function buildMap(mapName) {
     }
     const validZ = westXByZ.reduce((acc, v, z) => { if (v !== null) acc.push(z); return acc; }, []);
     if (validZ.length) {
-      const minZ = validZ[0], maxZ = validZ[validZ.length - 1];
+      const dataMinZ = validZ[0], minZ = -NORTH_TERRAIN_EXTENSION;
+      const maxZ = validZ[validZ.length - 1];
       const minX = Math.min(...westXByZ.filter(v => v !== null));
       const maxX = globalMaxX;
       const width = maxX - minX, depth = maxZ - minZ;
 
       const westXAt = (z) => {
-        const zLo = Math.max(minZ, Math.min(maxZ, Math.floor(z)));
+        if (z <= dataMinZ) return westXByZ[dataMinZ];
+        const zLo = Math.max(dataMinZ, Math.min(maxZ, Math.floor(z)));
         const zHi = Math.min(maxZ, zLo + 1);
         const wLo = westXByZ[zLo], wHi = westXByZ[zHi] != null ? westXByZ[zHi] : wLo;
         const t = zHi === zLo ? 0 : (z - zLo) / (zHi - zLo);
@@ -2146,17 +2316,9 @@ function buildMap(mapName) {
     // 瀑布——湖西側邊緣，靜態占位，還沒做真的水流動畫
     plateauGroup.add(makeWaterfallPlaceholder(LAYOUT.lake.x + 0.5, LAYOUT.lake.z + 3));
 
-    // 休息區——原本只比房子偏南 0.5 格，感覺還是貼在門口，現在拉到
-    // 南邊 2.5 格，配上偏東 5 格，才讀得出「右下」的方位
-    plateauGroup.add(makePicnicSet(HOUSE.x + 5, HOUSE.z + 2.5));
-    const shadeTree = makeTree(HOUSE.x + 5, HOUSE.z + 1.7);
-    shadeTree.scale.setScalar(1.4);
-    plateauGroup.add(shadeTree);
-
-    // 花園——跟著休息區一起往南挪，維持「休息區→花園」相鄰但更南邊
-    [[0, 0], [1.5, 0.4], [0.7, 1.6]].forEach(([dx, dz], i) => {
-      plateauGroup.add(makeGardenBed(HOUSE.x + 6.5 + dx, HOUSE.z + 3.5 + dz, hash2(dx, dz + i)));
-    });
+    // 行道樹右側正式分成上下兩區：上方聚會／個人放鬆，下方小花園。
+    plateauGroup.add(makeRestArea(LAYOUT.restArea));
+    plateauGroup.add(makeSmallGarden(LAYOUT.garden));
 
     // 湖：不再是矩形平面，改成手刻的極座標網格——從中心點往外拉幾圈同心圓，
     // 每個角度的半徑疊加幾層不同頻率的正弦波，做出雲朵/天然湖泊那種不規則
@@ -2218,6 +2380,19 @@ function buildMap(mapName) {
       lakeMesh.receiveShadow = true; // 房子跟樹的影子可以真的落在水面上
       plateauGroup.add(lakeMesh);
 
+      // 大石完整圍住湖岸，間距小於石頭直徑，讓相鄰石塊自然重疊、沒有缺口。
+      const SHORE_ROCK_COUNT = 72;
+      for (let i = 0; i < SHORE_ROCK_COUNT; i++) {
+        const theta = (i / SHORE_ROCK_COUNT) * Math.PI * 2 + 0.04;
+        const edge = lakeEdgeFactor(theta);
+        const jitter = (hash2(i * 5.7, seed + i) - 0.5) * 0.12;
+        const rockX = centerX + Math.cos(theta) * (radiusX * edge + 0.26 + jitter);
+        const rockZ = centerZ + Math.sin(theta) * (radiusZ * edge + 0.26 + jitter);
+        const isSeat = i % 10 === 0;
+        plateauGroup.add(makeLakeShoreRock(rockX, rockZ, hash2(seed + i * 3.1, i * 7.9), isSeat));
+        lakeShoreColliders.push({ x: rockX, z: rockZ, radius: isSeat ? 0.38 : 0.3 });
+      }
+
       // 幾片睡蓮葉，浮在水面上——低成本但很有效的「這是一座湖」視覺訊號
       const padCount = 3;
       for (let i = 0; i < padCount; i++) {
@@ -2272,7 +2447,14 @@ function buildMap(mapName) {
 function isBlocked(mapName, x, z) {
   const map = MAPS[mapName];
   const tx = Math.round(x), tz = Math.round(z);
+  if (mapName === 'outside' && z < 0) {
+    const onNorthPlateau = x >= 0 && x < LAYOUT.coast.rampX
+      && z >= northCliffEdgeZ(x) + 0.62;
+    return !onNorthPlateau;
+  }
   if (tz < 0 || tz >= map.tiles.length || tx < 0 || tx >= map.tiles[0].length) return true;
+  if (mapName === 'outside' && lakeShoreColliders.some(rock =>
+    Math.hypot(x - rock.x, z - rock.z) < rock.radius)) return true;
   if (mapName === 'outside' && isInsideLakeShape(x, z)) return true;
   if ((map.buildings || []).some(building =>
     tx >= building.x && tx < building.x + building.w
@@ -2472,10 +2654,13 @@ function animate(now) {
   // 湊出「雙手握竿」的視覺，不用真的把竿子綁定在兩個支點上
   if (elapsed < castAnimEnd) {
     const progress = 1 - (castAnimEnd - elapsed) / CAST_ANIM_DURATION;
-    const eased = progress < 0.4 ? (progress / 0.4) : 1 - (progress - 0.4) / 0.6 * 0.3;
-    player.parts.armR.rotation.x = 1.9 - eased * 2.6;
+    // 先向後（+Z）短暫蓄力，再加速往角色正面（-Z）甩出，最後銜接持竿姿勢。
+    const castPose = progress < 0.32
+      ? -0.85 * Math.sin((progress / 0.32) * Math.PI / 2)
+      : -0.85 + 2.0 * (1 - Math.pow(1 - (progress - 0.32) / 0.68, 3));
+    player.parts.armR.rotation.x = castPose;
     player.parts.armR.rotation.z = 0;
-    player.parts.armL.rotation.x = 1.7 - eased * 2.4;
+    player.parts.armL.rotation.x = castPose * 0.91;
     player.parts.armL.rotation.z = 0.45;
   } else if (fishingState !== 'idle' && player.parts.rod && player.parts.rod.visible) {
     // 拋竿動畫結束後，站著等魚上鉤時雙手固定在持竿姿勢，不要被待機呼吸動畫拉回去
