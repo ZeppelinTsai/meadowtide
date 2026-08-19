@@ -130,8 +130,8 @@ node map-debug.js 你的檔案.html --legend
   `BGM_TRACKS` 加一筆。若是季節日夜曲，還要把 key 放進
   `SEASON_MUSIC_KEYS`；若是天氣曲，key 要與天氣狀態名稱一致。載入失敗只會
   在 console 警告，不會中止其他音樂。
-- `getSeasonIndex()` 負責季節判斷，預設 `DAYS_PER_SEASON = 1`，所以測試時
-  每天換季；之後改成 7 或 28 就能延長每季天數。`rollWeatherForSeason()`
+- `getSeasonIndex()` 負責季節判斷，目前 `DAYS_PER_SEASON = 3`，所以測試時
+  每 3 天換季；正式版暫定改為 21 天。`rollWeatherForSeason()`
   依季節限制每日天氣，`beginNewDay()` 在 `currentDay` 改變時抽取新天氣。
 - `initializeMusic()` 在第一次鍵盤／滑鼠操作時建立 Web Audio API 音訊圖，
   避開瀏覽器自動播放限制。`updateMusic()` 以 `nightFactor` 選擇季節日曲或
@@ -148,3 +148,14 @@ node map-debug.js 你的檔案.html --legend
 的音樂是不同層級，等對應的遊戲系統（節慶活動、室內場景、好感度/戀愛
 事件、劇情觸發的喜劇橋段）真的做出來、需要配樂的時候再找，不要現在
 選好晾在那裡。
+
+## 遊戲時間節奏
+
+- `meadowtide.html` 的 `dayLength` 是一個完整遊戲日對應的現實秒數。
+- 目前測試值：每個遊戲小時 10 秒，因此 `dayLength = 10 × 24 = 240` 秒，
+  每天約 4 分鐘；`DAYS_PER_SEASON = 3`，每 3 天換一季。
+- 正式版預定：每個遊戲小時 30 秒，因此 `dayLength = 30 × 24 = 720` 秒，
+  每天約 12 分鐘；一個月 21 天。以目前「一季直接由 `DAYS_PER_SEASON`
+  控制」的簡化架構，正式版暫定設定為 `DAYS_PER_SEASON = 21`，相當於
+  一個 21 天月份對應一季。若之後要讓一季包含多個月份，需另加月份層，
+  不要只改這個常數。

@@ -438,8 +438,8 @@ let pouchCollectedDay = -1;
 let currentDay = 0;
 let currentPhase = 0;      // 一天中的比例(0~1)，animate() 每幀更新，E 鍵事件也要讀
 
-// --- 季節與每日天氣：測試階段一天換一季；之後只改 DAYS_PER_SEASON 即可 ---
-const DAYS_PER_SEASON = 1;
+// --- 季節與每日天氣：測試階段每 3 天換季；正式版預定每季 21 天 ---
+const DAYS_PER_SEASON = 3;
 const SEASON_NAMES = ['春', '夏', '秋', '冬'];
 const WEATHER_NAMES = { clear: '晴', rain: '雨', typhoon: '颱風', snow: '下雪', blizzard: '暴風雪' };
 function getSeasonIndex(day = currentDay) {
@@ -594,7 +594,7 @@ function updateSkyDome(nightFactor) {
   skyColorAttr.needsUpdate = true;
   skyDome.position.copy(camera.position);
 }
-const dayLength = 120; // 遊戲內每小時 5 秒
+const dayLength = 240; // 測試：遊戲內每小時 10 秒（一天 4 分鐘）
 let elapsed = 0;
 
 // ==============================================================
@@ -735,7 +735,9 @@ const foamMeshes = []; // 沙灘跟海交界的拍岸泡沫，animate() 裡逐�
 let oceanMesh = null;  // 整片海面網格，animate() 裡逐頂點做波浪動畫
 let lakeMesh = null;   // 湖面，跟海一樣是合併網格，只是波浪幅度小很多、沒有碎浪
 let seaGlimpseMesh = null; // 北邊的遠方海景背景板，會輕輕起伏
-const fishSchool = []; // { mesh, cx, cz, radius, speed, phase } 純裝飾用的悠游小魚
+const fishSchool = []; // 每條魚各自保存尺寸、速度、橢圓半徑、游移與深度參數
+const SEA_FISH_SCALE = 3;
+const LAKE_FISH_SCALE = 2.2;
 const pastureGrassBlades = []; // 牧場裡會被風吹動的草叢，每叢存自己的葉片群組
 const GRASS_STAGE_HEIGHTS = [0.2, 0.46, 0.82]; // 短、中、長；長草約到動物胸高
 const GRASS_GROWTH_SECONDS = 32;
@@ -1473,17 +1475,47 @@ function makeBobber() {
   return g;
 }
 function makeFishProp(seed) {
-  // 純粹的氛圍裝飾：壓扁的橢圓身體 + 三角尾鰭，兩種魚色隨機挑一種
-  const color = hash2(seed, seed * 3.3) > 0.5 ? 0xd9a441 : 0x8fa8c9;
-  const mat = new THREE.MeshStandardMaterial({ color, flatShading: true });
+  // 純粹的氛圍裝飾：壓扁的橢圓身體 + 三角尾鰭；色盤用 seed 決定，
+  // 同一張地圖每次重整仍會得到一致、但彼此不同的魚色。
+  const palette = [0xd9a441, 0x8fa8c9, 0x5fa8a0, 0xd97c67, 0xb59bd8, 0xd5d1b8, 0x668fc4];
+  const color = palette[Math.floor(hash2(seed, seed * 3.3) * palette.length) % palette.length];
+  const bodyColor = new THREE.Color(color).offsetHSL((hash2(seed, 7.1) - 0.5) * 0.05, 0.04, 0);
+  const tailColor = bodyColor.clone().offsetHSL(0, 0.03, -0.08);
+  const bodyMat = new THREE.MeshStandardMaterial({ color: bodyColor, flatShading: true });
+  const tailMat = new THREE.MeshStandardMaterial({ color: tailColor, flatShading: true });
   const g = new THREE.Group();
-  const body = new THREE.Mesh(new THREE.SphereGeometry(0.05, 6, 4), mat);
-  body.scale.set(1, 0.55, 0.32);
-  const tail = new THREE.Mesh(new THREE.ConeGeometry(0.035, 0.06, 4), mat);
-  tail.rotation.z = Math.PI / 2;
-  tail.position.x = -0.075;
+  const body = new THREE.Mesh(new THREE.SphereGeometry(0.05, 6, 4), bodyMat);
+  body.scale.set(2, 1.1, 0.64); // 魚身整體放大兩倍
+  const tail = new THREE.Mesh(new THREE.ConeGeometry(0.035, 0.06, 4), tailMat);
+  // 魚頭朝本地 +X；尾鰭放在 -X，尖端要朝 +X 接住身體、寬面朝後。
+  tail.rotation.z = -Math.PI / 2;
+  tail.position.x = -0.125; // 跟著加長後的魚身尾端後移
   g.add(body, tail);
   return g;
+}
+
+function startFishRoute(f, now) {
+  const horizontal = Math.random() < 0.5;
+  const midX = (f.bounds.minX + f.bounds.maxX) / 2;
+  const midZ = (f.bounds.minZ + f.bounds.maxZ) / 2;
+  const spanX = f.bounds.maxX - f.bounds.minX;
+  const spanZ = f.bounds.maxZ - f.bounds.minZ;
+  let targetX, targetZ;
+  if (horizontal) {
+    // 大致游向目前所在位置的另一側，確保是長距離橫向巡游。
+    targetX = f.mesh.position.x < midX ? f.bounds.maxX : f.bounds.minX;
+    targetZ = midZ + (Math.random() - 0.5) * spanZ * 0.55;
+  } else {
+    targetX = midX + (Math.random() - 0.5) * spanX * 0.55;
+    targetZ = f.mesh.position.z < midZ ? f.bounds.maxZ : f.bounds.minZ;
+  }
+  f.route = {
+    fromX: f.mesh.position.x, fromZ: f.mesh.position.z,
+    toX: targetX, toZ: targetZ,
+    horizontal, start: now,
+    duration: Math.max(2.5, Math.hypot(targetX - f.mesh.position.x, targetZ - f.mesh.position.z) / f.swimSpeed),
+    curve: (Math.random() - 0.5) * f.curveAmount,
+  };
 }
 
 // 室內家具 — 跟 outside 的 buildings 同一套「資料描述佔地範圍」的邏輯，
@@ -1945,17 +1977,30 @@ function buildMap(mapName) {
         }
       });
 
-      // 悠游的小魚仔——純氛圍裝飾，每條各自繞著自己的中心點游圈圈，
-      // 中心點跟半徑都用決定性亂數算，重整頁面魚群長得一樣、不會整批重排
+      // 海魚使用大範圍的長直線巡游；安全邊界取所有海岸線中最靠右的一排，
+      // 避免沿 z 直游時切進凹凸不規則的沙灘。
       fishSchool.length = 0;
       const FISH_COUNT = 6;
+      const safeSeaMinX = Math.max(...westXByZ.filter(v => v !== null)) + 0.7;
       for (let i = 0; i < FISH_COUNT; i++) {
         const s1 = hash2(i * 3.1, i * 7.7), s2 = hash2(i * 5.3, i * 2.9);
-        const cx = minX + 0.6 + s1 * (width - 1.2);
-        const cz = minZ + 0.4 + s2 * (depth - 0.8);
+        const cx = safeSeaMinX + s1 * Math.max(0.2, maxX - 0.7 - safeSeaMinX);
+        const cz = minZ + 0.7 + s2 * Math.max(0.2, depth - 1.4);
         const mesh = makeFishProp(i);
+        const scale = SEA_FISH_SCALE * (0.78 + hash2(i, 19.7) * 0.48);
+        mesh.scale.setScalar(scale);
+        mesh.position.set(cx, oceanMesh.position.y - 0.045, cz);
         mapGroup.add(mesh);
-        fishSchool.push({ mesh, cx, cz, radius: 0.35 + s1 * 0.55, speed: 0.5 + s2 * 0.45, phase: s1 * 10 });
+        const fish = {
+          mesh, phase: s1 * Math.PI * 2,
+          swimSpeed: 0.34 + s2 * 0.32,
+          curveAmount: 0.18 + s1 * 0.32,
+          baseY: oceanMesh.position.y - 0.045,
+          depthAmp: 0.012 + s1 * 0.025,
+          bounds: { minX: safeSeaMinX, maxX: maxX - 0.7, minZ: minZ + 0.7, maxZ: maxZ - 0.7 },
+          route: null, pauseUntil: elapsed + s2 * 1.5,
+        };
+        fishSchool.push(fish);
       }
     }
 
@@ -2105,6 +2150,34 @@ function buildMap(mapName) {
         pad.rotation.x = -Math.PI / 2;
         pad.position.set(centerX + Math.cos(pa) * distX, 0.135, centerZ + Math.sin(pa) * distZ);
         plateauGroup.add(pad);
+      }
+
+      // 湖中魚群使用湖心內縮後的安全矩形，能長距離橫游／縱游又不越岸。
+      const LAKE_FISH_COUNT = 5;
+      for (let i = 0; i < LAKE_FISH_COUNT; i++) {
+        const s1 = hash2(40 + i * 3.7, 12 + i * 6.1);
+        const s2 = hash2(70 + i * 5.3, 21 + i * 2.9);
+        const angle = (i / LAKE_FISH_COUNT) * Math.PI * 2 + s1 * 0.5;
+        const cx = centerX + Math.cos(angle) * radiusX * (0.12 + s1 * 0.22);
+        const cz = centerZ + Math.sin(angle) * radiusZ * (0.12 + s2 * 0.22);
+        const mesh = makeFishProp(100 + i);
+        const scale = LAKE_FISH_SCALE * (0.8 + hash2(100 + i, 31.4) * 0.42);
+        mesh.scale.setScalar(scale);
+        mesh.position.set(cx, lakeMesh.position.y - 0.045, cz);
+        plateauGroup.add(mesh);
+        const fish = {
+          mesh, phase: s2 * Math.PI * 2,
+          swimSpeed: 0.24 + s2 * 0.23,
+          curveAmount: 0.1 + s1 * 0.18,
+          baseY: lakeMesh.position.y - 0.045,
+          depthAmp: 0.008 + s2 * 0.014,
+          bounds: {
+            minX: centerX - radiusX * 0.45, maxX: centerX + radiusX * 0.45,
+            minZ: centerZ - radiusZ * 0.45, maxZ: centerZ + radiusZ * 0.45,
+          },
+          route: null, pauseUntil: elapsed + s1 * 2,
+        };
+        fishSchool.push(fish);
       }
     }
   }
@@ -2621,16 +2694,33 @@ function animate(now) {
     });
   });
 
-  // 小魚仔繞著各自的中心點游橢圓軌跡，魚頭朝著行進方向轉，不是傻傻平移
+  // 真魚通常會直線巡游一段、短暫停留，再改成橫向或縱向的新路線；
+  // 路線只加一點側向弧度，方向與停留時間每段都不同。
   fishSchool.forEach(f => {
-    const t = elapsed * f.speed + f.phase;
-    const nx = f.cx + Math.cos(t) * f.radius;
-    const nz = f.cz + Math.sin(t) * f.radius * 0.6;
+    if (!f.route && elapsed >= f.pauseUntil) startFishRoute(f, elapsed);
+    if (!f.route) {
+      f.mesh.position.y = f.baseY + Math.sin(elapsed * 0.8 + f.phase) * f.depthAmp * 0.35;
+      return;
+    }
+    const progress = Math.min(1, (elapsed - f.route.start) / f.route.duration);
+    const sideCurve = Math.sin(progress * Math.PI) * f.route.curve;
+    const nx = f.route.fromX + (f.route.toX - f.route.fromX) * progress
+      + (f.route.horizontal ? 0 : sideCurve);
+    const nz = f.route.fromZ + (f.route.toZ - f.route.fromZ) * progress
+      + (f.route.horizontal ? sideCurve : 0);
     const dx = nx - f.mesh.position.x, dz = nz - f.mesh.position.z;
-    if (Math.abs(dx) > 1e-5 || Math.abs(dz) > 1e-5) f.mesh.rotation.y = Math.atan2(dx, dz) - Math.PI / 2;
+    if (Math.abs(dx) > 1e-5 || Math.abs(dz) > 1e-5) {
+      const targetAngle = Math.atan2(dx, dz) - Math.PI / 2;
+      f.mesh.rotation.y += ((targetAngle - f.mesh.rotation.y + Math.PI * 3) % (Math.PI * 2) - Math.PI) * 0.09;
+    }
     f.mesh.position.x = nx;
     f.mesh.position.z = nz;
-    f.mesh.position.y = (oceanMesh ? oceanMesh.position.y : 0.13) - 0.04;
+    f.mesh.position.y = f.baseY + Math.sin(elapsed * 0.75 + f.phase) * f.depthAmp;
+    if (progress >= 1) {
+      f.route = null;
+      // 約七成路段結束後會停 0.7～3.2 秒，其餘直接接下一段。
+      f.pauseUntil = elapsed + (Math.random() < 0.7 ? 0.7 + Math.random() * 2.5 : 0);
+    }
   });
 
   // 牧草會依序長成短、中、長三階段；長草被牛羊吃掉後回到短草。
