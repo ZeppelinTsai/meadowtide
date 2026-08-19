@@ -3,7 +3,7 @@
 // 所有 splice/append/tile 覆寫的程式碼，完全不碰 THREE.js，所以能直接
 // 丟進 Node 執行)，跑完之後印出一張文字版的地圖網格。
 //
-// 用法：node map-debug.js <html檔案路徑> [--legend] [--landmarks]
+// 用法：node map-debug.js <html檔案路徑> [--map=livingArea|oldVillage|port|house] [--legend] [--landmarks]
 //
 // 這樣我之後改座標，不用開瀏覽器、不用等你截圖，先在終端機裡看一眼
 // 格子對不對，抓到明顯錯位(疊在牆上、湖蓋到房子)可以先自己抓出來。
@@ -67,7 +67,13 @@ function printMap(mapName) {
   }
 }
 
-printMap('outside');
+const mapArg = process.argv.find((a) => a.startsWith('--map='));
+const mapName = mapArg ? mapArg.slice('--map='.length) : 'livingArea';
+if (!MAPS[mapName]) {
+  console.error(`找不到地圖 "${mapName}"，可用的地圖: ${Object.keys(MAPS).join(', ')}`);
+  process.exit(1);
+}
+printMap(mapName);
 
 if (process.argv.includes('--legend')) {
   console.log('\n圖例: · 草地  █ 牆/懸崖  ♣ 樹  ▭ 門檻  = 路  ≈ 湖/水  ▤ 農地  ░ 沙灘  ~ 海');

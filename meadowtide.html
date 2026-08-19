@@ -204,7 +204,7 @@
       //    直線距離是最短路徑，但現在會被這棵樹擋住，逼 A* 繞路
       // ==============================================================
       const MAPS = {
-        outside: {
+        livingArea: {
           tiles: [
             // 房子後面新開的一大塊地：z=0~6 是全新區域，穀倉搬過來這裡，
             // 牧場也在這，比舊的東側牧場大很多
@@ -269,7 +269,7 @@
             { x: 7, z: 2, side: "east" },
             { x: 7, z: 4, side: "east" },
           ],
-          // 家具是獨立於 tiles 的資料層，跟 outside 的 buildings 同一套邏輯：
+          // 家具是獨立於 tiles 的資料層，跟 livingArea 的 buildings 同一套邏輯：
           // tiles 只負責「牆在哪」，家具在哪、佔幾格、擋不擋路是這裡另外定義
           furniture: [
             { type: "bed", x: 1, z: 1, w: 1, d: 2 },
@@ -280,6 +280,63 @@
           ],
           playerStart: { x: 3, z: 5 },
         },
+        // 舊城鎮——目前只做骨架：一塊廣場空地＋幾間空屋佔位方塊(makeTownPlaceholder)，
+        // 沒有木匠工坊內裝。playerStart 設在北側，之後往北接港口商業街入口。
+        // 南側跟山區之間預留了以後另一位居民要用的路，這裡不畫、不佔座標。
+        oldVillage: {
+          tiles: [
+            [0, 0, 0, 0, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+          ],
+          placeholders: [
+            { x: 3, z: 4, seed: 0.4 },
+            { x: 10, z: 4, seed: 0.6 },
+            { x: 3, z: 8, seed: 0.25 },
+            { x: 10, z: 8, seed: 0.75 },
+          ],
+          playerStart: { x: 7, z: 2 },
+        },
+        // 港口——北端候船碼頭(makeDock)，南端市場/倉庫佔位方塊，中間一條路連到
+        // 南端的舊城鎮商業街入口。playerStart 在北端碼頭附近。
+        port: {
+          tiles: [
+            [0, 0, 0, 0, 0, 8, 8, 8, 8, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 1, 0, 0, 5, 0, 0, 1, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0],
+          ],
+          placeholders: [
+            { x: 4, z: 6, seed: 0.3 },
+            { x: 10, z: 6, seed: 0.55 },
+            { x: 4, z: 12, seed: 0.7 },
+            { x: 10, z: 12, seed: 0.42 },
+            { x: 4, z: 14, seed: 0.85 },
+            { x: 10, z: 14, seed: 0.15 },
+          ],
+          playerStart: { x: 7, z: 4 },
+        },
       };
 
       // ==============================================================
@@ -287,29 +344,29 @@
       //    就有現成的格子可以用，不用每次都插入陣列、重算全部座標
       // ==============================================================
       const X_OFFSET = 15;
-      MAPS.outside.tiles.forEach((row) =>
+      MAPS.livingArea.tiles.forEach((row) =>
         row.unshift(...new Array(X_OFFSET).fill(0)),
       );
 
       // 向陣列前端正式加入北側五排，不使用非法的負 z 座標。
       // 舊小屋的 tile 會跟著舊地圖下移，所以先清掉，再依 LAYOUT 重建新位置。
-      const northRowWidth = MAPS.outside.tiles[0].length;
-      MAPS.outside.tiles.unshift(
+      const northRowWidth = MAPS.livingArea.tiles[0].length;
+      MAPS.livingArea.tiles.unshift(
         ...Array.from({ length: NORTH_EXPANSION }, () =>
           new Array(northRowWidth).fill(0),
         ),
       );
       for (let z = 1 + NORTH_EXPANSION; z <= 3 + NORTH_EXPANSION; z++) {
         for (let x = LAYOUT.barn.x; x < LAYOUT.barn.x + LAYOUT.barn.w; x++)
-          MAPS.outside.tiles[z][x] = 0;
+          MAPS.livingArea.tiles[z][x] = 0;
       }
       for (let z = LAYOUT.barn.z; z < LAYOUT.barn.z + LAYOUT.barn.d; z++) {
-        if (z < 0 || z >= MAPS.outside.tiles.length) continue;
+        if (z < 0 || z >= MAPS.livingArea.tiles.length) continue;
         for (let x = LAYOUT.barn.x; x < LAYOUT.barn.x + LAYOUT.barn.w; x++)
-          MAPS.outside.tiles[z][x] = 1;
+          MAPS.livingArea.tiles[z][x] = 1;
       }
       // 清掉動物小屋門前偏左一格的樹；位置從穀倉門推導，不另寫絕對座標。
-      MAPS.outside.tiles[LAYOUT.barn.z + LAYOUT.barn.d + 2][
+      MAPS.livingArea.tiles[LAYOUT.barn.z + LAYOUT.barn.d + 2][
         LAYOUT.barn.doorX - 1
       ] = 0;
 
@@ -319,7 +376,7 @@
       // 純粹是死資料，清掉
       [13, 14].forEach((z) => {
         [17, 18, 19].forEach((x) => {
-          MAPS.outside.tiles[z + NORTH_EXPANSION][x] = 0;
+          MAPS.livingArea.tiles[z + NORTH_EXPANSION][x] = 0;
         });
       });
 
@@ -327,7 +384,7 @@
       // 沒有把舊位置清回草地，這裡殘留了一小塊(x=16~18,z=8~10)。順手清掉
       [8, 9, 10].forEach((z) => {
         [16, 17, 18].forEach((x) => {
-          MAPS.outside.tiles[z + NORTH_EXPANSION][x] = 0;
+          MAPS.livingArea.tiles[z + NORTH_EXPANSION][x] = 0;
         });
       });
 
@@ -335,9 +392,9 @@
       // 1.45) 先在陣列尾端補足農田空間；第四排田需要再增加四列。
       // ==============================================================
       (function extendBaseRowsForFarm() {
-        const width = MAPS.outside.tiles[0].length; // 14，這時候還沒插緩衝欄/沙灘欄
+        const width = MAPS.livingArea.tiles[0].length; // 14，這時候還沒插緩衝欄/沙灘欄
         for (let i = 0; i < 13; i++)
-          MAPS.outside.tiles.push(new Array(width).fill(0));
+          MAPS.livingArea.tiles.push(new Array(width).fill(0));
       })();
 
       // ==============================================================
@@ -346,14 +403,14 @@
       //    變形的網格，這樣才能在 animate() 裡逐頂點做波浪動畫
       // ==============================================================
       // 原本的 3 格緩衝再增加 5 格，整條懸崖、沙灘與海面一起東移。
-      MAPS.outside.tiles.forEach((row) =>
+      MAPS.livingArea.tiles.forEach((row) =>
         row.splice(26, 0, ...new Array(3 + LAYOUT.coast.eastExpansion).fill(0)),
       );
 
       const BEACH_SAND_COLS = LAYOUT.coast.sandCols;
       const BEACH_OCEAN_COLS = LAYOUT.coast.oceanCols;
       const BEACH_BAND_WIDTH = BEACH_SAND_COLS + BEACH_OCEAN_COLS;
-      MAPS.outside.tiles.forEach((row, z) => {
+      MAPS.livingArea.tiles.forEach((row, z) => {
         // 沙灘/海交界沿 z 抖動，總寬度固定不變（陣列仍是矩形），只有沙灘跟
         // 海各自佔幾格會跟著波動，海岸線才不會是一條直線
         const sandCols = Math.min(
@@ -398,12 +455,12 @@
       for (let bc = 1; bc < FARM_ORIGIN.columns; bc++) {
         const pathX = FARM_ORIGIN.x + bc * FARM_BLOCK_STEP - FARM_ORIGIN.gap;
         for (let z = FARM_ORIGIN.z; z <= FARM_MAX_Z; z++)
-          MAPS.outside.tiles[z][pathX] = 5;
+          MAPS.livingArea.tiles[z][pathX] = 5;
       }
       for (let br = 1; br < FARM_ORIGIN.rows; br++) {
         const pathZ = FARM_ORIGIN.z + br * FARM_BLOCK_STEP - FARM_ORIGIN.gap;
         for (let x = FARM_ORIGIN.x; x <= FARM_MAX_X; x++)
-          MAPS.outside.tiles[pathZ][x] = 5;
+          MAPS.livingArea.tiles[pathZ][x] = 5;
       }
 
       // 湖再放大一輪，往「房子左上」拉：原本 5×4(20格)，現在 6×6(36格)。
@@ -411,7 +468,7 @@
       // 地方)只有大概 5~6 格寬，9 格寬真的放不下，除非房子搬家或地圖再往
       // 西擴——這次先把牧場往東擠一點，把讓出來的空間全部給湖
       // 每次依 LAYOUT 重建湖泊前，先清掉所有舊湖水，避免搬遷後殘留死資料。
-      MAPS.outside.tiles.forEach((row) =>
+      MAPS.livingArea.tiles.forEach((row) =>
         row.forEach((tile, x) => {
           if (tile === 6) row[x] = 0;
         }),
@@ -422,17 +479,17 @@
           x < LAYOUT.lake.x + LAYOUT.lake.width;
           x++
         ) {
-          MAPS.outside.tiles[z][x] = isInsideLakeShape(x, z) ? 6 : 0;
+          MAPS.livingArea.tiles[z][x] = isInsideLakeShape(x, z) ? 6 : 0;
         }
       }
 
       // 湖的外框清理可能掃到相鄰建築；地形完成後以 buildings 為唯一資料源重建
       // 完整佔地，確保主屋與穀倉的視覺、tile 碰撞永遠一致。
-      MAPS.outside.buildings.forEach((building) => {
+      MAPS.livingArea.buildings.forEach((building) => {
         for (let z = building.z; z < building.z + building.d; z++) {
-          if (z < 0 || z >= MAPS.outside.tiles.length) continue;
+          if (z < 0 || z >= MAPS.livingArea.tiles.length) continue;
           for (let x = building.x; x < building.x + building.w; x++) {
-            MAPS.outside.tiles[z][x] = 1;
+            MAPS.livingArea.tiles[z][x] = 1;
           }
         }
       });
@@ -448,7 +505,7 @@
           x < LAYOUT.windmill.x + LAYOUT.windmill.w;
           x++
         ) {
-          MAPS.outside.tiles[z][x] = 1;
+          MAPS.livingArea.tiles[z][x] = 1;
         }
       }
 
@@ -460,7 +517,7 @@
       // ==============================================================
       const RAMP_CORRIDOR_MIN_Z = 14 + NORTH_EXPANSION;
       const RAMP_CORRIDOR_MAX_Z = 16 + NORTH_EXPANSION;
-      MAPS.outside.tiles.forEach((row, z) => {
+      MAPS.livingArea.tiles.forEach((row, z) => {
         const rampX = LAYOUT.coast.rampX;
         if (z < RAMP_CORRIDOR_MIN_Z || z > RAMP_CORRIDOR_MAX_Z) {
           for (let x = rampX; x < rampX + LAYOUT.coast.rampWidth; x++)
@@ -476,18 +533,18 @@
       //    細節，先確保地圖南邊有路接得過去，佈局比例對了，之後再回頭精修
       // ==============================================================
       const TOWN_ROWS = 6;
-      const TOWN_Z_START = MAPS.outside.tiles.length; // 現在是 25（農田南移後多佔了 3 排）
+      const TOWN_Z_START = MAPS.livingArea.tiles.length; // 現在是 25（農田南移後多佔了 3 排）
       (function extendTown() {
-        const width = MAPS.outside.tiles[0].length;
+        const width = MAPS.livingArea.tiles[0].length;
         for (let i = 0; i < TOWN_ROWS; i++) {
           const row = new Array(width).fill(0);
-          MAPS.outside.tiles.push(row);
+          MAPS.livingArea.tiles.push(row);
         }
       })();
 
       // 清除農田右側邊緣的樹，以及主屋門正前方、與門同一直線的樹。
-      MAPS.outside.tiles[LAYOUT.farm.z + 1][LAYOUT.farm.x + 10] = 0;
-      MAPS.outside.tiles[LAYOUT.farm.z + 1][LAYOUT.house.doorX] = 0;
+      MAPS.livingArea.tiles[LAYOUT.farm.z + 1][LAYOUT.farm.x + 10] = 0;
+      MAPS.livingArea.tiles[LAYOUT.farm.z + 1][LAYOUT.house.doorX] = 0;
 
       // 牧草地保持開闊：清掉範圍內原始地圖的普通樹；果樹由果園系統獨立生成。
       for (
@@ -500,7 +557,7 @@
           x < LAYOUT.pasture.x + LAYOUT.pasture.width;
           x++
         ) {
-          if (MAPS.outside.tiles[z][x] === 2) MAPS.outside.tiles[z][x] = 0;
+          if (MAPS.livingArea.tiles[z][x] === 2) MAPS.livingArea.tiles[z][x] = 0;
         }
       }
 
@@ -508,13 +565,13 @@
       const HOUSE_ROAD_X = LAYOUT.house.doorX;
       const HOUSE_ROAD_START_Z = LAYOUT.house.z + LAYOUT.house.d + 1;
       const HOUSE_ROAD_HALF_WIDTH = Math.floor(LAYOUT.houseRoad.width / 2);
-      for (let z = HOUSE_ROAD_START_Z; z < MAPS.outside.tiles.length; z++) {
+      for (let z = HOUSE_ROAD_START_Z; z < MAPS.livingArea.tiles.length; z++) {
         for (
           let x = HOUSE_ROAD_X - HOUSE_ROAD_HALF_WIDTH;
           x <= HOUSE_ROAD_X + HOUSE_ROAD_HALF_WIDTH;
           x++
         ) {
-          MAPS.outside.tiles[z][x] = 5;
+          MAPS.livingArea.tiles[z][x] = 5;
         }
       }
 
@@ -532,16 +589,16 @@
           x <= HOUSE_ROAD_X - HOUSE_ROAD_HALF_WIDTH;
           x++
         ) {
-          MAPS.outside.tiles[z][x] = 5;
+          MAPS.livingArea.tiles[z][x] = 5;
         }
       }
       for (let z = FARM_ACCESS_NORTH_Z; z <= FARM_ACCESS_SOUTH_Z; z++) {
-        MAPS.outside.tiles[z][FARM_ACCESS_X] = 5;
-        MAPS.outside.tiles[z][FARM_ACCESS_EAST_X] = 5;
+        MAPS.livingArea.tiles[z][FARM_ACCESS_X] = 5;
+        MAPS.livingArea.tiles[z][FARM_ACCESS_EAST_X] = 5;
       }
       for (let x = FARM_ACCESS_X; x <= FARM_ACCESS_EAST_X; x++) {
-        MAPS.outside.tiles[FARM_ACCESS_NORTH_Z][x] = 5;
-        MAPS.outside.tiles[FARM_ACCESS_SOUTH_Z][x] = 5;
+        MAPS.livingArea.tiles[FARM_ACCESS_NORTH_Z][x] = 5;
+        MAPS.livingArea.tiles[FARM_ACCESS_SOUTH_Z][x] = 5;
       }
 
       // 在海堤走廊位置向東鋪出三格寬支路，接到階梯前；階梯本身由地形系統渲染。
@@ -559,16 +616,16 @@
           x < LAYOUT.coast.rampX;
           x++
         ) {
-          MAPS.outside.tiles[z][x] = 5;
+          MAPS.livingArea.tiles[z][x] = 5;
         }
       }
 
       // 略過最上方左右各兩棵，從農田起點往南四格後開始種植行道樹。
       const AVENUE_TREE_TILES = [];
-      for (let z = LAYOUT.farm.z + 4; z < MAPS.outside.tiles.length; z += 2) {
+      for (let z = LAYOUT.farm.z + 4; z < MAPS.livingArea.tiles.length; z += 2) {
         [HOUSE_ROAD_X - 2, HOUSE_ROAD_X + 2].forEach((x) => {
           AVENUE_TREE_TILES.push([x, z]);
-          MAPS.outside.tiles[z][x] = 2;
+          MAPS.livingArea.tiles[z][x] = 2;
         });
       }
       const AVENUE_TREE_KEYS = new Set(
@@ -578,11 +635,15 @@
         ...AVENUE_TREE_TILES.map(([, z]) => z),
       );
       // 清掉休息區入口旁的舊樹，讓人能從行道樹間穿進兩個新區域。
-      MAPS.outside.tiles[LAYOUT.farm.z + 1][LAYOUT.restArea.x - 1] = 0;
+      MAPS.livingArea.tiles[LAYOUT.farm.z + 1][LAYOUT.restArea.x - 1] = 0;
+
+      // 東側沙灘上開一個踏入點，銜接港口地圖北端；此時沙灘/海面已經鋪好，
+      // 這一格原本是沙灘(8)，改成門檻(3)只是換個踩踏標記，還是能走。
+      MAPS.livingArea.tiles[20][40] = 3;
 
       const events = [
         {
-          map: "outside",
+          map: "livingArea",
           x: LAYOUT.house.doorX,
           z: LAYOUT.house.z + LAYOUT.house.d,
           trigger: "touch",
@@ -594,7 +655,7 @@
           z: 6,
           trigger: "touch",
           action: () =>
-            loadMap("outside", {
+            loadMap("livingArea", {
               x: LAYOUT.house.doorX,
               z: LAYOUT.house.z + LAYOUT.house.d + 1,
             }),
@@ -605,10 +666,40 @@
           z: 6,
           trigger: "touch",
           action: () =>
-            loadMap("outside", {
+            loadMap("livingArea", {
               x: LAYOUT.house.doorX,
               z: LAYOUT.house.z + LAYOUT.house.d + 1,
             }),
+        },
+        // 生活區東側海岸 <-> 港口北端(碼頭附近)
+        {
+          map: "livingArea",
+          x: 40,
+          z: 20,
+          trigger: "touch",
+          action: () => loadMap("port", { x: 7, z: 4 }),
+        },
+        {
+          map: "port",
+          x: 7,
+          z: 2,
+          trigger: "touch",
+          action: () => loadMap("livingArea", { x: 35, z: 20 }),
+        },
+        // 港口南端(市場/倉庫) <-> 舊城鎮
+        {
+          map: "port",
+          x: 7,
+          z: 15,
+          trigger: "touch",
+          action: () => loadMap("oldVillage", { x: 7, z: 2 }),
+        },
+        {
+          map: "oldVillage",
+          x: 7,
+          z: 0,
+          trigger: "touch",
+          action: () => loadMap("port", { x: 7, z: 13 }),
         },
       ];
 
@@ -741,9 +832,9 @@
       };
       if (
         MOUNTAIN_GATE_BLOCKER.z >= 0 &&
-        MOUNTAIN_GATE_BLOCKER.z < MAPS.outside.tiles.length
+        MOUNTAIN_GATE_BLOCKER.z < MAPS.livingArea.tiles.length
       ) {
-        MAPS.outside.tiles[MOUNTAIN_GATE_BLOCKER.z][MOUNTAIN_GATE_BLOCKER.x] =
+        MAPS.livingArea.tiles[MOUNTAIN_GATE_BLOCKER.z][MOUNTAIN_GATE_BLOCKER.x] =
           1;
       }
       const SEASON_NAMES = ["春", "夏", "秋", "冬"];
@@ -886,8 +977,8 @@
       let catchAnim = null; // { mesh, from, start, duration } 釣到魚時飛向玩家的小動畫
 
       function nearWater() {
-        if (currentMapName !== "outside") return false;
-        const map = MAPS.outside;
+        if (currentMapName !== "livingArea") return false;
+        const map = MAPS.livingArea;
         const { x, z } = playerGridPos;
         const nearOcean = [
           [x + 1, z],
@@ -1422,7 +1513,7 @@
       }
 
       function getMeteorActivity() {
-        if (currentMapName !== "outside" || !isNightTime()) return null;
+        if (currentMapName !== "livingArea" || !isNightTime()) return null;
         const weatherFactor =
           {
             clear: 1,
@@ -1585,8 +1676,8 @@
       }
 
       function updateMeteors(delta) {
-        meteorLayer.visible = currentMapName === "outside";
-        if (currentMapName !== "outside") {
+        meteorLayer.visible = currentMapName === "livingArea";
+        if (currentMapName !== "livingArea") {
           clearMeteors();
           return;
         }
@@ -1761,7 +1852,7 @@
       }
 
       function updateSunAndClouds(nightFactor) {
-        if (currentMapName !== "outside") {
+        if (currentMapName !== "livingArea") {
           sunSkyGroup.visible = false;
           skyClouds.forEach((cloud) => (cloud.visible = false));
           return;
@@ -1884,7 +1975,7 @@
       }
 
       function updateSeasonalStars(nightFactor) {
-        const outside = currentMapName === "outside";
+        const outside = currentMapName === "livingArea";
         const weatherVisibility =
           {
             clear: 1,
@@ -1927,7 +2018,7 @@
         });
       }
       function updateSkyDome(nightFactor) {
-        const outside = currentMapName === "outside";
+        const outside = currentMapName === "livingArea";
         skyDome.visible = outside;
         if (!outside) {
           updateSeasonalStars(nightFactor);
@@ -2218,7 +2309,7 @@
         return value;
       }
       function updateWeatherEffects(dt, nightFactor) {
-        const outside = currentMapName === "outside";
+        const outside = currentMapName === "livingArea";
         weatherEffectGroup.visible = outside;
         if (!outside) {
           weatherFlashLight.intensity = 0;
@@ -4726,7 +4817,7 @@
         };
       }
 
-      // 室內家具 — 跟 outside 的 buildings 同一套「資料描述佔地範圍」的邏輯，
+      // 室內家具 — 跟 livingArea 的 buildings 同一套「資料描述佔地範圍」的邏輯，
       // type 決定長什麼樣子，buildMap() 只負責讀資料把它擺到對的位置
       // 室內牆壁 — 之前房子內部完全沒渲染牆(只有碰撞判定)，牆是「隱形的」。
       // 現在依 tiles 裡的 1 實際生成牆體方塊；windowSide 有值的話再疊一片
@@ -4971,7 +5062,7 @@
       scene.add(farmGroup);
       function syncFarmVisuals() {
         farmGroup.clear();
-        if (currentMapName !== "outside") {
+        if (currentMapName !== "livingArea") {
           farmGroup.visible = false;
           return;
         }
@@ -5000,8 +5091,8 @@
       const npcGroup = new THREE.Group();
       npcGroup.position.y = PLATEAU_Y; // 所有 NPC 行程表的座標都在高台範圍內
       scene.add(npcGroup);
-      const outsideCols = MAPS.outside.tiles[0].length;
-      const outsideRows = MAPS.outside.tiles.length;
+      const outsideCols = MAPS.livingArea.tiles[0].length;
+      const outsideRows = MAPS.livingArea.tiles.length;
       const npcs = npcDefs.map((def) => {
         const mesh = makeHumanoid({ shirt: def.shirt, hair: def.hair });
         mesh.position.set(def.home.x, 0, def.home.z);
@@ -5112,7 +5203,7 @@
       // ==============================================================
       let mapGroup = new THREE.Group();
       let player;
-      let currentMapName = "outside";
+      let currentMapName = "livingArea";
       let playerGridPos = { x: 0, z: 0 };
       let facing = "down";
       let isMoving = false;
@@ -5145,7 +5236,7 @@
           );
           ground.receiveShadow = true;
           mapGroup.add(ground);
-        } else {
+        } else if (mapName === "livingArea") {
           // 地面拆成四塊：高台(x0-10) + 三格階梯緩坡(x11,12,13) + 低地沙灘/海(x14+)。
           // 相鄰方塊高度不同，交界處自然露出垂直側面，那就是「階梯」的視覺來源，
           // 不用額外建模階梯形狀
@@ -5492,11 +5583,34 @@
           plateauGroup = new THREE.Group();
           plateauGroup.position.y = PLATEAU_Y;
           mapGroup.add(plateauGroup);
+        } else {
+          // oldVillage、port 這類獨立小地圖：跟 house 一樣是純平地，沒有懸崖/
+          // 沙灘的高低差，plateauGroup 維持等於 mapGroup，不用另外墊高。
+          const ground = new THREE.Mesh(
+            new THREE.BoxGeometry(cols * TILE, 0.2, rows * TILE),
+            new THREE.MeshStandardMaterial({ color: 0x6ab04c }),
+          );
+          ground.position.set(
+            (cols * TILE) / 2 - TILE / 2,
+            -0.1,
+            (rows * TILE) / 2 - TILE / 2,
+          );
+          ground.receiveShadow = true;
+          mapGroup.add(ground);
         }
 
         (map.buildings || []).forEach((b) =>
           plateauGroup.add(b.style === "barn" ? makeBarn(b) : makeBuilding(b)),
         );
+        (map.placeholders || []).forEach((p) =>
+          plateauGroup.add(makeTownPlaceholder(p.x, p.z, p.seed)),
+        );
+        if (mapName === "port") {
+          const dock = makeDock();
+          dock.position.set(7, 0, 1);
+          dock.rotation.y = Math.PI / 2;
+          plateauGroup.add(dock);
+        }
         (map.furniture || []).forEach((item) => {
           const w = item.w || 1,
             d = item.d || 1;
@@ -5527,10 +5641,10 @@
               );
             } else if (tile === 2) {
               const m =
-                mapName === "outside" && AVENUE_TREE_KEYS.has(`${x},${z}`)
+                mapName === "livingArea" && AVENUE_TREE_KEYS.has(`${x},${z}`)
                   ? makeAvenueTree(x, z)
                   : makeTree(x, z);
-              m.position.y += groundY(x, z);
+              m.position.y += mapName === "livingArea" ? groundY(x, z) : 0;
               mapGroup.add(m);
             } else if (tile === 3) {
               const threshold = new THREE.Mesh(
@@ -5539,13 +5653,13 @@
               );
               threshold.position.set(
                 x,
-                0.03 + (mapName === "outside" ? groundY(x, z) : 0),
+                0.03 + (mapName === "livingArea" ? groundY(x, z) : 0),
                 z,
               );
               mapGroup.add(threshold);
             } else if (tile === 5) {
               const m = makePath(x, z);
-              m.position.y += groundY(x, z);
+              m.position.y += mapName === "livingArea" ? groundY(x, z) : 0;
               mapGroup.add(m);
             }
             // tile === 6（湖）不逐格建置，改成迴圈結束後蓋成一整片有波紋的水面
@@ -5558,7 +5672,7 @@
                 );
             }
             // tile === 9（海）不逐格建置，迴圈結束後另外蓋成一整片海面，才能做波浪動畫
-            else if (tile === 0 && mapName === "outside") {
+            else if (tile === 0 && mapName === "livingArea") {
               if (x === POUCH_POS.x && z === POUCH_POS.z) return;
               const insideArea = (area) =>
                 x >= area.x &&
@@ -5609,7 +5723,7 @@
         seaGlimpseMesh = null;
         fishSchool.length = 0;
         pastureGrassBlades.length = 0;
-        if (mapName === "outside") {
+        if (mapName === "livingArea") {
           // 海面不再是一塊矩形 PlaneGeometry——那樣不管沙灘/海怎麼抖動，海面
           // 西緣永遠是直線，會整片蓋掉抖動出來的沙灘。改成逐排(z)照當排實際
           // 沙灘/海分界點織一條緞帶狀網格，西緣（岸邊）跟著陣列裡的抖動走，
@@ -6084,8 +6198,8 @@
 
         scene.add(mapGroup);
         currentMapName = mapName;
-        npcGroup.visible = mapName === "outside";
-        animalGroup.visible = mapName === "outside";
+        npcGroup.visible = mapName === "livingArea";
+        animalGroup.visible = mapName === "livingArea";
         syncFarmVisuals();
       }
 
@@ -6104,7 +6218,7 @@
           )
         )
           return true;
-        if (mapName === "outside" && z < 0) {
+        if (mapName === "livingArea" && z < 0) {
           const onNorthPlateau =
             x >= 0 && x < LAYOUT.coast.rampX && z >= northCliffEdgeZ(x) + 0.62;
           return !onNorthPlateau;
@@ -6117,13 +6231,13 @@
         )
           return true;
         if (
-          mapName === "outside" &&
+          mapName === "livingArea" &&
           lakeShoreColliders.some(
             (rock) => Math.hypot(x - rock.x, z - rock.z) < rock.radius,
           )
         )
           return true;
-        if (mapName === "outside" && isInsideLakeShape(x, z)) return true;
+        if (mapName === "livingArea" && isInsideLakeShape(x, z)) return true;
         const t = map.tiles[tz][tx];
         if (t === 6) return true;
         if (t === 1 || t === 2 || t === 9) return true;
@@ -6232,7 +6346,7 @@
           if (npc) npc.memory = savedNpc.memory;
         });
         if (data.player) {
-          const targetMap = data.currentMapName || "outside";
+          const targetMap = data.currentMapName || "livingArea";
           if (targetMap !== currentMapName) {
             loadMap(targetMap, { x: data.player.x, z: data.player.z });
           } else if (player) {
@@ -6304,7 +6418,7 @@
           return;
         }
 
-        if (currentMapName === "outside") {
+        if (currentMapName === "livingArea") {
           const nearby = npcs.find((n) => {
             const dx = player.position.x - n.mesh.position.x,
               dz = player.position.z - n.mesh.position.z;
@@ -6316,7 +6430,7 @@
           }
         }
 
-        if (currentMapName === "outside" && nearWater()) {
+        if (currentMapName === "livingArea" && nearWater()) {
           if (fishingState === "idle") {
             fishingState = "casting";
             fishingTimer = 0;
@@ -6351,7 +6465,7 @@
           return;
         }
 
-        if (currentMapName !== "outside") return;
+        if (currentMapName !== "livingArea") return;
         const { x, z } = playerGridPos;
         if (x === POUCH_POS.x && z === POUCH_POS.z) {
           pickupSeeds();
@@ -6480,7 +6594,7 @@
                 : "up";
         }
         animateWalk(player, isMoving, elapsed);
-        if (currentMapName === "outside")
+        if (currentMapName === "livingArea")
           player.position.y += groundY(player.position.x, player.position.z);
 
         // 拋竿/持竿動畫：雙手一起蓋過 animateWalk 剛設好的角度。左手往內、往前
@@ -6623,7 +6737,7 @@
               target,
               outsideCols,
               outsideRows,
-              (x, z) => isBlocked("outside", x, z),
+              (x, z) => isBlocked("livingArea", x, z),
             );
             n.path = path && path.length ? path : [target]; // 找不到路就退回直線，至少不會卡死
             n.pathIndex =
@@ -6651,7 +6765,7 @@
               n.pathIndex++;
             }
           }
-          if (!moving && currentMapName === "outside") {
+          if (!moving && currentMapName === "livingArea") {
             const pdx = player.position.x - n.mesh.position.x,
               pdz = player.position.z - n.mesh.position.z;
             if (Math.sqrt(pdx * pdx + pdz * pdz) <= 4) {
@@ -6756,7 +6870,7 @@
             ? new THREE.Color(0xcbd4dc)
             : new THREE.Color(0x697685);
         sky.lerp(weatherFogColor, weatherDim);
-        if (currentMapName === "outside") {
+        if (currentMapName === "livingArea") {
           scene.background = sky;
           if (currentWeather === "clear") {
             // 晴天保持高能見度；拉遠時距離霧會讓整座島被天空色洗成白霧。
@@ -6848,7 +6962,7 @@
         const camHeight = camDist * Math.cos(TILT_RAD);
         const camZOffset = camDist * Math.sin(TILT_RAD);
         const groundOffset =
-          currentMapName === "outside"
+          currentMapName === "livingArea"
             ? groundY(player.position.x, player.position.z)
             : 0;
         // 玩家模型與相機共用地形高度，走上西北階梯或海岸緩坡時不會穿進台階。
@@ -6856,7 +6970,7 @@
           (groundOffset - player.position.y) * Math.min(1, dt * 10);
         let cameraFocusX = player.position.x;
         let cameraFocusZ = player.position.z;
-        if (currentMapName === "outside") {
+        if (currentMapName === "livingArea") {
           const halfViewWidth = camera.right;
           const minFocusX = CAMERA_WORLD_BOUNDS.west + halfViewWidth;
           const maxFocusX = CAMERA_WORLD_BOUNDS.east - halfViewWidth;
@@ -7087,7 +7201,7 @@
               weatherWindStrength *
               (0.78 + Math.sin(elapsed * 2.35 + wz * 0.2) * 0.22);
             const playerDistance =
-              currentMapName === "outside"
+              currentMapName === "livingArea"
                 ? Math.hypot(wx - player.position.x, wz - player.position.z)
                 : Infinity;
             const wake =
@@ -7129,8 +7243,8 @@
         renderer.render(scene, camera);
       }
 
-      buildMap("outside");
-      loadMap("outside");
+      buildMap("livingArea");
+      loadMap("livingArea");
       fadeIn();
       requestAnimationFrame(animate);
 
