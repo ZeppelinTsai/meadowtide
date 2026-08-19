@@ -327,6 +327,16 @@ for (let z = HOUSE_ROAD_START_Z; z < MAPS.outside.tiles.length; z++) {
   MAPS.outside.tiles[z][HOUSE_ROAD_X] = 5;
 }
 
+// 從農田起點往南，在主路左右各留一格路肩後種植行道樹，每兩格一棵。
+const AVENUE_TREE_TILES = [];
+for (let z = LAYOUT.farm.z; z < MAPS.outside.tiles.length; z += 2) {
+  [HOUSE_ROAD_X - 2, HOUSE_ROAD_X + 2].forEach(x => {
+    AVENUE_TREE_TILES.push([x, z]);
+    MAPS.outside.tiles[z][x] = 2;
+  });
+}
+const AVENUE_TREE_KEYS = new Set(AVENUE_TREE_TILES.map(([x, z]) => `${x},${z}`));
+
 const events = [
   { map: 'outside', x: LAYOUT.house.doorX, z: LAYOUT.house.z + LAYOUT.house.d, trigger: 'touch',
     action: () => loadMap('house', { x: 3, z: 5 }) },
@@ -620,6 +630,8 @@ const SEASON_MUSIC_KEYS = [
   ['autumnDay', 'autumnNight'], ['winterDay', 'winterNight'],
 ];
 const MELODY_VOLUME = 0.32, WEATHER_VOLUME = 0.2;
+const BGM_LOOP_HEAD_SKIP = 0.08; // 跳過 MP3 開頭的編碼 padding
+const BGM_LOOP_TAIL_TRIM = 0.65; // 提前避開結尾留白／編碼 padding
 let audioContext = null, musicMasterGain = null;
 let musicMuted = false, musicReady = false;
 let activeMusicKey = null, pendingMusicKey = null;
@@ -640,6 +652,7 @@ function createMusicTrack(key, filename) {
 
 function ensureMusicTrackPlaying(track, key) {
   if (track.failed || track.playPending || !track.audio.paused) return;
+  if (track.audio.currentTime === 0) track.audio.currentTime = BGM_LOOP_HEAD_SKIP;
   track.playPending = true;
   track.audio.play()
     .catch(error => {
@@ -696,6 +709,12 @@ function updateMusic(nightFactor, dt) {
       ? (currentWeather === 'clear' ? MELODY_VOLUME : WEATHER_VOLUME)
       : 0;
     if (target > 0.0005 || track.currentGain > 0.0005) ensureMusicTrackPlaying(track, key);
+    // 不建立第二個音源做交疊；在單一實例抵達尾端留白前直接回到有效開頭。
+    if (!track.audio.paused && Number.isFinite(track.audio.duration)
+      && track.audio.duration > BGM_LOOP_HEAD_SKIP + BGM_LOOP_TAIL_TRIM
+      && track.audio.currentTime >= track.audio.duration - BGM_LOOP_TAIL_TRIM) {
+      track.audio.currentTime = BGM_LOOP_HEAD_SKIP;
+    }
     const fadeSeconds = 0.65;
     const blend = 1 - Math.exp(-dt / fadeSeconds);
     track.currentGain += (target - track.currentGain) * blend;
@@ -722,6 +741,7 @@ function updateMusic(nightFactor, dt) {
 function beginNewDay(day) {
   currentSeason = getSeasonIndex(day);
   currentWeather = rollWeatherForSeason(currentSeason);
+  updateAvenueTreeColors();
   console.info(`[天氣] 第 ${day + 1} 天：${SEASON_NAMES[currentSeason]}季／${WEATHER_NAMES[currentWeather]}`);
 }
 
@@ -738,6 +758,7 @@ let seaGlimpseMesh = null; // 北邊的遠方海景背景板，會輕輕起伏
 const fishSchool = []; // 每條魚各自保存尺寸、速度、橢圓半徑、游移與深度參數
 const SEA_FISH_SCALE = 3;
 const LAKE_FISH_SCALE = 2.2;
+const avenueLeafMaterials = [];
 const pastureGrassBlades = []; // 牧場裡會被風吹動的草叢，每叢存自己的葉片群組
 const GRASS_STAGE_HEIGHTS = [0.2, 0.46, 0.82]; // 短、中、長；長草約到動物胸高
 const GRASS_GROWTH_SECONDS = 32;
@@ -962,6 +983,71 @@ function makeTree(x, z) {
   group.position.set(x, 0, z);
   group.rotation.y = r * Math.PI * 2;
   return group;
+}
+const AVENUE_SEASON_COLORS = [0xf3a7c3, 0x3f9446, 0xc94f3d, 0xf2f5f7];
+function avenueSeasonColor(tint = 0) {
+  return new THREE.Color(AVENUE_SEASON_COLORS[currentSeason]).offsetHSL(
+    tint * 0.018, currentSeason === 3 ? -0.12 : tint * 0.035, tint * 0.045
+  );
+}
+function makeAvenueTree(x, z) {
+  const tree = new THREE.Group();
+  const tint = hash2(x * 2.7, z * 4.1) - 0.5;
+  const trunkMat = new THREE.MeshStandardMaterial({ color: 0x6f472b, flatShading: true });
+  const leafMat = new THREE.MeshStandardMaterial({
+    color: avenueSeasonColor(tint), flatShading: true,
+    roughness: currentSeason === 3 ? 0.9 : 0.72,
+  });
+
+  const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.065, 0.11, 0.9, 7), trunkMat);
+  trunk.position.y = 0.45;
+  trunk.castShadow = true;
+  tree.add(trunk);
+
+  function addBranch(from, to, radius = 0.035) {
+    const start = new THREE.Vector3(...from), end = new THREE.Vector3(...to);
+    const direction = end.clone().sub(start);
+    const branch = new THREE.Mesh(
+      new THREE.CylinderGeometry(radius * 0.62, radius, direction.length(), 6), trunkMat
+    );
+    branch.position.copy(start).add(end).multiplyScalar(0.5);
+    branch.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), direction.clone().normalize());
+    branch.castShadow = true;
+    tree.add(branch);
+  }
+
+  // 從主幹中上段向不同方向分叉，枝條刻意露在葉團之間。
+  const tips = [
+    [-0.34, 0.96, 0.02], [0.36, 0.9, 0.08],
+    [-0.2, 1.17, -0.2], [0.22, 1.2, 0.2], [0.02, 1.34, -0.02],
+  ];
+  tips.forEach((tip, i) => addBranch(
+    [i < 2 ? 0 : (i - 3) * 0.025, 0.56 + i * 0.055, 0], tip, i === 4 ? 0.04 : 0.032
+  ));
+  addBranch([-0.08, 0.74, 0], [-0.24, 1.08, 0.13], 0.026);
+  addBranch([0.08, 0.77, 0], [0.27, 1.05, -0.12], 0.026);
+
+  // 葉子集中在枝梢，團塊較小且彼此留縫，不再堆成一整顆圓球。
+  const crowns = tips.map((tip, i) => [tip[0], tip[1] + 0.05, tip[2], 0.17 + (i % 2) * 0.035]);
+  crowns.push([-0.24, 1.09, 0.13, 0.16], [0.27, 1.07, -0.12, 0.17], [0, 1.12, 0, 0.18]);
+  crowns.forEach(([lx, ly, lz, size], i) => {
+    const crown = new THREE.Mesh(new THREE.IcosahedronGeometry(size, 0), leafMat);
+    crown.position.set(lx, ly, lz);
+    crown.scale.set(0.88 + hash2(x + i, z) * 0.22, 0.78 + hash2(x, z + i) * 0.22, 0.9);
+    crown.castShadow = true;
+    tree.add(crown);
+  });
+  tree.position.set(x, 0, z);
+  tree.rotation.y = hash2(x, z) * Math.PI * 2;
+  tree.scale.multiplyScalar(2);
+  avenueLeafMaterials.push({ material: leafMat, tint });
+  return tree;
+}
+function updateAvenueTreeColors() {
+  avenueLeafMaterials.forEach(({ material, tint }) => {
+    material.color.copy(avenueSeasonColor(tint));
+    material.roughness = currentSeason === 3 ? 0.9 : 0.72;
+  });
 }
 function makeBuilding({ x, z, w, d, doorX }) {
   const group = new THREE.Group();
@@ -1846,13 +1932,19 @@ function buildMap(mapName) {
     houseLampBulbMat = lamp.bulbMat;
   }
 
+  avenueLeafMaterials.length = 0;
   map.tiles.forEach((row, z) => {
     row.forEach((tile, x) => {
       if (tile === 1 && mapName === 'house') {
         const winEntry = (map.windows || []).find(w => w.x === x && w.z === z);
         plateauGroup.add(makeInteriorWall(x, z, winEntry ? winEntry.side : null));
       }
-      else if (tile === 2) { const m = makeTree(x, z); m.position.y += groundY(x); mapGroup.add(m); }
+      else if (tile === 2) {
+        const m = mapName === 'outside' && AVENUE_TREE_KEYS.has(`${x},${z}`)
+          ? makeAvenueTree(x, z) : makeTree(x, z);
+        m.position.y += groundY(x);
+        mapGroup.add(m);
+      }
       else if (tile === 3) {
         const threshold = new THREE.Mesh(new THREE.BoxGeometry(TILE * 0.9, 0.06, TILE * 0.9),
           new THREE.MeshStandardMaterial({ color: 0xf5c542 }));
@@ -2064,18 +2156,6 @@ function buildMap(mapName) {
     // 花園——跟著休息區一起往南挪，維持「休息區→花園」相鄰但更南邊
     [[0, 0], [1.5, 0.4], [0.7, 1.6]].forEach(([dx, dz], i) => {
       plateauGroup.add(makeGardenBed(HOUSE.x + 6.5 + dx, HOUSE.z + 3.5 + dz, hash2(dx, dz + i)));
-    });
-
-    // 城區——原本 7 個方塊間距只有 1~2 格，擠成一團看不出街廓，
-    // 現在間距拉大到 2.5~3 格，才讀得出「這是聚落」而不是「一堆箱子」
-    const townSpots = [
-      [HOUSE.x - 3, HOUSE.z + 16.5], [HOUSE.x + 2, HOUSE.z + 16.5],
-      [HOUSE.x - 4, HOUSE.z + 19], [HOUSE.x - 1.5, HOUSE.z + 18],
-      [HOUSE.x + 4, HOUSE.z + 18.5], [HOUSE.x - 2, HOUSE.z + 20.5],
-      [HOUSE.x + 3, HOUSE.z + 19.5],
-    ];
-    townSpots.forEach(([tx, tz], i) => {
-      plateauGroup.add(makeTownPlaceholder(tx, tz, hash2(tx, tz + i)));
     });
 
     // 湖：不再是矩形平面，改成手刻的極座標網格——從中心點往外拉幾圈同心圓，
