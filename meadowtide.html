@@ -38,7 +38,7 @@
 </head>
 <body>
 <div id="ui">
-  <b>Low-poly v49 — 統一LAYOUT + 農田西移 + 湖放大</b><br>
+  <b>海風牧歌</b><br>
   WASD：移動 ・ 滾輪：縮放 ・ E：互動/種植/收成/釣魚 ・ M：音樂靜音<br>
   <b style="color:#8ecfff">N：快轉時間（看阿姨繞樹）</b>
 </div>
@@ -64,7 +64,7 @@ const LAYOUT = {
   // 北側新增 5 排：動物區留在新空間，其餘舊區域整體往南順延。
   house:   { x: 20, z: 9 + NORTH_EXPANSION,  w: 3, d: 2, doorX: 21 },
   barn:    { x: 23, z: 1,  w: 3, d: 2, doorX: 24 },
-  pasture: { x: 21, z: 4,  width: 5, height: 3 },
+  pasture: { x: 18, z: 4,  width: 13, height: 6 }, // 左擴 3、右擴 5、向南擴 3
   orchard: { houseOffsetX: 9.5, houseOffsetZ: -8.5 },
   farm:    { x: 5,  z: 17 + NORTH_EXPANSION, blocks: 3, plotSize: 3, gap: 1 }, // 左移 3、南移 3
   lake:    { x: 3,  z: 3, width: 18, height: 17 }, // 再向南擴 3 格
@@ -192,6 +192,8 @@ for (let z = 1 + NORTH_EXPANSION; z <= 3 + NORTH_EXPANSION; z++) {
 for (let z = LAYOUT.barn.z; z < LAYOUT.barn.z + LAYOUT.barn.d; z++) {
   for (let x = LAYOUT.barn.x; x < LAYOUT.barn.x + LAYOUT.barn.w; x++) MAPS.outside.tiles[z][x] = 1;
 }
+// 清掉動物小屋門前偏左一格的樹；位置從穀倉門推導，不另寫絕對座標。
+MAPS.outside.tiles[LAYOUT.barn.z + LAYOUT.barn.d + 2][LAYOUT.barn.doorX - 1] = 0;
 
 // 除錯工具找到最後一批死資料：x=17~19,z=13~14 還留著 tile=7，是很多輪
 // 之前那個 6 格小農田的殘骸。現在的 9 塊大農田系統完全不靠陣列裡的
@@ -202,11 +204,6 @@ for (let z = LAYOUT.barn.z; z < LAYOUT.barn.z + LAYOUT.barn.d; z++) {
 // 除錯工具抓到另一個舊帳：之前幾輪搬湖的位置，每次只有「在新位置寫水」，
 // 沒有把舊位置清回草地，這裡殘留了一小塊(x=16~18,z=8~10)。順手清掉
 [8, 9, 10].forEach(z => { [16, 17, 18].forEach(x => { MAPS.outside.tiles[z + NORTH_EXPANSION][x] = 0; }); });
-
-// 除錯工具抓到的舊 bug：房子 z=9 那排的牆比 z=10 那排少往東一格，
-// 跟 buildings 陣列記錄的 x=20 對不上，門檻本身是對的，單獨修正這一格
-MAPS.outside.tiles[9 + NORTH_EXPANSION][19] = 0;
-MAPS.outside.tiles[9 + NORTH_EXPANSION][22] = 1;
 
 // ==============================================================
 // 1.45) 原本 19 排放不下農田，先在陣列尾巴多加空地——農田這次要再往
@@ -273,6 +270,16 @@ for (let z = LAYOUT.lake.z; z < LAYOUT.lake.z + LAYOUT.lake.height; z++) {
   }
 }
 
+// 湖的外框清理可能掃到相鄰建築；地形完成後以 buildings 為唯一資料源重建
+// 完整佔地，確保主屋與穀倉的視覺、tile 碰撞永遠一致。
+MAPS.outside.buildings.forEach(building => {
+  for (let z = building.z; z < building.z + building.d; z++) {
+    for (let x = building.x; x < building.x + building.w; x++) {
+      MAPS.outside.tiles[z][x] = 1;
+    }
+  }
+});
+
 const POUCH_POS = { x: LAYOUT.farm.x + 3, z: LAYOUT.farm.z + 1 }; // 農田走道上
 
 // ==============================================================
@@ -300,10 +307,25 @@ const TOWN_Z_START = MAPS.outside.tiles.length; // 現在是 25（農田南移�
   const width = MAPS.outside.tiles[0].length;
   for (let i = 0; i < TOWN_ROWS; i++) {
     const row = new Array(width).fill(0);
-    row[6] = 5; // 路從家門口那條路繼續往南接進城區
+    row[6] = 5; // 保留城區原有的西側支路；主屋直路會在下方統一鋪設
     MAPS.outside.tiles.push(row);
   }
 })();
+
+// 清除農田右側邊緣的樹，以及主屋門正前方、與門同一直線的樹。
+MAPS.outside.tiles[LAYOUT.farm.z + 1][LAYOUT.farm.x + 10] = 0;
+MAPS.outside.tiles[LAYOUT.farm.z + 1][LAYOUT.house.doorX] = 0;
+
+// 主屋門外道路改成與門中心對齊，從門外一路筆直延伸到地圖最南端。
+const HOUSE_ROAD_X = LAYOUT.house.doorX;
+const HOUSE_ROAD_START_Z = LAYOUT.house.z + LAYOUT.house.d + 1;
+for (let z = HOUSE_ROAD_START_Z; z < MAPS.outside.tiles.length; z++) {
+  // 清掉原本偏右一格的門前短路；其他農田與城區道路保留。
+  if (z <= LAYOUT.farm.z - 1 && MAPS.outside.tiles[z][HOUSE_ROAD_X + 1] === 5) {
+    MAPS.outside.tiles[z][HOUSE_ROAD_X + 1] = 0;
+  }
+  MAPS.outside.tiles[z][HOUSE_ROAD_X] = 5;
+}
 
 const events = [
   { map: 'outside', x: LAYOUT.house.doorX, z: LAYOUT.house.z + LAYOUT.house.d, trigger: 'touch',
@@ -572,7 +594,7 @@ function updateSkyDome(nightFactor) {
   skyColorAttr.needsUpdate = true;
   skyDome.position.copy(camera.position);
 }
-const dayLength = 60;
+const dayLength = 120; // 遊戲內每小時 5 秒
 let elapsed = 0;
 
 // ==============================================================
@@ -1614,10 +1636,14 @@ const animalGroup = new THREE.Group();
 animalGroup.position.y = PLATEAU_Y; // 牧場整個都在高台範圍內
 scene.add(animalGroup);
 function randomPasturePoint() {
-  return {
-    x: PASTURE.minX + Math.random() * (PASTURE.maxX - PASTURE.minX),
-    z: PASTURE.minZ + Math.random() * (PASTURE.maxZ - PASTURE.minZ),
-  };
+  for (let attempt = 0; attempt < 20; attempt++) {
+    const point = {
+      x: PASTURE.minX + Math.random() * (PASTURE.maxX - PASTURE.minX),
+      z: PASTURE.minZ + Math.random() * (PASTURE.maxZ - PASTURE.minZ),
+    };
+    if (!isInsideLakeShape(point.x, point.z, -0.2)) return point;
+  }
+  return { x: PASTURE.maxX, z: PASTURE.maxZ };
 }
 const animalDefs = [
   { id: 'cow1', type: 'cow', speed: 0.32, restMin: 3, restMax: 7 },
@@ -1938,6 +1964,7 @@ function buildMap(mapName) {
     // 小幅錯位打破方格感，但不再留下明顯的裸土空洞。
     for (let gx = PASTURE.minX; gx <= PASTURE.maxX; gx++) {
       for (let gz = PASTURE.minZ; gz <= PASTURE.maxZ; gz++) {
+        if (isInsideLakeShape(gx, gz, -0.2)) continue;
         const tileGrowth = hash2(gx * 3.3, gz * 5.1) * 3;
         for (let ix = 0; ix < 3; ix++) {
           for (let iz = 0; iz < 3; iz++) {
@@ -2094,6 +2121,9 @@ function isBlocked(mapName, x, z) {
   const tx = Math.round(x), tz = Math.round(z);
   if (tz < 0 || tz >= map.tiles.length || tx < 0 || tx >= map.tiles[0].length) return true;
   if (mapName === 'outside' && isInsideLakeShape(x, z)) return true;
+  if ((map.buildings || []).some(building =>
+    tx >= building.x && tx < building.x + building.w
+    && tz >= building.z && tz < building.z + building.d)) return true;
   const t = map.tiles[tz][tx];
   if (t === 6) return true;
   if (t === 1 || t === 2 || t === 9) return true;
