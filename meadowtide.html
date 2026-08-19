@@ -126,12 +126,12 @@
           spacingZ: 2.1,
         }, // 小屋右側 12 棵
         windmill: {
-          x: 29,
-          z: 15,
+          x: 28,
+          z: 12,
           w: 4,
           d: 4,
-          visualX: 30.0,
-          visualZ: 15.0,
+          visualX: 29.5,
+          visualZ: 13.5,
           scale: 2,
         },
         houseRoad: { width: 3 },
@@ -279,63 +279,6 @@
             { type: "rug", x: 3, z: 3, nonBlocking: true },
           ],
           playerStart: { x: 3, z: 5 },
-        },
-        // 舊城鎮——目前只做骨架：一塊廣場空地＋幾間空屋佔位方塊(makeTownPlaceholder)，
-        // 沒有木匠工坊內裝。playerStart 設在北側，之後往北接港口商業街入口。
-        // 南側跟山區之間預留了以後另一位居民要用的路，這裡不畫、不佔座標。
-        oldVillage: {
-          tiles: [
-            [0, 0, 0, 0, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-          ],
-          placeholders: [
-            { x: 3, z: 4, seed: 0.4 },
-            { x: 10, z: 4, seed: 0.6 },
-            { x: 3, z: 8, seed: 0.25 },
-            { x: 10, z: 8, seed: 0.75 },
-          ],
-          playerStart: { x: 7, z: 2 },
-        },
-        // 港口——北端候船碼頭(makeDock)，南端市場/倉庫佔位方塊，中間一條路連到
-        // 南端的舊城鎮商業街入口。playerStart 在北端碼頭附近。
-        port: {
-          tiles: [
-            [0, 0, 0, 0, 0, 8, 8, 8, 8, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 1, 0, 0, 5, 0, 0, 1, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0],
-          ],
-          placeholders: [
-            { x: 4, z: 6, seed: 0.3 },
-            { x: 10, z: 6, seed: 0.55 },
-            { x: 4, z: 12, seed: 0.7 },
-            { x: 10, z: 12, seed: 0.42 },
-            { x: 4, z: 14, seed: 0.85 },
-            { x: 10, z: 14, seed: 0.15 },
-          ],
-          playerStart: { x: 7, z: 4 },
         },
       };
 
@@ -557,7 +500,8 @@
           x < LAYOUT.pasture.x + LAYOUT.pasture.width;
           x++
         ) {
-          if (MAPS.livingArea.tiles[z][x] === 2) MAPS.livingArea.tiles[z][x] = 0;
+          if (MAPS.livingArea.tiles[z][x] === 2)
+            MAPS.livingArea.tiles[z][x] = 0;
         }
       }
 
@@ -622,7 +566,11 @@
 
       // 略過最上方左右各兩棵，從農田起點往南四格後開始種植行道樹。
       const AVENUE_TREE_TILES = [];
-      for (let z = LAYOUT.farm.z + 4; z < MAPS.livingArea.tiles.length; z += 2) {
+      for (
+        let z = LAYOUT.farm.z + 4;
+        z < MAPS.livingArea.tiles.length;
+        z += 2
+      ) {
         [HOUSE_ROAD_X - 2, HOUSE_ROAD_X + 2].forEach((x) => {
           AVENUE_TREE_TILES.push([x, z]);
           MAPS.livingArea.tiles[z][x] = 2;
@@ -636,10 +584,6 @@
       );
       // 清掉休息區入口旁的舊樹，讓人能從行道樹間穿進兩個新區域。
       MAPS.livingArea.tiles[LAYOUT.farm.z + 1][LAYOUT.restArea.x - 1] = 0;
-
-      // 東側沙灘上開一個踏入點，銜接港口地圖北端；此時沙灘/海面已經鋪好，
-      // 這一格原本是沙灘(8)，改成門檻(3)只是換個踩踏標記，還是能走。
-      MAPS.livingArea.tiles[20][40] = 3;
 
       const events = [
         {
@@ -670,36 +614,6 @@
               x: LAYOUT.house.doorX,
               z: LAYOUT.house.z + LAYOUT.house.d + 1,
             }),
-        },
-        // 生活區東側海岸 <-> 港口北端(碼頭附近)
-        {
-          map: "livingArea",
-          x: 40,
-          z: 20,
-          trigger: "touch",
-          action: () => loadMap("port", { x: 7, z: 4 }),
-        },
-        {
-          map: "port",
-          x: 7,
-          z: 2,
-          trigger: "touch",
-          action: () => loadMap("livingArea", { x: 35, z: 20 }),
-        },
-        // 港口南端(市場/倉庫) <-> 舊城鎮
-        {
-          map: "port",
-          x: 7,
-          z: 15,
-          trigger: "touch",
-          action: () => loadMap("oldVillage", { x: 7, z: 2 }),
-        },
-        {
-          map: "oldVillage",
-          x: 7,
-          z: 0,
-          trigger: "touch",
-          action: () => loadMap("port", { x: 7, z: 13 }),
         },
       ];
 
@@ -834,8 +748,9 @@
         MOUNTAIN_GATE_BLOCKER.z >= 0 &&
         MOUNTAIN_GATE_BLOCKER.z < MAPS.livingArea.tiles.length
       ) {
-        MAPS.livingArea.tiles[MOUNTAIN_GATE_BLOCKER.z][MOUNTAIN_GATE_BLOCKER.x] =
-          1;
+        MAPS.livingArea.tiles[MOUNTAIN_GATE_BLOCKER.z][
+          MOUNTAIN_GATE_BLOCKER.x
+        ] = 1;
       }
       const SEASON_NAMES = ["春", "夏", "秋", "冬"];
       const SEASON_DAYLIGHT = Object.freeze({
@@ -5236,7 +5151,7 @@
           );
           ground.receiveShadow = true;
           mapGroup.add(ground);
-        } else if (mapName === "livingArea") {
+        } else {
           // 地面拆成四塊：高台(x0-10) + 三格階梯緩坡(x11,12,13) + 低地沙灘/海(x14+)。
           // 相鄰方塊高度不同，交界處自然露出垂直側面，那就是「階梯」的視覺來源，
           // 不用額外建模階梯形狀
@@ -5583,34 +5498,11 @@
           plateauGroup = new THREE.Group();
           plateauGroup.position.y = PLATEAU_Y;
           mapGroup.add(plateauGroup);
-        } else {
-          // oldVillage、port 這類獨立小地圖：跟 house 一樣是純平地，沒有懸崖/
-          // 沙灘的高低差，plateauGroup 維持等於 mapGroup，不用另外墊高。
-          const ground = new THREE.Mesh(
-            new THREE.BoxGeometry(cols * TILE, 0.2, rows * TILE),
-            new THREE.MeshStandardMaterial({ color: 0x6ab04c }),
-          );
-          ground.position.set(
-            (cols * TILE) / 2 - TILE / 2,
-            -0.1,
-            (rows * TILE) / 2 - TILE / 2,
-          );
-          ground.receiveShadow = true;
-          mapGroup.add(ground);
         }
 
         (map.buildings || []).forEach((b) =>
           plateauGroup.add(b.style === "barn" ? makeBarn(b) : makeBuilding(b)),
         );
-        (map.placeholders || []).forEach((p) =>
-          plateauGroup.add(makeTownPlaceholder(p.x, p.z, p.seed)),
-        );
-        if (mapName === "port") {
-          const dock = makeDock();
-          dock.position.set(7, 0, 1);
-          dock.rotation.y = Math.PI / 2;
-          plateauGroup.add(dock);
-        }
         (map.furniture || []).forEach((item) => {
           const w = item.w || 1,
             d = item.d || 1;
@@ -5644,7 +5536,7 @@
                 mapName === "livingArea" && AVENUE_TREE_KEYS.has(`${x},${z}`)
                   ? makeAvenueTree(x, z)
                   : makeTree(x, z);
-              m.position.y += mapName === "livingArea" ? groundY(x, z) : 0;
+              m.position.y += groundY(x, z);
               mapGroup.add(m);
             } else if (tile === 3) {
               const threshold = new THREE.Mesh(
@@ -5659,7 +5551,7 @@
               mapGroup.add(threshold);
             } else if (tile === 5) {
               const m = makePath(x, z);
-              m.position.y += mapName === "livingArea" ? groundY(x, z) : 0;
+              m.position.y += groundY(x, z);
               mapGroup.add(m);
             }
             // tile === 6（湖）不逐格建置，改成迴圈結束後蓋成一整片有波紋的水面
