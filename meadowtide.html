@@ -869,6 +869,15 @@
       }
       let currentSeason = getSeasonIndex(0);
       let currentWeather = rollWeatherForSeason(currentSeason);
+      // 天氣切換緩衝：換日當下天氣字串還是瞬間換，但視覺強度(雨/雪/閃電/
+      // 天色)從這個時間點開始花 WEATHER_TRANSITION_SECONDS 秒淡入，不會整片
+      // 雨/雪瞬間冒出來。weatherChangedAt 在 beginNewDay() 換天氣時更新。
+      let previousWeather = currentWeather;
+      let weatherChangedAt = 0;
+      const WEATHER_TRANSITION_SECONDS = 75;
+      function weatherTransitionRamp() {
+        return Math.min(1, (elapsed - weatherChangedAt) / WEATHER_TRANSITION_SECONDS);
+      }
       const ANIMAL_INDOOR_WEATHER = new Set([
         "rain",
         "typhoon",
@@ -1711,6 +1720,144 @@
       sunSkyGroup.position.z = -74;
       camera.add(sunSkyGroup);
 
+      // 月亮——跟太陽同一套「掛在相機上的天空層」做法，差別是月核不是固定
+      // 貼圖，而是每次換日依月相重畫一張 canvas（見 makeMoonPhaseTexture）。
+      // 月出時間依月相往後移：新月時跟太陽同一時段升起(白天在天上、看不清)，
+      // 滿月時整整移半天(太陽下山時升起、太陽升起時落下)，通宵可見。
+      function makeMoonPhaseTexture(size, t) {
+        const canvas = document.createElement("canvas");
+        canvas.width = canvas.height = size;
+        const ctx = canvas.getContext("2d");
+        const cx = size / 2,
+          cy = size / 2,
+          r = size / 2 - 2;
+        // 暗面：不是全黑，留一點淡淡的底色，像地球反照
+        ctx.beginPath();
+        ctx.arc(cx, cy, r, 0, Math.PI * 2);
+        ctx.fillStyle = "rgba(90,100,130,0.35)";
+        ctx.fill();
+        // 亮面：依月相裁出對應的月牙/凸月形狀。固定畫「頂→(左/右)→底」的
+        // 半圓當外緣，再用一段橢圓(半寬 rx 隨月相從 0 到 r 變化)當終止線
+        // 接回頂端；rx 的正負決定終止線要跟外緣同側(缺,月牙變窄)還是異側
+        // (盈,月牙變寬到滿月)，兩種情況在 t=0.25/0.75 自然銜接。
+        const cos = Math.cos(t * Math.PI * 2);
+        const rx = Math.abs(cos) * r;
+        const waxing = t < 0.5;
+        const bulgeRight = waxing === (cos >= 0);
+        ctx.beginPath();
+        if (waxing) {
+          ctx.arc(cx, cy, r, -Math.PI / 2, Math.PI / 2, false); // 右半圓
+        } else {
+          ctx.arc(cx, cy, r, -Math.PI / 2, Math.PI / 2, true); // 左半圓
+        }
+        if (bulgeRight) {
+          ctx.ellipse(cx, cy, rx, r, 0, Math.PI / 2, -Math.PI / 2, true);
+        } else {
+          ctx.ellipse(cx, cy, rx, r, 0, Math.PI / 2, Math.PI * 1.5, false);
+        }
+        ctx.closePath();
+        ctx.fillStyle = "rgba(255,250,235,0.98)";
+        ctx.fill();
+        const tex = new THREE.CanvasTexture(canvas);
+        tex.needsUpdate = true;
+        return tex;
+      }
+      const moonSkyGroup = new THREE.Group();
+      const moonGlowMat = new THREE.MeshBasicMaterial({
+        color: 0xcdd8f2,
+        map: SUN_GLOW_TEXTURE, // 共用太陽的放射狀漸層貼圖，只換顏色
+        transparent: true,
+        opacity: 0,
+        depthWrite: false,
+        depthTest: true,
+        fog: false,
+        blending: THREE.AdditiveBlending,
+      });
+      const moonCoreMat = new THREE.MeshBasicMaterial({
+        color: 0xffffff,
+        transparent: true,
+        opacity: 0,
+        depthWrite: false,
+        depthTest: true,
+        fog: false,
+      });
+      const moonGlow = new THREE.Mesh(
+        new THREE.CircleGeometry(2.2, 32),
+        moonGlowMat,
+      );
+      const moonCore = new THREE.Mesh(
+        new THREE.PlaneGeometry(1.5, 1.5),
+        moonCoreMat,
+      );
+      moonGlow.position.z = -0.04;
+      moonGlow.renderOrder = -0.57;
+      moonCore.renderOrder = -0.55;
+      moonSkyGroup.add(moonGlow, moonCore);
+      moonSkyGroup.position.z = -74;
+      camera.add(moonSkyGroup);
+      let moonPhaseTextureDay = -1; // 快取：只有換日才重畫月相貼圖，不用每幀重算 canvas
+      function updateMoon() {
+        if (currentMapName !== "livingArea") {
+          moonSkyGroup.visible = false;
+          return;
+        }
+        const daylight = getDaylightForSeason();
+        const daySpan = daylight.sunset - daylight.sunrise;
+        const moonAgeFraction =
+          (currentDay % TIME_CONFIG.daysPerSeason) / TIME_CONFIG.daysPerSeason; // 0 新月 ~0.5 滿月
+        if (moonPhaseTextureDay !== currentDay) {
+          moonPhaseTextureDay = currentDay;
+          if (moonCoreMat.map) moonCoreMat.map.dispose();
+          moonCoreMat.map = makeMoonPhaseTexture(128, moonAgeFraction);
+          moonCoreMat.needsUpdate = true;
+        }
+        const moonRiseFrac = (daylight.sunrise + moonAgeFraction) % 1;
+        const deltaFromRise = (((currentPhase - moonRiseFrac) % 1) + 1) % 1;
+        const aboveHorizon = deltaFromRise < daySpan;
+        const moonProgress = deltaFromRise / daySpan;
+        const arc = aboveHorizon ? Math.sin(moonProgress * Math.PI) : 0;
+        const illuminatedFraction =
+          (1 - Math.cos(moonAgeFraction * Math.PI * 2)) / 2;
+        const weatherMoonVisibility =
+          {
+            clear: 1,
+            cloudy: 0.32,
+            rain: 0.1,
+            typhoon: 0,
+            storm: 0,
+            snow: 0.2,
+            blizzard: 0.02,
+          }[currentWeather] ?? 1;
+        const moonOpacity = arc * illuminatedFraction * weatherMoonVisibility;
+        moonSkyGroup.visible = moonOpacity > 0.005;
+        if (!moonSkyGroup.visible) return;
+        moonSkyGroup.position.x = 40 - moonProgress * 80;
+        moonSkyGroup.position.y = -5.5 + arc * daylight.peak * 0.5;
+        // 跟太陽用同一招：把月亮所在 x 對應的北側懸崖投影到螢幕，低於地形
+        // 輪廓時額外淡出，避免月亮掛在地形前面穿幫。
+        const moonWorldX = player.position.x + moonSkyGroup.position.x;
+        SUN_MASK_PROJECTED_POINT.set(
+          moonWorldX,
+          PLATEAU_Y + 0.35,
+          northCliffEdgeZ(moonWorldX),
+        ).project(camera);
+        const terrainSkylineY = SUN_MASK_PROJECTED_POINT.y * zoom;
+        const skyOnlyVisibility = THREE.MathUtils.smoothstep(
+          moonSkyGroup.position.y - terrainSkylineY,
+          0.15,
+          1.15,
+        );
+        const finalOpacity = moonOpacity * skyOnlyVisibility;
+        const horizonWarmth = Math.pow(1 - arc, 2.4);
+        moonCoreMat.opacity = Math.min(1, finalOpacity * 1.3);
+        moonGlowMat.opacity = finalOpacity * (0.3 + illuminatedFraction * 0.35);
+        moonGlowMat.color
+          .setHex(0xcdd8f2)
+          .lerp(SUN_HORIZON_COLOR, horizonWarmth * 0.3);
+        const pulse = 1 + Math.sin(elapsed * 0.5) * 0.01;
+        moonGlow.scale.setScalar(pulse);
+      }
+
       const skyClouds = [];
       const cloudLobeGeometry = new THREE.CircleGeometry(1, 18);
       for (let i = 0; i < 9; i++) {
@@ -1847,16 +1994,21 @@
             snow: 8,
             blizzard: 9,
           }[currentWeather] ?? 3;
-        const cloudOpacity =
-          {
-            clear: 0.18,
-            cloudy: 0.52,
-            rain: 0.68,
-            typhoon: 0.78,
-            storm: 0.82,
-            snow: 0.62,
-            blizzard: 0.76,
-          }[currentWeather] ?? 0.18;
+        const cloudOpacityByWeather = {
+          clear: 0.18,
+          cloudy: 0.52,
+          rain: 0.68,
+          typhoon: 0.78,
+          storm: 0.82,
+          snow: 0.62,
+          blizzard: 0.76,
+        };
+        // 換天氣時雲量從「前一個天氣」的值淡到新天氣的值，不會瞬間變厚/變薄。
+        const cloudOpacity = THREE.MathUtils.lerp(
+          cloudOpacityByWeather[previousWeather] ?? 0.18,
+          cloudOpacityByWeather[currentWeather] ?? 0.18,
+          weatherTransitionRamp(),
+        );
         const cloudSpeed =
           currentWeather === "typhoon"
             ? 5.8
@@ -1938,6 +2090,7 @@
         if (!outside) {
           updateSeasonalStars(nightFactor);
           updateSunAndClouds(nightFactor);
+          updateMoon();
           return;
         }
         const zenith = SKY_DAY_ZENITH.clone().lerp(
@@ -1949,15 +2102,20 @@
           nightFactor,
         );
         const middle = SKY_DAY_MID.clone().lerp(SKY_NIGHT_MID, nightFactor);
-        const weatherShade =
-          {
-            cloudy: 0.38,
-            rain: 0.5,
-            typhoon: 0.68,
-            storm: 0.76,
-            snow: 0.22,
-            blizzard: 0.58,
-          }[currentWeather] || 0;
+        const weatherShadeByWeather = {
+          cloudy: 0.38,
+          rain: 0.5,
+          typhoon: 0.68,
+          storm: 0.76,
+          snow: 0.22,
+          blizzard: 0.58,
+        };
+        // 跟雲量一樣，天色濃淡也從前一個天氣淡到新天氣，不瞬間變臉。
+        const weatherShade = THREE.MathUtils.lerp(
+          weatherShadeByWeather[previousWeather] || 0,
+          weatherShadeByWeather[currentWeather] || 0,
+          weatherTransitionRamp(),
+        );
         const weatherSky =
           currentWeather === "snow" || currentWeather === "blizzard"
             ? new THREE.Color(0xb9c6d2)
@@ -1983,6 +2141,7 @@
         skyDome.position.copy(camera.position);
         updateSeasonalStars(nightFactor);
         updateSunAndClouds(nightFactor);
+        updateMoon();
       }
 
       // ==============================================================
@@ -2251,7 +2410,8 @@
         rainEffect.visible = rainMode;
         if (rainMode) {
           rainGeometry.setDrawRange(0, rainCount * 2);
-          rainMaterial.opacity = currentWeather === "rain" ? 0.52 : 0.72;
+          rainMaterial.opacity =
+            (currentWeather === "rain" ? 0.52 : 0.72) * weatherTransitionRamp();
           for (let i = 0; i < rainCount; i++) {
             const base = i * 6,
               speed = 14 + rainSeeds[i] * 10;
@@ -2283,7 +2443,8 @@
         snowEffect.points.visible = snowMode;
         if (snowMode) {
           snowEffect.material.opacity =
-            currentWeather === "blizzard" ? 0.9 : 0.72;
+            (currentWeather === "blizzard" ? 0.9 : 0.72) *
+            weatherTransitionRamp();
           snowEffect.material.size = currentWeather === "blizzard" ? 7.5 : 6.5;
           for (let i = 0; i < snowEffect.count; i++) {
             const base = i * 3,
@@ -2392,7 +2553,7 @@
               )
             : 0;
         weatherFlashLight.intensity =
-          flashWave * (nightFactor > 0.45 ? 2.8 : 1.5);
+          flashWave * (nightFactor > 0.45 ? 2.8 : 1.5) * weatherTransitionRamp();
       }
       let elapsed = 0;
 
@@ -2566,7 +2727,9 @@
 
       function beginNewDay(day) {
         currentSeason = getSeasonIndex(day);
+        previousWeather = currentWeather;
         currentWeather = rollWeatherForSeason(currentSeason);
+        weatherChangedAt = elapsed;
         updateAvenueTreeColors();
         updateSeasonalTreeColors();
         updateSeasonalGroundColors();
@@ -5090,7 +5253,9 @@
       }
       const animalDefs = [
         { id: "cow1", type: "cow", speed: 0.32, restMin: 3, restMax: 7 },
+        { id: "cow2", type: "cow", speed: 0.32, restMin: 3, restMax: 7 },
         { id: "sheep1", type: "sheep", speed: 0.38, restMin: 2, restMax: 5 },
+        { id: "sheep2", type: "sheep", speed: 0.38, restMin: 2, restMax: 5 },
         { id: "chicken1", type: "chicken", speed: 0.5, restMin: 1, restMax: 3 },
         { id: "chicken2", type: "chicken", speed: 0.5, restMin: 1, restMax: 3 },
       ];
