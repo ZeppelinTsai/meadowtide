@@ -1,0 +1,752 @@
+import * as THREE from "three";
+import { gameState, TIME_CONFIG, CAST_ANIM_DURATION, getNightFactor, isUnsafeAnimalWeather, nearWater } from "./game-state";
+import { isGameTimePaused, updateGameClock } from "./game-clock";
+import { SOUTHERNMOST_AVENUE_TREE_Z, aStar, events } from "./layout-maps";
+import { npcs, animals, BARN_DOOR, outsideCols, outsideRows } from "./npc-runtime";
+import { getScheduleTarget } from "./npc-defs";
+import { animateWalk, animateAnimalWalk } from "./humanoid";
+import { chooseAnimalPastureTarget, setPastureGrassStage, startFishRoute, tryEatPastureGrass } from "./props";
+import { dialogQueue } from "./dialogue";
+import { isBlocked } from "./build-map";
+import { collidesAt, keys, updateHud } from "./input-save";
+import { updateMusic } from "./music";
+import { updateWeatherEffects } from "./weather-particles";
+import {
+  scene, camera, renderer, sun, ambient, seasonalBounceLight,
+  DAY, NIGHT, TILT_RAD, CAMERA_WORLD_BOUNDS, groundY,
+  AUTUMN_SUN_COLOR, SUMMER_SUN_COLOR, NOON_WARM_COLOR, WINTER_AMBIENT_COLOR,
+  WINTER_BOUNCE_GROUND, WINTER_LIGHT_COLOR, SUMMER_BOUNCE_GROUND, INTERIOR_BACKGROUND_COLOR,
+  updateMeteors, updateSkyDome, updateCameraFrustum,
+} from "./scene-sky";
+import {
+  windowMats, outdoorLampLights, foamMeshes, windmillRotors, fishSchool,
+  pastureGrassBlades, GRASS_GROWTH_SECONDS, EAST_SEA_WAVE, NORTH_SEA_WAVE,
+  EAST_SEA_WAVE_DIRECTION, NORTHEAST_SEA_WAVE_DIRECTION, sampleDirectedSeaWave,
+} from "./scene-registries";
+
+gameState.lastFrame = performance.now();
+
+      export function animate(now) {
+        requestAnimationFrame(animate);
+        if (!gameState.player) return;
+        const frameDt = Math.min((now - gameState.lastFrame) / 1000, 0.05);
+        gameState.lastFrame = now;
+        const dt = isGameTimePaused() ? 0 : frameDt;
+        gameState.effectElapsed += frameDt; // 不受暫停影響，純視覺效果一律吃這個
+        updateGameClock(dt);
+        gameState.animationFrameCount++;
+        const updateWaterSurface = gameState.animationFrameCount % 2 === 0; // 水面維持約 30fps，減少大量頂點運算
+
+        // --- 自由移動：方向鍵給的是速度向量，不是格子跳，可以八方向、可以貼牆滑 ---
+        let dx = 0,
+          dz = 0;
+        if (keys["w"] || keys["arrowup"]) dz -= 1;
+        if (keys["s"] || keys["arrowdown"]) dz += 1;
+        if (keys["a"] || keys["arrowleft"]) dx -= 1;
+        if (keys["d"] || keys["arrowright"]) dx += 1;
+        const inputLen = Math.hypot(dx, dz);
+        // dt===0 代表對話開著／遊戲暫停：主角完全鎖住，不只是不移動位置，
+        // 也不能轉向、不能播走路動畫——不然按方向鍵角色會原地轉圈或踏步。
+        gameState.isMoving = inputLen > 0 && dt > 0;
+        if (inputLen > 0) {
+          dx /= inputLen;
+          dz /= inputLen;
+        }
+
+        const moveSpeed = 10; // 格/秒
+        const stepX = dx * moveSpeed * dt,
+          stepZ = dz * moveSpeed * dt;
+        // X / Z 分開檢查碰撞，撞到一個軸還能沿著另一個軸繼續滑，這是「平穩」的關鍵
+        const tryX = gameState.player.position.x + stepX;
+        if (!collidesAt(gameState.currentMapName, tryX, gameState.player.position.z))
+          gameState.player.position.x = tryX;
+        const tryZ = gameState.player.position.z + stepZ;
+        if (!collidesAt(gameState.currentMapName, gameState.player.position.x, tryZ))
+          gameState.player.position.z = tryZ;
+
+        if (gameState.isMoving) {
+          // 角色模型的鼻子／腮紅在本地 -Z 面，因此移動方向要比「+Z 為正面」
+          // 的通用公式多轉半圈；否則臉會永遠朝向來時路。
+          const targetAngle = Math.atan2(dx, dz) + Math.PI;
+          gameState.player.rotation.y +=
+            (((targetAngle - gameState.player.rotation.y + Math.PI * 3) % (Math.PI * 2)) -
+              Math.PI) *
+            0.35;
+          gameState.facing =
+            Math.abs(dx) > Math.abs(dz)
+              ? dx > 0
+                ? "right"
+                : "left"
+              : dz > 0
+                ? "down"
+                : "up";
+        }
+        animateWalk(gameState.player, gameState.isMoving, gameState.elapsed);
+        if (gameState.currentMapName === "livingArea")
+          gameState.player.position.y += groundY(gameState.player.position.x, gameState.player.position.z);
+
+        // 拋竿/持竿動畫：雙手一起蓋過 animateWalk 剛設好的角度。左手往內、往前
+        // 擺，靠到跟右手（拿竿那手）差不多的位置跟角度，用兩隻手臂同一個朝向
+        // 湊出「雙手握竿」的視覺，不用真的把竿子綁定在兩個支點上
+        if (gameState.elapsed < gameState.castAnimEnd) {
+          const progress = 1 - (gameState.castAnimEnd - gameState.elapsed) / CAST_ANIM_DURATION;
+          // 先向後（+Z）短暫蓄力，再加速往角色正面（-Z）甩出，最後銜接持竿姿勢。
+          const castPose =
+            progress < 0.32
+              ? -0.85 * Math.sin(((progress / 0.32) * Math.PI) / 2)
+              : -0.85 + 2.0 * (1 - Math.pow(1 - (progress - 0.32) / 0.68, 3));
+          gameState.player.parts.armR.rotation.x = castPose;
+          gameState.player.parts.armR.rotation.z = 0;
+          gameState.player.parts.armL.rotation.x = castPose * 0.91;
+          gameState.player.parts.armL.rotation.z = 0.45;
+        } else if (
+          gameState.fishingState !== "idle" &&
+          gameState.player.parts.rod &&
+          gameState.player.parts.rod.visible
+        ) {
+          // 拋竿動畫結束後，站著等魚上鉤時雙手固定在持竿姿勢，不要被待機呼吸動畫拉回去
+          gameState.player.parts.armR.rotation.x = 1.15;
+          gameState.player.parts.armR.rotation.z = 0;
+          gameState.player.parts.armL.rotation.x = 1.05;
+          gameState.player.parts.armL.rotation.z = 0.45;
+        } else {
+          gameState.player.parts.armL.rotation.z = 0; // 沒在釣魚時把左手歸零，不然會卡在往內擺的角度
+        }
+
+        // 釣到魚的小動畫：魚從浮標的位置，沿著拋物線飛向玩家，邊飛邊轉，
+        // 飛到定點就消失——「消失」代表放進魚簍了，不需要額外的收納動畫
+        if (gameState.catchAnim) {
+          const t = (gameState.elapsed - gameState.catchAnim.start) / gameState.catchAnim.duration;
+          if (t >= 1) {
+            scene.remove(gameState.catchAnim.mesh);
+            gameState.catchAnim = null;
+          } else {
+            const toX = gameState.player.position.x,
+              toZ = gameState.player.position.z,
+              toY = 0.9;
+            const x = gameState.catchAnim.from.x + (toX - gameState.catchAnim.from.x) * t;
+            const z = gameState.catchAnim.from.z + (toZ - gameState.catchAnim.from.z) * t;
+            const y =
+              gameState.catchAnim.from.y +
+              (toY - gameState.catchAnim.from.y) * t +
+              Math.sin(t * Math.PI) * 0.85;
+            gameState.catchAnim.mesh.position.set(x, y, z);
+            gameState.catchAnim.mesh.rotation.y = gameState.elapsed * 11;
+            gameState.catchAnim.mesh.rotation.z = gameState.elapsed * 7;
+            gameState.catchAnim.mesh.scale.setScalar(1.7 * (1 - t * 0.5));
+          }
+        }
+
+        // --- 釣魚狀態機推進：casting 計時到了就進 biting，biting 逾時沒按 E 就跑掉 ---
+        const fishHintEl =
+          (window as any).__fishHintEl ||
+          ((window as any).__fishHintEl = document.getElementById("fishHint"));
+        if (!nearWater() && gameState.fishingState !== "idle") {
+          // 走離水邊自動取消，不用特別按什麼鍵收竿
+          gameState.fishingState = "idle";
+          if (gameState.bobberMesh) {
+            scene.remove(gameState.bobberMesh);
+            gameState.bobberMesh = null;
+          }
+          if (gameState.player.parts.rod) gameState.player.parts.rod.visible = false;
+        }
+        if (gameState.fishingState === "casting") {
+          gameState.fishingTimer += dt;
+          if (gameState.fishingTimer >= gameState.biteWaitTime) {
+            gameState.fishingState = "biting";
+            gameState.biteWindowStart = gameState.elapsed;
+          }
+        } else if (gameState.fishingState === "biting") {
+          if (gameState.elapsed - gameState.biteWindowStart > 1.1) {
+            gameState.fishingState = "idle";
+            if (gameState.bobberMesh) {
+              scene.remove(gameState.bobberMesh);
+              gameState.bobberMesh = null;
+            }
+            if (gameState.player.parts.rod) gameState.player.parts.rod.visible = false;
+            gameState.fishFeedback = { text: "牠跑掉了……", until: gameState.elapsed + 1.2 };
+          }
+        }
+        if (gameState.bobberMesh) {
+          // 玩家模型正面是本地 -Z；浮標必須沿真正的臉朝向拋出。
+          const forwardX = -Math.sin(gameState.player.rotation.y),
+            forwardZ = -Math.cos(gameState.player.rotation.y);
+          gameState.bobberMesh.position.set(
+            gameState.player.position.x + forwardX * 0.85,
+            0.16 +
+              (gameState.fishingState === "biting"
+                ? Math.abs(Math.sin(gameState.elapsed * 14)) * 0.05
+                : Math.sin(gameState.elapsed * 2) * 0.015),
+            gameState.player.position.z + forwardZ * 0.85,
+          );
+        }
+        if (gameState.fishFeedback && gameState.elapsed > gameState.fishFeedback.until) gameState.fishFeedback = null;
+        if (gameState.fishFeedback) {
+          fishHintEl.textContent = gameState.fishFeedback.text;
+          fishHintEl.style.display = "block";
+        } else if (gameState.fishingState === "casting") {
+          fishHintEl.textContent = "拋竿中……";
+          fishHintEl.style.display = "block";
+        } else if (gameState.fishingState === "biting") {
+          fishHintEl.textContent = "上鉤了！快按 E！";
+          fishHintEl.style.display = "block";
+        } else {
+          fishHintEl.style.display = "none";
+        }
+
+        // 格子座標現在只是「玩家四捨五入後大概在哪一格」，給種田/撿種子/開門這些
+        // 本來就是格子概念的系統用，跟移動本身脫鉤
+        // 對話開著的時候整段跳過：主角位置雖然被鎖住(dt=0)不會再移動，但如果
+        // E 鍵開對話那一刻角色剛好卡在格線中間(還沒 round 穩定)，下一幀四捨
+        // 五入結果可能剛好翻過門檻格，誤觸 touch 事件(例如衝進房子/切地圖)，
+        // 對話框卻還開著——曾經真的遇到這個 bug，玩家會卡在錯的地圖裡動不了。
+        if (!dialogQueue.length) {
+          const roundedX = Math.round(gameState.player.position.x),
+            roundedZ = Math.round(gameState.player.position.z);
+          if (roundedX !== gameState.playerGridPos.x || roundedZ !== gameState.playerGridPos.z) {
+            gameState.playerGridPos = { x: roundedX, z: roundedZ };
+            events
+              .filter(
+                (ev) => ev.map === gameState.currentMapName && ev.trigger === "touch",
+              )
+              .filter((ev) => ev.x === roundedX && ev.z === roundedZ)
+              .forEach((ev) => ev.action());
+          }
+        }
+
+        const phase = gameState.currentPhase;
+
+        // --- NPC：先看行程表要去哪，再用 A* 決定「怎麼走」 ---
+        const npcSpeed = 1.6;
+        npcs.forEach((n) => {
+          if (!n.mesh.visible) return; // 木匠抵達前先不跑排程/路徑，省得算假人的路
+          const target = getScheduleTarget(n.schedule, phase);
+          const targetKey = `${target.x},${target.z}`;
+
+          if (n.lastTargetKey !== targetKey) {
+            n.lastTargetKey = targetKey;
+            const startGrid = {
+              x: Math.round(n.mesh.position.x),
+              z: Math.round(n.mesh.position.z),
+            };
+            const path = aStar(
+              startGrid,
+              target,
+              outsideCols,
+              outsideRows,
+              (x, z) => isBlocked("livingArea", x, z),
+            );
+            n.path = path && path.length ? path : [target]; // 找不到路就退回直線，至少不會卡死
+            n.pathIndex =
+              n.path[0] &&
+              n.path[0].x === startGrid.x &&
+              n.path[0].z === startGrid.z
+                ? 1
+                : 0;
+          }
+
+          let moving = false;
+          if (n.path && n.pathIndex < n.path.length) {
+            const wp = n.path[n.pathIndex];
+            const dx = wp.x - n.mesh.position.x,
+              dz = wp.z - n.mesh.position.z;
+            const dist = Math.sqrt(dx * dx + dz * dz);
+            if (dist > 0.06) {
+              moving = true;
+              const step = Math.min(dist, npcSpeed * dt);
+              n.mesh.position.x += (dx / dist) * step;
+              n.mesh.position.z += (dz / dist) * step;
+              // NPC 與玩家使用同一種人形模型，正面同樣朝本地 -Z。
+              n.mesh.rotation.y = Math.atan2(dx, dz) + Math.PI;
+            } else {
+              n.pathIndex++;
+            }
+          }
+          if (!moving && gameState.currentMapName === "livingArea") {
+            const pdx = gameState.player.position.x - n.mesh.position.x,
+              pdz = gameState.player.position.z - n.mesh.position.z;
+            if (Math.sqrt(pdx * pdx + pdz * pdz) <= 4) {
+              const targetAngle = Math.atan2(pdx, pdz) + Math.PI;
+              n.mesh.rotation.y +=
+                (((targetAngle - n.mesh.rotation.y + Math.PI * 3) %
+                  (Math.PI * 2)) -
+                  Math.PI) *
+                0.05;
+            }
+          }
+          animateWalk(n.mesh, moving, gameState.elapsed);
+        });
+
+        // 日照、天空、燈光與星象共用同一個依季節日出日落計算的夜色權重。
+        const nightFactor = getNightFactor(phase);
+        (window as any).__nightFactor = nightFactor;
+        // 這四個都是純演出/氣氛效果，故意傳 frameDt(真實時間)而不是 dt——
+        // 對話開啟時遊戲時鐘跟主角動作凍結，但音樂淡入淡出、流星、天氣粒子
+        // 不該跟著卡住，繼續播才像「世界還活著」而不是整個遊戲暫停。
+        updateMusic(nightFactor, frameDt);
+        updateSkyDome(nightFactor);
+        updateMeteors(frameDt);
+        updateWeatherEffects(frameDt, nightFactor);
+
+        // --- 動物固定作息：06:00 出門，18:00 開始回穀倉；惡劣天氣全天留在小屋。 ---
+        // 不使用 nightFactor 判斷，因為它是光線漸變值，不等於準確鐘點。
+        const gameHour = phase * TIME_CONFIG.gameHoursPerDay;
+        const animalsShouldBeHome =
+          gameHour < 6 || gameHour >= 18 || isUnsafeAnimalWeather();
+        animals.forEach((a) => {
+          let moving = false;
+          if (animalsShouldBeHome) {
+            if (a.state === "out") {
+              // 18:00 後不管原本是否正在休息，都立即往穀倉移動。
+              a.wanderState = "walking";
+              const dx = BARN_DOOR.x - a.mesh.position.x,
+                dz = BARN_DOOR.z - a.mesh.position.z;
+              const dist = Math.hypot(dx, dz);
+              if (dist > 0.12) {
+                moving = true;
+                const step = Math.min(dist, a.speed * dt);
+                a.mesh.position.x += (dx / dist) * step;
+                a.mesh.position.z += (dz / dist) * step;
+                // 動物模型的頭朝本地 +X，不是跟角色一樣朝 -Z，所以要多轉 -90°，
+                // 跟魚的朝向公式是同一個修正（見上面 fishSchool 那段）
+                a.mesh.rotation.y = Math.atan2(dx, dz) - Math.PI / 2;
+              } else {
+                a.state = "in";
+                a.mesh.visible = false;
+              }
+            }
+          } else if (a.state === "in") {
+            a.state = "out";
+            a.mesh.visible = true;
+            a.mesh.position.set(BARN_DOOR.x, 0, BARN_DOOR.z);
+            a.target = chooseAnimalPastureTarget(a);
+            a.wanderState = "walking";
+            a.restUntil = 0;
+            a.grazeAt = Infinity;
+          } else {
+            // 白天不再不停巡邏：抵達目標後先休息，再挑下一個位置。
+            if (a.wanderState === "resting") {
+              if (gameState.elapsed >= a.restUntil) {
+                a.wanderState = "walking";
+                a.target = chooseAnimalPastureTarget(a);
+                a.grazeAt = Infinity;
+              } else if (gameState.elapsed >= a.grazeAt) {
+                tryEatPastureGrass(a);
+                a.grazeAt = Infinity;
+              }
+            } else {
+              const dx = a.target.x - a.mesh.position.x,
+                dz = a.target.z - a.mesh.position.z;
+              const dist = Math.hypot(dx, dz);
+              if (dist < 0.15) {
+                a.wanderState = "resting";
+                a.restUntil =
+                  gameState.elapsed + a.restMin + Math.random() * (a.restMax - a.restMin);
+                a.grazeAt = gameState.elapsed + 0.8;
+              } else {
+                moving = true;
+                const step = Math.min(dist, a.speed * dt);
+                a.mesh.position.x += (dx / dist) * step;
+                a.mesh.position.z += (dz / dist) * step;
+                a.mesh.rotation.y = Math.atan2(dx, dz) - Math.PI / 2;
+              }
+            }
+          }
+          animateAnimalWalk(a, moving, gameState.elapsed);
+        });
+
+        const sky = DAY.sky.clone().lerp(NIGHT.sky, nightFactor);
+        const weatherDim =
+          {
+            cloudy: 0.28,
+            rain: 0.38,
+            typhoon: 0.55,
+            storm: 0.62,
+            snow: 0.16,
+            blizzard: 0.46,
+          }[gameState.currentWeather] || 0;
+        const weatherFogColor =
+          gameState.currentWeather === "snow" || gameState.currentWeather === "blizzard"
+            ? new THREE.Color(0xcbd4dc)
+            : new THREE.Color(0x697685);
+        sky.lerp(weatherFogColor, weatherDim);
+        if (gameState.currentMapName === "livingArea") {
+          scene.background = sky;
+          if (gameState.currentWeather === "clear") {
+            // 晴天保持高能見度；拉遠時距離霧會讓整座島被天空色洗成白霧。
+            scene.fog = null;
+          } else {
+            const zoomCameraDistanceOffset = Math.max(0, gameState.zoom * 1.55 - 16);
+            scene.fog = new THREE.Fog(
+              sky,
+              16 + zoomCameraDistanceOffset - weatherDim * 5,
+              34 + zoomCameraDistanceOffset - weatherDim * 11,
+            );
+          }
+        } else {
+          scene.background = INTERIOR_BACKGROUND_COLOR;
+          scene.fog = null;
+        }
+        const daylight = Math.pow(1 - nightFactor, 1.25);
+        // 晴朗白天降低 ACES 曝光，保留草地、岩石與建築的色彩層次；
+        // 夜間稍微回升，避免星空與燈光變得太暗。
+        renderer.toneMappingExposure =
+          gameState.currentWeather === "clear" ? 0.76 + nightFactor * 0.26 : 1.02;
+        const noonWarmth =
+          daylight *
+          Math.pow(Math.max(0, 1 - Math.abs(gameState.currentPhase - 0.5) / 0.2), 1.7);
+        const fairWeather =
+          gameState.currentWeather === "clear" || gameState.currentWeather === "cloudy";
+        const summerSun =
+          gameState.currentSeason === 1 && fairWeather
+            ? daylight * (gameState.currentWeather === "clear" ? 1 : 0.42)
+            : 0;
+        const autumnWarmth =
+          gameState.currentSeason === 2 && fairWeather ? daylight * 0.32 : 0;
+        const winterSnowReflection =
+          gameState.currentSeason === 3 &&
+          (gameState.currentWeather === "snow" || gameState.currentWeather === "blizzard")
+            ? (gameState.currentWeather === "snow" ? 0.34 : 0.22) *
+              (0.35 + daylight * 0.65)
+            : 0;
+
+        ambient.intensity =
+          (DAY.ambient + (NIGHT.ambient - DAY.ambient) * nightFactor) *
+            (1 - weatherDim * 0.32) +
+          summerSun * 0.08 +
+          winterSnowReflection * 0.38;
+        ambient.color
+          .set(0xffffff)
+          .lerp(WINTER_AMBIENT_COLOR, winterSnowReflection * 0.8);
+        sun.intensity =
+          (DAY.sunIntensity +
+            (NIGHT.sunIntensity - DAY.sunIntensity) * nightFactor) *
+            (1 - weatherDim * 0.72) +
+          summerSun * 0.48 +
+          autumnWarmth * 0.12 +
+          winterSnowReflection * 0.18;
+        if (gameState.currentWeather === "clear") {
+          // 降低均勻灑滿全場的白光，改由陰影與材質色建立晴天的清晰對比。
+          ambient.intensity *= 1 - daylight * 0.22;
+          sun.intensity *= 1 - daylight * 0.18;
+        }
+        sun.color.copy(DAY.sunColor).lerp(NIGHT.sunColor, nightFactor);
+        if (summerSun > 0) sun.color.lerp(SUMMER_SUN_COLOR, summerSun * 0.42);
+        else if (autumnWarmth > 0)
+          sun.color.lerp(AUTUMN_SUN_COLOR, autumnWarmth);
+        else if (winterSnowReflection > 0)
+          sun.color.lerp(WINTER_LIGHT_COLOR, winterSnowReflection * 0.75);
+        const noonSeasonStrength = [0.3, 0.46, 0.4, 0.16][gameState.currentSeason];
+        sun.color.lerp(NOON_WARM_COLOR, noonWarmth * noonSeasonStrength);
+        seasonalBounceLight.intensity =
+          summerSun * 0.22 + winterSnowReflection * 0.75;
+        seasonalBounceLight.color
+          .set(0xfff2c7)
+          .lerp(WINTER_AMBIENT_COLOR, winterSnowReflection > 0 ? 1 : 0);
+        seasonalBounceLight.groundColor
+          .copy(SUMMER_BOUNCE_GROUND)
+          .lerp(WINTER_BOUNCE_GROUND, winterSnowReflection > 0 ? 1 : 0);
+        windowMats.forEach((m) => {
+          m.emissiveIntensity = nightFactor;
+        });
+        outdoorLampLights.forEach((light) => {
+          light.intensity = nightFactor * 1.35;
+        });
+        if (gameState.houseLampLight) {
+          gameState.houseLampBulbMat.emissiveIntensity = nightFactor;
+          gameState.houseLampLight.intensity = nightFactor * 1.6;
+        }
+
+        // 正交相機大幅拉遠時也沿原視角後退，避免視窗下緣落到地面以下而看見天空球。
+        const camDist = Math.max(16, gameState.zoom * 1.55);
+        const camHeight = camDist * Math.cos(TILT_RAD);
+        const camZOffset = camDist * Math.sin(TILT_RAD);
+        const groundOffset =
+          gameState.currentMapName === "livingArea"
+            ? groundY(gameState.player.position.x, gameState.player.position.z)
+            : 0;
+        // 玩家模型與相機共用地形高度，走上西北階梯或海岸緩坡時不會穿進台階。
+        gameState.player.position.y +=
+          (groundOffset - gameState.player.position.y) * Math.min(1, dt * 10);
+        let cameraFocusX = gameState.player.position.x;
+        let cameraFocusZ = gameState.player.position.z;
+        if (gameState.currentMapName === "livingArea") {
+          const halfViewWidth = camera.right;
+          const minFocusX = CAMERA_WORLD_BOUNDS.west + halfViewWidth;
+          const maxFocusX = CAMERA_WORLD_BOUNDS.east - halfViewWidth;
+          cameraFocusX =
+            minFocusX <= maxFocusX
+              ? THREE.MathUtils.clamp(gameState.player.position.x, minFocusX, maxFocusX)
+              : (CAMERA_WORLD_BOUNDS.west + CAMERA_WORLD_BOUNDS.east) / 2;
+
+          // 正交斜視下，畫面下半部在地面上的 z 跨度約為 gameState.zoom / cos(傾角)。
+          // 南端把最南排行道樹保留在畫面底緣後停止追蹤。
+          const southGroundHalfView = gameState.zoom / Math.cos(TILT_RAD);
+          const maxFocusZ =
+            SOUTHERNMOST_AVENUE_TREE_Z + 1.4 - southGroundHalfView;
+          cameraFocusZ = Math.min(gameState.player.position.z, maxFocusZ);
+        }
+        camera.position.set(
+          cameraFocusX,
+          camHeight + groundOffset,
+          cameraFocusZ + camZOffset,
+        );
+        camera.lookAt(cameraFocusX, groundOffset, cameraFocusZ);
+
+        // 海浪：仿 Gerstner 波浪——頂點升高的同時往岸邊(-X)推移，波峰因此變陡、
+        // 波谷變平緩，看起來像浪頭在往前捲；捲到最高點時把該處頂點染白模擬碎浪
+        if (gameState.oceanMesh && updateWaterSurface) {
+          const posAttr = gameState.oceanMesh.geometry.attributes.position;
+          const colorAttr = gameState.oceanMesh.geometry.attributes.color;
+          const basePos = gameState.oceanMesh.geometry.userData.basePositions;
+          const ox = gameState.oceanMesh.position.x,
+            oz = gameState.oceanMesh.position.z;
+          const waveSample: any = {};
+          for (let i = 0; i < posAttr.count; i++) {
+            const bx = basePos[i * 3],
+              bz = basePos[i * 3 + 2];
+            const worldX = bx + ox,
+              worldZ = bz + oz;
+            // 東海的方向向量朝西，波峰與水平位移都沿該向量推向沙灘。
+            sampleDirectedSeaWave(
+              worldX,
+              worldZ,
+              gameState.effectElapsed,
+              EAST_SEA_WAVE_DIRECTION,
+              EAST_SEA_WAVE,
+              waveSample,
+            );
+            posAttr.setX(i, bx + waveSample.displacementX);
+            posAttr.setZ(i, bz + waveSample.displacementZ);
+            posAttr.setY(i, waveSample.height);
+
+            // 浪頭捲到接近最高點時快速染白，模擬碎浪；其餘地方維持海藍色
+            const crestFactor = Math.max(0, (waveSample.crest - 0.4) / 0.6);
+            const t = Math.pow(crestFactor, 1.8);
+            colorAttr.setXYZ(
+              i,
+              0.18 + 0.82 * t,
+              0.43 + 0.57 * t,
+              0.68 + 0.32 * t,
+            );
+          }
+          posAttr.needsUpdate = true;
+          colorAttr.needsUpdate = true;
+          if (gameState.animationFrameCount % 8 === 0)
+            gameState.oceanMesh.geometry.computeVertexNormals();
+        }
+        // 湖的波紋——幅度只有海的十分之一左右，沒有碎浪、沒有顏色變化，
+        // 純粹是輕輕晃動的水面，配上平滑法線去接收陽光的反光高光
+        if (gameState.lakeMesh && updateWaterSurface) {
+          const lPosAttr = gameState.lakeMesh.geometry.attributes.position;
+          const lBase = gameState.lakeMesh.geometry.userData.basePositions;
+          const llx = gameState.lakeMesh.position.x,
+            llz = gameState.lakeMesh.position.z;
+          for (let i = 0; i < lPosAttr.count; i++) {
+            const bx = lBase[i * 3],
+              bz = lBase[i * 3 + 2];
+            const wx = bx + llx,
+              wz = bz + llz;
+            const y =
+              Math.sin(wx * 2.4 + gameState.effectElapsed * 1.1) * 0.011 +
+              Math.cos(wz * 2.0 + gameState.effectElapsed * 0.85) * 0.009;
+            lPosAttr.setY(i, y);
+          }
+          lPosAttr.needsUpdate = true;
+          if (gameState.animationFrameCount % 8 === 0)
+            gameState.lakeMesh.geometry.computeVertexNormals();
+        }
+        // 東北海以短波呈現，整片波峰從東北往西南推進。
+        if (gameState.seaGlimpseMesh && updateWaterSurface) {
+          const sgPosAttr = gameState.seaGlimpseMesh.geometry.attributes.position;
+          const sgColorAttr = gameState.seaGlimpseMesh.geometry.attributes.color;
+          const sgBase = gameState.seaGlimpseMesh.geometry.userData.basePositions;
+          const sgBaseColors = gameState.seaGlimpseMesh.geometry.userData.baseColors;
+          const northWaveSample: any = {};
+          for (let i = 0; i < sgPosAttr.count; i++) {
+            const bx = sgBase[i * 3],
+              bz = sgBase[i * 3 + 2];
+            const worldX = bx + gameState.seaGlimpseMesh.position.x;
+            const worldZ = bz + gameState.seaGlimpseMesh.position.z;
+            sampleDirectedSeaWave(
+              worldX,
+              worldZ,
+              gameState.effectElapsed,
+              NORTHEAST_SEA_WAVE_DIRECTION,
+              NORTH_SEA_WAVE,
+              northWaveSample,
+            );
+            const height = northWaveSample.height;
+            const displacementX = northWaveSample.displacementX;
+            const displacementZ = northWaveSample.displacementZ;
+            const crest = northWaveSample.crest;
+            const foamMix =
+              Math.pow(Math.max(0, (crest - 0.45) / 0.55), 1.8) * 0.72;
+            const colorOffset = i * 3;
+            sgPosAttr.setX(i, bx + displacementX);
+            sgPosAttr.setY(i, height);
+            sgPosAttr.setZ(i, bz + displacementZ);
+            sgColorAttr.setXYZ(
+              i,
+              sgBaseColors[colorOffset] * (1 - foamMix) + foamMix,
+              sgBaseColors[colorOffset + 1] * (1 - foamMix) + foamMix,
+              sgBaseColors[colorOffset + 2] * (1 - foamMix) + foamMix,
+            );
+          }
+          sgPosAttr.needsUpdate = true;
+          sgColorAttr.needsUpdate = true;
+          if (gameState.animationFrameCount % 8 === 0)
+            gameState.seaGlimpseMesh.geometry.computeVertexNormals();
+        }
+        // 拍岸浪花：浪頭衝上岸時放大、變亮、泡沫顆粒跟著滾動碎裂；退潮時很快收回去
+        foamMeshes.forEach((f) => {
+          const phase = gameState.effectElapsed * 2.2 + f.userData.seed;
+          const cycle = (Math.sin(phase) + 1) / 2; // 0~1，一波一波衝上岸又退回去
+          const shoreTravel = -0.1 + cycle * 0.32;
+          const waveDirection = f.userData.waveDirection;
+          f.position.x = f.userData.baseX + waveDirection.x * shoreTravel;
+          f.position.z = f.userData.baseZ + waveDirection.z * shoreTravel;
+          const impact = Math.pow(cycle, 1.5);
+          f.userData.crest.material.opacity = impact * 0.85;
+          f.userData.crest.scale.set(1 + impact * 0.2, 0.6 + impact * 0.8, 1);
+          f.userData.wash.material.opacity = (1 - cycle) * 0.35;
+          f.userData.wash.scale.set(0.8 + cycle * 0.5, 1, 1);
+          f.userData.bumps.forEach((b, i) => {
+            const bp = phase * 1.3 + i * 0.7;
+            const bumpScale = Math.max(0.01, Math.sin(bp));
+            b.scale.set(bumpScale, bumpScale * (0.3 + impact * 0.5), bumpScale);
+            b.rotation.z = gameState.effectElapsed * 3 + i; // 滾動感
+            b.material.opacity = impact * 0.8;
+          });
+        });
+
+        windmillRotors.forEach((rotor) => {
+          rotor.rotation.z -= frameDt * 0.62; // 純視覺，對話中不暫停
+        });
+
+        // 真魚通常會直線巡游一段、短暫停留，再改成橫向或縱向的新路線；
+        // 路線只加一點側向弧度，方向與停留時間每段都不同。
+        fishSchool.forEach((f) => {
+          if (!f.route && gameState.effectElapsed >= f.pauseUntil)
+            startFishRoute(f, gameState.effectElapsed);
+          if (!f.route) {
+            f.mesh.position.y =
+              f.baseY +
+              Math.sin(gameState.effectElapsed * 0.8 + f.phase) * f.depthAmp * 0.35;
+            return;
+          }
+          const progress = Math.min(
+            1,
+            (gameState.effectElapsed - f.route.start) / f.route.duration,
+          );
+          const sideCurve = Math.sin(progress * Math.PI) * f.route.curve;
+          const nx =
+            f.route.fromX +
+            (f.route.toX - f.route.fromX) * progress +
+            (f.route.horizontal ? 0 : sideCurve);
+          const nz =
+            f.route.fromZ +
+            (f.route.toZ - f.route.fromZ) * progress +
+            (f.route.horizontal ? sideCurve : 0);
+          const dx = nx - f.mesh.position.x,
+            dz = nz - f.mesh.position.z;
+          if (Math.abs(dx) > 1e-5 || Math.abs(dz) > 1e-5) {
+            const targetAngle = Math.atan2(dx, dz) - Math.PI / 2;
+            f.mesh.rotation.y +=
+              (((targetAngle - f.mesh.rotation.y + Math.PI * 3) %
+                (Math.PI * 2)) -
+                Math.PI) *
+              0.09;
+          }
+          f.mesh.position.x = nx;
+          f.mesh.position.z = nz;
+          f.mesh.position.y =
+            f.baseY + Math.sin(gameState.effectElapsed * 0.75 + f.phase) * f.depthAmp;
+          if (progress >= 1) {
+            f.route = null;
+            // 約七成路段結束後會停 0.7～3.2 秒，其餘直接接下一段。
+            f.pauseUntil =
+              gameState.effectElapsed +
+              (Math.random() < 0.7 ? 0.7 + Math.random() * 2.5 : 0);
+          }
+        });
+
+        // 牧草會依序長成短、中、長三階段；長草被牛羊吃掉後回到短草。
+        // 風擺施加在葉片底部的 pivot，草根因此會固定在地面。
+        gameState.grassAnimationAccumulator += dt;
+        if (gameState.grassAnimationAccumulator >= 1 / 20) {
+          const grassDt = gameState.grassAnimationAccumulator;
+          gameState.grassAnimationAccumulator = 0;
+          const windSpeed =
+            gameState.currentWeather === "typhoon"
+              ? 4.8
+              : gameState.currentWeather === "storm"
+                ? 3.8
+                : 2.15;
+          const weatherWindStrength =
+            gameState.currentWeather === "typhoon"
+              ? 0.34
+              : gameState.currentWeather === "storm"
+                ? 0.2
+                : 0;
+          pastureGrassBlades.forEach((tuft) => {
+            const wx = tuft.position.x,
+              wz = tuft.position.z;
+            tuft.userData.growth = Math.min(
+              3,
+              tuft.userData.growth + grassDt / GRASS_GROWTH_SECONDS,
+            );
+            setPastureGrassStage(tuft, Math.floor(tuft.userData.growth));
+            const sway =
+              0.16 + tuft.userData.stage * 0.09 + weatherWindStrength * 0.22;
+            // 雨勢朝 +X；草繞 Z 軸負向傾斜時也會倒向 +X。
+            const weatherWindPush =
+              weatherWindStrength *
+              (0.78 + Math.sin(gameState.elapsed * 2.35 + wz * 0.2) * 0.22);
+            const playerDistance =
+              gameState.currentMapName === "livingArea"
+                ? Math.hypot(wx - gameState.player.position.x, wz - gameState.player.position.z)
+                : Infinity;
+            const wake =
+              gameState.isMoving && playerDistance < 1.05
+                ? (1 - playerDistance / 1.05) * 0.52
+                : 0;
+            const wakeX =
+              playerDistance > 0.001
+                ? ((wx - gameState.player.position.x) / playerDistance) * wake
+                : 0;
+            const wakeZ =
+              playerDistance > 0.001
+                ? ((wz - gameState.player.position.z) / playerDistance) * wake
+                : 0;
+            tuft.userData.blades.forEach((pivot) => {
+              const wave =
+                gameState.elapsed * windSpeed +
+                pivot.userData.phase +
+                wx * 0.72 +
+                wz * 0.28;
+              pivot.rotation.z =
+                pivot.userData.baseRotZ +
+                Math.sin(wave) * sway -
+                weatherWindPush -
+                wakeX;
+              pivot.rotation.x =
+                pivot.userData.baseRotX +
+                Math.sin(wave * 0.82 + 1.4) * sway * 0.45 +
+                wakeZ;
+            });
+          });
+        }
+
+        gameState.hudUpdateAccumulator += dt;
+        if (gameState.hudUpdateAccumulator >= 0.2) {
+          gameState.hudUpdateAccumulator = 0;
+          updateHud();
+        }
+        renderer.render(scene, camera);
+      }
+
+      addEventListener("resize", () => {
+        renderer.setSize(innerWidth, innerHeight);
+        updateCameraFrustum();
+      });
