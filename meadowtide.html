@@ -1,0 +1,2310 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<title>Low-poly v49 — 統一LAYOUT + 農田西移 + 湖放大</title>
+<style>
+  html, body { margin: 0; padding: 0; overflow: hidden; background: #0d0d0d; font-family: -apple-system, "Noto Sans TC", sans-serif; }
+  #ui {
+    position: fixed; top: 12px; left: 12px; z-index: 10;
+    color: #eee; background: rgba(0,0,0,0.55); padding: 10px 14px;
+    border-radius: 8px; font-size: 13px; line-height: 1.6; pointer-events: none;
+  }
+  #ui b { color: #ffd479; }
+  #hud {
+    position: fixed; top: 12px; right: 12px; z-index: 10;
+    color: #fff; background: rgba(0,0,0,0.55); padding: 10px 14px;
+    border-radius: 8px; font-size: 13px; line-height: 1.7; text-align: right;
+  }
+  #hud b { color: #7ee787; }
+  #fade {
+    position: fixed; inset: 0; background: #000; opacity: 0;
+    pointer-events: none; transition: opacity 0.4s ease; z-index: 20;
+  }
+  #dialog {
+    position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%);
+    background: rgba(20,20,20,0.85); color: #fff; padding: 12px 20px;
+    border-radius: 10px; font-size: 15px; display: none; max-width: 60%;
+    border: 1px solid #f5c542; z-index: 15;
+  }
+  #fishHint {
+    position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%);
+    background: rgba(20,50,70,0.85); color: #dff3ff; padding: 8px 16px;
+    border-radius: 10px; font-size: 14px; display: none;
+    border: 1px solid #5fb8e0; z-index: 15;
+  }
+  canvas { display: block; }
+</style>
+</head>
+<body>
+<div id="ui">
+  <b>Low-poly v49 — 統一LAYOUT + 農田西移 + 湖放大</b><br>
+  WASD：移動 ・ 滾輪：縮放 ・ E：互動/種植/收成/釣魚<br>
+  <b style="color:#8ecfff">N：快轉時間（看阿姨繞樹）</b>
+</div>
+<div id="hud"></div>
+<div id="fade"></div>
+<div id="dialog"></div>
+<div id="fishHint"></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+function hash2(x, z) {
+  const v = Math.sin(x * 127.1 + z * 311.7) * 43758.5453;
+  return v - Math.floor(v);
+}
+
+// ==============================================================
+// 統一佈局設定 —— 之後要調哪個區域的位置/大小，改這裡就好，不要再
+// 回頭找散落各處的絕對座標。房子、穀倉、牧場這次先不動，農田往西
+// 移、湖放大到接近 10×10、山搬進西側緩衝帶。要放在 MAPS 前面，因為
+// 下面 buildings 陣列會直接引用這裡的值
+// ==============================================================
+const LAYOUT = {
+  house:   { x: 20, z: 9,  w: 3, d: 2, doorX: 21 },
+  barn:    { x: 23, z: 1,  w: 3, d: 2, doorX: 24 },
+  pasture: { x: 21, z: 4,  width: 5, height: 3 },
+  farm:    { x: 3,  z: 14, blocks: 3, plotSize: 3, gap: 1 }, // 11x11
+  lake:    { x: 11, z: 0,  width: 10, height: 9 },
+  mountainBand: { x: 0, width: 3 },
+};
+
+// ==============================================================
+// 1) 地圖資料 — 故意在阿姨「家→田」的路上多種一棵樹 (4,5)，
+//    直線距離是最短路徑，但現在會被這棵樹擋住，逼 A* 繞路
+// ==============================================================
+const MAPS = {
+  outside: {
+    tiles: [
+      // 房子後面新開的一大塊地：z=0~6 是全新區域，穀倉搬過來這裡，
+      // 牧場也在這，比舊的東側牧場大很多
+      [2,0,2,0,0,2,0,0,2,0,0,2,0,2],
+      [0,0,0,0,0,0,0,0,1,1,1,0,0,0],
+      [0,0,0,0,0,0,0,0,1,1,1,0,0,0],
+      [0,0,0,0,0,0,0,0,0,3,0,0,0,0],
+      [0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+      [0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+      [0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+      // 以下是原本的地圖，整段往下移了 7 格（z 全部 +7），內容本身沒變，
+      // 只有舊穀倉的牆拆掉(1 改回 0)，因為穀倉搬到上面新區域去了
+      [2,0,2,0,0,2,0,0,2,0,0,2,0,2],
+      [0,6,6,6,0,0,0,0,0,0,0,0,0,0],
+      [2,6,6,6,1,1,1,0,0,0,0,0,0,2],
+      [0,6,6,6,0,1,1,1,0,0,0,0,0,0],
+      [0,0,0,0,0,0,3,0,0,0,0,0,0,0],
+      [0,0,2,0,2,0,5,0,0,0,0,2,0,0],
+      [0,0,7,7,7,0,5,0,0,0,0,2,0,0],
+      [0,0,7,7,7,0,5,0,0,0,0,0,2,0],
+      [0,0,0,0,0,0,5,0,0,0,0,2,0,0],
+      [0,0,0,0,0,0,5,0,0,0,0,0,0,0],
+      [0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+      [2,0,0,2,0,0,2,0,0,2,0,0,2,0],
+    ],
+    buildings: [
+      { x: LAYOUT.house.x, z: LAYOUT.house.z, w: LAYOUT.house.w, d: LAYOUT.house.d, doorX: LAYOUT.house.doorX },
+      { x: LAYOUT.barn.x, z: LAYOUT.barn.z, w: LAYOUT.barn.w, d: LAYOUT.barn.d, doorX: LAYOUT.barn.doorX, style: 'barn' },
+    ],
+    playerStart: { x: 21, z: 16 },
+  },
+  house: {
+    tiles: [
+      [1,1,1,1,1,1,1,1],
+      [1,0,0,1,0,0,0,1],
+      [1,0,0,1,0,0,0,1],
+      [1,0,0,0,0,0,0,1],
+      [1,0,0,0,0,0,0,1],
+      [1,0,0,0,0,0,0,1],
+      [1,1,3,3,1,1,1,1],
+    ],
+    // x=3、z=1~2 是一道隔間牆，z=3 故意留空當走道——這樣左上角自然圍出
+    // 一間小臥室，跟右邊的主空間分開，不用另外寫「房間」的概念，純粹是
+    // tiles 陣列裡多幾個 1。門也從 1 格拓寬成 2 格 (x=2,3)，見下方說明
+    windows: [
+      { x: 1, z: 0, side: 'north' }, // 臥室窗
+      { x: 5, z: 0, side: 'north' }, // 主空間窗
+      { x: 0, z: 4, side: 'west' },
+      { x: 7, z: 2, side: 'east' },
+      { x: 7, z: 4, side: 'east' },
+    ],
+    // 家具是獨立於 tiles 的資料層，跟 outside 的 buildings 同一套邏輯：
+    // tiles 只負責「牆在哪」，家具在哪、佔幾格、擋不擋路是這裡另外定義
+    furniture: [
+      { type: 'bed', x: 1, z: 1, w: 1, d: 2 },
+      { type: 'table', x: 5, z: 2 },
+      { type: 'chair', x: 5, z: 3, rot: Math.PI },
+      { type: 'chair', x: 6, z: 2, rot: -Math.PI / 2 },
+      { type: 'rug', x: 3, z: 3, nonBlocking: true },
+    ],
+    playerStart: { x: 3, z: 5 },
+  },
+};
+
+// ==============================================================
+// 1.4) 一次性往西擴 15 格安全空間，之後說「房子西 N」只要 N<=15
+//    就有現成的格子可以用，不用每次都插入陣列、重算全部座標
+// ==============================================================
+const X_OFFSET = 15;
+MAPS.outside.tiles.forEach(row => row.unshift(...new Array(X_OFFSET).fill(0)));
+
+// 除錯工具找到最後一批死資料：x=17~19,z=13~14 還留著 tile=7，是很多輪
+// 之前那個 6 格小農田的殘骸。現在的 9 塊大農田系統完全不靠陣列裡的
+// tile=7 運作(渲染跟互動都讀 FARMLAND_TILES，不是陣列本身)，這幾格
+// 純粹是死資料，清掉
+[13, 14].forEach(z => { [17, 18, 19].forEach(x => { MAPS.outside.tiles[z][x] = 0; }); });
+
+// 除錯工具抓到另一個舊帳：之前幾輪搬湖的位置，每次只有「在新位置寫水」，
+// 沒有把舊位置清回草地，這裡殘留了一小塊(x=16~18,z=9~10)。順手清掉
+[9, 10].forEach(z => { [16, 17, 18].forEach(x => { MAPS.outside.tiles[z][x] = 0; }); });
+
+// 除錯工具抓到的舊 bug：房子 z=9 那排的牆比 z=10 那排少往東一格，
+// 跟 buildings 陣列記錄的 x=20 對不上，門檻本身是對的，單獨修正這一格
+MAPS.outside.tiles[9][19] = 0;
+MAPS.outside.tiles[9][22] = 1;
+
+// ==============================================================
+// 1.45) 原本 19 排放不下農田，先在陣列尾巴多加空地——農田這次要再往
+//    南移 3 排，所以這裡從補 3 排變成補 6 排
+// ==============================================================
+(function extendBaseRowsForFarm() {
+  const width = MAPS.outside.tiles[0].length; // 14，這時候還沒插緩衝欄/沙灘欄
+  for (let i = 0; i < 6; i++) MAPS.outside.tiles.push(new Array(width).fill(0));
+})();
+
+// ==============================================================
+// 1.5) 在地圖右邊擴建一片海邊 — tile 8 = 沙灘（可走）、tile 9 = 海（不可走）。
+//    海面本身不在這裡逐格建置，而是在 buildMap() 裡另外蓋成一整片可
+//    變形的網格，這樣才能在 animate() 裡逐頂點做波浪動畫
+// ==============================================================
+// 高台再往東多留 3 格草地當緩衝，緩坡整個往右移 3 格——直接在原本
+// x=11 那個位置插入 3 個新格子，後面所有跟緩坡有關的 x 座標都要跟著 +3
+MAPS.outside.tiles.forEach(row => row.splice(26, 0, 0, 0, 0));
+
+const BEACH_SAND_COLS = 2;
+const BEACH_OCEAN_COLS = 4;
+MAPS.outside.tiles.forEach(row => {
+  for (let i = 0; i < BEACH_SAND_COLS; i++) row.push(8);
+  for (let i = 0; i < BEACH_OCEAN_COLS; i++) row.push(9);
+});
+
+// ==============================================================
+// 1.55) 農田重做成 3×3 大區塊(每塊 3×3，區塊間留 1 格路當 gap)，
+//    湖也順便放大——原本 3×3(9格) 放大到空間允許的極限
+// ==============================================================
+const FARM_ORIGIN = LAYOUT.farm; // 農田左上角，現在西移到 x=3
+const FARMLAND_TILES = [];
+for (let bc = 0; bc < 3; bc++) {
+  for (let br = 0; br < 3; br++) {
+    for (let px = 0; px < 3; px++) {
+      for (let pz = 0; pz < 3; pz++) {
+        FARMLAND_TILES.push([FARM_ORIGIN.x + bc * 4 + px, FARM_ORIGIN.z + br * 4 + pz]);
+      }
+    }
+  }
+}
+// 區塊間的走道：兩條縱向 + 兩條橫向，交叉成井字型，剛好卡在每塊 3×3
+// 中間留的那 1 格空隙
+for (let z = FARM_ORIGIN.z; z <= FARM_ORIGIN.z + 10; z++) {
+  MAPS.outside.tiles[z][FARM_ORIGIN.x + 3] = 5;
+  MAPS.outside.tiles[z][FARM_ORIGIN.x + 7] = 5;
+}
+for (let x = FARM_ORIGIN.x; x <= FARM_ORIGIN.x + 10; x++) {
+  MAPS.outside.tiles[FARM_ORIGIN.z + 3][x] = 5;
+  MAPS.outside.tiles[FARM_ORIGIN.z + 7][x] = 5;
+}
+
+// 湖再放大一輪，往「房子左上」拉：原本 5×4(20格)，現在 6×6(36格)。
+// 講清楚空間上的硬限制：房子在 x=5~7，西邊到地圖邊界(山區背景開始的
+// 地方)只有大概 5~6 格寬，9 格寬真的放不下，除非房子搬家或地圖再往
+// 西擴——這次先把牧場往東擠一點，把讓出來的空間全部給湖
+for (let z = LAYOUT.lake.z; z < LAYOUT.lake.z + LAYOUT.lake.height; z++) {
+  for (let x = LAYOUT.lake.x; x < LAYOUT.lake.x + LAYOUT.lake.width; x++) {
+    MAPS.outside.tiles[z][x] = 6;
+  }
+}
+
+const POUCH_POS = { x: LAYOUT.farm.x + 3, z: LAYOUT.farm.z + 1 }; // 農田走道上
+
+// ==============================================================
+// 1.6) 緩坡只留一條走廊開放(z=14~16)，其餘 z 的 x=14~16 變成擋路的懸崖
+//    （原本是 x=11~13，因為上面多插了 3 格草地緩衝，整個右移 3 格）
+// ==============================================================
+const RAMP_CORRIDOR_MIN_Z = 14, RAMP_CORRIDOR_MAX_Z = 16;
+MAPS.outside.tiles.forEach((row, z) => {
+  if (z < RAMP_CORRIDOR_MIN_Z || z > RAMP_CORRIDOR_MAX_Z) {
+    row[29] = 1; row[30] = 1; row[31] = 1; // 懸崖，擋路
+  } else {
+    row[29] = 0; row[30] = 0; row[31] = 0; // 走廊淨空，不管原本是什麼都蓋掉
+  }
+});
+
+// ==============================================================
+// 1.7) 城區——參考圖裡「下方城區」的位置卡位。純平面／方塊佔位，還沒做
+//    細節，先確保地圖南邊有路接得過去，佈局比例對了，之後再回頭精修
+// ==============================================================
+const TOWN_ROWS = 6;
+const TOWN_Z_START = MAPS.outside.tiles.length; // 現在是 25（農田南移後多佔了 3 排）
+(function extendTown() {
+  const width = MAPS.outside.tiles[0].length;
+  for (let i = 0; i < TOWN_ROWS; i++) {
+    const row = new Array(width).fill(0);
+    row[6] = 5; // 路從家門口那條路繼續往南接進城區
+    MAPS.outside.tiles.push(row);
+  }
+})();
+
+const events = [
+  { map: 'outside', x: 21, z: 11, trigger: 'touch',
+    action: () => loadMap('house', { x: 3, z: 5 }) },
+  { map: 'house', x: 2, z: 6, trigger: 'touch',
+    action: () => loadMap('outside', { x: 21, z: 12 }) },
+  { map: 'house', x: 3, z: 6, trigger: 'touch',
+    action: () => loadMap('outside', { x: 21, z: 12 }) },
+];
+
+// ==============================================================
+// 2) A* 網格路徑規劃 — 只有上下左右四個方向，跟玩家移動同一套邏輯，
+//    這樣走出來的路徑「感覺」才會跟這個世界一致，不會忽然出現斜線
+// ==============================================================
+function aStar(start, goal, cols, rows, isBlockedFn) {
+  const key = (x, z) => `${x},${z}`;
+  const goalKey = key(goal.x, goal.z);
+  const heuristic = (a, b) => Math.abs(a.x - b.x) + Math.abs(a.z - b.z);
+
+  const gScore = new Map([[key(start.x, start.z), 0]]);
+  const cameFrom = new Map();
+  const open = [{ x: start.x, z: start.z, f: heuristic(start, goal) }];
+  const closed = new Set();
+
+  while (open.length) {
+    open.sort((a, b) => a.f - b.f);
+    const current = open.shift();
+    const ck = key(current.x, current.z);
+    if (ck === goalKey) {
+      const path = [{ x: current.x, z: current.z }];
+      let k = ck;
+      while (cameFrom.has(k)) {
+        const prev = cameFrom.get(k);
+        path.unshift(prev);
+        k = key(prev.x, prev.z);
+      }
+      return path;
+    }
+    closed.add(ck);
+    const neighbors = [
+      { x: current.x + 1, z: current.z }, { x: current.x - 1, z: current.z },
+      { x: current.x, z: current.z + 1 }, { x: current.x, z: current.z - 1 },
+    ];
+    for (const nb of neighbors) {
+      if (nb.x < 0 || nb.x >= cols || nb.z < 0 || nb.z >= rows) continue;
+      if (isBlockedFn(nb.x, nb.z)) continue;
+      const nk = key(nb.x, nb.z);
+      if (closed.has(nk)) continue;
+      const tentativeG = gScore.get(ck) + 1;
+      if (!gScore.has(nk) || tentativeG < gScore.get(nk)) {
+        gScore.set(nk, tentativeG);
+        cameFrom.set(nk, { x: current.x, z: current.z });
+        const f = tentativeG + heuristic(nb, goal);
+        const existing = open.find(o => o.x === nb.x && o.z === nb.z);
+        if (existing) existing.f = f; else open.push({ x: nb.x, z: nb.z, f });
+      }
+    }
+  }
+  return null; // 找不到路（例如目標被完全封死）
+}
+
+// ==============================================================
+// 3) NPC 行程表（跟 v11 相同，schedule 完全不需要知道怎麼走）
+// ==============================================================
+function pos(x, z) { return { x, z }; }
+const npcDefs = [
+  {
+    id: 'aunt', name: '阿姨', shirt: 0xd9822b, hair: 0x241a12,
+    home: { x: 21, z: 12 },
+    schedule: [
+      { t: 0.25, ...pos(21, 12) },
+      { t: 0.33, ...pos(18, 13) },
+      { t: 0.50, ...pos(24, 13) },
+      { t: 0.75, ...pos(23, 15) },
+      { t: 0.92, ...pos(21, 12) },
+    ],
+  },
+  {
+    id: 'carpenter', name: '木匠', shirt: 0x6b5b4a, hair: 0x1a1a1a,
+    home: { x: 25, z: 16 },
+    schedule: [
+      { t: 0.29, ...pos(25, 16) },
+      { t: 0.35, ...pos(23, 15) },
+      { t: 0.50, ...pos(24, 13) },
+      { t: 0.55, ...pos(23, 15) },
+      { t: 0.75, ...pos(21, 12) },
+      { t: 0.92, ...pos(25, 16) },
+    ],
+  },
+];
+function getScheduleTarget(schedule, phase) {
+  let target = schedule[schedule.length - 1];
+  for (const entry of schedule) {
+    if (entry.t <= phase) target = entry; else break;
+  }
+  return target;
+}
+function npcLine(npc) {
+  if (npc.memory <= 0) return `${npc.name}：「哈囉，天氣不錯。」`;
+  if (npc.memory < 3) return `${npc.name}：「我有看到你在種東西喔，加油。」`;
+  return `${npc.name}：「這片田都是你顧出來的呢，種得不錯。」`;
+}
+
+// ==============================================================
+// 4) 遊戲狀態
+// ==============================================================
+const inventory = { seeds: 1, harvested: 0, fish: 0 };
+const cropState = {};
+let pouchCollectedDay = -1;
+let currentDay = 0;
+let currentPhase = 0;      // 一天中的比例(0~1)，animate() 每幀更新，E 鍵事件也要讀
+
+// --- 釣魚狀態機：idle → casting（等待咬鉤）→ biting（有限時間內按 E 才算釣到）→ idle ---
+let fishingState = 'idle';
+let fishingTimer = 0;
+let biteWaitTime = 0;
+let biteWindowStart = 0;
+let bobberMesh = null;
+let fishFeedback = null; // { text, until }
+let castAnimEnd = 0;
+const CAST_ANIM_DURATION = 0.45;
+let catchAnim = null; // { mesh, from, start, duration } 釣到魚時飛向玩家的小動畫
+
+function nearWater() {
+  if (currentMapName !== 'outside') return false;
+  const map = MAPS.outside;
+  const { x, z } = playerGridPos;
+  return [[x + 1, z], [x - 1, z], [x, z + 1], [x, z - 1]].some(([nx, nz]) => {
+    if (nz < 0 || nz >= map.tiles.length || nx < 0 || nx >= map.tiles[0].length) return false;
+    const t = map.tiles[nz][nx];
+    return t === 9 || t === 6;
+  });
+}
+
+function nearAnyNpc() {
+  return npcs.some(n => {
+    const dx = playerGridPos.x - n.mesh.position.x, dz = playerGridPos.z - n.mesh.position.z;
+    if (Math.sqrt(dx * dx + dz * dz) <= 4) { n.memory++; return true; }
+    return false;
+  });
+}
+function plantSeed(x, z) {
+  const key = `${x},${z}`;
+  if (cropState[key] || inventory.seeds <= 0) return;
+  cropState[key] = { stage: 0, plantedDay: currentDay };
+  inventory.seeds--; nearAnyNpc(); syncFarmVisuals();
+}
+function harvestCrop(x, z) {
+  const key = `${x},${z}`;
+  const c = cropState[key];
+  if (!c || c.stage < 2) return;
+  delete cropState[key];
+  inventory.harvested++; nearAnyNpc(); syncFarmVisuals();
+}
+function pickupSeeds() {
+  if (currentDay <= pouchCollectedDay) return;
+  pouchCollectedDay = currentDay;
+  inventory.seeds += 3; syncFarmVisuals();
+}
+function growCropsForNewDay() {
+  Object.values(cropState).forEach(c => { c.stage = Math.min(2, currentDay - c.plantedDay); });
+}
+
+// ==============================================================
+// 5) 場景 / 相機 / 渲染器
+// ==============================================================
+const TILE = 1;
+
+// ==============================================================
+// 地形高度 — 房子到海邊墊高，中間三格(x=11,12,13)做成階梯緩坡下到沙灘。
+// 這是「假 3D」的簡化版：地面視覺上有高低，但碰撞判定完全不變，還是
+// 純 2D 網格擋不擋路；階梯用相鄰不同高度的方塊自然產生，不用額外做斜面
+// ==============================================================
+const PLATEAU_Y = 0.55;
+function groundY(x) {
+  const xi = Math.round(x);
+  if (xi <= 28) return PLATEAU_Y;
+  if (xi === 29) return PLATEAU_Y * 0.75;
+  if (xi === 30) return PLATEAU_Y * 0.5;
+  if (xi === 31) return PLATEAU_Y * 0.25;
+  return 0; // x>=17：沙灘、海，維持原本的海平面高度
+}
+const scene = new THREE.Scene();
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setSize(innerWidth, innerHeight);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.1;
+renderer.outputEncoding = THREE.sRGBEncoding;
+document.body.appendChild(renderer.domElement);
+
+let zoom = 6.5;
+const camera = new THREE.OrthographicCamera(-zoom * (innerWidth/innerHeight), zoom * (innerWidth/innerHeight), zoom, -zoom, 0.1, 100);
+const TILT_DEG = 55;
+const TILT_RAD = TILT_DEG * Math.PI / 180;
+
+const ambient = new THREE.AmbientLight(0xffffff, 0.65);
+scene.add(ambient);
+const sun = new THREE.DirectionalLight(0xffffff, 0.9);
+sun.position.set(6, 20, 9);
+sun.castShadow = true;
+sun.shadow.mapSize.set(1024, 1024);
+sun.shadow.camera.left = -18; sun.shadow.camera.right = 18;
+sun.shadow.camera.top = 18; sun.shadow.camera.bottom = -18;
+scene.add(sun);
+
+function updateCameraFrustum() {
+  const a = innerWidth / innerHeight;
+  camera.left = -zoom * a; camera.right = zoom * a;
+  camera.top = zoom; camera.bottom = -zoom;
+  camera.updateProjectionMatrix();
+}
+updateCameraFrustum();
+
+const DAY = { sky: new THREE.Color(0x9fd6ff), ambient: 0.65, sunIntensity: 0.9, sunColor: new THREE.Color(0xffffff) };
+const NIGHT = { sky: new THREE.Color(0x0b1230), ambient: 0.18, sunIntensity: 0.12, sunColor: new THREE.Color(0x8fa8ff) };
+
+// 天空球——沒辦法匯入真的照片(單一 HTML 檔案，不接外部圖床)，改用程式生成
+// 的漸層天空：一顆包住整個場景的大球，內側渲染，頂點顏色從地平線色漸層到
+// 天頂色，每幀跟著日夜循環更新。跟著相機位置走，才會感覺「天空無限遠」
+const SKY_DAY_ZENITH = new THREE.Color(0x2f7fd6), SKY_DAY_HORIZON = new THREE.Color(0xcfeaff);
+const SKY_NIGHT_ZENITH = new THREE.Color(0x030512), SKY_NIGHT_HORIZON = new THREE.Color(0x1c2a4a);
+const skyGeo = new THREE.SphereGeometry(85, 24, 16);
+const skyColorAttr = new THREE.BufferAttribute(new Float32Array(skyGeo.attributes.position.count * 3), 3);
+skyGeo.setAttribute('color', skyColorAttr);
+const skyDome = new THREE.Mesh(skyGeo, new THREE.MeshBasicMaterial({
+  vertexColors: true, side: THREE.BackSide, depthWrite: false,
+}));
+skyDome.renderOrder = -1;
+scene.add(skyDome);
+function updateSkyDome(nightFactor) {
+  const zenith = SKY_DAY_ZENITH.clone().lerp(SKY_NIGHT_ZENITH, nightFactor);
+  const horizon = SKY_DAY_HORIZON.clone().lerp(SKY_NIGHT_HORIZON, nightFactor);
+  const posAttr = skyGeo.attributes.position;
+  for (let i = 0; i < posAttr.count; i++) {
+    const t = Math.max(0, posAttr.getY(i) / 85); // 0 地平線 ~1 天頂
+    skyColorAttr.setXYZ(i,
+      horizon.r + (zenith.r - horizon.r) * t,
+      horizon.g + (zenith.g - horizon.g) * t,
+      horizon.b + (zenith.b - horizon.b) * t);
+  }
+  skyColorAttr.needsUpdate = true;
+  skyDome.position.copy(camera.position);
+}
+const dayLength = 60;
+let elapsed = 0;
+const windowMats = [];
+const foamMeshes = []; // 沙灘跟海交界的拍岸泡沫，animate() 裡逐幀讓它忽明忽暗
+let oceanMesh = null;  // 整片海面網格，animate() 裡逐頂點做波浪動畫
+let lakeMesh = null;   // 湖面，跟海一樣是合併網格，只是波浪幅度小很多、沒有碎浪
+let seaGlimpseMesh = null; // 北邊的遠方海景背景板，會輕輕起伏
+const fishSchool = []; // { mesh, cx, cz, radius, speed, phase } 純裝飾用的悠游小魚
+const pastureGrassBlades = []; // 牧場裡會被風吹動的草叢，每叢存自己的葉片群組
+addEventListener('keydown', e => { if (e.key.toLowerCase() === 'n') elapsed += dayLength / 4; });
+
+// ==============================================================
+// 6) 低模人形
+// ==============================================================
+function makeHumanoid({ skin = 0xffd6a5, shirt = 0x4f7cff, hair = 0x3a2a1e }) {
+  const group = new THREE.Group();
+  const parts = {};
+  const bodyMat = new THREE.MeshStandardMaterial({ color: shirt });
+  const skinMat = new THREE.MeshStandardMaterial({ color: skin });
+  const hairMat = new THREE.MeshStandardMaterial({ color: hair });
+  const body = new THREE.Mesh(new THREE.CylinderGeometry(0.19, 0.22, 0.42, 8), bodyMat);
+  body.position.y = 0.42; body.castShadow = true; group.add(body);
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.2, 10, 8), skinMat);
+  head.position.y = 0.76; head.castShadow = true; group.add(head);
+  const hairMesh = new THREE.Mesh(new THREE.SphereGeometry(0.21, 10, 8), hairMat);
+  hairMesh.scale.set(1, 0.6, 1.05); hairMesh.position.set(0, 0.86, -0.02);
+  group.add(hairMesh);
+  const nose = new THREE.Mesh(new THREE.ConeGeometry(0.03, 0.07, 6), skinMat);
+  nose.rotation.x = Math.PI / 2; nose.position.set(0, 0.75, -0.2);
+  group.add(nose);
+  // 手/腳都用「肩膀/髖部支點群組 + 往下掛的圓柱」，而不是直接轉圓柱本身。
+  // 圓柱自己當支點的話，轉軸在手臂中間，甩起來像斷手漂浮；
+  // 現在轉軸在肩膀，圓柱整條從支點垂下去，才會是「從肩膀擺動」的感覺
+  function makeArm(side) {
+    const pivot = new THREE.Group();
+    pivot.position.set(side * 0.24, 0.58, 0); // 肩膀位置，貼著身體上緣
+    const shoulder = new THREE.Mesh(new THREE.SphereGeometry(0.05, 8, 6), skinMat);
+    pivot.add(shoulder);
+    const armLen = 0.32;
+    const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.045, armLen, 6), skinMat);
+    arm.position.y = -armLen / 2; // 讓圓柱從支點往下垂，而不是支點在圓柱中心
+    arm.castShadow = true;
+    pivot.add(arm);
+    group.add(pivot);
+    return pivot; // 動畫要轉的是這個支點群組，不是裡面的圓柱
+  }
+  parts.armL = makeArm(-1); parts.armR = makeArm(1);
+  function makeLeg(side) {
+    const pivot = new THREE.Group();
+    pivot.position.set(side * 0.1, 0.3, 0); // 髖部位置
+    const legLen = 0.3;
+    const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, legLen, 6), bodyMat);
+    leg.position.y = -legLen / 2;
+    leg.castShadow = true;
+    pivot.add(leg);
+    group.add(pivot);
+    return pivot;
+  }
+  parts.legL = makeLeg(-1); parts.legR = makeLeg(1);
+  group.parts = parts;
+  return group;
+}
+
+// 可愛女孩角色 — parts 結構(armL/armR/legL/legR)跟 makeHumanoid 完全一致，
+// 所以 animateWalk() / FACING_ANGLE 那套邏輯不用改一行，純粹是外觀差異
+function makeGirlPlayer({ skin = 0xffe3c9, outfit = 0xff8fab, skirt = 0xdb5f86, hair = 0x5a3a2a, ribbon = 0xff5577 } = {}) {
+  const group = new THREE.Group();
+  const parts = {};
+  const skinMat = new THREE.MeshStandardMaterial({ color: skin });
+  const outfitMat = new THREE.MeshStandardMaterial({ color: outfit });
+  const skirtMat = new THREE.MeshStandardMaterial({ color: skirt });
+  const hairMat = new THREE.MeshStandardMaterial({ color: hair });
+
+  // 身體比一般人形略短、略窄，頭比例加大 —— chibi 比例本身就是「可愛」的視覺捷徑
+  const body = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.18, 0.3, 8), outfitMat);
+  body.position.y = 0.33; body.castShadow = true; group.add(body);
+
+  // 裙子：一顆張開的圓錐罩在腰跟大腿上方，跟腳的動畫分開，不會跟著走路擺動
+  const skirtMesh = new THREE.Mesh(new THREE.ConeGeometry(0.27, 0.22, 10), skirtMat);
+  skirtMesh.position.y = 0.24; skirtMesh.castShadow = true; group.add(skirtMesh);
+
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.23, 12, 10), skinMat);
+  head.position.y = 0.68; head.castShadow = true; group.add(head);
+
+  const hairCap = new THREE.Mesh(new THREE.SphereGeometry(0.245, 12, 10), hairMat);
+  hairCap.scale.set(1, 0.62, 1.05);
+  hairCap.position.set(0, 0.78, -0.02);
+  group.add(hairCap);
+
+  // 雙馬尾 —— 側邊斜出去的圓柱 + 球形尾端，這是最低成本就能讀出「女孩子」的髮型
+  function makePonytail(side) {
+    const g = new THREE.Group();
+    const tail = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.02, 0.26, 6), hairMat);
+    tail.rotation.z = side * 0.55;
+    tail.position.set(side * 0.22, 0.7, -0.05);
+    const tip = new THREE.Mesh(new THREE.SphereGeometry(0.042, 8, 6), hairMat);
+    tip.position.set(side * 0.32, 0.58, -0.09);
+    g.add(tail, tip);
+    return g;
+  }
+  group.add(makePonytail(-1), makePonytail(1));
+
+  // 馬尾根部的小蝴蝶結
+  function makeRibbon(side) {
+    const bow = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.05, 0.03),
+      new THREE.MeshStandardMaterial({ color: ribbon }));
+    bow.position.set(side * 0.19, 0.76, -0.03);
+    return bow;
+  }
+  group.add(makeRibbon(-1), makeRibbon(1));
+
+  // 腮紅 —— 壓扁的小球貼在臉頰，低模角色加這個 CP 值很高
+  function makeBlush(side) {
+    const b = new THREE.Mesh(new THREE.SphereGeometry(0.035, 6, 4),
+      new THREE.MeshStandardMaterial({ color: 0xff9eb5 }));
+    b.scale.set(1, 0.6, 0.3);
+    b.position.set(side * 0.11, 0.635, -0.19);
+    return b;
+  }
+  group.add(makeBlush(-1), makeBlush(1));
+
+  const nose = new THREE.Mesh(new THREE.ConeGeometry(0.022, 0.045, 6), skinMat);
+  nose.rotation.x = Math.PI / 2; nose.position.set(0, 0.665, -0.215);
+  group.add(nose);
+
+  // 同樣的肩膀/髖部支點修正，數字配合她比較嬌小的身材比例
+  function makeArm(side) {
+    const pivot = new THREE.Group();
+    pivot.position.set(side * 0.2, 0.46, 0);
+    const shoulder = new THREE.Mesh(new THREE.SphereGeometry(0.042, 8, 6), skinMat);
+    pivot.add(shoulder);
+    const armLen = 0.26;
+    const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.038, 0.038, armLen, 6), skinMat);
+    arm.position.y = -armLen / 2;
+    arm.castShadow = true;
+    pivot.add(arm);
+    group.add(pivot);
+    return pivot;
+  }
+  parts.armL = makeArm(-1); parts.armR = makeArm(1);
+
+  // 釣魚竿：掛在右手支點下面，跟著手臂支點一起轉——手怎麼揮，竿就怎麼甩，
+  // 不用另外算竿子的動畫，平常隱藏，只有釣魚中才顯示
+  const rod = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.016, 0.55, 5),
+    new THREE.MeshStandardMaterial({ color: 0x6b4a30 }));
+  rod.position.set(-0.06, -0.23, 0.12);
+  rod.rotation.x = -1.0;
+  rod.rotation.z = 0.15;
+  rod.visible = false;
+  parts.armR.add(rod);
+  parts.rod = rod;
+
+  // 腿保留細一點、裙子底下露出來，跟裙子分開才能繼續做走路擺動
+  function makeLeg(side) {
+    const pivot = new THREE.Group();
+    pivot.position.set(side * 0.08, 0.26, 0);
+    const legLen = 0.26;
+    const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.05, legLen, 6), skinMat);
+    leg.position.y = -legLen / 2;
+    leg.castShadow = true;
+    pivot.add(leg);
+    group.add(pivot);
+    return pivot;
+  }
+  parts.legL = makeLeg(-1); parts.legR = makeLeg(1);
+
+  group.parts = parts;
+  return group;
+}
+function animateWalk(humanoid, moving, t) {
+  const p = humanoid.parts;
+  if (moving) {
+    const swing = Math.sin(t * 10) * 0.5;
+    p.legL.rotation.x = swing; p.legR.rotation.x = -swing;
+    p.armL.rotation.x = -swing; p.armR.rotation.x = swing;
+    humanoid.position.y = Math.abs(Math.sin(t * 10)) * 0.03;
+  } else {
+    p.legL.rotation.x *= 0.8; p.legR.rotation.x *= 0.8;
+    p.armL.rotation.x *= 0.8; p.armR.rotation.x *= 0.8;
+    humanoid.position.y = Math.sin(t * 2) * 0.01;
+  }
+}
+const FACING_ANGLE = { up: 0, down: Math.PI, left: Math.PI / 2, right: -Math.PI / 2 };
+
+// 現在腿是真的支點了，跟人形角色同一套邏輯：四足動物用「對角步」
+// (front-left + back-right 同步，跟 front-right + back-left 反相)，
+// 這是牛羊實際走路的步態，不是四隻腳一起同手同腳地滑稽亂動。
+// 雞只有兩隻腳，用左右交替，跟人的走路擺動邏輯一樣
+function animateAnimalWalk(a, moving, t) {
+  const p = a.mesh.parts;
+  const freq = a.type === 'chicken' ? 8 : 5;
+  const amp = a.type === 'chicken' ? 0.9 : 0.5;
+  // 動物的「前」是本地 +X（頭接在 +X 那側），前後擺腿等於在 X-Y 平面裡動，
+  // 要轉的是 Z 軸，不是 X 軸——轉 X 軸會在 Y-Z 平面動，那是身體左右張腿，
+  // 跟人形角色的慣例（前=-Z，轉 X 軸才是前後）剛好相反，之前照抄錯了軸
+  if (moving) {
+    const swing = Math.sin(t * freq) * amp;
+    if (a.type === 'chicken') {
+      p.legL.rotation.z = swing; p.legR.rotation.z = -swing;
+    } else {
+      p.legFL.rotation.z = swing; p.legBR.rotation.z = swing;
+      p.legFR.rotation.z = -swing; p.legBL.rotation.z = -swing;
+    }
+    a.mesh.position.y = Math.abs(Math.sin(t * freq)) * (a.type === 'chicken' ? 0.03 : 0.015);
+  } else {
+    Object.values(p).forEach(leg => { leg.rotation.z *= 0.8; });
+    a.mesh.position.y *= 0.8;
+  }
+}
+
+// ==============================================================
+// 7) 樹 / 建築 / 地形（沿用 v11）
+// ==============================================================
+function makeTree(x, z) {
+  const group = new THREE.Group();
+  const r = hash2(x, z);
+  const scale = 0.85 + r * 0.4;
+  const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.11, 0.55, 6),
+    new THREE.MeshStandardMaterial({ color: 0x7a5230 }));
+  trunk.position.y = 0.275 * scale; trunk.scale.setScalar(scale); trunk.castShadow = true;
+  group.add(trunk);
+  const leafMat = new THREE.MeshStandardMaterial({ color: 0x2f8f3f, flatShading: true });
+  const leaf1 = new THREE.Mesh(new THREE.IcosahedronGeometry(0.36, 0), leafMat);
+  leaf1.position.y = 0.62 * scale; leaf1.scale.setScalar(scale); leaf1.castShadow = true;
+  const leaf2 = new THREE.Mesh(new THREE.IcosahedronGeometry(0.26, 0), leafMat);
+  leaf2.position.y = 0.85 * scale; leaf2.scale.setScalar(scale); leaf2.castShadow = true;
+  group.add(leaf1, leaf2);
+  group.position.set(x, 0, z);
+  group.rotation.y = r * Math.PI * 2;
+  return group;
+}
+function makeBuilding({ x, z, w, d, doorX }) {
+  const group = new THREE.Group();
+  const centerX = x + (w - 1) / 2, centerZ = z + (d - 1) / 2;
+  const width = w * TILE, depth = d * TILE;
+  const wallHeight = 1.3, roofHeight = 0.85;
+  const wall = new THREE.Mesh(new THREE.BoxGeometry(width * 0.96, wallHeight, depth * 0.96),
+    new THREE.MeshStandardMaterial({ color: 0xe8ddc7 }));
+  wall.position.y = wallHeight / 2; wall.castShadow = true; wall.receiveShadow = true;
+  group.add(wall);
+  // 屋頂：45° 旋轉「烤進」geometry 本身，而不是設在 mesh.rotation 上。
+  // 原本的寫法是「先縮放、再旋轉」，非等比縮放遇上旋轉會產生剪切(shear)，
+  // 把方形屋頂拉成菱形，跟牆體對不齊。geometry.rotateY() 直接改頂點資料，
+  // 之後 mesh 上只剩縮放、沒有旋轉，縮放才會沿著 X/Z 軸乖乖拉伸。
+  const roofGeo = new THREE.ConeGeometry(1, roofHeight, 4);
+  roofGeo.rotateY(Math.PI / 4);
+  const roof = new THREE.Mesh(roofGeo,
+    new THREE.MeshStandardMaterial({ color: 0xa8402f, flatShading: true }));
+  roof.scale.set(width * 0.72, 1, depth * 0.72);
+  roof.position.y = wallHeight + roofHeight / 2;
+  roof.castShadow = true; group.add(roof);
+  const chimney = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.08, 0.4, 6),
+    new THREE.MeshStandardMaterial({ color: 0x8a5a4a }));
+  chimney.position.set(width * 0.28, wallHeight + 0.35, -depth * 0.22);
+  chimney.castShadow = true; group.add(chimney);
+  const door = new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.55, 0.06),
+    new THREE.MeshStandardMaterial({ color: 0x4a2f1f }));
+  door.position.set(doorX - centerX, 0.3, depth / 2 * 0.98);
+  group.add(door);
+  function makeWindow(px, pz, rotY) {
+    const winMat = new THREE.MeshStandardMaterial({
+      color: 0x2b3a55, emissive: new THREE.Color(0xffcf7a), emissiveIntensity: 0,
+    });
+    const win = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.24, 0.05), winMat);
+    win.position.set(px, 0.7, pz); win.rotation.y = rotY;
+    group.add(win); windowMats.push(winMat);
+  }
+  makeWindow(doorX - centerX - width * 0.32, depth / 2 * 0.98, 0);
+  makeWindow(doorX - centerX + width * 0.32, depth / 2 * 0.98, 0);
+  makeWindow(-width / 2 * 0.98, 0, Math.PI / 2);
+  group.position.set(centerX, 0, centerZ);
+  return group;
+}
+
+// 穀倉 — 跟 makeBuilding 同一套「佔地範圍→算中心→算屋頂」邏輯，只是外觀
+// 換成穀倉常見的紅牆、深色屋頂、雙開木門、閣樓圓窗，跟主屋一眼就能分辨
+function makeBarn({ x, z, w, d, doorX }) {
+  const group = new THREE.Group();
+  const centerX = x + (w - 1) / 2, centerZ = z + (d - 1) / 2;
+  const width = w * TILE, depth = d * TILE;
+  const wallHeight = 1.15, roofHeight = 0.7;
+  const wall = new THREE.Mesh(new THREE.BoxGeometry(width * 0.96, wallHeight, depth * 0.96),
+    new THREE.MeshStandardMaterial({ color: 0x9c4a3a }));
+  wall.position.y = wallHeight / 2; wall.castShadow = true; wall.receiveShadow = true;
+  group.add(wall);
+  const roofGeo = new THREE.ConeGeometry(1, roofHeight, 4);
+  roofGeo.rotateY(Math.PI / 4); // 同樣先把旋轉烤進 geometry，避免非等比縮放產生剪切
+  const roof = new THREE.Mesh(roofGeo,
+    new THREE.MeshStandardMaterial({ color: 0x4a3428, flatShading: true }));
+  roof.scale.set(width * 0.72, 1, depth * 0.72);
+  roof.position.y = wallHeight + roofHeight / 2;
+  roof.castShadow = true; group.add(roof);
+  // 雙開穀倉門，比一般房子的門寬很多，中間留一條縫
+  const doorMat = new THREE.MeshStandardMaterial({ color: 0x2f2018 });
+  const doorL = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.62, 0.06), doorMat);
+  doorL.position.set(doorX - centerX - 0.13, 0.33, depth / 2 * 0.98);
+  const doorR = doorL.clone(); doorR.position.x = doorX - centerX + 0.13;
+  group.add(doorL, doorR);
+  // 閣樓圓窗——穀倉的招牌特徵，跟主屋的方窗做出區別
+  const loft = new THREE.Mesh(new THREE.CircleGeometry(0.14, 10),
+    new THREE.MeshStandardMaterial({ color: 0x241a14 }));
+  loft.position.set(doorX - centerX, wallHeight - 0.12, depth / 2 * 0.981);
+  group.add(loft);
+  group.position.set(centerX, 0, centerZ);
+  return group;
+}
+function makePath(x, z) {
+  const m = new THREE.Mesh(new THREE.BoxGeometry(TILE * 0.98, 0.04, TILE * 0.98),
+    new THREE.MeshStandardMaterial({ color: 0xbfa172 }));
+  m.position.set(x, 0.01, z); m.receiveShadow = true;
+  return m;
+}
+function makeWater(x, z) {
+  const m = new THREE.Mesh(new THREE.BoxGeometry(TILE * 0.98, 0.06, TILE * 0.98),
+    new THREE.MeshStandardMaterial({ color: 0x3f8fd6, roughness: 0.15, metalness: 0.25, transparent: true, opacity: 0.88 }));
+  m.position.set(x, 0.0, z);
+  return m;
+}
+function makeSoil(x, z) {
+  const soil = new THREE.Mesh(new THREE.BoxGeometry(TILE * 0.98, 0.05, TILE * 0.98),
+    new THREE.MeshStandardMaterial({ color: 0x6b4a30 }));
+  soil.position.set(x, 0.01, z);
+  return soil;
+}
+function makeGrassTuft(x, z, seed) {
+  const g = new THREE.Group();
+  const mat = new THREE.MeshStandardMaterial({ color: 0x4f9e46, flatShading: true });
+  for (let i = 0; i < 3; i++) {
+    const blade = new THREE.Mesh(new THREE.ConeGeometry(0.02, 0.14, 4), mat);
+    const a = (i / 3) * Math.PI * 2 + seed * 6;
+    blade.position.set(Math.cos(a) * 0.05, 0.07, Math.sin(a) * 0.05);
+    blade.rotation.z = (Math.random() - 0.5) * 0.3;
+    g.add(blade);
+  }
+  g.position.set(x, 0, z);
+  return g;
+}
+// 牧場用的牧草——比裝飾用的 makeGrassTuft 高一點、密一點，每片葉子記錄
+// 自己的基準角度跟相位(userData)，animate() 每幀疊加一個 sin 位移做出被
+// 風吹動的搖擺，不會覆蓋掉葉片原本東倒西歪的自然角度
+function makeWindGrass(x, z, seed) {
+  const g = new THREE.Group();
+  const mat = new THREE.MeshStandardMaterial({ color: 0x5fae52, flatShading: true });
+  const blades = [];
+  const bladeCount = 3;
+  for (let i = 0; i < bladeCount; i++) {
+    const blade = new THREE.Mesh(new THREE.ConeGeometry(0.02, 0.2 + seed * 0.1, 4), mat);
+    const a = (i / bladeCount) * Math.PI * 2 + seed * 6;
+    blade.position.set(Math.cos(a) * 0.05, 0.1 + seed * 0.05, Math.sin(a) * 0.05);
+    blade.userData.baseRotZ = (hash2(seed, i) - 0.5) * 0.35;
+    blade.userData.phase = seed * 12 + i * 1.7;
+    blade.rotation.z = blade.userData.baseRotZ;
+    g.add(blade);
+    blades.push(blade);
+  }
+  g.position.set(x, 0, z);
+  g.userData.blades = blades;
+  return g;
+}
+function makeFlower(x, z, color) {
+  const g = new THREE.Group();
+  const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.01, 0.12, 4),
+    new THREE.MeshStandardMaterial({ color: 0x3a7a3a }));
+  stem.position.y = 0.06;
+  const bloom = new THREE.Mesh(new THREE.SphereGeometry(0.045, 6, 5),
+    new THREE.MeshStandardMaterial({ color, flatShading: true }));
+  bloom.position.y = 0.13;
+  g.add(stem, bloom); g.position.set(x, 0, z);
+  return g;
+}
+// ==============================================================
+// 參考圖裡還沒做的區域——先求佈局對，能做完整模型的做，還沒空做的
+// 就用簡單方塊/平面卡位，之後再回頭精修
+// ==============================================================
+function makeFruitTree(x, z, seed) {
+  const scale = 0.8 + seed * 0.3;
+  const group = new THREE.Group();
+  const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.09, 0.5, 6),
+    new THREE.MeshStandardMaterial({ color: 0x7a5230 }));
+  trunk.position.y = 0.25 * scale; trunk.scale.setScalar(scale); trunk.castShadow = true;
+  group.add(trunk);
+  const leaf = new THREE.Mesh(new THREE.IcosahedronGeometry(0.32, 0),
+    new THREE.MeshStandardMaterial({ color: 0x4a9e3f, flatShading: true }));
+  leaf.position.y = 0.62 * scale; leaf.scale.setScalar(scale); leaf.castShadow = true;
+  group.add(leaf);
+  const fruitMat = new THREE.MeshStandardMaterial({ color: 0xd9432f });
+  for (let i = 0; i < 4; i++) {
+    const a = (i / 4) * Math.PI * 2 + seed * 5;
+    const fruit = new THREE.Mesh(new THREE.SphereGeometry(0.045, 6, 5), fruitMat);
+    fruit.position.set(Math.cos(a) * 0.28 * scale, 0.6 * scale, Math.sin(a) * 0.28 * scale);
+    group.add(fruit);
+  }
+  group.position.set(x, 0, z);
+  return group;
+}
+
+// 瀑布——先做靜態占位（半透明淡藍色塊 + 崖底一顆白色泡沫），沒有做真的
+// 水流動畫，之後想做的話這裡是入口
+function makeWaterfallPlaceholder(x, z) {
+  const group = new THREE.Group();
+  const cascade = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.9, 0.08),
+    new THREE.MeshStandardMaterial({ color: 0xcfeeff, transparent: true, opacity: 0.75, roughness: 0.15 }));
+  cascade.position.y = 0.45;
+  group.add(cascade);
+  const splash = new THREE.Mesh(new THREE.SphereGeometry(0.16, 8, 6),
+    new THREE.MeshStandardMaterial({ color: 0xffffff, transparent: true, opacity: 0.7 }));
+  splash.scale.set(1, 0.4, 1);
+  splash.position.y = 0.05;
+  group.add(splash);
+  group.position.set(x, 0, z);
+  return group;
+}
+
+// 休息區野餐組——桌子＋兩張長椅，樹蔭直接借用 makeTree
+function makePicnicSet(x, z) {
+  const group = new THREE.Group();
+  const woodMat = new THREE.MeshStandardMaterial({ color: 0x8a5a3a });
+  const top = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.06, 0.5), woodMat);
+  top.position.y = 0.38; top.castShadow = true;
+  group.add(top);
+  [-0.35, 0.35].forEach(lx => {
+    const leg = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.38, 0.5), woodMat);
+    leg.position.set(lx, 0.19, 0);
+    group.add(leg);
+  });
+  [-0.45, 0.45].forEach(bz => {
+    const bench = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.06, 0.18), woodMat);
+    bench.position.set(0, 0.24, bz);
+    bench.castShadow = true;
+    group.add(bench);
+  });
+  group.position.set(x, 0, z);
+  return group;
+}
+
+// 花園苗圃——一塊土色底 + 一叢花，重用 makeFlower
+function makeGardenBed(x, z, seed) {
+  const group = new THREE.Group();
+  const soil = new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.05, 0.8),
+    new THREE.MeshStandardMaterial({ color: 0x6b4a30 }));
+  soil.position.y = 0.02;
+  group.add(soil);
+  for (let i = 0; i < 5; i++) {
+    const fx = (hash2(seed + i, i) - 0.5) * 0.9, fz = (hash2(i, seed + i) - 0.5) * 0.6;
+    const flower = makeFlower(fx, fz, FLOWER_COLORS[i % FLOWER_COLORS.length]);
+    flower.position.y = 0.05;
+    group.add(flower);
+  }
+  group.position.set(x, 0, z);
+  return group;
+}
+
+// 碼頭＋小船——木棧板延伸到海面上，旁邊停一艘簡化的船身
+function makeDock() {
+  const group = new THREE.Group();
+  const plankMat = new THREE.MeshStandardMaterial({ color: 0x8a6a45 });
+  for (let i = 0; i < 5; i++) {
+    const plank = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.06, 0.9), plankMat);
+    plank.position.set(i * 0.95, 0.05, 0);
+    plank.castShadow = true; plank.receiveShadow = true;
+    group.add(plank);
+  }
+  const boat = new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.22, 0.45),
+    new THREE.MeshStandardMaterial({ color: 0x9c5a3a }));
+  boat.position.set(3.2, 0.02, 0.65);
+  boat.rotation.y = 0.3;
+  boat.castShadow = true;
+  group.add(boat);
+  return group;
+}
+
+// 城區佔位建築——純色平面方塊，沒有窗戶屋頂細節，先卡出聚落的輪廓
+function makeTownPlaceholder(x, z, seed) {
+  const colors = [0xd9c9a3, 0xc9a876, 0xb89b7a, 0xcbb994, 0xa88f6a];
+  const w = 0.85 + seed * 0.4, h = 0.5 + hash2(seed, x) * 0.35, d = 0.85;
+  const box = new THREE.Mesh(new THREE.BoxGeometry(w, h, d),
+    new THREE.MeshStandardMaterial({ color: colors[Math.floor(seed * 100) % colors.length] }));
+  box.position.set(x, h / 2, z);
+  box.castShadow = true; box.receiveShadow = true;
+  return box;
+}
+
+function makeStone(x, z, seed) {
+  const stone = new THREE.Mesh(new THREE.IcosahedronGeometry(0.1 + seed * 0.06, 0),
+    new THREE.MeshStandardMaterial({ color: 0x8a8a86, flatShading: true }));
+  stone.position.set(x, 0.06, z);
+  stone.rotation.set(seed * 6, seed * 4, seed * 2);
+  stone.castShadow = true;
+  return stone;
+}
+const FLOWER_COLORS = [0xf25f8c, 0xf5c542, 0xffffff, 0x8f6ff5];
+function makeSand(x, z) {
+  const sand = new THREE.Mesh(new THREE.BoxGeometry(TILE * 0.98, 0.05, TILE * 0.98),
+    new THREE.MeshStandardMaterial({ color: 0xe8d29a }));
+  sand.position.set(x, 0.01, z); sand.receiveShadow = true;
+  return sand;
+}
+function makeFoam(x, z, seed) {
+  // 拍岸浪花做成一個小群組：浪頭捲上岸的前緣、退潮水漬、還有幾顆會滾動碎裂
+  // 的低模泡沫顆粒，讓它有「衝上岸→碎開→退回去」的動態，不只是忽明忽暗
+  const g = new THREE.Group();
+  // 海面波浪的最高點大約在 y=0.235 左右（見 buildMap 裡的海面設定），泡沫要
+  // 蓋在更上面，不然幾乎共平面的透明面會 z-fighting，畫面會閃出詭異的雜色條紋
+  const FOAM_Y = 0.27;
+  const crest = new THREE.Mesh(new THREE.PlaneGeometry(TILE * 0.9, TILE * 0.25),
+    new THREE.MeshStandardMaterial({ color: 0xffffff, transparent: true, opacity: 0.85, roughness: 0.9 }));
+  // renderOrder 故意設得比海面高：一大片海面 vs. 好幾個小小的泡沫物件，
+  // Three.js 用物件中心點到相機的距離排半透明物件的前後順序，海面這種
+  // 橫跨整排格子的大 mesh 跟每一排泡沫的距離排序常常會不穩定（一排是綠、
+  // 一排是灰藍，忽前忽後），乾脆明講「泡沫永遠畫在海面之後（蓋在上面）」
+  crest.rotation.x = -Math.PI / 2; crest.position.y = FOAM_Y + 0.02; crest.renderOrder = 2;
+  g.add(crest);
+  const wash = new THREE.Mesh(new THREE.PlaneGeometry(TILE * 1.1, TILE * 0.6),
+    new THREE.MeshStandardMaterial({ color: 0xffffff, transparent: true, opacity: 0.3, roughness: 0.95 }));
+  wash.rotation.x = -Math.PI / 2; wash.position.set(0.15, FOAM_Y, 0); wash.renderOrder = 1;
+  g.add(wash);
+  const bumps = [];
+  for (let i = 0; i < 5; i++) {
+    const s = hash2(seed + i * 3.1, seed * 1.7 + i);
+    const bump = new THREE.Mesh(new THREE.IcosahedronGeometry(0.04 + s * 0.035, 0),
+      new THREE.MeshStandardMaterial({ color: 0xffffff, flatShading: true, transparent: true, opacity: 0.85, roughness: 0.9 }));
+    bump.position.set((s - 0.5) * TILE * 0.75, FOAM_Y + 0.02, (hash2(s, seed + i) - 0.5) * TILE * 0.4);
+    bump.renderOrder = 2;
+    g.add(bump); bumps.push(bump);
+  }
+  g.position.set(x, 0, z);
+  g.userData = { seed, crest, wash, bumps, baseX: x };
+  return g;
+}
+function makeCropMesh(stage) {
+  if (stage === 0) {
+    const m = new THREE.Mesh(new THREE.ConeGeometry(0.04, 0.1, 5),
+      new THREE.MeshStandardMaterial({ color: 0x5fae4a, flatShading: true }));
+    m.position.y = 0.08; return m;
+  }
+  if (stage === 1) {
+    const g = new THREE.Group();
+    const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.03, 0.22, 5),
+      new THREE.MeshStandardMaterial({ color: 0x3f9142 }));
+    stem.position.y = 0.11;
+    const leaf = new THREE.Mesh(new THREE.IcosahedronGeometry(0.08, 0),
+      new THREE.MeshStandardMaterial({ color: 0x5fae4a, flatShading: true }));
+    leaf.position.y = 0.22;
+    g.add(stem, leaf); return g;
+  }
+  const g = new THREE.Group();
+  const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.03, 0.26, 5),
+    new THREE.MeshStandardMaterial({ color: 0x3f9142 }));
+  stem.position.y = 0.13; g.add(stem);
+  for (let i = 0; i < 3; i++) {
+    const fruit = new THREE.Mesh(new THREE.SphereGeometry(0.055, 8, 6),
+      new THREE.MeshStandardMaterial({ color: 0xe0442f, flatShading: true }));
+    const a = (i / 3) * Math.PI * 2;
+    fruit.position.set(Math.cos(a) * 0.09, 0.2 + i * 0.02, Math.sin(a) * 0.09);
+    g.add(fruit);
+  }
+  return g;
+}
+// 柵欄——純視覺，沒有真的擋人或擋動物，動物的活動範圍是用座標邊界算的，
+// 不是靠柵欄物理擋住。純粹是圍出「這裡是牧草地」的視覺語彙
+// 遠山——純背景裝飾，放在地圖西側邊界外（x 是負的，isBlocked 本來就會把
+// 超出邊界的座標判定為擋路，不用額外寫碰撞）。顏色刻意調成偏藍灰、不飽和，
+// 這是「空氣透視」的偷吃步：越遠的東西，人眼會自動感覺它偏藍偏淡，
+// 不用真的做距離霧化計算，選對顏色就有「這座山很遠」的錯覺
+function makeMountain(x, z, height, seed) {
+  const g = new THREE.Group();
+  const rockMat = new THREE.MeshStandardMaterial({ color: 0x7d93a8, flatShading: true });
+  const peak = new THREE.Mesh(new THREE.ConeGeometry(1.1 + seed * 0.5, height, 5), rockMat);
+  peak.position.y = height / 2;
+  peak.rotation.y = seed * Math.PI * 2;
+  g.add(peak);
+  if (height > 2.2) {
+    const snow = new THREE.Mesh(new THREE.ConeGeometry(0.42, 0.5, 5),
+      new THREE.MeshStandardMaterial({ color: 0xf2f5f8, flatShading: true }));
+    snow.position.y = height - 0.18;
+    g.add(snow);
+  }
+  g.position.set(x, 0, z);
+  return g;
+}
+
+function makeFence(minX, maxX, minZ, maxZ) {
+  const g = new THREE.Group();
+  const postMat = new THREE.MeshStandardMaterial({ color: 0x8a6a45 });
+  const railMat = new THREE.MeshStandardMaterial({ color: 0x9c7a52 });
+  function post(x, z) {
+    const p = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.035, 0.36, 6), postMat);
+    p.position.set(x, 0.18, z); p.castShadow = true; g.add(p);
+  }
+  function railX(x1, x2, z) {
+    const r = new THREE.Mesh(new THREE.BoxGeometry(x2 - x1, 0.04, 0.04), railMat);
+    r.position.set((x1 + x2) / 2, 0.24, z); g.add(r);
+  }
+  function railZ(z1, z2, x) {
+    const r = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.04, z2 - z1), railMat);
+    r.position.set(x, 0.24, (z1 + z2) / 2); g.add(r);
+  }
+  for (let x = minX; x <= maxX; x++) { post(x, minZ); post(x, maxZ); }
+  for (let z = minZ; z <= maxZ; z++) { post(minX, z); post(maxX, z); }
+  for (let x = minX; x < maxX; x++) { railX(x, x + 1, minZ); railX(x, x + 1, maxZ); }
+  for (let z = minZ; z < maxZ; z++) { railZ(z, z + 1, minX); railZ(z, z + 1, maxX); }
+  return g;
+}
+
+// 動物——牛、羊、雞，都用最少的幾何圖形拼出可辨識的外形，
+// 沒有走路動畫（跟低模人形不同層級），純粹靠位置平移 + 面向旋轉
+function makeAnimal(type) {
+  const g = new THREE.Group();
+  const parts = {};
+  // 跟人形角色同一招：腿是「髖部支點群組 + 往下掛的圓柱」，不是直接轉圓柱
+  // 本身，這樣轉軸才會在髖部，甩起來才是「抬腿」而不是圓柱繞自己中心轉
+  function makeLeg(mat, x, z, hipY, legLen, radius) {
+    const pivot = new THREE.Group();
+    pivot.position.set(x, hipY, z);
+    const leg = new THREE.Mesh(new THREE.CylinderGeometry(radius, radius, legLen, 5), mat);
+    leg.position.y = -legLen / 2;
+    leg.castShadow = true;
+    pivot.add(leg);
+    g.add(pivot);
+    return pivot;
+  }
+  if (type === 'cow') {
+    const hide = new THREE.MeshStandardMaterial({ color: 0xf2ede0 });
+    const spotMat = new THREE.MeshStandardMaterial({ color: 0x3a2a22 });
+    const body = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.24, 0.24), hide);
+    body.position.y = 0.22; body.castShadow = true; g.add(body);
+    const spot = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.1, 0.02), spotMat);
+    spot.position.set(0.04, 0.27, 0.13); g.add(spot);
+    const head = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.15, 0.15), hide);
+    head.position.set(0.28, 0.24, 0); head.castShadow = true; g.add(head);
+    const legMat = new THREE.MeshStandardMaterial({ color: 0x6b5a4a });
+    // x>0 是前腳(靠近頭那側)，z 分左右——四隻腳分開存，走路才能對角同步擺動
+    parts.legFL = makeLeg(legMat, 0.15, 0.08, 0.18, 0.18, 0.025);
+    parts.legFR = makeLeg(legMat, 0.15, -0.08, 0.18, 0.18, 0.025);
+    parts.legBL = makeLeg(legMat, -0.15, 0.08, 0.18, 0.18, 0.025);
+    parts.legBR = makeLeg(legMat, -0.15, -0.08, 0.18, 0.18, 0.025);
+  } else if (type === 'sheep') {
+    const wool = new THREE.MeshStandardMaterial({ color: 0xf5f0e6, flatShading: true });
+    const dark = new THREE.MeshStandardMaterial({ color: 0x2a2420 });
+    const body = new THREE.Mesh(new THREE.IcosahedronGeometry(0.16, 0), wool);
+    body.scale.set(1.3, 1, 1.1); body.position.y = 0.2; body.castShadow = true; g.add(body);
+    const head = new THREE.Mesh(new THREE.SphereGeometry(0.075, 8, 6), dark);
+    head.position.set(0.19, 0.2, 0); g.add(head);
+    parts.legFL = makeLeg(dark, 0.08, 0.06, 0.14, 0.14, 0.018);
+    parts.legFR = makeLeg(dark, 0.08, -0.06, 0.14, 0.14, 0.018);
+    parts.legBL = makeLeg(dark, -0.08, 0.06, 0.14, 0.14, 0.018);
+    parts.legBR = makeLeg(dark, -0.08, -0.06, 0.14, 0.14, 0.018);
+  } else { // chicken
+    const feather = new THREE.MeshStandardMaterial({ color: 0xf2f0e8, flatShading: true });
+    const body = new THREE.Mesh(new THREE.SphereGeometry(0.09, 8, 6), feather);
+    body.scale.set(1, 1.05, 1.2); body.position.y = 0.13; body.castShadow = true; g.add(body);
+    const comb = new THREE.Mesh(new THREE.ConeGeometry(0.025, 0.05, 4),
+      new THREE.MeshStandardMaterial({ color: 0xd9433a }));
+    comb.position.set(0.06, 0.21, 0); g.add(comb);
+    const beak = new THREE.Mesh(new THREE.ConeGeometry(0.02, 0.04, 4),
+      new THREE.MeshStandardMaterial({ color: 0xe0a83a }));
+    beak.rotation.z = -Math.PI / 2; beak.position.set(0.11, 0.14, 0); g.add(beak);
+    const legMat = new THREE.MeshStandardMaterial({ color: 0xe0a83a });
+    parts.legL = makeLeg(legMat, -0.02, 0.03, 0.09, 0.09, 0.008);
+    parts.legR = makeLeg(legMat, 0.03, -0.03, 0.09, 0.09, 0.008);
+  }
+  g.parts = parts;
+  return g;
+}
+
+function makeSeedPouch() {
+  const g = new THREE.Group();
+  const bag = new THREE.Mesh(new THREE.SphereGeometry(0.14, 8, 6),
+    new THREE.MeshStandardMaterial({ color: 0x9c6b3a, flatShading: true }));
+  bag.scale.set(1, 0.8, 1); bag.position.y = 0.14;
+  g.add(bag); return g;
+}
+function makeBobber() {
+  // 紅白浮標，上半染紅是最快讓人一眼看懂「這是釣魚浮標」的配色，不用任何說明文字
+  const g = new THREE.Group();
+  const top = new THREE.Mesh(new THREE.SphereGeometry(0.05, 8, 6),
+    new THREE.MeshStandardMaterial({ color: 0xd93b3b, flatShading: true }));
+  top.position.y = 0.03;
+  const bottom = new THREE.Mesh(new THREE.SphereGeometry(0.05, 8, 6),
+    new THREE.MeshStandardMaterial({ color: 0xffffff, flatShading: true }));
+  bottom.position.y = -0.02;
+  g.add(top, bottom);
+  return g;
+}
+function makeFishProp(seed) {
+  // 純粹的氛圍裝飾：壓扁的橢圓身體 + 三角尾鰭，兩種魚色隨機挑一種
+  const color = hash2(seed, seed * 3.3) > 0.5 ? 0xd9a441 : 0x8fa8c9;
+  const mat = new THREE.MeshStandardMaterial({ color, flatShading: true });
+  const g = new THREE.Group();
+  const body = new THREE.Mesh(new THREE.SphereGeometry(0.05, 6, 4), mat);
+  body.scale.set(1, 0.55, 0.32);
+  const tail = new THREE.Mesh(new THREE.ConeGeometry(0.035, 0.06, 4), mat);
+  tail.rotation.z = Math.PI / 2;
+  tail.position.x = -0.075;
+  g.add(body, tail);
+  return g;
+}
+
+// 室內家具 — 跟 outside 的 buildings 同一套「資料描述佔地範圍」的邏輯，
+// type 決定長什麼樣子，buildMap() 只負責讀資料把它擺到對的位置
+// 室內牆壁 — 之前房子內部完全沒渲染牆(只有碰撞判定)，牆是「隱形的」。
+// 現在依 tiles 裡的 1 實際生成牆體方塊；windowSide 有值的話再疊一片
+// emissive 窗戶貼在對應的外側面，material 丟進全域 windowMats，這樣
+// 完全不用寫新邏輯，室內窗戶就會自動跟外面房子的窗一樣隨日夜發光
+// 桌燈：晚上自動點亮，不用玩家做任何事。燈泡是 emissive 材質(跟窗戶同一招)，
+// 另外加一顆真的 PointLight，這樣晚上房間裡不會只有窗戶在發光、地板卻是暗的
+function makeLamp() {
+  const group = new THREE.Group();
+  const dark = new THREE.MeshStandardMaterial({ color: 0x3a3a3a });
+  const base = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.065, 0.04, 8), dark);
+  base.position.y = 0.02; group.add(base);
+  const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, 0.22, 6), dark);
+  pole.position.y = 0.15; group.add(pole);
+  const bulbMat = new THREE.MeshStandardMaterial({ color: 0xfff3c4, emissive: new THREE.Color(0xffdd88), emissiveIntensity: 0 });
+  const bulb = new THREE.Mesh(new THREE.SphereGeometry(0.07, 8, 6), bulbMat);
+  bulb.position.y = 0.3; group.add(bulb);
+  const light = new THREE.PointLight(0xffdd99, 0, 2.4, 2);
+  light.position.y = 0.3; group.add(light);
+  return { group, bulbMat, light };
+}
+
+function makeInteriorWall(x, z, windowSide) {
+  const g = new THREE.Group();
+  const wall = new THREE.Mesh(new THREE.BoxGeometry(TILE * 0.98, 1.4, TILE * 0.98),
+    new THREE.MeshStandardMaterial({ color: 0xefe6d8 }));
+  wall.position.y = 0.7; wall.castShadow = true; wall.receiveShadow = true;
+  g.add(wall);
+  if (windowSide) {
+    const winMat = new THREE.MeshStandardMaterial({
+      color: 0x2b3a55, emissive: new THREE.Color(0xffcf7a), emissiveIntensity: 0,
+    });
+    // 座標是「朝房間內側」的那一面，不是朝地圖外面的那一面——牆的外側
+    // 本來就沒人站在那邊看，窗戶裝在那一面等於誰都看不到，之前裝反了
+    let win;
+    if (windowSide === 'north') { win = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.42, 0.06), winMat); win.position.set(0, 0.78, 0.49); }
+    else if (windowSide === 'south') { win = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.42, 0.06), winMat); win.position.set(0, 0.78, -0.49); }
+    else if (windowSide === 'east') { win = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.42, 0.5), winMat); win.position.set(-0.49, 0.78, 0); }
+    else { win = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.42, 0.5), winMat); win.position.set(0.49, 0.78, 0); }
+    g.add(win);
+    windowMats.push(winMat);
+  }
+  g.position.set(x, 0, z);
+  return g;
+}
+
+function makeFurniture(item) {
+  const g = new THREE.Group();
+  if (item.type === 'bed') {
+    const frame = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.14, 1.8),
+      new THREE.MeshStandardMaterial({ color: 0x7a5230 }));
+    frame.position.y = 0.08; frame.castShadow = true; g.add(frame);
+    const mattress = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.16, 1.7),
+      new THREE.MeshStandardMaterial({ color: 0xf2f0e8 }));
+    mattress.position.y = 0.22; mattress.castShadow = true; mattress.receiveShadow = true;
+    g.add(mattress);
+    const blanket = new THREE.Mesh(new THREE.BoxGeometry(0.82, 0.06, 1.0),
+      new THREE.MeshStandardMaterial({ color: 0xdb5f86 }));
+    blanket.position.set(0, 0.33, 0.35); g.add(blanket);
+    const pillow = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.1, 0.28),
+      new THREE.MeshStandardMaterial({ color: 0xffffff }));
+    pillow.position.set(0, 0.33, -0.68); g.add(pillow);
+  } else if (item.type === 'table') {
+    const top = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.06, 0.8),
+      new THREE.MeshStandardMaterial({ color: 0x9c7248 }));
+    top.position.y = 0.42; top.castShadow = true; top.receiveShadow = true;
+    g.add(top);
+    const legMat = new THREE.MeshStandardMaterial({ color: 0x6b4a30 });
+    [[-0.32, -0.32], [0.32, -0.32], [-0.32, 0.32], [0.32, 0.32]].forEach(([lx, lz]) => {
+      const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.4, 6), legMat);
+      leg.position.set(lx, 0.2, lz); leg.castShadow = true; g.add(leg);
+    });
+  } else if (item.type === 'chair') {
+    const seat = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.06, 0.4),
+      new THREE.MeshStandardMaterial({ color: 0x8a5a3a }));
+    seat.position.y = 0.28; seat.castShadow = true; g.add(seat);
+    const back = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.4, 0.05),
+      new THREE.MeshStandardMaterial({ color: 0x8a5a3a }));
+    back.position.set(0, 0.5, -0.18); back.castShadow = true; g.add(back);
+    const legMat = new THREE.MeshStandardMaterial({ color: 0x5a3d24 });
+    [[-0.15, -0.15], [0.15, -0.15], [-0.15, 0.15], [0.15, 0.15]].forEach(([lx, lz]) => {
+      const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.28, 5), legMat);
+      leg.position.set(lx, 0.14, lz); g.add(leg);
+    });
+    if (item.rot) g.rotation.y = item.rot;
+  } else if (item.type === 'rug') {
+    const rug = new THREE.Mesh(new THREE.BoxGeometry(1.3, 0.02, 1.3),
+      new THREE.MeshStandardMaterial({ color: 0xc9576b }));
+    rug.position.y = 0.015; rug.receiveShadow = true;
+    g.add(rug);
+  }
+  return g;
+}
+
+// ==============================================================
+// 8) 農作獨立渲染層
+// ==============================================================
+const farmGroup = new THREE.Group();
+farmGroup.position.y = PLATEAU_Y; // 農地固定在高台範圍內，直接給一個定值就好
+scene.add(farmGroup);
+function syncFarmVisuals() {
+  farmGroup.clear();
+  if (currentMapName !== 'outside') { farmGroup.visible = false; return; }
+  farmGroup.visible = true;
+  FARMLAND_TILES.forEach(([x, z]) => {
+    farmGroup.add(makeSoil(x, z));
+    const c = cropState[`${x},${z}`];
+    if (c) {
+      const mesh = makeCropMesh(c.stage);
+      mesh.position.x += x; mesh.position.z += z;
+      farmGroup.add(mesh);
+    }
+  });
+  if (currentDay > pouchCollectedDay) {
+    const pouch = makeSeedPouch();
+    pouch.position.set(POUCH_POS.x, 0, POUCH_POS.z);
+    farmGroup.add(pouch);
+  }
+}
+
+// ==============================================================
+// 9) NPC 群 — 現在每個 NPC 多帶兩個欄位：path（A* 算出的格子序列）
+//    跟 pathIndex（走到第幾格了），取代 v11 的「直線衝過去」
+// ==============================================================
+const npcGroup = new THREE.Group();
+npcGroup.position.y = PLATEAU_Y; // 所有 NPC 行程表的座標都在高台範圍內
+scene.add(npcGroup);
+const outsideCols = MAPS.outside.tiles[0].length;
+const outsideRows = MAPS.outside.tiles.length;
+const npcs = npcDefs.map(def => {
+  const mesh = makeHumanoid({ shirt: def.shirt, hair: def.hair });
+  mesh.position.set(def.home.x, 0, def.home.z);
+  npcGroup.add(mesh);
+  return { ...def, mesh, memory: 0, path: null, pathIndex: 0, lastTargetKey: null };
+});
+
+// ==============================================================
+// 9.5) 動物 — 白天在牧草地邊界內隨機遊走，晚上自動走回穀倉門口消失，
+//    早上原地重新出現。純直線移動，沒有 A*（牧草地是空地，划不來）
+// ==============================================================
+const PASTURE = {
+  minX: LAYOUT.pasture.x, maxX: LAYOUT.pasture.x + LAYOUT.pasture.width - 1,
+  minZ: LAYOUT.pasture.z, maxZ: LAYOUT.pasture.z + LAYOUT.pasture.height - 1,
+};
+const BARN_DOOR = { x: LAYOUT.barn.doorX, z: LAYOUT.barn.z + LAYOUT.barn.d };
+const animalGroup = new THREE.Group();
+animalGroup.position.y = PLATEAU_Y; // 牧場整個都在高台範圍內
+scene.add(animalGroup);
+function randomPasturePoint() {
+  return {
+    x: PASTURE.minX + Math.random() * (PASTURE.maxX - PASTURE.minX),
+    z: PASTURE.minZ + Math.random() * (PASTURE.maxZ - PASTURE.minZ),
+  };
+}
+const animalDefs = [
+  { id: 'cow1', type: 'cow', speed: 0.32, restMin: 3, restMax: 7 },
+  { id: 'sheep1', type: 'sheep', speed: 0.38, restMin: 2, restMax: 5 },
+  { id: 'chicken1', type: 'chicken', speed: 0.5, restMin: 1, restMax: 3 },
+  { id: 'chicken2', type: 'chicken', speed: 0.5, restMin: 1, restMax: 3 },
+];
+const animals = animalDefs.map(def => {
+  const mesh = makeAnimal(def.type);
+  // 原始低模動物相對人物太小；以群組原點（腳底高度 y=0）統一放大，
+  // 因此尺寸變成兩倍但仍會貼著地面，不影響移動與回家邏輯。
+  mesh.scale.setScalar(2);
+  const start = randomPasturePoint();
+  mesh.position.set(start.x, 0, start.z);
+  animalGroup.add(mesh);
+  return {
+    ...def, mesh, state: 'out', target: randomPasturePoint(),
+    wanderState: 'walking', restUntil: 0,
+  };
+});
+
+// ==============================================================
+// 10) 建場景
+// ==============================================================
+let mapGroup = new THREE.Group();
+let player;
+let currentMapName = 'outside';
+let playerGridPos = { x: 0, z: 0 };
+let facing = 'down';
+let isMoving = false;
+let houseLampLight = null, houseLampBulbMat = null; // 房子裡的桌燈，晚上自動點亮
+
+function buildMap(mapName) {
+  scene.remove(mapGroup);
+  mapGroup = new THREE.Group();
+  windowMats.length = 0;
+
+  const map = MAPS[mapName];
+  const rows = map.tiles.length, cols = map.tiles[0].length;
+
+  let plateauGroup = mapGroup;
+
+  if (mapName === 'house') {
+    const ground = new THREE.Mesh(
+      new THREE.BoxGeometry(cols * TILE, 0.2, rows * TILE),
+      new THREE.MeshStandardMaterial({ color: 0xc9b48a })
+    );
+    ground.position.set((cols * TILE) / 2 - TILE / 2, -0.1, (rows * TILE) / 2 - TILE / 2);
+    ground.receiveShadow = true;
+    mapGroup.add(ground);
+  } else {
+    // 地面拆成四塊：高台(x0-10) + 三格階梯緩坡(x11,12,13) + 低地沙灘/海(x14+)。
+    // 相鄰方塊高度不同，交界處自然露出垂直側面，那就是「階梯」的視覺來源，
+    // 不用額外建模階梯形狀
+    const grassMat = new THREE.MeshStandardMaterial({ color: 0x6ab04c });
+    const zCenter = (rows * TILE) / 2 - TILE / 2;
+    function groundSlab(xStart, xEnd, height) {
+      const width = xEnd - xStart;
+      const slab = new THREE.Mesh(new THREE.BoxGeometry(width, 0.2, rows * TILE), grassMat);
+      slab.position.set((xStart + xEnd) / 2 - 0.5, height - 0.1, zCenter);
+      slab.receiveShadow = true; slab.castShadow = true;
+      mapGroup.add(slab);
+    }
+    groundSlab(0, 29, PLATEAU_Y);                   // 高台 x=0~28（含新的西側緩衝空間）
+    const lowlandMat = new THREE.MeshStandardMaterial({ color: 0x6ab04c });
+    const cliffMat2 = new THREE.MeshStandardMaterial({ color: 0x8a8478, flatShading: true });
+    const pathMat = new THREE.MeshStandardMaterial({ color: 0xbfa172 });
+    for (let z = 0; z < Math.min(rows, TOWN_Z_START); z++) {
+      const inCorridor = z >= RAMP_CORRIDOR_MIN_Z && z <= RAMP_CORRIDOR_MAX_Z;
+      if (inCorridor) {
+        // 走廊：三級台階，用路面色而不是草色，讀起來像「這是特地留的一條路」
+        [[29, PLATEAU_Y * 0.75], [30, PLATEAU_Y * 0.5], [31, PLATEAU_Y * 0.25]].forEach(([sx, sy]) => {
+          const step = new THREE.Mesh(new THREE.BoxGeometry(1, 0.2, TILE), pathMat);
+          step.position.set(sx, sy - 0.1, z);
+          step.receiveShadow = true; step.castShadow = true;
+          mapGroup.add(step);
+        });
+      } else {
+        // 懸崖：一整片垂直岩壁，從高台頂端封到海平面，這裡走不過去
+        const wall = new THREE.Mesh(new THREE.BoxGeometry(3, PLATEAU_Y + 0.3, TILE * 0.96), cliffMat2);
+        wall.position.set(30, PLATEAU_Y / 2 - 0.05, z);
+        wall.castShadow = true; wall.receiveShadow = true;
+        mapGroup.add(wall);
+        // 崖底偶爾堆一顆放大的石頭，呼應參考圖那種亂石礁岸的感覺
+        if (hash2(z * 3.1, 8.8) < 0.55) {
+          const boulder = makeStone(29 + hash2(z, 1) * 2.3, z + (hash2(z, 2) - 0.5) * 0.6, hash2(z, 3));
+          boulder.scale.setScalar(1.7 + hash2(z, 4) * 1.6);
+          mapGroup.add(boulder);
+        }
+      }
+    }
+    const lowland = new THREE.Mesh(new THREE.BoxGeometry(cols - 32, 0.2, rows * TILE),
+      new THREE.MeshStandardMaterial({ color: 0x6ab04c }));
+    lowland.position.set(32 + (cols - 32) / 2 - 0.5, -0.1, zCenter);
+    lowland.receiveShadow = true;
+    mapGroup.add(lowland);
+
+    // 北側懸崖 + 遠方海景 —— 純背景，跟西側遠山同一招：z 是負的，isBlocked
+    // 本來就會把超出邊界的座標判定為擋路，走不進去，不用額外寫碰撞。
+    // 沒有真的把海延伸到北邊（那需要海面系統支援兩塊不相連的水域，成本
+    // 不成比例），做的是懸崖峭壁 + 崖底沙灘沿 + 亂石 + 遠方海水色背景板，
+    // 「沙灘在崖底止住」這個視覺效果做出來了，但沙灘本身不能走進去
+    const cliff = new THREE.Mesh(new THREE.BoxGeometry(11, PLATEAU_Y, 0.4),
+      new THREE.MeshStandardMaterial({ color: 0x8a8478, flatShading: true }));
+    cliff.position.set(5, PLATEAU_Y / 2, -0.7);
+    cliff.castShadow = true; cliff.receiveShadow = true;
+    mapGroup.add(cliff);
+    const sandFringe = new THREE.Mesh(new THREE.PlaneGeometry(13, 2.4),
+      new THREE.MeshStandardMaterial({ color: 0xe8d29a }));
+    sandFringe.rotation.x = -Math.PI / 2;
+    sandFringe.position.set(5, 0.01, -2.1);
+    mapGroup.add(sandFringe);
+    for (let i = 0; i < 6; i++) {
+      const bx = hash2(i * 5.1, 2.2), bz = hash2(i * 2.7, 6.6);
+      const boulder = makeStone(bx * 11, -1.2 - bz * 1.5, bx);
+      boulder.scale.setScalar(1.4 + bz * 1.8);
+      mapGroup.add(boulder);
+    }
+    // 遠方海景升級：加大、加密網格、頂點染色做出「越遠越淡越融進霧裡」的
+    // 漸層，再疊一點點輕微波動——比一片死板的純色平面更有「一直延伸出去」
+    // 的感覺，但幅度比真正的海浪(oceanMesh)小很多，畢竟這只是背景
+    const sgGeo = new THREE.PlaneGeometry(34, 22, 14, 10);
+    sgGeo.rotateX(-Math.PI / 2);
+    const sgPos = sgGeo.attributes.position;
+    const sgBase = new Float32Array(sgPos.count * 3);
+    const sgColors = new Float32Array(sgPos.count * 3);
+    const near = new THREE.Color(0x4a90c8), far = new THREE.Color(0x9fc4dd);
+    for (let i = 0; i < sgPos.count; i++) {
+      sgBase[i * 3] = sgPos.getX(i);
+      sgBase[i * 3 + 1] = sgPos.getY(i);
+      sgBase[i * 3 + 2] = sgPos.getZ(i);
+      // z 越負(越遠、越靠近懸崖/地平線)顏色越淡，模擬融入霧裡的感覺
+      const t = Math.min(1, Math.max(0, (-sgPos.getZ(i) - 3) / 16));
+      const c = near.clone().lerp(far, t);
+      sgColors[i * 3] = c.r; sgColors[i * 3 + 1] = c.g; sgColors[i * 3 + 2] = c.b;
+    }
+    sgGeo.setAttribute('color', new THREE.BufferAttribute(sgColors, 3));
+    sgGeo.userData = { basePositions: sgBase };
+    seaGlimpseMesh = new THREE.Mesh(sgGeo, new THREE.MeshStandardMaterial({
+      vertexColors: true, roughness: 0.25, transparent: true, opacity: 0.85,
+    }));
+    seaGlimpseMesh.position.set(5, 0, -14);
+    mapGroup.add(seaGlimpseMesh);
+
+    // 固定在高台上的東西(建築、農地、湖、牧草、遠山)統一掛在這個群組下面，
+    // 整組往上抬 PLATEAU_Y，不用逐一調整每個物件的座標
+    plateauGroup = new THREE.Group();
+    plateauGroup.position.y = PLATEAU_Y;
+    mapGroup.add(plateauGroup);
+  }
+
+  (map.buildings || []).forEach(b => plateauGroup.add(b.style === 'barn' ? makeBarn(b) : makeBuilding(b)));
+  (map.furniture || []).forEach(item => {
+    const w = item.w || 1, d = item.d || 1;
+    const mesh = makeFurniture(item);
+    mesh.position.set(item.x + (w - 1) / 2, 0, item.z + (d - 1) / 2);
+    plateauGroup.add(mesh);
+  });
+
+  houseLampLight = null; houseLampBulbMat = null;
+  if (mapName === 'house') {
+    const lamp = makeLamp();
+    lamp.group.position.set(5, 0.45, 2); // 桌上，桌面高度約 0.45
+    plateauGroup.add(lamp.group);
+    houseLampLight = lamp.light;
+    houseLampBulbMat = lamp.bulbMat;
+  }
+
+  map.tiles.forEach((row, z) => {
+    row.forEach((tile, x) => {
+      if (tile === 1 && mapName === 'house') {
+        const winEntry = (map.windows || []).find(w => w.x === x && w.z === z);
+        plateauGroup.add(makeInteriorWall(x, z, winEntry ? winEntry.side : null));
+      }
+      else if (tile === 2) { const m = makeTree(x, z); m.position.y += groundY(x); mapGroup.add(m); }
+      else if (tile === 3) {
+        const threshold = new THREE.Mesh(new THREE.BoxGeometry(TILE * 0.9, 0.06, TILE * 0.9),
+          new THREE.MeshStandardMaterial({ color: 0xf5c542 }));
+        threshold.position.set(x, 0.03 + (mapName === 'outside' ? groundY(x) : 0), z);
+        mapGroup.add(threshold);
+      } else if (tile === 5) { const m = makePath(x, z); m.position.y += groundY(x); mapGroup.add(m); }
+      // tile === 6（湖）不逐格建置，改成迴圈結束後蓋成一整片有波紋的水面
+      else if (tile === 8) {
+        mapGroup.add(makeSand(x, z));
+        const r = hash2(x * 4.3, z * 2.1);
+        if (r < 0.12) mapGroup.add(makeStone(x + (r - 0.5) * 0.3, z + (r - 0.5) * 0.3, r * 0.6));
+      }
+      // tile === 9（海）不逐格建置，迴圈結束後另外蓋成一整片海面，才能做波浪動畫
+      else if (tile === 0 && mapName === 'outside') {
+        if (x === POUCH_POS.x && z === POUCH_POS.z) return;
+        if (x >= 14 && x <= 16) return; // 坡道走廊留乾淨，不要長裝飾把路擋亂
+        const r = hash2(x * 3.1, z * 7.7);
+        const gy = groundY(x);
+        if (r < 0.1) { const m = makeGrassTuft(x + (r - 0.5) * 0.4, z + (r - 0.5) * 0.4, r); m.position.y += gy; mapGroup.add(m); }
+        else if (r < 0.14) { const m = makeFlower(x + (r - 0.5) * 0.4, z + (r - 0.5) * 0.4, FLOWER_COLORS[Math.floor(r * 100) % 4]); m.position.y += gy; mapGroup.add(m); }
+        else if (r < 0.17) { const m = makeStone(x + (r - 0.5) * 0.4, z + (r - 0.5) * 0.4, r); m.position.y += gy; mapGroup.add(m); }
+      }
+    });
+  });
+
+  // 海面：支援頂點著色（浪頭捲到最高點時自動染白模擬碎浪），網格加密讓
+  // 捲浪的幾何細節看得出來；只涵蓋 tile 9 的範圍，動畫在 animate() 逐頂點更新
+  foamMeshes.length = 0;
+  oceanMesh = null;
+  lakeMesh = null;
+  seaGlimpseMesh = null;
+  fishSchool.length = 0;
+  pastureGrassBlades.length = 0;
+  if (mapName === 'outside') {
+    const oceanCells = [];
+    map.tiles.forEach((row, z) => row.forEach((t, x) => { if (t === 9) oceanCells.push({ x, z }); }));
+    if (oceanCells.length) {
+      const minX = Math.min(...oceanCells.map(c => c.x)) - 0.5;
+      const maxX = Math.max(...oceanCells.map(c => c.x)) + 0.5;
+      const minZ = Math.min(...oceanCells.map(c => c.z)) - 0.5;
+      const maxZ = Math.max(...oceanCells.map(c => c.z)) + 0.5;
+      const width = maxX - minX, depth = maxZ - minZ;
+      const geo = new THREE.PlaneGeometry(width, depth, Math.max(2, Math.round(width * 4)), Math.max(2, Math.round(depth * 3)));
+      geo.rotateX(-Math.PI / 2);
+
+      // 幫每個頂點記錄「原始座標」：波浪位移一定要從固定的原始位置重算，
+      // 不能直接在目前位置上疊加，不然每幀都會愈飄愈遠。顏色則用來畫浪頭泡沫
+      const pos = geo.attributes.position;
+      const basePositions = new Float32Array(pos.count * 3);
+      const colors = new Float32Array(pos.count * 3);
+      for (let i = 0; i < pos.count; i++) {
+        basePositions[i * 3] = pos.getX(i);
+        basePositions[i * 3 + 1] = pos.getY(i);
+        basePositions[i * 3 + 2] = pos.getZ(i);
+        colors[i * 3] = 0.18; colors[i * 3 + 1] = 0.43; colors[i * 3 + 2] = 0.68; // 0x2f6fae
+      }
+      geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+      geo.userData = { basePositions };
+
+      oceanMesh = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({
+        vertexColors: true, roughness: 0.2, metalness: 0.1, flatShading: true,
+        transparent: true, opacity: 0.92,
+      }));
+      // y 抬高一點：波浪的位移量如果蓋過地面（y=0）就會被不透明的地面擋住，
+      // 變成海面中間破一個洞。留出安全間距讓波浪永遠浮在地面之上
+      oceanMesh.position.set((minX + maxX) / 2, 0.13, (minZ + maxZ) / 2);
+      oceanMesh.receiveShadow = true;
+      mapGroup.add(oceanMesh);
+
+      // 沙灘跟海交界處各放一組會捲上岸、碎開、又退回去的浪花
+      map.tiles.forEach((row, z) => {
+        const shoreX = row.findIndex(t => t === 9);
+        if (shoreX > 0) {
+          const foam = makeFoam(shoreX - 0.35, z, z * 1.37);
+          foamMeshes.push(foam);
+          mapGroup.add(foam);
+        }
+      });
+
+      // 碼頭——放在坡道走廊下來正對的沙灘上，跟參考圖「住宅小路→階梯→沙灘
+      // →碼頭」的動線一致
+      const dock = makeDock();
+      dock.position.set(32.3, 0, 15);
+      mapGroup.add(dock);
+
+      // 悠游的小魚仔——純氛圍裝飾，每條各自繞著自己的中心點游圈圈，
+      // 中心點跟半徑都用決定性亂數算，重整頁面魚群長得一樣、不會整批重排
+      fishSchool.length = 0;
+      const FISH_COUNT = 6;
+      for (let i = 0; i < FISH_COUNT; i++) {
+        const s1 = hash2(i * 3.1, i * 7.7), s2 = hash2(i * 5.3, i * 2.9);
+        const cx = minX + 0.6 + s1 * (width - 1.2);
+        const cz = minZ + 0.4 + s2 * (depth - 0.8);
+        const mesh = makeFishProp(i);
+        mapGroup.add(mesh);
+        fishSchool.push({ mesh, cx, cz, radius: 0.35 + s1 * 0.55, speed: 0.5 + s2 * 0.45, phase: s1 * 10 });
+      }
+    }
+
+    // 圍欄拿掉了，牧場現在是開放式的草地，不用柵欄圍起來
+    // 改成整片會被風吹動的牧草——每格灑 1~2 叢，位置加一點隨機偏移，
+    // 才不會排成整齊的方格，看起來比較像自然長出來的草地
+    for (let gx = PASTURE.minX; gx <= PASTURE.maxX; gx++) {
+      for (let gz = PASTURE.minZ; gz <= PASTURE.maxZ; gz++) {
+        const count = 1 + Math.round(hash2(gx * 3.3, gz * 5.1));
+        for (let i = 0; i < count; i++) {
+          const seed = hash2(gx + i * 1.9, gz + i * 2.7);
+          const jx = gx + (seed - 0.5) * 0.85;
+          const jz = gz + (hash2(gx, gz + i * 4.1) - 0.5) * 0.85;
+          const tuft = makeWindGrass(jx, jz, seed);
+          plateauGroup.add(tuft);
+          pastureGrassBlades.push(tuft);
+        }
+      }
+    }
+
+    // 依山傍海：海在東側，山放在西側邊界外，人站在房子附近往兩邊看
+    // 會同時感覺到背後有山、前面有海——這是純景觀，不能走進去
+    const MOUNTAIN_COUNT = 10;
+    for (let i = 0; i < MOUNTAIN_COUNT; i++) {
+      const s = hash2(i * 9.7, i * 3.1);
+      const mz = (i / (MOUNTAIN_COUNT - 1)) * (rows - 1);
+      const height = 1.6 + s * 1.9;
+      plateauGroup.add(makeMountain(LAYOUT.mountainBand.x + s * (LAYOUT.mountainBand.width - 1), mz, height, s));
+    }
+
+    // 房子當原點：新東西都算「房子 + 偏移」，不要再對著散落各處的絕對座標
+    // 湊數字——這也是這次會擠成一團的根本原因，數字是憑感覺湊出來的，
+    // 沒有一個共同的參考點去檢查「這樣間距合理嗎」
+    const HOUSE = { x: LAYOUT.house.x + 1, z: LAYOUT.house.z + 0.5 };
+
+    // 果園——原本位置現在被放大的湖蓋掉了，挪到穀倉東側，一樣是
+    // 3×3 網格、格距 1.1
+    for (let ox = 0; ox < 3; ox++) {
+      for (let oz = 0; oz < 3; oz++) {
+        const fx = HOUSE.x + 4.5 + ox * 1.0 + (hash2(ox, oz) - 0.5) * 0.3;
+        const fz = HOUSE.z - 8.5 + oz * 1.0 + (hash2(oz, ox) - 0.5) * 0.3;
+        plateauGroup.add(makeFruitTree(fx, fz, hash2(fx, fz)));
+      }
+    }
+
+    // 瀑布——湖西側邊緣，靜態占位，還沒做真的水流動畫
+    plateauGroup.add(makeWaterfallPlaceholder(LAYOUT.lake.x + 0.5, LAYOUT.lake.z + 3));
+
+    // 休息區——原本只比房子偏南 0.5 格，感覺還是貼在門口，現在拉到
+    // 南邊 2.5 格，配上偏東 5 格，才讀得出「右下」的方位
+    plateauGroup.add(makePicnicSet(HOUSE.x + 5, HOUSE.z + 2.5));
+    const shadeTree = makeTree(HOUSE.x + 5, HOUSE.z + 1.7);
+    shadeTree.scale.setScalar(1.4);
+    plateauGroup.add(shadeTree);
+
+    // 花園——跟著休息區一起往南挪，維持「休息區→花園」相鄰但更南邊
+    [[0, 0], [1.5, 0.4], [0.7, 1.6]].forEach(([dx, dz], i) => {
+      plateauGroup.add(makeGardenBed(HOUSE.x + 6.5 + dx, HOUSE.z + 3.5 + dz, hash2(dx, dz + i)));
+    });
+
+    // 城區——原本 7 個方塊間距只有 1~2 格，擠成一團看不出街廓，
+    // 現在間距拉大到 2.5~3 格，才讀得出「這是聚落」而不是「一堆箱子」
+    const townSpots = [
+      [HOUSE.x - 3, HOUSE.z + 16.5], [HOUSE.x + 2, HOUSE.z + 16.5],
+      [HOUSE.x - 4, HOUSE.z + 19], [HOUSE.x - 1.5, HOUSE.z + 18],
+      [HOUSE.x + 4, HOUSE.z + 18.5], [HOUSE.x - 2, HOUSE.z + 20.5],
+      [HOUSE.x + 3, HOUSE.z + 19.5],
+    ];
+    townSpots.forEach(([tx, tz], i) => {
+      plateauGroup.add(makeTownPlaceholder(tx, tz, hash2(tx, tz + i)));
+    });
+
+    // 湖：不再是矩形平面，改成手刻的極座標網格——從中心點往外拉幾圈同心圓，
+    // 每個角度的半徑疊加幾層不同頻率的正弦波，做出雲朵/天然湖泊那種不規則
+    // 但平滑的輪廓，不是幾個角的多邊形。三角化方式是標準的「相鄰兩圈連成
+    // 三角形」做法，中心密、邊緣疏，整片仍然是一個網格，波紋動畫照樣能用
+    const lakeCells = [];
+    map.tiles.forEach((row, z) => row.forEach((t, x) => { if (t === 6) lakeCells.push({ x, z }); }));
+    if (lakeCells.length) {
+      const lMinX = Math.min(...lakeCells.map(c => c.x));
+      const lMaxX = Math.max(...lakeCells.map(c => c.x));
+      const lMinZ = Math.min(...lakeCells.map(c => c.z));
+      const lMaxZ = Math.max(...lakeCells.map(c => c.z));
+      const centerX = (lMinX + lMaxX) / 2, centerZ = (lMinZ + lMaxZ) / 2;
+      const baseRadius = (Math.max(lMaxX - lMinX, lMaxZ - lMinZ) / 2 + 0.5) * 0.92;
+      const seed = hash2(centerX * 1.7, centerZ * 2.3) * 20;
+
+      const ANGLE_SEG = 32, RING_SEG = 7;
+      const angleRadius = [];
+      for (let a = 0; a <= ANGLE_SEG; a++) {
+        const theta = (a / ANGLE_SEG) * Math.PI * 2;
+        angleRadius.push(baseRadius * (
+          1
+          + 0.20 * Math.sin(theta * 2 + seed)
+          + 0.12 * Math.sin(theta * 3 + seed * 1.6)
+          + 0.07 * Math.sin(theta * 5 + seed * 2.4)
+        ));
+      }
+      angleRadius[ANGLE_SEG] = angleRadius[0]; // 頭尾接起來，輪廓才會閉合
+
+      const positions = [];
+      const colors = [];
+      for (let ring = 0; ring <= RING_SEG; ring++) {
+        const ringFrac = ring / RING_SEG;
+        for (let a = 0; a <= ANGLE_SEG; a++) {
+          const theta = (a / ANGLE_SEG) * Math.PI * 2;
+          const r = angleRadius[a] * ringFrac;
+          positions.push(Math.cos(theta) * r, 0, Math.sin(theta) * r);
+          // 中心偏深藍，邊緣淡成偏綠的淺水色——湖底透光的感覺
+          const edge = ringFrac;
+          colors.push(0.13 + edge * 0.30, 0.36 + edge * 0.32, 0.52 + edge * 0.20);
+        }
+      }
+      const indices = [];
+      const rowLen = ANGLE_SEG + 1;
+      for (let ring = 0; ring < RING_SEG; ring++) {
+        for (let a = 0; a < ANGLE_SEG; a++) {
+          const i0 = ring * rowLen + a, i1 = ring * rowLen + a + 1;
+          const i2 = (ring + 1) * rowLen + a, i3 = (ring + 1) * rowLen + a + 1;
+          indices.push(i0, i2, i1, i1, i2, i3);
+        }
+      }
+
+      const posArray = new Float32Array(positions);
+      const lGeo = new THREE.BufferGeometry();
+      lGeo.setAttribute('position', new THREE.BufferAttribute(posArray, 3));
+      lGeo.setAttribute('color', new THREE.BufferAttribute(new Float32Array(colors), 3));
+      lGeo.setIndex(indices);
+      lGeo.computeVertexNormals();
+      lGeo.userData = { basePositions: posArray.slice() };
+
+      lakeMesh = new THREE.Mesh(lGeo, new THREE.MeshStandardMaterial({
+        vertexColors: true, roughness: 0.16, metalness: 0.12,
+        transparent: true, opacity: 0.9, side: THREE.DoubleSide,
+      }));
+      lakeMesh.position.set(centerX, 0.1, centerZ);
+      lakeMesh.receiveShadow = true; // 房子跟樹的影子可以真的落在水面上
+      plateauGroup.add(lakeMesh);
+
+      // 幾片睡蓮葉，浮在水面上——低成本但很有效的「這是一座湖」視覺訊號
+      const padCount = 3;
+      for (let i = 0; i < padCount; i++) {
+        const pr = hash2(seed + i * 4.1, i * 1.3);
+        const pa = hash2(i * 7.7, seed + i * 2.9) * Math.PI * 2;
+        const dist = baseRadius * (0.15 + pr * 0.45);
+        const pad = new THREE.Mesh(new THREE.CircleGeometry(0.09 + pr * 0.05, 8),
+          new THREE.MeshStandardMaterial({ color: 0x3f9142, flatShading: true, side: THREE.DoubleSide }));
+        pad.rotation.x = -Math.PI / 2;
+        pad.position.set(centerX + Math.cos(pa) * dist, 0.135, centerZ + Math.sin(pa) * dist);
+        plateauGroup.add(pad);
+      }
+    }
+  }
+
+  scene.add(mapGroup);
+  currentMapName = mapName;
+  npcGroup.visible = mapName === 'outside';
+  animalGroup.visible = mapName === 'outside';
+  syncFarmVisuals();
+}
+
+function isBlocked(mapName, x, z) {
+  const map = MAPS[mapName];
+  if (z < 0 || z >= map.tiles.length || x < 0 || x >= map.tiles[0].length) return true;
+  const t = map.tiles[z][x];
+  if (t === 1 || t === 2 || t === 6 || t === 9) return true;
+  if (map.furniture) {
+    return map.furniture.some(f => {
+      if (f.nonBlocking) return false;
+      const w = f.w || 1, d = f.d || 1;
+      return x >= f.x && x < f.x + w && z >= f.z && z < f.z + d;
+    });
+  }
+  return false;
+}
+
+function loadMap(mapName, startPos) {
+  fadeOut(() => {
+    buildMap(mapName);
+    const pos = startPos || MAPS[mapName].playerStart;
+    playerGridPos = { x: pos.x, z: pos.z };
+    if (!player) {
+      player = makeGirlPlayer();
+      scene.add(player);
+    }
+    player.position.x = playerGridPos.x;
+    player.position.z = playerGridPos.z;
+    fadeIn();
+  });
+}
+
+const fadeEl = document.getElementById('fade');
+function fadeOut(cb) { fadeEl.style.opacity = 1; setTimeout(cb, 400); }
+function fadeIn() { setTimeout(() => fadeEl.style.opacity = 0, 50); }
+
+const dialogEl = document.getElementById('dialog');
+function showDialog(text) {
+  dialogEl.textContent = text;
+  dialogEl.style.display = dialogEl.style.display === 'none' || !dialogEl.style.display ? 'block' : 'none';
+}
+// 多句對話用的小佇列——按 E 一句一句往下推，最後一句再按一次才關掉。
+// 單句對話還是用上面的 showDialog()，這個只給需要「一來一往」的場景用
+let dialogQueue = [];
+let dialogIndex = 0;
+function showDialogSequence(lines) {
+  dialogQueue = lines;
+  dialogIndex = 0;
+  dialogEl.textContent = dialogQueue[0];
+  dialogEl.style.display = 'block';
+}
+function advanceDialogSequence() {
+  dialogIndex++;
+  if (dialogIndex >= dialogQueue.length) {
+    dialogEl.style.display = 'none';
+    dialogQueue = [];
+    return;
+  }
+  dialogEl.textContent = dialogQueue[dialogIndex];
+}
+
+const keys = {};
+addEventListener('keydown', e => keys[e.key.toLowerCase()] = true);
+addEventListener('keyup', e => keys[e.key.toLowerCase()] = false);
+addEventListener('wheel', e => {
+  zoom = Math.max(2, Math.min(18, zoom + e.deltaY * 0.01));
+  updateCameraFrustum();
+});
+
+let ePressed = false;
+addEventListener('keydown', e => {
+  if (e.key.toLowerCase() !== 'e' || ePressed) return;
+  ePressed = true;
+
+  // 對話正在進行中：E 只用來往下推句子，不觸發任何其他動作
+  if (dialogQueue.length) { advanceDialogSequence(); return; }
+
+  const scripted = events
+    .filter(ev => ev.map === currentMapName && ev.trigger === 'interact')
+    .filter(ev => Math.abs(ev.x - playerGridPos.x) + Math.abs(ev.z - playerGridPos.z) <= 1);
+  if (scripted.length) { scripted.forEach(ev => ev.action()); return; }
+
+  if (currentMapName === 'outside') {
+    const nearby = npcs.find(n => {
+      const dx = player.position.x - n.mesh.position.x, dz = player.position.z - n.mesh.position.z;
+      return Math.sqrt(dx * dx + dz * dz) <= 1.3;
+    });
+    if (nearby) {
+      showDialog(npcLine(nearby));
+      return;
+    }
+  }
+
+  if (currentMapName === 'outside' && nearWater()) {
+    if (fishingState === 'idle') {
+      fishingState = 'casting';
+      fishingTimer = 0;
+      biteWaitTime = 1.4 + Math.random() * 2.6;
+      bobberMesh = makeBobber();
+      scene.add(bobberMesh);
+      castAnimEnd = elapsed + CAST_ANIM_DURATION;
+      if (player.parts.rod) player.parts.rod.visible = true;
+    } else if (fishingState === 'biting') {
+      inventory.fish++;
+      fishingState = 'idle';
+      const catchFrom = bobberMesh ? bobberMesh.position.clone() : player.position.clone();
+      if (bobberMesh) { scene.remove(bobberMesh); bobberMesh = null; }
+      if (player.parts.rod) player.parts.rod.visible = false;
+      fishFeedback = { text: '釣到一隻魚！', until: elapsed + 1.4 };
+      const flyingFish = makeFishProp(Math.random() * 100);
+      flyingFish.scale.setScalar(1.7);
+      scene.add(flyingFish);
+      catchAnim = { mesh: flyingFish, from: catchFrom, start: elapsed, duration: 0.7 };
+    }
+    // casting 中途按 E 沒有作用——心急沒有用，這也是釣魚小遊戲的重點
+    return;
+  }
+
+  if (currentMapName !== 'outside') return;
+  const { x, z } = playerGridPos;
+  if (x === POUCH_POS.x && z === POUCH_POS.z) { pickupSeeds(); return; }
+  const onFarmland = FARMLAND_TILES.some(([fx, fz]) => fx === x && fz === z);
+  if (onFarmland) {
+    const key = `${x},${z}`;
+    if (cropState[key] && cropState[key].stage >= 2) harvestCrop(x, z);
+    else if (!cropState[key]) plantSeed(x, z);
+  }
+});
+addEventListener('keyup', e => { if (e.key.toLowerCase() === 'e') ePressed = false; });
+
+// 自由移動的碰撞判斷：玩家當成一個小正方形，四個角落分別去查
+// 「這個角落現在在哪個格子、那格能不能走」，任何一個角落撞到就擋住，
+// 這樣貼著牆邊走的時候是滑過去，不是整個人卡住
+function collidesAt(mapName, x, z, half = 0.22) {
+  const corners = [
+    [x - half, z - half], [x + half, z - half],
+    [x - half, z + half], [x + half, z + half],
+  ];
+  return corners.some(([cx, cz]) => isBlocked(mapName, Math.round(cx), Math.round(cz)));
+}
+
+window.__gameState = () => ({
+  playerGridPos, currentMapName, facing, isMoving,
+  nightFactor: window.__nightFactor || 0,
+  dialogVisible: dialogEl.style.display === 'block',
+  day: currentDay, inventory: { ...inventory }, fishingState,
+  npcs: npcs.map(n => ({ id: n.id, memory: n.memory, pos: { x: n.mesh.position.x, z: n.mesh.position.z } })),
+  crops: JSON.parse(JSON.stringify(cropState)),
+});
+
+const hudEl = document.getElementById('hud');
+function updateHud() {
+  const hh = Math.floor(((elapsed % dayLength) / dayLength) * 24);
+  hudEl.innerHTML = `第 <b>${currentDay + 1}</b> 天 ・ ${String(hh).padStart(2,'0')}:00<br>種子 <b>${inventory.seeds}</b> ・ 收成 <b>${inventory.harvested}</b> ・ 魚 <b>${inventory.fish}</b><br>阿姨印象 <b>${npcs[0].memory}</b> ・ 木匠印象 <b>${npcs[1].memory}</b>`;
+}
+
+let lastFrame = performance.now();
+let prevDay = 0;
+function animate(now) {
+  requestAnimationFrame(animate);
+  if (!player) return;
+  const dt = Math.min((now - lastFrame) / 1000, 0.05);
+  lastFrame = now;
+  elapsed += dt;
+
+  // --- 自由移動：方向鍵給的是速度向量，不是格子跳，可以八方向、可以貼牆滑 ---
+  let dx = 0, dz = 0;
+  if (keys['w'] || keys['arrowup']) dz -= 1;
+  if (keys['s'] || keys['arrowdown']) dz += 1;
+  if (keys['a'] || keys['arrowleft']) dx -= 1;
+  if (keys['d'] || keys['arrowright']) dx += 1;
+  const inputLen = Math.hypot(dx, dz);
+  isMoving = inputLen > 0;
+  if (inputLen > 0) { dx /= inputLen; dz /= inputLen; }
+
+  const moveSpeed = 6.2; // 格/秒（原本 3.1 的兩倍）
+  const stepX = dx * moveSpeed * dt, stepZ = dz * moveSpeed * dt;
+  // X / Z 分開檢查碰撞，撞到一個軸還能沿著另一個軸繼續滑，這是「平穩」的關鍵
+  const tryX = player.position.x + stepX;
+  if (!collidesAt(currentMapName, tryX, player.position.z)) player.position.x = tryX;
+  const tryZ = player.position.z + stepZ;
+  if (!collidesAt(currentMapName, player.position.x, tryZ)) player.position.z = tryZ;
+
+  if (isMoving) {
+    // 角色模型的鼻子／腮紅在本地 -Z 面，因此移動方向要比「+Z 為正面」
+    // 的通用公式多轉半圈；否則臉會永遠朝向來時路。
+    const targetAngle = Math.atan2(dx, dz) + Math.PI;
+    player.rotation.y += ((targetAngle - player.rotation.y + Math.PI * 3) % (Math.PI * 2) - Math.PI) * 0.35;
+    facing = Math.abs(dx) > Math.abs(dz) ? (dx > 0 ? 'right' : 'left') : (dz > 0 ? 'down' : 'up');
+  }
+  animateWalk(player, isMoving, elapsed);
+  if (currentMapName === 'outside') player.position.y += groundY(player.position.x);
+
+  // 拋竿/持竿動畫：雙手一起蓋過 animateWalk 剛設好的角度。左手往內、往前
+  // 擺，靠到跟右手（拿竿那手）差不多的位置跟角度，用兩隻手臂同一個朝向
+  // 湊出「雙手握竿」的視覺，不用真的把竿子綁定在兩個支點上
+  if (elapsed < castAnimEnd) {
+    const progress = 1 - (castAnimEnd - elapsed) / CAST_ANIM_DURATION;
+    const eased = progress < 0.4 ? (progress / 0.4) : 1 - (progress - 0.4) / 0.6 * 0.3;
+    player.parts.armR.rotation.x = -1.9 + eased * 2.6;
+    player.parts.armR.rotation.z = 0;
+    player.parts.armL.rotation.x = -1.7 + eased * 2.4;
+    player.parts.armL.rotation.z = 0.45;
+  } else if (fishingState !== 'idle' && player.parts.rod && player.parts.rod.visible) {
+    // 拋竿動畫結束後，站著等魚上鉤時雙手固定在持竿姿勢，不要被待機呼吸動畫拉回去
+    player.parts.armR.rotation.x = -1.15; player.parts.armR.rotation.z = 0;
+    player.parts.armL.rotation.x = -1.05; player.parts.armL.rotation.z = 0.45;
+  } else {
+    player.parts.armL.rotation.z = 0; // 沒在釣魚時把左手歸零，不然會卡在往內擺的角度
+  }
+
+  // 釣到魚的小動畫：魚從浮標的位置，沿著拋物線飛向玩家，邊飛邊轉，
+  // 飛到定點就消失——「消失」代表放進魚簍了，不需要額外的收納動畫
+  if (catchAnim) {
+    const t = (elapsed - catchAnim.start) / catchAnim.duration;
+    if (t >= 1) {
+      scene.remove(catchAnim.mesh);
+      catchAnim = null;
+    } else {
+      const toX = player.position.x, toZ = player.position.z, toY = 0.9;
+      const x = catchAnim.from.x + (toX - catchAnim.from.x) * t;
+      const z = catchAnim.from.z + (toZ - catchAnim.from.z) * t;
+      const y = catchAnim.from.y + (toY - catchAnim.from.y) * t + Math.sin(t * Math.PI) * 0.85;
+      catchAnim.mesh.position.set(x, y, z);
+      catchAnim.mesh.rotation.y = elapsed * 11;
+      catchAnim.mesh.rotation.z = elapsed * 7;
+      catchAnim.mesh.scale.setScalar(1.7 * (1 - t * 0.5));
+    }
+  }
+
+  // --- 釣魚狀態機推進：casting 計時到了就進 biting，biting 逾時沒按 E 就跑掉 ---
+  const fishHintEl = window.__fishHintEl || (window.__fishHintEl = document.getElementById('fishHint'));
+  if (!nearWater() && fishingState !== 'idle') {
+    // 走離水邊自動取消，不用特別按什麼鍵收竿
+    fishingState = 'idle';
+    if (bobberMesh) { scene.remove(bobberMesh); bobberMesh = null; }
+    if (player.parts.rod) player.parts.rod.visible = false;
+  }
+  if (fishingState === 'casting') {
+    fishingTimer += dt;
+    if (fishingTimer >= biteWaitTime) {
+      fishingState = 'biting';
+      biteWindowStart = elapsed;
+    }
+  } else if (fishingState === 'biting') {
+    if (elapsed - biteWindowStart > 1.1) {
+      fishingState = 'idle';
+      if (bobberMesh) { scene.remove(bobberMesh); bobberMesh = null; }
+      if (player.parts.rod) player.parts.rod.visible = false;
+      fishFeedback = { text: '牠跑掉了……', until: elapsed + 1.2 };
+    }
+  }
+  if (bobberMesh) {
+    // 玩家模型正面是本地 -Z；浮標必須沿真正的臉朝向拋出。
+    const forwardX = -Math.sin(player.rotation.y), forwardZ = -Math.cos(player.rotation.y);
+    bobberMesh.position.set(
+      player.position.x + forwardX * 0.85,
+      0.16 + (fishingState === 'biting' ? Math.abs(Math.sin(elapsed * 14)) * 0.05 : Math.sin(elapsed * 2) * 0.015),
+      player.position.z + forwardZ * 0.85
+    );
+  }
+  if (fishFeedback && elapsed > fishFeedback.until) fishFeedback = null;
+  if (fishFeedback) {
+    fishHintEl.textContent = fishFeedback.text;
+    fishHintEl.style.display = 'block';
+  } else if (fishingState === 'casting') {
+    fishHintEl.textContent = '拋竿中……';
+    fishHintEl.style.display = 'block';
+  } else if (fishingState === 'biting') {
+    fishHintEl.textContent = '上鉤了！快按 E！';
+    fishHintEl.style.display = 'block';
+  } else {
+    fishHintEl.style.display = 'none';
+  }
+
+  // 格子座標現在只是「玩家四捨五入後大概在哪一格」，給種田/撿種子/開門這些
+  // 本來就是格子概念的系統用，跟移動本身脫鉤
+  const roundedX = Math.round(player.position.x), roundedZ = Math.round(player.position.z);
+  if (roundedX !== playerGridPos.x || roundedZ !== playerGridPos.z) {
+    playerGridPos = { x: roundedX, z: roundedZ };
+    events
+      .filter(ev => ev.map === currentMapName && ev.trigger === 'touch')
+      .filter(ev => ev.x === roundedX && ev.z === roundedZ)
+      .forEach(ev => ev.action());
+  }
+
+  const phase = (elapsed % dayLength) / dayLength;
+  currentPhase = phase;
+  currentDay = Math.floor(elapsed / dayLength);
+  if (currentDay !== prevDay) {
+    prevDay = currentDay;
+    growCropsForNewDay();
+    syncFarmVisuals();
+  }
+
+  // --- NPC：先看行程表要去哪，再用 A* 決定「怎麼走」 ---
+  const npcSpeed = 1.6;
+  npcs.forEach(n => {
+    const target = getScheduleTarget(n.schedule, phase);
+    const targetKey = `${target.x},${target.z}`;
+
+    if (n.lastTargetKey !== targetKey) {
+      n.lastTargetKey = targetKey;
+      const startGrid = { x: Math.round(n.mesh.position.x), z: Math.round(n.mesh.position.z) };
+      const path = aStar(startGrid, target, outsideCols, outsideRows, (x, z) => isBlocked('outside', x, z));
+      n.path = path && path.length ? path : [target]; // 找不到路就退回直線，至少不會卡死
+      n.pathIndex = (n.path[0] && n.path[0].x === startGrid.x && n.path[0].z === startGrid.z) ? 1 : 0;
+    }
+
+    let moving = false;
+    if (n.path && n.pathIndex < n.path.length) {
+      const wp = n.path[n.pathIndex];
+      const dx = wp.x - n.mesh.position.x, dz = wp.z - n.mesh.position.z;
+      const dist = Math.sqrt(dx * dx + dz * dz);
+      if (dist > 0.06) {
+        moving = true;
+        const step = Math.min(dist, npcSpeed * dt);
+        n.mesh.position.x += (dx / dist) * step;
+        n.mesh.position.z += (dz / dist) * step;
+        // NPC 與玩家使用同一種人形模型，正面同樣朝本地 -Z。
+        n.mesh.rotation.y = Math.atan2(dx, dz) + Math.PI;
+      } else {
+        n.pathIndex++;
+      }
+    }
+    if (!moving && currentMapName === 'outside') {
+      const pdx = player.position.x - n.mesh.position.x, pdz = player.position.z - n.mesh.position.z;
+      if (Math.sqrt(pdx * pdx + pdz * pdz) <= 4) {
+        const targetAngle = Math.atan2(pdx, pdz) + Math.PI;
+        n.mesh.rotation.y += ((targetAngle - n.mesh.rotation.y + Math.PI * 3) % (Math.PI * 2) - Math.PI) * 0.05;
+      }
+    }
+    animateWalk(n.mesh, moving, elapsed);
+  });
+
+  // 午夜最黑、中午最亮；先前使用 1 - cos 會讓 00:00 與 12:00 顛倒。
+  const nightFactor = (1 + Math.cos(phase * Math.PI * 2)) / 2;
+  window.__nightFactor = nightFactor;
+  updateSkyDome(nightFactor);
+
+  // --- 動物固定作息：06:00 出門，18:00 開始回穀倉 ---
+  // 不使用 nightFactor 判斷，因為它是光線漸變值，不等於準確鐘點。
+  const gameHour = phase * 24;
+  const animalsShouldBeHome = gameHour < 6 || gameHour >= 18;
+  animals.forEach(a => {
+    let moving = false;
+    if (animalsShouldBeHome) {
+      if (a.state === 'out') {
+        // 18:00 後不管原本是否正在休息，都立即往穀倉移動。
+        a.wanderState = 'walking';
+        const dx = BARN_DOOR.x - a.mesh.position.x, dz = BARN_DOOR.z - a.mesh.position.z;
+        const dist = Math.hypot(dx, dz);
+        if (dist > 0.12) {
+          moving = true;
+          const step = Math.min(dist, a.speed * dt);
+          a.mesh.position.x += (dx / dist) * step;
+          a.mesh.position.z += (dz / dist) * step;
+          // 動物模型的頭朝本地 +X，不是跟角色一樣朝 -Z，所以要多轉 -90°，
+          // 跟魚的朝向公式是同一個修正（見上面 fishSchool 那段）
+          a.mesh.rotation.y = Math.atan2(dx, dz) - Math.PI / 2;
+        } else {
+          a.state = 'in';
+          a.mesh.visible = false;
+        }
+      }
+    } else if (a.state === 'in') {
+      a.state = 'out';
+      a.mesh.visible = true;
+      a.mesh.position.set(BARN_DOOR.x, 0, BARN_DOOR.z);
+      a.target = randomPasturePoint();
+      a.wanderState = 'walking';
+      a.restUntil = 0;
+    } else {
+      // 白天不再不停巡邏：抵達目標後先休息，再挑下一個位置。
+      if (a.wanderState === 'resting') {
+        if (elapsed >= a.restUntil) {
+          a.wanderState = 'walking';
+          a.target = randomPasturePoint();
+        }
+      } else {
+        const dx = a.target.x - a.mesh.position.x, dz = a.target.z - a.mesh.position.z;
+        const dist = Math.hypot(dx, dz);
+        if (dist < 0.15) {
+          a.wanderState = 'resting';
+          a.restUntil = elapsed + a.restMin + Math.random() * (a.restMax - a.restMin);
+        } else {
+          moving = true;
+          const step = Math.min(dist, a.speed * dt);
+          a.mesh.position.x += (dx / dist) * step;
+          a.mesh.position.z += (dz / dist) * step;
+          a.mesh.rotation.y = Math.atan2(dx, dz) - Math.PI / 2;
+        }
+      }
+    }
+    animateAnimalWalk(a, moving, elapsed);
+  });
+
+  const sky = DAY.sky.clone().lerp(NIGHT.sky, nightFactor);
+  scene.background = sky;
+  scene.fog = new THREE.Fog(sky, 16, 34);
+  ambient.intensity = DAY.ambient + (NIGHT.ambient - DAY.ambient) * nightFactor;
+  sun.intensity = DAY.sunIntensity + (NIGHT.sunIntensity - DAY.sunIntensity) * nightFactor;
+  sun.color.copy(DAY.sunColor).lerp(NIGHT.sunColor, nightFactor);
+  windowMats.forEach(m => { m.emissiveIntensity = nightFactor; });
+  if (houseLampLight) {
+    houseLampBulbMat.emissiveIntensity = nightFactor;
+    houseLampLight.intensity = nightFactor * 1.6;
+  }
+
+  const camDist = 16;
+  const camHeight = camDist * Math.cos(TILT_RAD);
+  const camZOffset = camDist * Math.sin(TILT_RAD);
+  const groundOffset = currentMapName === 'outside' ? groundY(player.position.x) : 0;
+  camera.position.set(player.position.x, camHeight + groundOffset, player.position.z + camZOffset);
+  camera.lookAt(player.position.x, groundOffset, player.position.z);
+
+  // 海浪：仿 Gerstner 波浪——頂點升高的同時往岸邊(-X)推移，波峰因此變陡、
+  // 波谷變平緩，看起來像浪頭在往前捲；捲到最高點時把該處頂點染白模擬碎浪
+  if (oceanMesh) {
+    const posAttr = oceanMesh.geometry.attributes.position;
+    const colorAttr = oceanMesh.geometry.attributes.color;
+    const basePos = oceanMesh.geometry.userData.basePositions;
+    const ox = oceanMesh.position.x, oz = oceanMesh.position.z;
+    const waveSpeed = 2.2, waveNum = 1.4, waveHeight = 0.09, steepness = 0.55;
+    for (let i = 0; i < posAttr.count; i++) {
+      const bx = basePos[i * 3], bz = basePos[i * 3 + 2];
+      const worldX = bx + ox, worldZ = bz + oz;
+      // 用 +elapsed（不是 -elapsed）相位才會隨時間往 -X 移動——沙灘就在海的
+      // 左邊（x 較小），這樣浪才是「滾向沙灘」而不是詭異地滾回外海
+      const phase = worldX * waveNum + elapsed * waveSpeed + Math.sin(worldZ * 0.8) * 0.5;
+      const sinP = Math.sin(phase), cosP = Math.cos(phase);
+
+      const waveY = sinP * waveHeight + Math.cos(worldZ * 1.2 + elapsed) * 0.015;
+      const displacementX = cosP * waveHeight * steepness;
+      posAttr.setX(i, bx - displacementX);
+      posAttr.setY(i, waveY);
+
+      // 浪頭捲到接近最高點時快速染白，模擬碎浪；其餘地方維持海藍色
+      const crestFactor = Math.max(0, (sinP - 0.4) / 0.6);
+      const t = Math.pow(crestFactor, 1.8);
+      colorAttr.setXYZ(i, 0.18 + 0.82 * t, 0.43 + 0.57 * t, 0.68 + 0.32 * t);
+    }
+    posAttr.needsUpdate = true;
+    colorAttr.needsUpdate = true;
+    oceanMesh.geometry.computeVertexNormals();
+  }
+  // 湖的波紋——幅度只有海的十分之一左右，沒有碎浪、沒有顏色變化，
+  // 純粹是輕輕晃動的水面，配上平滑法線去接收陽光的反光高光
+  if (lakeMesh) {
+    const lPosAttr = lakeMesh.geometry.attributes.position;
+    const lBase = lakeMesh.geometry.userData.basePositions;
+    const llx = lakeMesh.position.x, llz = lakeMesh.position.z;
+    for (let i = 0; i < lPosAttr.count; i++) {
+      const bx = lBase[i * 3], bz = lBase[i * 3 + 2];
+      const wx = bx + llx, wz = bz + llz;
+      const y = Math.sin(wx * 2.4 + elapsed * 1.1) * 0.011 + Math.cos(wz * 2.0 + elapsed * 0.85) * 0.009;
+      lPosAttr.setY(i, y);
+    }
+    lPosAttr.needsUpdate = true;
+    lakeMesh.geometry.computeVertexNormals();
+  }
+  // 北邊遠方海景的輕微起伏——幅度比湖還小，純粹是「這不是靜止的圖片」的訊號
+  if (seaGlimpseMesh) {
+    const sgPosAttr = seaGlimpseMesh.geometry.attributes.position;
+    const sgBase = seaGlimpseMesh.geometry.userData.basePositions;
+    for (let i = 0; i < sgPosAttr.count; i++) {
+      const bx = sgBase[i * 3], bz = sgBase[i * 3 + 2];
+      const y = Math.sin(bx * 1.3 + elapsed * 0.9) * 0.03 + Math.cos(bz * 1.1 + elapsed * 0.7) * 0.025;
+      sgPosAttr.setY(i, y);
+    }
+    sgPosAttr.needsUpdate = true;
+    seaGlimpseMesh.geometry.computeVertexNormals();
+  }
+  // 拍岸浪花：浪頭衝上岸時放大、變亮、泡沫顆粒跟著滾動碎裂；退潮時很快收回去
+  foamMeshes.forEach(f => {
+    const phase = elapsed * 2.2 + f.userData.seed;
+    const cycle = (Math.sin(phase) + 1) / 2; // 0~1，一波一波衝上岸又退回去
+    f.position.x = f.userData.baseX + (-0.18 + cycle * 0.32);
+    const impact = Math.pow(cycle, 1.5);
+    f.userData.crest.material.opacity = impact * 0.85;
+    f.userData.crest.scale.set(1 + impact * 0.2, 0.6 + impact * 0.8, 1);
+    f.userData.wash.material.opacity = (1 - cycle) * 0.35;
+    f.userData.wash.scale.set(0.8 + cycle * 0.5, 1, 1);
+    f.userData.bumps.forEach((b, i) => {
+      const bp = phase * 1.3 + i * 0.7;
+      const bumpScale = Math.max(0.01, Math.sin(bp));
+      b.scale.set(bumpScale, bumpScale * (0.3 + impact * 0.5), bumpScale);
+      b.rotation.z = elapsed * 3 + i; // 滾動感
+      b.material.opacity = impact * 0.8;
+    });
+  });
+
+  // 小魚仔繞著各自的中心點游橢圓軌跡，魚頭朝著行進方向轉，不是傻傻平移
+  fishSchool.forEach(f => {
+    const t = elapsed * f.speed + f.phase;
+    const nx = f.cx + Math.cos(t) * f.radius;
+    const nz = f.cz + Math.sin(t) * f.radius * 0.6;
+    const dx = nx - f.mesh.position.x, dz = nz - f.mesh.position.z;
+    if (Math.abs(dx) > 1e-5 || Math.abs(dz) > 1e-5) f.mesh.rotation.y = Math.atan2(dx, dz) - Math.PI / 2;
+    f.mesh.position.x = nx;
+    f.mesh.position.z = nz;
+    f.mesh.position.y = (oceanMesh ? oceanMesh.position.y : 0.13) - 0.04;
+  });
+
+  // 牧草被風吹：每片葉子的角度是「自己原本的傾斜」加上一個隨時間跟位置
+  // 變化的 sin 位移。相位裡加了 wx*0.5，同一時間點不同 x 位置的草相位不同，
+  // 看起來像一陣風正在往某個方向掃過整片草地，不是所有草同步僵硬地抖
+  const windSpeed = 1.8, sway = 0.18;
+  pastureGrassBlades.forEach(tuft => {
+    const wx = tuft.position.x;
+    tuft.userData.blades.forEach(b => {
+      b.rotation.z = b.userData.baseRotZ + Math.sin(elapsed * windSpeed + b.userData.phase + wx * 0.5) * sway;
+    });
+  });
+
+  updateHud();
+  renderer.render(scene, camera);
+}
+
+buildMap('outside');
+loadMap('outside');
+fadeIn();
+requestAnimationFrame(animate);
+
+addEventListener('resize', () => {
+  renderer.setSize(innerWidth, innerHeight);
+  updateCameraFrustum();
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,15 @@
+# 作業系統 / 編輯器雜項
+.DS_Store
+Thumbs.db
+*.log
+.idea/
+
+# 之後如果加了任何 Node 工具（除錯 script、打包工具之類）
+node_modules/
+dist/
+build/
+.env
+.env.local
+
+# 保留 VSC 的 workspace 設定不忽略，方便共用編輯器設定
+!.vscode/settings.json
