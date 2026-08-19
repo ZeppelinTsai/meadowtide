@@ -163,6 +163,12 @@
           1.3 * Math.sin(z * 0.15 + 3.1) + 0.7 * Math.sin(z * 0.42 + 9.4),
         );
       }
+      function coastNorthCornerInset(z) {
+        // 北海轉入東側海岸時，前八排逐步收回四格，形成柔和的圓角海灣。
+        if (z >= 8) return 0;
+        const t = z / 8;
+        return Math.round(4 * Math.pow(1 - t, 1.65));
+      }
 
       // 視覺湖岸、碰撞與釣魚判定共用同一個不規則橢圓輪廓。
       function isInsideLakeShape(x, z, shoreInset = 0) {
@@ -336,7 +342,12 @@
         // 海各自佔幾格會跟著波動，海岸線才不會是一條直線
         const sandCols = Math.min(
           BEACH_BAND_WIDTH - 3,
-          Math.max(3, BEACH_SAND_COLS + coastShoreJitter(z)),
+          Math.max(
+            3,
+            BEACH_SAND_COLS +
+              coastShoreJitter(z) -
+              coastNorthCornerInset(z),
+          ),
         );
         const oceanCols = BEACH_BAND_WIDTH - sandCols;
         for (let i = 0; i < sandCols; i++) row.push(8);
@@ -842,6 +853,8 @@
       // ==============================================================
       const PLATEAU_Y = 0.55;
       const NORTH_TERRAIN_EXTENSION = 6;
+      // 最大拉遠時相機會看過南側地圖邊界；延伸純視覺地面，避免天空從底部露出。
+      const SOUTH_TERRAIN_EXTENSION = 90;
       const NORTH_CLIFF_Z = -5.7;
       function northCliffEdgeZ(x) {
         return (
@@ -877,7 +890,7 @@
         zoom,
         -zoom,
         0.1,
-        100,
+        220,
       );
       scene.add(camera); // 星空遠景層掛在相機下，確保正交視角中穩定可見
       const TILT_DEG = 55;
@@ -1320,12 +1333,6 @@
           ctx.bezierCurveTo(19, -6, 15, 14, 0, 25);
           ctx.closePath();
           ctx.fill();
-          ctx.strokeStyle = "rgba(205,82,132,0.48)";
-          ctx.lineWidth = 1.4;
-          ctx.beginPath();
-          ctx.moveTo(0, 22);
-          ctx.quadraticCurveTo(-1, 4, 0, -13);
-          ctx.stroke();
         } else {
           const gradient = ctx.createRadialGradient(16, 16, 1, 16, 16, 13);
           gradient.addColorStop(0, "rgba(255,255,255,1)");
@@ -3819,7 +3826,8 @@
           function groundSlab(xStart, xEnd, height) {
             const width = xEnd - xStart;
             const northExtension = NORTH_TERRAIN_EXTENSION;
-            const depth = rows * TILE + northExtension;
+            const depth =
+              rows * TILE + northExtension + SOUTH_TERRAIN_EXTENSION;
             const slab = new THREE.Mesh(
               new THREE.BoxGeometry(width, 0.2, depth),
               grassMat,
@@ -3827,7 +3835,7 @@
             slab.position.set(
               (xStart + xEnd) / 2 - 0.5,
               height - 0.1,
-              zCenter - northExtension / 2,
+              zCenter + (SOUTH_TERRAIN_EXTENSION - northExtension) / 2,
             );
             slab.receiveShadow = true;
             slab.castShadow = true;
@@ -3889,7 +3897,32 @@
               }
             }
           }
-          const extendedDepth = rows * TILE + NORTH_TERRAIN_EXTENSION;
+          // 斜坡三欄從城鎮擴充區開始延續原高度，補掉拉遠時的中央裂縫。
+          const southRampStartZ = Math.min(rows, TOWN_Z_START);
+          const southRampDepth =
+            rows - southRampStartZ + SOUTH_TERRAIN_EXTENSION;
+          [
+            [rampX, PLATEAU_Y * 0.75],
+            [rampX + 1, PLATEAU_Y * 0.5],
+            [rampX + 2, PLATEAU_Y * 0.25],
+          ].forEach(([sx, sy]) => {
+            const apron = new THREE.Mesh(
+              new THREE.BoxGeometry(1, 0.2, southRampDepth),
+              grassMat,
+            );
+            apron.position.set(
+              sx,
+              sy - 0.1,
+              southRampStartZ - 0.5 + southRampDepth / 2,
+            );
+            apron.receiveShadow = true;
+            mapGroup.add(apron);
+          });
+
+          const extendedDepth =
+            rows * TILE +
+            NORTH_TERRAIN_EXTENSION +
+            SOUTH_TERRAIN_EXTENSION;
           const lowland = new THREE.Mesh(
             new THREE.BoxGeometry(cols - lowlandX, 0.2, extendedDepth),
             new THREE.MeshStandardMaterial({ color: 0x6ab04c }),
@@ -3897,7 +3930,8 @@
           lowland.position.set(
             lowlandX + (cols - lowlandX) / 2 - 0.5,
             -0.1,
-            zCenter - NORTH_TERRAIN_EXTENSION / 2,
+            zCenter +
+              (SOUTH_TERRAIN_EXTENSION - NORTH_TERRAIN_EXTENSION) / 2,
           );
           lowland.receiveShadow = true;
           mapGroup.add(lowland);
@@ -3905,17 +3939,30 @@
           // 右側沙灘也往北補齊，接住延伸後的海面與海堤，不留下綠色斷帶。
           const northOceanStartX = map.tiles[0].indexOf(9);
           if (northOceanStartX > lowlandX) {
-            const northSandWidth = northOceanStartX - lowlandX;
+            const minX = lowlandX - 0.5;
+            const maxX = northOceanStartX - 0.5;
+            const northZ = -NORTH_TERRAIN_EXTENSION - 0.5;
+            const southZ = -0.5;
+            const cornerRadius = Math.min(2, (maxX - minX) * 0.4);
+            // Shape 的 y 經 -90° 旋轉後會成為世界座標 -z。
+            const northSandShape = new THREE.Shape();
+            northSandShape.moveTo(minX, -southZ);
+            northSandShape.lineTo(maxX, -southZ);
+            northSandShape.lineTo(maxX, -northZ - cornerRadius);
+            northSandShape.quadraticCurveTo(
+              maxX,
+              -northZ,
+              maxX - cornerRadius,
+              -northZ,
+            );
+            northSandShape.lineTo(minX, -northZ);
+            northSandShape.closePath();
             const northSand = new THREE.Mesh(
-              new THREE.PlaneGeometry(northSandWidth, NORTH_TERRAIN_EXTENSION),
+              new THREE.ShapeGeometry(northSandShape, 10),
               new THREE.MeshStandardMaterial({ color: 0xe8d29a }),
             );
             northSand.rotation.x = -Math.PI / 2;
-            northSand.position.set(
-              lowlandX + northSandWidth / 2 - 0.5,
-              0.015,
-              -NORTH_TERRAIN_EXTENSION / 2 - 0.5,
-            );
+            northSand.position.y = 0.015;
             mapGroup.add(northSand);
           }
 
@@ -4044,6 +4091,25 @@
           }
           sgGeo.setAttribute("color", new THREE.BufferAttribute(sgColors, 3));
           sgGeo.userData = { basePositions: sgBase };
+          // 海面本身保留半透明波光；下方用不透明深海層遮住相機星空，避免星星穿透水面。
+          const northSeaMask = new THREE.Mesh(
+            new THREE.PlaneGeometry(northSeaWidth + 0.4, northSeaDepth + 0.4),
+            new THREE.MeshStandardMaterial({
+              color: 0x245574,
+              roughness: 1,
+              metalness: 0,
+              side: THREE.DoubleSide,
+            }),
+          );
+          northSeaMask.rotation.x = -Math.PI / 2;
+          northSeaMask.position.set(
+            northSeaCenterX,
+            0.025,
+            northSeaNearZ - northSeaDepth / 2,
+          );
+          northSeaMask.receiveShadow = true;
+          mapGroup.add(northSeaMask);
+
           seaGlimpseMesh = new THREE.Mesh(
             sgGeo,
             new THREE.MeshStandardMaterial({
@@ -5199,10 +5265,11 @@
             : new THREE.Color(0x697685);
         sky.lerp(weatherFogColor, weatherDim);
         scene.background = sky;
+        const zoomCameraDistanceOffset = Math.max(0, zoom * 1.55 - 16);
         scene.fog = new THREE.Fog(
           sky,
-          16 - weatherDim * 5,
-          34 - weatherDim * 11,
+          16 + zoomCameraDistanceOffset - weatherDim * 5,
+          34 + zoomCameraDistanceOffset - weatherDim * 11,
         );
         ambient.intensity =
           (DAY.ambient + (NIGHT.ambient - DAY.ambient) * nightFactor) *
@@ -5223,7 +5290,8 @@
           houseLampLight.intensity = nightFactor * 1.6;
         }
 
-        const camDist = 16;
+        // 正交相機大幅拉遠時也沿原視角後退，避免視窗下緣落到地面以下而看見天空球。
+        const camDist = Math.max(16, zoom * 1.55);
         const camHeight = camDist * Math.cos(TILT_RAD);
         const camZOffset = camDist * Math.sin(TILT_RAD);
         const groundOffset =
