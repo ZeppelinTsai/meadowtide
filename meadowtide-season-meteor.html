@@ -91,6 +91,7 @@
     <div id="ui">
       <b>海風牧歌</b><br />
       WASD：移動 ・ 滾輪：縮放 ・ E：互動/種植/收成/釣魚 ・ M：音樂靜音<br />
+      F6：存檔 ・ F9：讀檔<br />
       <b style="color: #8ecfff">N：快轉時間（看阿姨繞樹）</b>
     </div>
     <div id="hud"></div>
@@ -699,9 +700,35 @@
       let currentDay = 0;
       let currentPhase = 0; // 一天中的比例(0~1)，animate() 每幀更新，E 鍵事件也要讀
 
-      // --- 季節與每日天氣：測試階段每 3 天換季；正式版預定每季 21 天 ---
-      const DAYS_PER_SEASON = 3;
+      const TIME_CONFIG = Object.freeze({
+        realSecondsPerGameHour: 30,
+        gameHoursPerDay: 24,
+        daysPerSeason: 21,
+        seasons: Object.freeze(["spring", "summer", "autumn", "winter"]),
+      });
       const SEASON_NAMES = ["春", "夏", "秋", "冬"];
+      const SEASON_DAYLIGHT = Object.freeze({
+        spring: Object.freeze({ sunrise: 6, sunset: 18, peak: 18 }),
+        summer: Object.freeze({ sunrise: 5, sunset: 19, peak: 21 }),
+        autumn: Object.freeze({ sunrise: 6, sunset: 18, peak: 17 }),
+        winter: Object.freeze({ sunrise: 7, sunset: 17, peak: 13.5 }),
+      });
+      const METEOR_CONFIG = Object.freeze({
+        maxActive: 16,
+        normalMinPerHour: 0.35,
+        normalMaxPerHour: 1.65,
+        minDuration: 0.4,
+        maxDuration: 1.2,
+        dawnDuskBlendHours: 1,
+      });
+      const METEOR_SHOWER_SCHEDULE = Object.freeze({
+        11: Object.freeze({ phase: "approach", minPerHour: 2, maxPerHour: 4 }),
+        12: Object.freeze({ phase: "rising", minPerHour: 4, maxPerHour: 6 }),
+        13: Object.freeze({ phase: "peak", minPerHour: 8, maxPerHour: 12 }),
+        14: Object.freeze({ phase: "fading", minPerHour: 3, maxPerHour: 5 }),
+      });
+      const dayLength =
+        TIME_CONFIG.realSecondsPerGameHour * TIME_CONFIG.gameHoursPerDay;
       const WEATHER_NAMES = {
         clear: "晴",
         cloudy: "陰",
@@ -712,7 +739,47 @@
         blizzard: "暴風雪",
       };
       function getSeasonIndex(day = currentDay) {
-        return Math.floor(day / DAYS_PER_SEASON) % SEASON_NAMES.length;
+        return (
+          Math.floor(day / TIME_CONFIG.daysPerSeason) %
+          TIME_CONFIG.seasons.length
+        );
+      }
+      function getSeasonDay(day = currentDay) {
+        return (day % TIME_CONFIG.daysPerSeason) + 1;
+      }
+      function getSeasonPeriod(day = currentDay) {
+        const seasonDay = getSeasonDay(day);
+        return seasonDay <= 7 ? "上旬" : seasonDay <= 14 ? "中旬" : "下旬";
+      }
+      function getDaylightForSeason(seasonIndex = currentSeason) {
+        const key = TIME_CONFIG.seasons[seasonIndex];
+        const daylight = SEASON_DAYLIGHT[key];
+        return {
+          sunriseHour: daylight.sunrise,
+          sunsetHour: daylight.sunset,
+          sunrise: daylight.sunrise / TIME_CONFIG.gameHoursPerDay,
+          sunset: daylight.sunset / TIME_CONFIG.gameHoursPerDay,
+          peak: daylight.peak,
+        };
+      }
+      function smoothstep01(value) {
+        const t = Math.max(0, Math.min(1, value));
+        return t * t * (3 - 2 * t);
+      }
+      function getNightFactor(phase = currentPhase) {
+        const hour = phase * TIME_CONFIG.gameHoursPerDay;
+        const daylight = getDaylightForSeason();
+        const blend = METEOR_CONFIG.dawnDuskBlendHours;
+        if (hour < daylight.sunriseHour - blend || hour > daylight.sunsetHour + blend)
+          return 1;
+        if (hour <= daylight.sunriseHour + blend)
+          return 1 - smoothstep01((hour - (daylight.sunriseHour - blend)) / (blend * 2));
+        if (hour >= daylight.sunsetHour - blend)
+          return smoothstep01((hour - (daylight.sunsetHour - blend)) / (blend * 2));
+        return 0;
+      }
+      function isNightTime() {
+        return getNightFactor() >= 0.55;
       }
       function rollWeatherForSeason(seasonIndex) {
         const r = Math.random();
@@ -1248,13 +1315,188 @@
       for (let season = 0; season < 4; season++)
         seasonalStarGroups.push(makeSeasonStarGroup(season));
 
-      // 四季日照：北緯約 8°，日長差異不大，但夏季較高、冬季較低。
-      const SEASON_DAYLIGHT = [
-        { sunrise: 0.245, sunset: 0.755, peak: 18 },
-        { sunrise: 0.23, sunset: 0.77, peak: 21 },
-        { sunrise: 0.245, sunset: 0.755, peak: 17 },
-        { sunrise: 0.26, sunset: 0.74, peak: 13.5 },
+      // 流星是太空碎屑進入大氣後產生的光跡；本遊戲使用架空曆法安排流星雨日期。
+      const meteorLayer = new THREE.Group();
+      meteorLayer.position.z = -72;
+      camera.add(meteorLayer);
+      const meteorPool = [];
+      let nextMeteorAt = Infinity;
+      const METEOR_SEASON_STYLES = [
+        { colors: [0xf2fff6, 0xffffff], length: 0.9, width: 1 },
+        { colors: [0xdcecff, 0xffffff], length: 1.2, width: 1 },
+        { colors: [0xffefc2, 0xfff8df], length: 1, width: 1 },
+        { colors: [0xffffff, 0xe8f3ff], length: 0.92, width: 1.25 },
       ];
+      const METEOR_RADIANTS = [
+        { x: -18, y: 22 },
+        { x: 12, y: 25 },
+        { x: 24, y: 20 },
+        { x: -8, y: 27 },
+      ];
+
+      for (let index = 0; index < METEOR_CONFIG.maxActive; index++) {
+        const geometry = new THREE.BufferGeometry();
+        geometry.setAttribute(
+          "position",
+          new THREE.BufferAttribute(new Float32Array(6), 3),
+        );
+        const material = new THREE.LineBasicMaterial({
+          color: 0xffffff,
+          transparent: true,
+          opacity: 0,
+          depthWrite: false,
+          depthTest: true,
+          blending: THREE.AdditiveBlending,
+        });
+        const line = new THREE.Line(geometry, material);
+        line.visible = false;
+        line.renderOrder = -0.42;
+        meteorLayer.add(line);
+        meteorPool.push({ line, geometry, material, active: false, age: 0 });
+      }
+
+      function getMeteorActivity() {
+        if (currentMapName !== "outside" || !isNightTime()) return null;
+        const weatherFactor =
+          {
+            clear: 1,
+            cloudy: 0.35,
+            rain: 0,
+            typhoon: 0,
+            storm: 0,
+            snow: 0.18,
+            blizzard: 0,
+          }[currentWeather] ?? 1;
+        if (weatherFactor <= 0) return null;
+        const shower = METEOR_SHOWER_SCHEDULE[getSeasonDay()] || null;
+        return {
+          shower,
+          minPerHour:
+            (shower?.minPerHour ?? METEOR_CONFIG.normalMinPerHour) *
+            weatherFactor,
+          maxPerHour:
+            (shower?.maxPerHour ?? METEOR_CONFIG.normalMaxPerHour) *
+            weatherFactor,
+        };
+      }
+
+      function scheduleNextMeteor(reset = false) {
+        const activity = getMeteorActivity();
+        if (!activity) {
+          nextMeteorAt = Infinity;
+          return;
+        }
+        const rate =
+          activity.minPerHour +
+          Math.random() * (activity.maxPerHour - activity.minPerHour);
+        let interval;
+        if (activity.shower?.phase === "peak") {
+          interval = 2.5 + Math.random() * 1.5;
+        } else {
+          const eventsPerSecond =
+            rate / TIME_CONFIG.realSecondsPerGameHour;
+          interval = -Math.log(Math.max(0.0001, 1 - Math.random())) / eventsPerSecond;
+          interval = Math.max(0.7, interval);
+        }
+        nextMeteorAt = elapsed + interval;
+      }
+
+      function spawnMeteor() {
+        const slot = meteorPool.find((meteor) => !meteor.active);
+        if (!slot) return false;
+        const activity = getMeteorActivity();
+        if (!activity) return false;
+        const style = METEOR_SEASON_STYLES[currentSeason];
+        const radiant = METEOR_RADIANTS[currentSeason];
+        const showerMeteor = activity.shower && Math.random() < 0.82;
+        let startX;
+        let startY;
+        let angle;
+        if (showerMeteor) {
+          startX = radiant.x + (Math.random() - 0.5) * 12;
+          startY = radiant.y + (Math.random() - 0.5) * 7;
+          const outwardX = startX - radiant.x;
+          const outwardY = startY - radiant.y;
+          angle = Math.atan2(outwardY, outwardX) + (Math.random() - 0.5) * 0.28;
+        } else {
+          startX = -38 + Math.random() * 76;
+          startY = 8 + Math.random() * 22;
+          angle = -Math.PI * (0.08 + Math.random() * 0.72);
+        }
+        const speed = 18 + Math.random() * 17;
+        const duration =
+          METEOR_CONFIG.minDuration +
+          Math.random() * (METEOR_CONFIG.maxDuration - METEOR_CONFIG.minDuration);
+        slot.active = true;
+        slot.age = 0;
+        slot.duration = duration;
+        slot.x = startX;
+        slot.y = startY;
+        slot.dx = Math.cos(angle);
+        slot.dy = Math.sin(angle);
+        slot.speed = speed;
+        slot.length = (3.8 + Math.random() * 4.2) * style.length;
+        slot.material.color.setHex(
+          style.colors[Math.floor(Math.random() * style.colors.length)],
+        );
+        slot.material.opacity = 0;
+        slot.material.linewidth = style.width * (0.85 + Math.random() * 0.3);
+        slot.line.visible = true;
+        return true;
+      }
+
+      function clearMeteors() {
+        meteorPool.forEach((meteor) => {
+          meteor.active = false;
+          meteor.line.visible = false;
+          meteor.material.opacity = 0;
+        });
+        nextMeteorAt = Infinity;
+      }
+
+      function updateMeteors(delta) {
+        meteorLayer.visible = currentMapName === "outside";
+        if (currentMapName !== "outside") {
+          clearMeteors();
+          return;
+        }
+        const activity = getMeteorActivity();
+        if (!activity) {
+          clearMeteors();
+          return;
+        }
+        if (!Number.isFinite(nextMeteorAt)) scheduleNextMeteor(true);
+        if (elapsed >= nextMeteorAt) {
+          spawnMeteor();
+          scheduleNextMeteor();
+        }
+        meteorPool.forEach((meteor) => {
+          if (!meteor.active) return;
+          meteor.age += delta;
+          if (meteor.age >= meteor.duration) {
+            meteor.active = false;
+            meteor.line.visible = false;
+            meteor.material.opacity = 0;
+            return;
+          }
+          meteor.x += meteor.dx * meteor.speed * delta;
+          meteor.y += meteor.dy * meteor.speed * delta;
+          const positions = meteor.geometry.attributes.position.array;
+          positions[0] = meteor.x;
+          positions[1] = meteor.y;
+          positions[2] = 0;
+          positions[3] = meteor.x - meteor.dx * meteor.length;
+          positions[4] = meteor.y - meteor.dy * meteor.length;
+          positions[5] = 0;
+          meteor.geometry.attributes.position.needsUpdate = true;
+          const progress = meteor.age / meteor.duration;
+          const fadeIn = Math.min(1, progress / 0.14);
+          const fadeOut = Math.min(1, (1 - progress) / 0.3);
+          meteor.material.opacity = Math.min(fadeIn, fadeOut) *
+            (0.62 + Math.random() * 0.28);
+        });
+      }
+
       // 太陽/雲原本是硬邊的多邊形圓（CircleGeometry 直接當輪廓），沒有柔化，
       // 邊緣一圈鋸齒/銳利切線很明顯。用 canvas 畫一張白色放射狀漸層貼圖，
       // 讓 alpha 從中心到邊緣平滑衰減，套在同一批 mesh 上（不改頂點、不改
@@ -1296,19 +1538,15 @@
       const SUN_SKY_BLEND_COLOR = new THREE.Color();
       const SUN_TARGET_COLOR = new THREE.Color();
       const sunSkyGroup = new THREE.Group();
-      // depthTest 故意關掉：太陽掛在攝影機底下、z 放得很遠(-74)模擬「在天邊」，
-      // 但這台相機是俯角正交相機，遠處的 local z 換算成世界座標後 y 反而會被
-      // 拉到地面以下（俯角+遠距離，local 前方軸摻了一部分世界的「下」），導致
-      // 太陽的世界座標其實落在地形後面，深度測試一律判定被地形擋住，太陽等於
-      // 整天都被地形蓋住看不見。太陽是純裝飾的天空層，本來就不需要真的跟地形
-      // 比深度，直接關掉深度測試，一律畫在最上面
+      // 太陽位於相機遠端的天空層，但必須保留深度測試：天空球不寫入深度，
+      // 太陽仍能顯示在天空；房屋、地形、角色與海岸等近景則會正確遮住太陽。
       const sunGlowMat = new THREE.MeshBasicMaterial({
         color: 0xffd796,
         map: SUN_GLOW_TEXTURE,
         transparent: true,
         opacity: 0,
         depthWrite: false,
-        depthTest: false,
+        depthTest: true,
         fog: false,
         blending: THREE.AdditiveBlending,
       });
@@ -1318,7 +1556,7 @@
         transparent: true,
         opacity: 0,
         depthWrite: false,
-        depthTest: false,
+        depthTest: true,
         fog: false,
       });
       const sunGlow = new THREE.Mesh(
@@ -1397,7 +1635,7 @@
           skyClouds.forEach((cloud) => (cloud.visible = false));
           return;
         }
-        const daylight = SEASON_DAYLIGHT[currentSeason];
+        const daylight = getDaylightForSeason();
         const daySpan = daylight.sunset - daylight.sunrise;
         const sunProgress = (currentPhase - daylight.sunrise) / daySpan;
         const aboveHorizon = sunProgress > 0 && sunProgress < 1;
@@ -1415,11 +1653,7 @@
         const sunOpacity = arc * weatherSunVisibility;
         sunSkyGroup.visible = sunOpacity > 0.005;
         if (sunSkyGroup.visible) {
-          // x 原本從 +40 掃到 -40，但預設 zoom=6、視窗寬高比~1.6 時視錐只到
-          // right=9.6，等於太陽只有掃過正中央那一小段(sunProgress 0.38~0.62，
-          // 大約中午前後)才會進到畫面裡，一整天絕大部分時間都在視野外。
-          // 收到 ±7，留一點邊界margin，一整天都能維持在視錐內
-          sunSkyGroup.position.x = 7 - sunProgress * 14;
+          sunSkyGroup.position.x = 40 - sunProgress * 80;
           // daylight.peak（13.5~21）是照原始設計拿來抓「太陽在天空中多高」的
           // 係數，但預設 zoom=6 時相機視錐只到 top=6，太陽升到接近中午
           // (arc 接近 1) 就會整個超出視錐範圍，等於中午前後太陽會直接消失。
@@ -1997,7 +2231,6 @@
         weatherFlashLight.intensity =
           flashWave * (nightFactor > 0.45 ? 2.8 : 1.5);
       }
-      const dayLength = 240; // 測試：遊戲內每小時 10 秒（一天 4 分鐘）
       let elapsed = 0;
 
       // ==============================================================
@@ -2179,6 +2412,40 @@
         );
       }
 
+      function updateSeasonAndDate() {
+        currentDay = Math.max(0, Math.floor(elapsed / dayLength));
+        currentPhase = ((elapsed % dayLength) + dayLength) % dayLength / dayLength;
+        currentSeason = getSeasonIndex(currentDay);
+      }
+
+      function isGameTimePaused() {
+        const dialogOpen =
+          typeof dialogEl !== "undefined" && dialogEl.style.display === "block";
+        const menuOpen = Boolean(
+          document.querySelector('[data-game-menu="open"], .game-menu.open'),
+        );
+        return document.hidden || dialogOpen || menuOpen || window.__gamePaused === true;
+      }
+
+      function updateGameClock(delta) {
+        if (!(delta > 0)) return 0;
+        const oldDay = Math.floor(elapsed / dayLength);
+        elapsed += delta;
+        updateSeasonAndDate();
+        const crossedDays = currentDay - oldDay;
+        if (crossedDays > 0) {
+          // 逐日處理，確保一般運行與快轉共用同一條事件路徑；不會漏日或重複觸發。
+          for (let day = oldDay + 1; day <= currentDay; day++) {
+            beginNewDay(day);
+            growCropsForNewDay();
+          }
+          prevDay = currentDay;
+          syncFarmVisuals();
+          scheduleNextMeteor(true);
+        }
+        return crossedDays;
+      }
+
       addEventListener("pointerdown", initializeMusic, { once: true });
       addEventListener(
         "keydown",
@@ -2244,7 +2511,8 @@
       const GRASS_STAGE_HEIGHTS = [0.2, 0.46, 0.82]; // 短、中、長；長草約到動物胸高
       const GRASS_GROWTH_SECONDS = 32;
       addEventListener("keydown", (e) => {
-        if (e.key.toLowerCase() === "n") elapsed += dayLength / 4;
+        if (e.key.toLowerCase() === "n" && !e.repeat && !isGameTimePaused())
+          updateGameClock(dayLength / 4);
       });
 
       // ==============================================================
@@ -5441,6 +5709,83 @@
         dialogEl.textContent = dialogQueue[dialogIndex];
       }
 
+      const SAVE_KEY_PREFIX = "meadowtide.save.";
+      function saveGame(slot = "default") {
+        const data = {
+          version: 2,
+          elapsed,
+          currentDay,
+          currentPhase,
+          currentSeason,
+          currentWeather,
+          pouchCollectedDay,
+          currentMapName,
+          player: player
+            ? { x: player.position.x, z: player.position.z, facing }
+            : null,
+          inventory: { ...inventory },
+          crops: JSON.parse(JSON.stringify(cropState)),
+          npcMemory: npcs.map((npc) => ({ id: npc.id, memory: npc.memory })),
+        };
+        localStorage.setItem(SAVE_KEY_PREFIX + slot, JSON.stringify(data));
+        return data;
+      }
+
+      function loadGame(slot = "default") {
+        const raw = localStorage.getItem(SAVE_KEY_PREFIX + slot);
+        if (!raw) return false;
+        const data = JSON.parse(raw);
+        elapsed = Math.max(0, Number(data.elapsed) || 0);
+        updateSeasonAndDate();
+        prevDay = currentDay;
+        currentWeather = data.currentWeather || rollWeatherForSeason(currentSeason);
+        pouchCollectedDay = Number.isFinite(data.pouchCollectedDay)
+          ? data.pouchCollectedDay
+          : -1;
+        Object.assign(inventory, data.inventory || {});
+        Object.keys(cropState).forEach((key) => delete cropState[key]);
+        Object.assign(cropState, data.crops || {});
+        (data.npcMemory || []).forEach((savedNpc) => {
+          const npc = npcs.find((candidate) => candidate.id === savedNpc.id);
+          if (npc) npc.memory = savedNpc.memory;
+        });
+        if (data.player) {
+          const targetMap = data.currentMapName || "outside";
+          if (targetMap !== currentMapName) {
+            loadMap(targetMap, { x: data.player.x, z: data.player.z });
+          } else if (player) {
+            player.position.x = data.player.x;
+            player.position.z = data.player.z;
+            playerGridPos = {
+              x: Math.round(data.player.x),
+              z: Math.round(data.player.z),
+            };
+          }
+          facing = data.player.facing || facing;
+        }
+        updateAvenueTreeColors();
+        updateSeasonalTreeColors();
+        updateSeasonalGroundColors();
+        growCropsForNewDay();
+        syncFarmVisuals();
+        clearMeteors();
+        scheduleNextMeteor(true);
+        updateHud();
+        return true;
+      }
+      window.saveGame = saveGame;
+      window.loadGame = loadGame;
+      addEventListener("keydown", (event) => {
+        if (event.key === "F6") {
+          event.preventDefault();
+          saveGame();
+          console.info("[存檔] 已儲存 default 欄位");
+        } else if (event.key === "F9") {
+          event.preventDefault();
+          console.info(loadGame() ? "[讀檔] 已載入 default 欄位" : "[讀檔] 尚無存檔");
+        }
+      });
+
       const keys = {};
       addEventListener("keydown", (e) => (keys[e.key.toLowerCase()] = true));
       addEventListener("keyup", (e) => (keys[e.key.toLowerCase()] = false));
@@ -5565,6 +5910,10 @@
         musicMuted,
         dialogVisible: dialogEl.style.display === "block",
         day: currentDay,
+        seasonDay: getSeasonDay(),
+        period: getSeasonPeriod(),
+        time: currentPhase * TIME_CONFIG.gameHoursPerDay,
+        activeMeteors: meteorPool.filter((meteor) => meteor.active).length,
         inventory: { ...inventory },
         fishingState,
         npcs: npcs.map((n) => ({
@@ -5577,8 +5926,14 @@
 
       const hudEl = document.getElementById("hud");
       function updateHud() {
-        const hh = Math.floor(((elapsed % dayLength) / dayLength) * 24);
-        hudEl.innerHTML = `第 <b>${currentDay + 1}</b> 天 ・ ${SEASON_NAMES[currentSeason]}季 ・ ${WEATHER_NAMES[currentWeather]} ・ ${String(hh).padStart(2, "0")}:00${musicMuted ? " ・ 靜音" : ""}<br>種子 <b>${inventory.seeds}</b> ・ 收成 <b>${inventory.harvested}</b> ・ 魚 <b>${inventory.fish}</b><br>阿姨印象 <b>${npcs[0].memory}</b> ・ 木匠印象 <b>${npcs[1].memory}</b>`;
+        const gameHour = currentPhase * TIME_CONFIG.gameHoursPerDay;
+        const hh = Math.floor(gameHour) % TIME_CONFIG.gameHoursPerDay;
+        const mm = Math.floor((gameHour - Math.floor(gameHour)) * 60);
+        hudEl.dataset.activeMeteors = String(
+          meteorPool.filter((meteor) => meteor.active).length,
+        );
+        hudEl.dataset.nightFactor = (window.__nightFactor || 0).toFixed(3);
+        hudEl.innerHTML = `${SEASON_NAMES[currentSeason]}季 ・ 第 <b>${getSeasonDay()}</b> 日（${getSeasonPeriod()}）・ ${WEATHER_NAMES[currentWeather]} ・ ${String(hh).padStart(2, "0")}:${String(mm).padStart(2, "0")}${musicMuted ? " ・ 靜音" : ""}<br>種子 <b>${inventory.seeds}</b> ・ 收成 <b>${inventory.harvested}</b> ・ 魚 <b>${inventory.fish}</b><br>阿姨印象 <b>${npcs[0].memory}</b> ・ 木匠印象 <b>${npcs[1].memory}</b>`;
       }
 
       let lastFrame = performance.now();
@@ -5589,9 +5944,10 @@
       function animate(now) {
         requestAnimationFrame(animate);
         if (!player) return;
-        const dt = Math.min((now - lastFrame) / 1000, 0.05);
+        const frameDt = Math.min((now - lastFrame) / 1000, 0.05);
         lastFrame = now;
-        elapsed += dt;
+        const dt = isGameTimePaused() ? 0 : frameDt;
+        updateGameClock(dt);
         animationFrameCount++;
         const updateWaterSurface = animationFrameCount % 2 === 0; // 水面維持約 30fps，減少大量頂點運算
 
@@ -5762,15 +6118,7 @@
             .forEach((ev) => ev.action());
         }
 
-        const phase = (elapsed % dayLength) / dayLength;
-        currentPhase = phase;
-        currentDay = Math.floor(elapsed / dayLength);
-        if (currentDay !== prevDay) {
-          prevDay = currentDay;
-          beginNewDay(currentDay);
-          growCropsForNewDay();
-          syncFarmVisuals();
-        }
+        const phase = currentPhase;
 
         // --- NPC：先看行程表要去哪，再用 A* 決定「怎麼走」 ---
         const npcSpeed = 1.6;
@@ -5832,16 +6180,17 @@
           animateWalk(n.mesh, moving, elapsed);
         });
 
-        // 午夜最黑、中午最亮；先前使用 1 - cos 會讓 00:00 與 12:00 顛倒。
-        const nightFactor = (1 + Math.cos(phase * Math.PI * 2)) / 2;
+        // 日照、天空、燈光與星象共用同一個依季節日出日落計算的夜色權重。
+        const nightFactor = getNightFactor(phase);
         window.__nightFactor = nightFactor;
         updateMusic(nightFactor, dt);
         updateSkyDome(nightFactor);
+        updateMeteors(dt);
         updateWeatherEffects(dt, nightFactor);
 
         // --- 動物固定作息：06:00 出門，18:00 開始回穀倉；惡劣天氣全天留在小屋。 ---
         // 不使用 nightFactor 判斷，因為它是光線漸變值，不等於準確鐘點。
-        const gameHour = phase * 24;
+        const gameHour = phase * TIME_CONFIG.gameHoursPerDay;
         const animalsShouldBeHome =
           gameHour < 6 || gameHour >= 18 || isUnsafeAnimalWeather();
         animals.forEach((a) => {

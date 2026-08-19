@@ -178,3 +178,12 @@ node map-debug.js 你的檔案.html --legend
   控制」的簡化架構，正式版暫定設定為 `DAYS_PER_SEASON = 21`，相當於
   一個 21 天月份對應一季。若之後要讓一季包含多個月份，需另加月份層，
   不要只改這個常數。
+# 季節、日照與流星系統（新版本）
+
+- 新版本檔案：`meadowtide-season-meteor.html`；原本的 `meadowtide.html` 保留不覆寫。
+- `TIME_CONFIG` 是唯一時間參數來源：現實 30 秒＝遊戲 1 小時、一天 720 秒、每季 21 天。
+- `elapsed` 仍是唯一累計時鐘；`updateGameClock()` 統一處理正常計時與 `N` 快轉，跨日事件逐日觸發。
+- `SEASON_DAYLIGHT` 以遊戲小時設定四季日出日落；`getNightFactor()` 的結果供天空、太陽、燈光、音樂與星象共用。
+- HUD 顯示季節內第 1～21 日與上／中／下旬。`F6` 儲存、`F9` 讀取，亦可呼叫 `saveGame(slot)`／`loadGame(slot)`。
+- 流星由 `METEOR_CONFIG`、`METEOR_SHOWER_SCHEDULE` 管理；第 11～14 日為流星雨，第 13 日高峰。
+- `meteorPool` 固定最多 16 個物件；室內、白天或不可見天氣會清空活動狀態，不會累積 geometry/material。
