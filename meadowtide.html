@@ -932,6 +932,7 @@
         sunIntensity: 0.12,
         sunColor: new THREE.Color(0x8fa8ff),
       };
+      const INTERIOR_BACKGROUND_COLOR = new THREE.Color(0x28231f);
       const SUMMER_SUN_COLOR = new THREE.Color(0xffedba);
       const AUTUMN_SUN_COLOR = new THREE.Color(0xffd2a0);
       const WINTER_LIGHT_COLOR = new THREE.Color(0xe4f3ff);
@@ -1238,7 +1239,177 @@
       for (let season = 0; season < 4; season++)
         seasonalStarGroups.push(makeSeasonStarGroup(season));
 
+      // 四季日照：北緯約 8°，日長差異不大，但夏季較高、冬季較低。
+      const SEASON_DAYLIGHT = [
+        { sunrise: 0.245, sunset: 0.755, peak: 18 },
+        { sunrise: 0.23, sunset: 0.77, peak: 21 },
+        { sunrise: 0.245, sunset: 0.755, peak: 17 },
+        { sunrise: 0.26, sunset: 0.74, peak: 13.5 },
+      ];
+      const SUN_NOON_COLORS = [0xfff4d2, 0xfff0b0, 0xffd3a0, 0xe8f3ff];
+      const SUN_HORIZON_COLOR = new THREE.Color(0xff9b61);
+      const sunSkyGroup = new THREE.Group();
+      const sunGlowMat = new THREE.MeshBasicMaterial({
+        color: 0xffd796,
+        transparent: true,
+        opacity: 0,
+        depthWrite: false,
+        depthTest: true,
+        fog: false,
+        blending: THREE.AdditiveBlending,
+      });
+      const sunCoreMat = new THREE.MeshBasicMaterial({
+        color: 0xfff4cc,
+        transparent: true,
+        opacity: 0,
+        depthWrite: false,
+        depthTest: true,
+        fog: false,
+      });
+      const sunGlow = new THREE.Mesh(
+        new THREE.CircleGeometry(2.15, 32),
+        sunGlowMat,
+      );
+      const sunCore = new THREE.Mesh(
+        new THREE.CircleGeometry(0.82, 28),
+        sunCoreMat,
+      );
+      sunGlow.position.z = -0.04;
+      sunSkyGroup.add(sunGlow, sunCore);
+      sunSkyGroup.position.z = -76.5;
+      camera.add(sunSkyGroup);
+
+      const skyClouds = [];
+      const cloudLobeGeometry = new THREE.CircleGeometry(1, 18);
+      for (let i = 0; i < 9; i++) {
+        const cloud = new THREE.Group();
+        const material = new THREE.MeshBasicMaterial({
+          color: 0xffffff,
+          transparent: true,
+          opacity: 0,
+          depthWrite: false,
+          depthTest: true,
+          fog: false,
+        });
+        [
+          [-1.45, -0.05, 1.25],
+          [-0.45, 0.38, 1.55],
+          [0.62, 0.24, 1.3],
+          [1.45, -0.12, 0.92],
+        ].forEach(([x, y, scale]) => {
+          const lobe = new THREE.Mesh(cloudLobeGeometry, material);
+          lobe.position.set(x, y, 0);
+          lobe.scale.set(scale * 1.35, scale * 0.72, 1);
+          cloud.add(lobe);
+        });
+        const seed = hash2(i * 7.3, 18.4);
+        cloud.position.set(
+          -52 + seed * 104,
+          7 + hash2(i, 3.7) * 12,
+          -75 + i * 0.025,
+        );
+        cloud.scale.setScalar(0.72 + hash2(i, 9.2) * 0.75);
+        cloud.userData = {
+          baseX: cloud.position.x,
+          baseY: cloud.position.y,
+          material,
+          seed,
+        };
+        camera.add(cloud);
+        skyClouds.push(cloud);
+      }
+
+      function updateSunAndClouds(nightFactor) {
+        if (currentMapName !== "outside") {
+          sunSkyGroup.visible = false;
+          skyClouds.forEach((cloud) => (cloud.visible = false));
+          return;
+        }
+        const daylight = SEASON_DAYLIGHT[currentSeason];
+        const daySpan = daylight.sunset - daylight.sunrise;
+        const sunProgress = (currentPhase - daylight.sunrise) / daySpan;
+        const aboveHorizon = sunProgress > 0 && sunProgress < 1;
+        const arc = aboveHorizon ? Math.sin(sunProgress * Math.PI) : 0;
+        const weatherSunVisibility =
+          {
+            clear: 1,
+            cloudy: 0.38,
+            rain: 0.12,
+            typhoon: 0,
+            storm: 0,
+            snow: 0.22,
+            blizzard: 0.02,
+          }[currentWeather] ?? 1;
+        const sunOpacity = arc * weatherSunVisibility;
+        sunSkyGroup.visible = sunOpacity > 0.005;
+        if (sunSkyGroup.visible) {
+          sunSkyGroup.position.x = 40 - sunProgress * 80;
+          sunSkyGroup.position.y = -5.5 + arc * daylight.peak;
+          const horizonWarmth = Math.pow(1 - arc, 2.4);
+          sunCoreMat.color
+            .setHex(SUN_NOON_COLORS[currentSeason])
+            .lerp(SUN_HORIZON_COLOR, horizonWarmth * 0.78);
+          sunGlowMat.color.copy(sunCoreMat.color);
+          sunCoreMat.opacity = Math.min(1, sunOpacity * 1.05);
+          sunGlowMat.opacity = sunOpacity * (0.2 + arc * 0.16);
+          const pulse = 1 + Math.sin(elapsed * 0.7) * 0.015;
+          sunGlow.scale.setScalar(pulse);
+        }
+
+        const cloudCount =
+          {
+            clear: 3,
+            cloudy: 8,
+            rain: 9,
+            typhoon: 9,
+            storm: 9,
+            snow: 8,
+            blizzard: 9,
+          }[currentWeather] ?? 3;
+        const cloudOpacity =
+          {
+            clear: 0.18,
+            cloudy: 0.52,
+            rain: 0.68,
+            typhoon: 0.78,
+            storm: 0.82,
+            snow: 0.62,
+            blizzard: 0.76,
+          }[currentWeather] ?? 0.18;
+        const cloudSpeed =
+          currentWeather === "typhoon"
+            ? 5.8
+            : currentWeather === "storm" || currentWeather === "blizzard"
+              ? 3.8
+              : currentWeather === "rain" || currentWeather === "snow"
+                ? 1.6
+                : 0.55;
+        const cloudColor =
+          currentWeather === "snow" || currentWeather === "blizzard"
+            ? 0xdce8f1
+            : currentWeather === "rain" ||
+                currentWeather === "typhoon" ||
+                currentWeather === "storm"
+              ? 0x748395
+              : currentSeason === 1
+                ? 0xfff8e8
+                : 0xf2f5f7;
+        skyClouds.forEach((cloud, index) => {
+          cloud.visible = index < cloudCount;
+          if (!cloud.visible) return;
+          const travel = cloud.userData.baseX + elapsed * cloudSpeed;
+          cloud.position.x = -55 + ((((travel + 55) % 110) + 110) % 110);
+          cloud.position.y =
+            cloud.userData.baseY +
+            Math.sin(elapsed * 0.08 + cloud.userData.seed * 12) * 0.32;
+          cloud.userData.material.color.setHex(cloudColor);
+          cloud.userData.material.opacity =
+            cloudOpacity * (0.3 + (1 - nightFactor) * 0.7);
+        });
+      }
+
       function updateSeasonalStars(nightFactor) {
+        const outside = currentMapName === "outside";
         const weatherVisibility =
           {
             clear: 1,
@@ -1255,7 +1426,7 @@
         );
         seasonalStarGroups.forEach((group, seasonIndex) => {
           const visibility =
-            seasonIndex === currentSeason
+            outside && seasonIndex === currentSeason
               ? nightVisibility * weatherVisibility
               : 0;
           group.userData.materials[0].opacity = visibility * 0.92;
@@ -1279,6 +1450,13 @@
         });
       }
       function updateSkyDome(nightFactor) {
+        const outside = currentMapName === "outside";
+        skyDome.visible = outside;
+        if (!outside) {
+          updateSeasonalStars(nightFactor);
+          updateSunAndClouds(nightFactor);
+          return;
+        }
         const zenith = SKY_DAY_ZENITH.clone().lerp(
           SKY_NIGHT_ZENITH,
           nightFactor,
@@ -1315,6 +1493,7 @@
         skyColorAttr.needsUpdate = true;
         skyDome.position.copy(camera.position);
         updateSeasonalStars(nightFactor);
+        updateSunAndClouds(nightFactor);
       }
 
       // ==============================================================
@@ -4421,7 +4600,8 @@
               minZ = -NORTH_TERRAIN_EXTENSION;
             const maxZ = validZ[validZ.length - 1];
             const minX = Math.min(...westXByZ.filter((v) => v !== null));
-            const maxX = globalMaxX;
+            // 海的可玩／碰撞範圍仍由 tile 決定；網格向東額外延伸，最大拉遠也看不到盡頭。
+            const maxX = globalMaxX + 90;
             const width = maxX - minX,
               depth = maxZ - minZ;
 
@@ -4441,7 +4621,8 @@
               for (let s = 0; s < ZSUB; s++) rowsZ.push(z + s / ZSUB);
             }
             rowsZ.push(maxZ);
-            const COLS = Math.max(4, Math.round(width * 3));
+            // 遠海不需要維持每格三分割，限制橫向細分數避免延伸後浪費效能。
+            const COLS = Math.max(48, Math.min(108, Math.round(width * 1.1)));
 
             // 欄位用固定世界座標（每一排都是同一組 x），不要照各排西緣重新內插
             // ——內插會讓相鄰排的同一欄位落在不同的絕對 x，格子被拉斜，疊上波浪
@@ -4485,6 +4666,18 @@
             geo.setIndex(indices);
             geo.computeVertexNormals();
             geo.userData = { basePositions: posArray.slice() };
+
+            const oceanDepthMask = new THREE.Mesh(
+              geo.clone(),
+              new THREE.MeshStandardMaterial({
+                color: 0x174968,
+                roughness: 1,
+                metalness: 0,
+              }),
+            );
+            oceanDepthMask.position.y = 0.025;
+            oceanDepthMask.receiveShadow = true;
+            mapGroup.add(oceanDepthMask);
 
             oceanMesh = new THREE.Mesh(
               geo,
@@ -5405,13 +5598,18 @@
             ? new THREE.Color(0xcbd4dc)
             : new THREE.Color(0x697685);
         sky.lerp(weatherFogColor, weatherDim);
-        scene.background = sky;
-        const zoomCameraDistanceOffset = Math.max(0, zoom * 1.55 - 16);
-        scene.fog = new THREE.Fog(
-          sky,
-          16 + zoomCameraDistanceOffset - weatherDim * 5,
-          34 + zoomCameraDistanceOffset - weatherDim * 11,
-        );
+        if (currentMapName === "outside") {
+          scene.background = sky;
+          const zoomCameraDistanceOffset = Math.max(0, zoom * 1.55 - 16);
+          scene.fog = new THREE.Fog(
+            sky,
+            16 + zoomCameraDistanceOffset - weatherDim * 5,
+            34 + zoomCameraDistanceOffset - weatherDim * 11,
+          );
+        } else {
+          scene.background = INTERIOR_BACKGROUND_COLOR;
+          scene.fog = null;
+        }
         const daylight = Math.pow(1 - nightFactor, 1.25);
         const fairWeather =
           currentWeather === "clear" || currentWeather === "cloudy";
