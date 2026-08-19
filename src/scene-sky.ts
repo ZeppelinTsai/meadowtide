@@ -67,11 +67,21 @@ import {
       renderer.outputEncoding = THREE.sRGBEncoding;
       document.body.appendChild(renderer.domElement);
 
+      // 初始相機視錐不能在模組頂層讀 gameState.zoom：game-state.ts 會 import
+      // npc-runtime.ts/farm-visuals.ts/dialogue.ts，這三個檔案又都會（直接或
+      // 透過彼此）eagerly import 這個檔案取得 scene/PLATEAU_Y，形成循環——
+      // 若這裡在模組求值當下讀 gameState，會在 game-state.ts 還沒跑到
+      // `export const gameState = {...}` 之前被回頭引用，觸發 TDZ
+      // ReferenceError。這個時間點 gameState.zoom 保證還是宣告時的預設值
+      // （沒有任何程式碼會在模組圖載入完成前改到它），所以直接寫死同一個值；
+      // 之後所有即時縮放都走 updateCameraFrustum()（resize/滾輪才會呼叫，
+      // 那時模組圖早已載入完畢，讀 gameState.zoom 是安全的）。
+      const INITIAL_ZOOM = 10;
       export const camera = new THREE.OrthographicCamera(
-        -gameState.zoom * (innerWidth / innerHeight),
-        gameState.zoom * (innerWidth / innerHeight),
-        gameState.zoom,
-        -gameState.zoom,
+        -INITIAL_ZOOM * (innerWidth / innerHeight),
+        INITIAL_ZOOM * (innerWidth / innerHeight),
+        INITIAL_ZOOM,
+        -INITIAL_ZOOM,
         0.1,
         220,
       );
@@ -105,7 +115,9 @@ import {
         camera.bottom = -gameState.zoom;
         camera.updateProjectionMatrix();
       }
-      updateCameraFrustum();
+      // 建構子已經用 INITIAL_ZOOM 算出同一組數字並自動呼叫過
+      // updateProjectionMatrix() 一次，這裡不用再呼叫一次；且這裡若在模組
+      // 頂層呼叫會讀 gameState.zoom，見上面 camera 建構那段的說明。
 
       export const DAY = {
         sky: new THREE.Color(0x9fd6ff),
@@ -451,7 +463,12 @@ import {
         { x: -0.2, y: 0.8 },
       ];
 
-      for (let index = 0; index < METEOR_CONFIG.maxActive; index++) {
+      // METEOR_CONFIG 是 Object.freeze 過的常數，maxActive 永遠是這個數字；
+      // 不能在這裡（模組頂層）讀 METEOR_CONFIG，理由跟上面 camera 用
+      // INITIAL_ZOOM 取代 gameState.zoom 一樣——這裡也在 game-state.ts →
+      // npc-runtime.ts/farm-visuals.ts → scene-sky.ts 的循環路徑上。
+      const METEOR_POOL_SIZE = 20;
+      for (let index = 0; index < METEOR_POOL_SIZE; index++) {
         const geometry = new THREE.BufferGeometry();
         geometry.setAttribute(
           "position",
