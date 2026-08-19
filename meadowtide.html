@@ -59,14 +59,39 @@ function hash2(x, z) {
 // 移、湖放大到接近 10×10、山搬進西側緩衝帶。要放在 MAPS 前面，因為
 // 下面 buildings 陣列會直接引用這裡的值
 // ==============================================================
+const NORTH_EXPANSION = 5;
 const LAYOUT = {
-  house:   { x: 20, z: 9,  w: 3, d: 2, doorX: 21 },
+  // 北側新增 5 排：動物區留在新空間，其餘舊區域整體往南順延。
+  house:   { x: 20, z: 9 + NORTH_EXPANSION,  w: 3, d: 2, doorX: 21 },
   barn:    { x: 23, z: 1,  w: 3, d: 2, doorX: 24 },
   pasture: { x: 21, z: 4,  width: 5, height: 3 },
-  farm:    { x: 8,  z: 14, blocks: 3, plotSize: 3, gap: 1 }, // 11x11，往右 5 格
-  lake:    { x: 6,  z: 3,  width: 10, height: 9 }, // 往左 5 格、往下 3 格
+  orchard: { houseOffsetX: 9.5, houseOffsetZ: -8.5 },
+  farm:    { x: 5,  z: 17 + NORTH_EXPANSION, blocks: 3, plotSize: 3, gap: 1 }, // 左移 3、南移 3
+  lake:    { x: 3,  z: 3, width: 18, height: 17 }, // 再向南擴 3 格
+  coast:   { eastExpansion: 5, rampX: 34, rampWidth: 3, sandCols: 10, oceanCols: 10 },
   mountainBand: { x: 0, width: 3 },
 };
+
+function lakeEdgeFactor(theta) {
+  const centerX = LAYOUT.lake.x + (LAYOUT.lake.width - 1) / 2;
+  const centerZ = LAYOUT.lake.z + (LAYOUT.lake.height - 1) / 2;
+  const seed = hash2(centerX * 1.7, centerZ * 2.3) * 20;
+  return 1
+    + 0.20 * Math.sin(theta * 2 + seed)
+    + 0.12 * Math.sin(theta * 3 + seed * 1.6)
+    + 0.07 * Math.sin(theta * 5 + seed * 2.4);
+}
+
+// 視覺湖岸、碰撞與釣魚判定共用同一個不規則橢圓輪廓。
+function isInsideLakeShape(x, z, shoreInset = 0) {
+  const centerX = LAYOUT.lake.x + (LAYOUT.lake.width - 1) / 2;
+  const centerZ = LAYOUT.lake.z + (LAYOUT.lake.height - 1) / 2;
+  const radiusX = LAYOUT.lake.width * 0.35 - shoreInset;
+  const radiusZ = LAYOUT.lake.height * 0.35 - shoreInset;
+  const nx = (x - centerX) / radiusX, nz = (z - centerZ) / radiusZ;
+  const theta = Math.atan2(nz, nx);
+  return Math.hypot(nx, nz) <= lakeEdgeFactor(theta);
+}
 
 // ==============================================================
 // 1) 地圖資料 — 故意在阿姨「家→田」的路上多種一棵樹 (4,5)，
@@ -103,7 +128,7 @@ const MAPS = {
       { x: LAYOUT.house.x, z: LAYOUT.house.z, w: LAYOUT.house.w, d: LAYOUT.house.d, doorX: LAYOUT.house.doorX },
       { x: LAYOUT.barn.x, z: LAYOUT.barn.z, w: LAYOUT.barn.w, d: LAYOUT.barn.d, doorX: LAYOUT.barn.doorX, style: 'barn' },
     ],
-    playerStart: { x: 21, z: 16 },
+    playerStart: { x: 21, z: 16 + NORTH_EXPANSION },
   },
   house: {
     tiles: [
@@ -145,20 +170,31 @@ const MAPS = {
 const X_OFFSET = 15;
 MAPS.outside.tiles.forEach(row => row.unshift(...new Array(X_OFFSET).fill(0)));
 
+// 向陣列前端正式加入北側五排，不使用非法的負 z 座標。
+// 舊小屋的 tile 會跟著舊地圖下移，所以先清掉，再依 LAYOUT 重建新位置。
+const northRowWidth = MAPS.outside.tiles[0].length;
+MAPS.outside.tiles.unshift(...Array.from({ length: NORTH_EXPANSION }, () => new Array(northRowWidth).fill(0)));
+for (let z = 1 + NORTH_EXPANSION; z <= 3 + NORTH_EXPANSION; z++) {
+  for (let x = LAYOUT.barn.x; x < LAYOUT.barn.x + LAYOUT.barn.w; x++) MAPS.outside.tiles[z][x] = 0;
+}
+for (let z = LAYOUT.barn.z; z < LAYOUT.barn.z + LAYOUT.barn.d; z++) {
+  for (let x = LAYOUT.barn.x; x < LAYOUT.barn.x + LAYOUT.barn.w; x++) MAPS.outside.tiles[z][x] = 1;
+}
+
 // 除錯工具找到最後一批死資料：x=17~19,z=13~14 還留著 tile=7，是很多輪
 // 之前那個 6 格小農田的殘骸。現在的 9 塊大農田系統完全不靠陣列裡的
 // tile=7 運作(渲染跟互動都讀 FARMLAND_TILES，不是陣列本身)，這幾格
 // 純粹是死資料，清掉
-[13, 14].forEach(z => { [17, 18, 19].forEach(x => { MAPS.outside.tiles[z][x] = 0; }); });
+[13, 14].forEach(z => { [17, 18, 19].forEach(x => { MAPS.outside.tiles[z + NORTH_EXPANSION][x] = 0; }); });
 
 // 除錯工具抓到另一個舊帳：之前幾輪搬湖的位置，每次只有「在新位置寫水」，
 // 沒有把舊位置清回草地，這裡殘留了一小塊(x=16~18,z=8~10)。順手清掉
-[8, 9, 10].forEach(z => { [16, 17, 18].forEach(x => { MAPS.outside.tiles[z][x] = 0; }); });
+[8, 9, 10].forEach(z => { [16, 17, 18].forEach(x => { MAPS.outside.tiles[z + NORTH_EXPANSION][x] = 0; }); });
 
 // 除錯工具抓到的舊 bug：房子 z=9 那排的牆比 z=10 那排少往東一格，
 // 跟 buildings 陣列記錄的 x=20 對不上，門檻本身是對的，單獨修正這一格
-MAPS.outside.tiles[9][19] = 0;
-MAPS.outside.tiles[9][22] = 1;
+MAPS.outside.tiles[9 + NORTH_EXPANSION][19] = 0;
+MAPS.outside.tiles[9 + NORTH_EXPANSION][22] = 1;
 
 // ==============================================================
 // 1.45) 原本 19 排放不下農田，先在陣列尾巴多加空地——農田這次要再往
@@ -166,7 +202,7 @@ MAPS.outside.tiles[9][22] = 1;
 // ==============================================================
 (function extendBaseRowsForFarm() {
   const width = MAPS.outside.tiles[0].length; // 14，這時候還沒插緩衝欄/沙灘欄
-  for (let i = 0; i < 6; i++) MAPS.outside.tiles.push(new Array(width).fill(0));
+  for (let i = 0; i < 9; i++) MAPS.outside.tiles.push(new Array(width).fill(0));
 })();
 
 // ==============================================================
@@ -174,12 +210,11 @@ MAPS.outside.tiles[9][22] = 1;
 //    海面本身不在這裡逐格建置，而是在 buildMap() 裡另外蓋成一整片可
 //    變形的網格，這樣才能在 animate() 裡逐頂點做波浪動畫
 // ==============================================================
-// 高台再往東多留 3 格草地當緩衝，緩坡整個往右移 3 格——直接在原本
-// x=11 那個位置插入 3 個新格子，後面所有跟緩坡有關的 x 座標都要跟著 +3
-MAPS.outside.tiles.forEach(row => row.splice(26, 0, 0, 0, 0));
+// 原本的 3 格緩衝再增加 5 格，整條懸崖、沙灘與海面一起東移。
+MAPS.outside.tiles.forEach(row => row.splice(26, 0, ...new Array(3 + LAYOUT.coast.eastExpansion).fill(0)));
 
-const BEACH_SAND_COLS = 2;
-const BEACH_OCEAN_COLS = 4;
+const BEACH_SAND_COLS = LAYOUT.coast.sandCols;
+const BEACH_OCEAN_COLS = LAYOUT.coast.oceanCols;
 MAPS.outside.tiles.forEach(row => {
   for (let i = 0; i < BEACH_SAND_COLS; i++) row.push(8);
   for (let i = 0; i < BEACH_OCEAN_COLS; i++) row.push(9);
@@ -217,7 +252,7 @@ for (let x = FARM_ORIGIN.x; x <= FARM_ORIGIN.x + 10; x++) {
 // 西擴——這次先把牧場往東擠一點，把讓出來的空間全部給湖
 for (let z = LAYOUT.lake.z; z < LAYOUT.lake.z + LAYOUT.lake.height; z++) {
   for (let x = LAYOUT.lake.x; x < LAYOUT.lake.x + LAYOUT.lake.width; x++) {
-    MAPS.outside.tiles[z][x] = 6;
+    MAPS.outside.tiles[z][x] = isInsideLakeShape(x, z) ? 6 : 0;
   }
 }
 
@@ -227,12 +262,14 @@ const POUCH_POS = { x: LAYOUT.farm.x + 3, z: LAYOUT.farm.z + 1 }; // 農田走�
 // 1.6) 緩坡只留一條走廊開放(z=14~16)，其餘 z 的 x=14~16 變成擋路的懸崖
 //    （原本是 x=11~13，因為上面多插了 3 格草地緩衝，整個右移 3 格）
 // ==============================================================
-const RAMP_CORRIDOR_MIN_Z = 14, RAMP_CORRIDOR_MAX_Z = 16;
+const RAMP_CORRIDOR_MIN_Z = 14 + NORTH_EXPANSION;
+const RAMP_CORRIDOR_MAX_Z = 16 + NORTH_EXPANSION;
 MAPS.outside.tiles.forEach((row, z) => {
+  const rampX = LAYOUT.coast.rampX;
   if (z < RAMP_CORRIDOR_MIN_Z || z > RAMP_CORRIDOR_MAX_Z) {
-    row[29] = 1; row[30] = 1; row[31] = 1; // 懸崖，擋路
+    for (let x = rampX; x < rampX + LAYOUT.coast.rampWidth; x++) row[x] = 1;
   } else {
-    row[29] = 0; row[30] = 0; row[31] = 0; // 走廊淨空，不管原本是什麼都蓋掉
+    for (let x = rampX; x < rampX + LAYOUT.coast.rampWidth; x++) row[x] = 0;
   }
 });
 
@@ -252,12 +289,12 @@ const TOWN_Z_START = MAPS.outside.tiles.length; // 現在是 25（農田南移�
 })();
 
 const events = [
-  { map: 'outside', x: 21, z: 11, trigger: 'touch',
+  { map: 'outside', x: LAYOUT.house.doorX, z: LAYOUT.house.z + LAYOUT.house.d, trigger: 'touch',
     action: () => loadMap('house', { x: 3, z: 5 }) },
   { map: 'house', x: 2, z: 6, trigger: 'touch',
-    action: () => loadMap('outside', { x: 21, z: 12 }) },
+    action: () => loadMap('outside', { x: LAYOUT.house.doorX, z: LAYOUT.house.z + LAYOUT.house.d + 1 }) },
   { map: 'house', x: 3, z: 6, trigger: 'touch',
-    action: () => loadMap('outside', { x: 21, z: 12 }) },
+    action: () => loadMap('outside', { x: LAYOUT.house.doorX, z: LAYOUT.house.z + LAYOUT.house.d + 1 }) },
 ];
 
 // ==============================================================
@@ -318,25 +355,25 @@ function pos(x, z) { return { x, z }; }
 const npcDefs = [
   {
     id: 'aunt', name: '阿姨', shirt: 0xd9822b, hair: 0x241a12,
-    home: { x: 21, z: 12 },
+    home: { x: 21, z: 12 + NORTH_EXPANSION },
     schedule: [
-      { t: 0.25, ...pos(21, 12) },
-      { t: 0.33, ...pos(18, 13) },
-      { t: 0.50, ...pos(24, 13) },
-      { t: 0.75, ...pos(23, 15) },
-      { t: 0.92, ...pos(21, 12) },
+      { t: 0.25, ...pos(21, 12 + NORTH_EXPANSION) },
+      { t: 0.33, ...pos(18, 13 + NORTH_EXPANSION) },
+      { t: 0.50, ...pos(24, 13 + NORTH_EXPANSION) },
+      { t: 0.75, ...pos(23, 15 + NORTH_EXPANSION) },
+      { t: 0.92, ...pos(21, 12 + NORTH_EXPANSION) },
     ],
   },
   {
     id: 'carpenter', name: '木匠', shirt: 0x6b5b4a, hair: 0x1a1a1a,
-    home: { x: 25, z: 16 },
+    home: { x: 25, z: 16 + NORTH_EXPANSION },
     schedule: [
-      { t: 0.29, ...pos(25, 16) },
-      { t: 0.35, ...pos(23, 15) },
-      { t: 0.50, ...pos(24, 13) },
-      { t: 0.55, ...pos(23, 15) },
-      { t: 0.75, ...pos(21, 12) },
-      { t: 0.92, ...pos(25, 16) },
+      { t: 0.29, ...pos(25, 16 + NORTH_EXPANSION) },
+      { t: 0.35, ...pos(23, 15 + NORTH_EXPANSION) },
+      { t: 0.50, ...pos(24, 13 + NORTH_EXPANSION) },
+      { t: 0.55, ...pos(23, 15 + NORTH_EXPANSION) },
+      { t: 0.75, ...pos(21, 12 + NORTH_EXPANSION) },
+      { t: 0.92, ...pos(25, 16 + NORTH_EXPANSION) },
     ],
   },
 ];
@@ -377,11 +414,17 @@ function nearWater() {
   if (currentMapName !== 'outside') return false;
   const map = MAPS.outside;
   const { x, z } = playerGridPos;
-  return [[x + 1, z], [x - 1, z], [x, z + 1], [x, z - 1]].some(([nx, nz]) => {
+  const nearOcean = [[x + 1, z], [x - 1, z], [x, z + 1], [x, z - 1]].some(([nx, nz]) => {
     if (nz < 0 || nz >= map.tiles.length || nx < 0 || nx >= map.tiles[0].length) return false;
-    const t = map.tiles[nz][nx];
-    return t === 9 || t === 6;
+    return map.tiles[nz][nx] === 9;
   });
+  if (nearOcean) return true;
+  for (let i = 0; i < 16; i++) {
+    const angle = i / 16 * Math.PI * 2;
+    if (isInsideLakeShape(player.position.x + Math.cos(angle) * 0.78,
+      player.position.z + Math.sin(angle) * 0.78)) return true;
+  }
+  return false;
 }
 
 function nearAnyNpc() {
@@ -426,11 +469,12 @@ const TILE = 1;
 const PLATEAU_Y = 0.55;
 function groundY(x) {
   const xi = Math.round(x);
-  if (xi <= 28) return PLATEAU_Y;
-  if (xi === 29) return PLATEAU_Y * 0.75;
-  if (xi === 30) return PLATEAU_Y * 0.5;
-  if (xi === 31) return PLATEAU_Y * 0.25;
-  return 0; // x>=17：沙灘、海，維持原本的海平面高度
+  const rampX = LAYOUT.coast.rampX;
+  if (xi < rampX) return PLATEAU_Y;
+  if (xi === rampX) return PLATEAU_Y * 0.75;
+  if (xi === rampX + 1) return PLATEAU_Y * 0.5;
+  if (xi === rampX + 2) return PLATEAU_Y * 0.25;
+  return 0;
 }
 const scene = new THREE.Scene();
 const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -504,6 +548,8 @@ let lakeMesh = null;   // 湖面，跟海一樣是合併網格，只是波浪幅
 let seaGlimpseMesh = null; // 北邊的遠方海景背景板，會輕輕起伏
 const fishSchool = []; // { mesh, cx, cz, radius, speed, phase } 純裝飾用的悠游小魚
 const pastureGrassBlades = []; // 牧場裡會被風吹動的草叢，每叢存自己的葉片群組
+const GRASS_STAGE_HEIGHTS = [0.2, 0.46, 0.82]; // 短、中、長；長草約到動物胸高
+const GRASS_GROWTH_SECONDS = 32;
 addEventListener('keydown', e => { if (e.key.toLowerCase() === 'n') elapsed += dayLength / 4; });
 
 // ==============================================================
@@ -837,22 +883,68 @@ function makeGrassTuft(x, z, seed) {
 // 風吹動的搖擺，不會覆蓋掉葉片原本東倒西歪的自然角度
 function makeWindGrass(x, z, seed) {
   const g = new THREE.Group();
-  const mat = new THREE.MeshStandardMaterial({ color: 0x5fae52, flatShading: true });
+  const grassColor = new THREE.Color(0x5fae52).offsetHSL((seed - 0.5) * 0.035, 0.04, (seed - 0.5) * 0.08);
+  const mat = new THREE.MeshStandardMaterial({ color: grassColor, flatShading: true });
   const blades = [];
-  const bladeCount = 3;
+  const bladeCount = 8;
   for (let i = 0; i < bladeCount; i++) {
-    const blade = new THREE.Mesh(new THREE.ConeGeometry(0.02, 0.2 + seed * 0.1, 4), mat);
+    // ConeGeometry 的原點在中心；外層 pivot 才是真正的草根。
+    // 葉片往上掛在 pivot 下，旋轉與高度縮放才會以地面為基準。
+    const pivot = new THREE.Group();
+    const blade = new THREE.Mesh(new THREE.ConeGeometry(0.025, 1, 4), mat);
     const a = (i / bladeCount) * Math.PI * 2 + seed * 6;
-    blade.position.set(Math.cos(a) * 0.05, 0.1 + seed * 0.05, Math.sin(a) * 0.05);
-    blade.userData.baseRotZ = (hash2(seed, i) - 0.5) * 0.35;
-    blade.userData.phase = seed * 12 + i * 1.7;
-    blade.rotation.z = blade.userData.baseRotZ;
-    g.add(blade);
-    blades.push(blade);
+    const spread = 0.07 + hash2(seed * 9.1, i * 4.7) * 0.08;
+    pivot.position.set(Math.cos(a) * spread, 0, Math.sin(a) * spread);
+    pivot.userData.baseRotZ = (hash2(seed, i) - 0.5) * 0.35;
+    pivot.userData.baseRotX = (hash2(seed + 3.7, i) - 0.5) * 0.22;
+    pivot.userData.phase = seed * 12 + i * 1.7;
+    pivot.rotation.z = pivot.userData.baseRotZ;
+    pivot.rotation.x = pivot.userData.baseRotX;
+    blade.position.y = 0.5;
+    pivot.add(blade);
+    g.add(pivot);
+    blades.push(pivot);
   }
   g.position.set(x, 0, z);
   g.userData.blades = blades;
+  g.userData.growth = seed * 3;
+  g.userData.stage = -1;
   return g;
+}
+function setPastureGrassStage(tuft, stage) {
+  const nextStage = Math.max(0, Math.min(2, stage));
+  if (tuft.userData.stage === nextStage) return;
+  tuft.userData.stage = nextStage;
+  const height = GRASS_STAGE_HEIGHTS[nextStage];
+  tuft.userData.blades.forEach(pivot => {
+    const blade = pivot.children[0];
+    blade.scale.y = height;
+    blade.position.y = height / 2;
+  });
+}
+function findLongGrassNear(x, z, maxDistance = Infinity) {
+  let best = null, bestDistance = maxDistance;
+  pastureGrassBlades.forEach(tuft => {
+    if (tuft.userData.stage !== 2) return;
+    const distance = Math.hypot(tuft.position.x - x, tuft.position.z - z);
+    if (distance < bestDistance) { best = tuft; bestDistance = distance; }
+  });
+  return best;
+}
+function chooseAnimalPastureTarget(animal) {
+  if (animal.type !== 'chicken') {
+    const grass = findLongGrassNear(animal.mesh.position.x, animal.mesh.position.z, 4);
+    if (grass) return { x: grass.position.x, z: grass.position.z };
+  }
+  return randomPasturePoint();
+}
+function tryEatPastureGrass(animal) {
+  if (animal.type === 'chicken') return false;
+  const grass = findLongGrassNear(animal.mesh.position.x, animal.mesh.position.z, 0.55);
+  if (!grass) return false;
+  grass.userData.growth = 0;
+  setPastureGrassStage(grass, 0);
+  return true;
 }
 function makeFlower(x, z, color) {
   const g = new THREE.Group();
@@ -1364,7 +1456,7 @@ const animals = animalDefs.map(def => {
   animalGroup.add(mesh);
   return {
     ...def, mesh, state: 'out', target: randomPasturePoint(),
-    wanderState: 'walking', restUntil: 0,
+    wanderState: 'walking', restUntil: 0, grazeAt: Infinity,
   };
 });
 
@@ -1410,7 +1502,9 @@ function buildMap(mapName) {
       slab.receiveShadow = true; slab.castShadow = true;
       mapGroup.add(slab);
     }
-    groundSlab(0, 29, PLATEAU_Y);                   // 高台 x=0~28（含新的西側緩衝空間）
+    const rampX = LAYOUT.coast.rampX;
+    const lowlandX = rampX + LAYOUT.coast.rampWidth;
+    groundSlab(0, rampX, PLATEAU_Y);
     const lowlandMat = new THREE.MeshStandardMaterial({ color: 0x6ab04c });
     const cliffMat2 = new THREE.MeshStandardMaterial({ color: 0x8a8478, flatShading: true });
     const pathMat = new THREE.MeshStandardMaterial({ color: 0xbfa172 });
@@ -1418,7 +1512,7 @@ function buildMap(mapName) {
       const inCorridor = z >= RAMP_CORRIDOR_MIN_Z && z <= RAMP_CORRIDOR_MAX_Z;
       if (inCorridor) {
         // 走廊：三級台階，用路面色而不是草色，讀起來像「這是特地留的一條路」
-        [[29, PLATEAU_Y * 0.75], [30, PLATEAU_Y * 0.5], [31, PLATEAU_Y * 0.25]].forEach(([sx, sy]) => {
+        [[rampX, PLATEAU_Y * 0.75], [rampX + 1, PLATEAU_Y * 0.5], [rampX + 2, PLATEAU_Y * 0.25]].forEach(([sx, sy]) => {
           const step = new THREE.Mesh(new THREE.BoxGeometry(1, 0.2, TILE), pathMat);
           step.position.set(sx, sy - 0.1, z);
           step.receiveShadow = true; step.castShadow = true;
@@ -1427,20 +1521,20 @@ function buildMap(mapName) {
       } else {
         // 懸崖：一整片垂直岩壁，從高台頂端封到海平面，這裡走不過去
         const wall = new THREE.Mesh(new THREE.BoxGeometry(3, PLATEAU_Y + 0.3, TILE * 0.96), cliffMat2);
-        wall.position.set(30, PLATEAU_Y / 2 - 0.05, z);
+        wall.position.set(rampX + 1, PLATEAU_Y / 2 - 0.05, z);
         wall.castShadow = true; wall.receiveShadow = true;
         mapGroup.add(wall);
         // 崖底偶爾堆一顆放大的石頭，呼應參考圖那種亂石礁岸的感覺
         if (hash2(z * 3.1, 8.8) < 0.55) {
-          const boulder = makeStone(29 + hash2(z, 1) * 2.3, z + (hash2(z, 2) - 0.5) * 0.6, hash2(z, 3));
+          const boulder = makeStone(rampX + hash2(z, 1) * 2.3, z + (hash2(z, 2) - 0.5) * 0.6, hash2(z, 3));
           boulder.scale.setScalar(1.7 + hash2(z, 4) * 1.6);
           mapGroup.add(boulder);
         }
       }
     }
-    const lowland = new THREE.Mesh(new THREE.BoxGeometry(cols - 32, 0.2, rows * TILE),
+    const lowland = new THREE.Mesh(new THREE.BoxGeometry(cols - lowlandX, 0.2, rows * TILE),
       new THREE.MeshStandardMaterial({ color: 0x6ab04c }));
-    lowland.position.set(32 + (cols - 32) / 2 - 0.5, -0.1, zCenter);
+    lowland.position.set(lowlandX + (cols - lowlandX) / 2 - 0.5, -0.1, zCenter);
     lowland.receiveShadow = true;
     mapGroup.add(lowland);
 
@@ -1601,12 +1695,6 @@ function buildMap(mapName) {
         }
       });
 
-      // 碼頭——放在坡道走廊下來正對的沙灘上，跟參考圖「住宅小路→階梯→沙灘
-      // →碼頭」的動線一致
-      const dock = makeDock();
-      dock.position.set(32.3, 0, 15);
-      mapGroup.add(dock);
-
       // 悠游的小魚仔——純氛圍裝飾，每條各自繞著自己的中心點游圈圈，
       // 中心點跟半徑都用決定性亂數算，重整頁面魚群長得一樣、不會整批重排
       fishSchool.length = 0;
@@ -1622,18 +1710,22 @@ function buildMap(mapName) {
     }
 
     // 圍欄拿掉了，牧場現在是開放式的草地，不用柵欄圍起來
-    // 改成整片會被風吹動的牧草——每格灑 1~2 叢，位置加一點隨機偏移，
-    // 才不會排成整齊的方格，看起來比較像自然長出來的草地
+    // 每格用 3x3 密植網格鋪滿，葉片會一路接到格子邊緣；
+    // 小幅錯位打破方格感，但不再留下明顯的裸土空洞。
     for (let gx = PASTURE.minX; gx <= PASTURE.maxX; gx++) {
       for (let gz = PASTURE.minZ; gz <= PASTURE.maxZ; gz++) {
-        const count = 1 + Math.round(hash2(gx * 3.3, gz * 5.1));
-        for (let i = 0; i < count; i++) {
-          const seed = hash2(gx + i * 1.9, gz + i * 2.7);
-          const jx = gx + (seed - 0.5) * 0.85;
-          const jz = gz + (hash2(gx, gz + i * 4.1) - 0.5) * 0.85;
-          const tuft = makeWindGrass(jx, jz, seed);
-          plateauGroup.add(tuft);
-          pastureGrassBlades.push(tuft);
+        const tileGrowth = hash2(gx * 3.3, gz * 5.1) * 3;
+        for (let ix = 0; ix < 3; ix++) {
+          for (let iz = 0; iz < 3; iz++) {
+            const i = ix * 3 + iz;
+            const seed = hash2(gx + i * 1.9, gz + i * 2.7);
+            const jx = gx + (ix - 1) * 0.34 + (seed - 0.5) * 0.07;
+            const jz = gz + (iz - 1) * 0.34 + (hash2(gx + i, gz + i * 4.1) - 0.5) * 0.07;
+            const tuft = makeWindGrass(jx, jz, seed);
+            tuft.userData.growth = tileGrowth;
+            plateauGroup.add(tuft);
+            pastureGrassBlades.push(tuft);
+          }
         }
       }
     }
@@ -1657,8 +1749,8 @@ function buildMap(mapName) {
     // 3×3 網格、格距 1.1
     for (let ox = 0; ox < 3; ox++) {
       for (let oz = 0; oz < 3; oz++) {
-        const fx = HOUSE.x + 4.5 + ox * 1.0 + (hash2(ox, oz) - 0.5) * 0.3;
-        const fz = HOUSE.z - 8.5 + oz * 1.0 + (hash2(oz, ox) - 0.5) * 0.3;
+        const fx = HOUSE.x + LAYOUT.orchard.houseOffsetX + ox * 1.0 + (hash2(ox, oz) - 0.5) * 0.3;
+        const fz = HOUSE.z + LAYOUT.orchard.houseOffsetZ + oz * 1.0 + (hash2(oz, ox) - 0.5) * 0.3;
         plateauGroup.add(makeFruitTree(fx, fz, hash2(fx, fz)));
       }
     }
@@ -1697,24 +1789,17 @@ function buildMap(mapName) {
     const lakeCells = [];
     map.tiles.forEach((row, z) => row.forEach((t, x) => { if (t === 6) lakeCells.push({ x, z }); }));
     if (lakeCells.length) {
-      const lMinX = Math.min(...lakeCells.map(c => c.x));
-      const lMaxX = Math.max(...lakeCells.map(c => c.x));
-      const lMinZ = Math.min(...lakeCells.map(c => c.z));
-      const lMaxZ = Math.max(...lakeCells.map(c => c.z));
-      const centerX = (lMinX + lMaxX) / 2, centerZ = (lMinZ + lMaxZ) / 2;
-      const baseRadius = (Math.max(lMaxX - lMinX, lMaxZ - lMinZ) / 2 + 0.5) * 0.92;
+      const centerX = LAYOUT.lake.x + (LAYOUT.lake.width - 1) / 2;
+      const centerZ = LAYOUT.lake.z + (LAYOUT.lake.height - 1) / 2;
       const seed = hash2(centerX * 1.7, centerZ * 2.3) * 20;
+      const radiusX = LAYOUT.lake.width * 0.35;
+      const radiusZ = LAYOUT.lake.height * 0.35;
 
       const ANGLE_SEG = 32, RING_SEG = 7;
       const angleRadius = [];
       for (let a = 0; a <= ANGLE_SEG; a++) {
         const theta = (a / ANGLE_SEG) * Math.PI * 2;
-        angleRadius.push(baseRadius * (
-          1
-          + 0.20 * Math.sin(theta * 2 + seed)
-          + 0.12 * Math.sin(theta * 3 + seed * 1.6)
-          + 0.07 * Math.sin(theta * 5 + seed * 2.4)
-        ));
+        angleRadius.push(lakeEdgeFactor(theta));
       }
       angleRadius[ANGLE_SEG] = angleRadius[0]; // 頭尾接起來，輪廓才會閉合
 
@@ -1725,7 +1810,7 @@ function buildMap(mapName) {
         for (let a = 0; a <= ANGLE_SEG; a++) {
           const theta = (a / ANGLE_SEG) * Math.PI * 2;
           const r = angleRadius[a] * ringFrac;
-          positions.push(Math.cos(theta) * r, 0, Math.sin(theta) * r);
+          positions.push(Math.cos(theta) * radiusX * r, 0, Math.sin(theta) * radiusZ * r);
           // 中心偏深藍，邊緣淡成偏綠的淺水色——湖底透光的感覺
           const edge = ringFrac;
           colors.push(0.13 + edge * 0.30, 0.36 + edge * 0.32, 0.52 + edge * 0.20);
@@ -1762,11 +1847,12 @@ function buildMap(mapName) {
       for (let i = 0; i < padCount; i++) {
         const pr = hash2(seed + i * 4.1, i * 1.3);
         const pa = hash2(i * 7.7, seed + i * 2.9) * Math.PI * 2;
-        const dist = baseRadius * (0.15 + pr * 0.45);
+        const distX = radiusX * (0.15 + pr * 0.45);
+        const distZ = radiusZ * (0.15 + pr * 0.45);
         const pad = new THREE.Mesh(new THREE.CircleGeometry(0.09 + pr * 0.05, 8),
           new THREE.MeshStandardMaterial({ color: 0x3f9142, flatShading: true, side: THREE.DoubleSide }));
         pad.rotation.x = -Math.PI / 2;
-        pad.position.set(centerX + Math.cos(pa) * dist, 0.135, centerZ + Math.sin(pa) * dist);
+        pad.position.set(centerX + Math.cos(pa) * distX, 0.135, centerZ + Math.sin(pa) * distZ);
         plateauGroup.add(pad);
       }
     }
@@ -1781,14 +1867,17 @@ function buildMap(mapName) {
 
 function isBlocked(mapName, x, z) {
   const map = MAPS[mapName];
-  if (z < 0 || z >= map.tiles.length || x < 0 || x >= map.tiles[0].length) return true;
-  const t = map.tiles[z][x];
-  if (t === 1 || t === 2 || t === 6 || t === 9) return true;
+  const tx = Math.round(x), tz = Math.round(z);
+  if (tz < 0 || tz >= map.tiles.length || tx < 0 || tx >= map.tiles[0].length) return true;
+  if (mapName === 'outside' && isInsideLakeShape(x, z)) return true;
+  const t = map.tiles[tz][tx];
+  if (t === 6) return true;
+  if (t === 1 || t === 2 || t === 9) return true;
   if (map.furniture) {
     return map.furniture.some(f => {
       if (f.nonBlocking) return false;
       const w = f.w || 1, d = f.d || 1;
-      return x >= f.x && x < f.x + w && z >= f.z && z < f.z + d;
+      return tx >= f.x && tx < f.x + w && tz >= f.z && tz < f.z + d;
     });
   }
   return false;
@@ -1915,7 +2004,7 @@ function collidesAt(mapName, x, z, half = 0.22) {
     [x - half, z - half], [x + half, z - half],
     [x - half, z + half], [x + half, z + half],
   ];
-  return corners.some(([cx, cz]) => isBlocked(mapName, Math.round(cx), Math.round(cz)));
+  return corners.some(([cx, cz]) => isBlocked(mapName, cx, cz));
 }
 
 window.__gameState = () => ({
@@ -1976,14 +2065,14 @@ function animate(now) {
   if (elapsed < castAnimEnd) {
     const progress = 1 - (castAnimEnd - elapsed) / CAST_ANIM_DURATION;
     const eased = progress < 0.4 ? (progress / 0.4) : 1 - (progress - 0.4) / 0.6 * 0.3;
-    player.parts.armR.rotation.x = -1.9 + eased * 2.6;
+    player.parts.armR.rotation.x = 1.9 - eased * 2.6;
     player.parts.armR.rotation.z = 0;
-    player.parts.armL.rotation.x = -1.7 + eased * 2.4;
+    player.parts.armL.rotation.x = 1.7 - eased * 2.4;
     player.parts.armL.rotation.z = 0.45;
   } else if (fishingState !== 'idle' && player.parts.rod && player.parts.rod.visible) {
     // 拋竿動畫結束後，站著等魚上鉤時雙手固定在持竿姿勢，不要被待機呼吸動畫拉回去
-    player.parts.armR.rotation.x = -1.15; player.parts.armR.rotation.z = 0;
-    player.parts.armL.rotation.x = -1.05; player.parts.armL.rotation.z = 0.45;
+    player.parts.armR.rotation.x = 1.15; player.parts.armR.rotation.z = 0;
+    player.parts.armL.rotation.x = 1.05; player.parts.armL.rotation.z = 0.45;
   } else {
     player.parts.armL.rotation.z = 0; // 沒在釣魚時把左手歸零，不然會卡在往內擺的角度
   }
@@ -2146,15 +2235,20 @@ function animate(now) {
       a.state = 'out';
       a.mesh.visible = true;
       a.mesh.position.set(BARN_DOOR.x, 0, BARN_DOOR.z);
-      a.target = randomPasturePoint();
+      a.target = chooseAnimalPastureTarget(a);
       a.wanderState = 'walking';
       a.restUntil = 0;
+      a.grazeAt = Infinity;
     } else {
       // 白天不再不停巡邏：抵達目標後先休息，再挑下一個位置。
       if (a.wanderState === 'resting') {
         if (elapsed >= a.restUntil) {
           a.wanderState = 'walking';
-          a.target = randomPasturePoint();
+          a.target = chooseAnimalPastureTarget(a);
+          a.grazeAt = Infinity;
+        } else if (elapsed >= a.grazeAt) {
+          tryEatPastureGrass(a);
+          a.grazeAt = Infinity;
         }
       } else {
         const dx = a.target.x - a.mesh.position.x, dz = a.target.z - a.mesh.position.z;
@@ -2162,6 +2256,7 @@ function animate(now) {
         if (dist < 0.15) {
           a.wanderState = 'resting';
           a.restUntil = elapsed + a.restMin + Math.random() * (a.restMax - a.restMin);
+          a.grazeAt = elapsed + 0.8;
         } else {
           moving = true;
           const step = Math.min(dist, a.speed * dt);
@@ -2281,14 +2376,23 @@ function animate(now) {
     f.mesh.position.y = (oceanMesh ? oceanMesh.position.y : 0.13) - 0.04;
   });
 
-  // 牧草被風吹：每片葉子的角度是「自己原本的傾斜」加上一個隨時間跟位置
-  // 變化的 sin 位移。相位裡加了 wx*0.5，同一時間點不同 x 位置的草相位不同，
-  // 看起來像一陣風正在往某個方向掃過整片草地，不是所有草同步僵硬地抖
-  const windSpeed = 1.8, sway = 0.18;
+  // 牧草會依序長成短、中、長三階段；長草被牛羊吃掉後回到短草。
+  // 風擺施加在葉片底部的 pivot，草根因此會固定在地面。
+  const windSpeed = 2.15;
   pastureGrassBlades.forEach(tuft => {
-    const wx = tuft.position.x;
-    tuft.userData.blades.forEach(b => {
-      b.rotation.z = b.userData.baseRotZ + Math.sin(elapsed * windSpeed + b.userData.phase + wx * 0.5) * sway;
+    const wx = tuft.position.x, wz = tuft.position.z;
+    tuft.userData.growth = Math.min(3, tuft.userData.growth + dt / GRASS_GROWTH_SECONDS);
+    setPastureGrassStage(tuft, Math.floor(tuft.userData.growth));
+    const sway = 0.16 + tuft.userData.stage * 0.09;
+    const playerDistance = currentMapName === 'outside'
+      ? Math.hypot(wx - player.position.x, wz - player.position.z) : Infinity;
+    const wake = isMoving && playerDistance < 1.05 ? (1 - playerDistance / 1.05) * 0.52 : 0;
+    const wakeX = playerDistance > 0.001 ? (wx - player.position.x) / playerDistance * wake : 0;
+    const wakeZ = playerDistance > 0.001 ? (wz - player.position.z) / playerDistance * wake : 0;
+    tuft.userData.blades.forEach(pivot => {
+      const wave = elapsed * windSpeed + pivot.userData.phase + wx * 0.72 + wz * 0.28;
+      pivot.rotation.z = pivot.userData.baseRotZ + Math.sin(wave) * sway - wakeX;
+      pivot.rotation.x = pivot.userData.baseRotX + Math.sin(wave * 0.82 + 1.4) * sway * 0.45 + wakeZ;
     });
   });
 
