@@ -1,0 +1,260 @@
+import { gameState, inventory, cropState, TIME_CONFIG, SEASON_NAMES, WEATHER_NAMES, getSeasonDay, getSeasonPeriod, rollWeatherForSeason, growCropsForNewDay, nearWater, plantSeed, harvestCrop, pickupSeeds, CAST_ANIM_DURATION, OYSTER_RACK_TILES, oysterRackState, harvestOysterRack } from "./game-state";
+import { updateSeasonAndDate } from "./game-clock";
+import { carpenterQuest, events, POUCH_POS, FARMLAND_TILES } from "./layout-maps";
+import { npcs } from "./npc-runtime";
+import { npcLine } from "./npc-defs";
+import { dialogQueue, advanceDialogSequence, showDialog, dialogEl } from "./dialogue";
+import { loadMap, isBlocked } from "./build-map";
+import { updateAvenueTreeColors, updateSeasonalTreeColors, updateSeasonalGroundColors, makeBobber, makeFishProp } from "./props";
+import { syncFarmVisuals } from "./farm-visuals";
+import { scene, clearMeteors, scheduleNextMeteor, updateCameraFrustum, meteorPool, getMeteorShowerHudLabel } from "./scene-sky";
+
+export const SAVE_KEY_PREFIX = "meadowtide.save.";
+      export function saveGame(slot = "default") {
+        const data = {
+          version: 2,
+          elapsed: gameState.elapsed,
+          currentDay: gameState.currentDay,
+          currentPhase: gameState.currentPhase,
+          currentSeason: gameState.currentSeason,
+          currentWeather: gameState.currentWeather,
+          pouchCollectedDay: gameState.pouchCollectedDay,
+          currentMapName: gameState.currentMapName,
+          player: gameState.player
+            ? { x: gameState.player.position.x, z: gameState.player.position.z, facing: gameState.facing }
+            : null,
+          inventory: { ...inventory },
+          crops: JSON.parse(JSON.stringify(cropState)),
+          npcMemory: npcs.map((npc) => ({ id: npc.id, memory: npc.memory })),
+          carpenterQuest: { ...carpenterQuest },
+          oysterRackState: JSON.parse(JSON.stringify(oysterRackState)),
+        };
+        localStorage.setItem(SAVE_KEY_PREFIX + slot, JSON.stringify(data));
+        return data;
+      }
+
+      export function loadGame(slot = "default") {
+        const raw = localStorage.getItem(SAVE_KEY_PREFIX + slot);
+        if (!raw) return false;
+        const data = JSON.parse(raw);
+        gameState.elapsed = Math.max(0, Number(data.elapsed) || 0);
+        updateSeasonAndDate();
+        gameState.prevDay = gameState.currentDay;
+        gameState.currentWeather =
+          data.currentWeather || rollWeatherForSeason(gameState.currentSeason);
+        gameState.pouchCollectedDay = Number.isFinite(data.pouchCollectedDay)
+          ? data.pouchCollectedDay
+          : -1;
+        Object.assign(inventory, data.inventory || {});
+        Object.keys(cropState).forEach((key) => delete cropState[key]);
+        Object.assign(cropState, data.crops || {});
+        (data.npcMemory || []).forEach((savedNpc) => {
+          const npc = npcs.find((candidate) => candidate.id === savedNpc.id);
+          if (npc) npc.memory = savedNpc.memory;
+        });
+        if (data.carpenterQuest) {
+          Object.assign(carpenterQuest, data.carpenterQuest);
+          const carpenterNpc = npcs.find((n) => n.id === "carpenter");
+          if (carpenterNpc)
+            carpenterNpc.mesh.visible = carpenterQuest.stage === "moved_in";
+        }
+        Object.keys(oysterRackState).forEach((key) => delete oysterRackState[key]);
+        Object.assign(oysterRackState, data.oysterRackState || {});
+        if (data.player) {
+          const targetMap = data.currentMapName || "livingArea";
+          if (targetMap !== gameState.currentMapName) {
+            loadMap(targetMap, { x: data.player.x, z: data.player.z });
+          } else if (gameState.player) {
+            gameState.player.position.x = data.player.x;
+            gameState.player.position.z = data.player.z;
+            gameState.playerGridPos = {
+              x: Math.round(data.player.x),
+              z: Math.round(data.player.z),
+            };
+          }
+          gameState.facing = data.player.facing || gameState.facing;
+        }
+        updateAvenueTreeColors();
+        updateSeasonalTreeColors();
+        updateSeasonalGroundColors();
+        growCropsForNewDay();
+        syncFarmVisuals();
+        clearMeteors();
+        scheduleNextMeteor(true);
+        updateHud();
+        return true;
+      }
+      (window as any).saveGame = saveGame;
+      (window as any).loadGame = loadGame;
+      addEventListener("keydown", (event) => {
+        if (event.key === "F6") {
+          event.preventDefault();
+          saveGame();
+          console.info("[存檔] 已儲存 default 欄位");
+        } else if (event.key === "F9") {
+          event.preventDefault();
+          console.info(
+            loadGame() ? "[讀檔] 已載入 default 欄位" : "[讀檔] 尚無存檔",
+          );
+        }
+      });
+
+      export const keys = {};
+      addEventListener("keydown", (e) => (keys[e.key.toLowerCase()] = true));
+      addEventListener("keyup", (e) => (keys[e.key.toLowerCase()] = false));
+      addEventListener("wheel", (e) => {
+        gameState.zoom = Math.max(2, Math.min(18, gameState.zoom + e.deltaY * 0.01));
+        updateCameraFrustum();
+      });
+
+      addEventListener("keydown", (e) => {
+        if (e.key.toLowerCase() !== "e" || gameState.ePressed) return;
+        gameState.ePressed = true;
+
+        // 對話正在進行中：E 只用來往下推句子，不觸發任何其他動作
+        if (dialogQueue.length) {
+          advanceDialogSequence();
+          return;
+        }
+
+        const scripted = events
+          .filter(
+            (ev) => ev.map === gameState.currentMapName && ev.trigger === "interact",
+          )
+          .filter(
+            (ev) =>
+              Math.abs(ev.x - gameState.playerGridPos.x) +
+                Math.abs(ev.z - gameState.playerGridPos.z) <=
+              1,
+          );
+        if (scripted.length) {
+          scripted.forEach((ev) => ev.action());
+          return;
+        }
+
+        if (gameState.currentMapName === "livingArea") {
+          const nearby = npcs.find((n) => {
+            if (!n.mesh.visible) return false; // 木匠抵達前不算「在場」，不能對話
+            const dx = gameState.player.position.x - n.mesh.position.x,
+              dz = gameState.player.position.z - n.mesh.position.z;
+            return Math.sqrt(dx * dx + dz * dz) <= 1.3;
+          });
+          if (nearby) {
+            showDialog(npcLine(nearby));
+            return;
+          }
+        }
+
+        if (gameState.currentMapName === "livingArea" && nearWater()) {
+          if (gameState.fishingState === "idle") {
+            gameState.fishingState = "casting";
+            gameState.fishingTimer = 0;
+            gameState.biteWaitTime = 1.4 + Math.random() * 2.6;
+            gameState.bobberMesh = makeBobber();
+            scene.add(gameState.bobberMesh);
+            gameState.castAnimEnd = gameState.elapsed + CAST_ANIM_DURATION;
+            if (gameState.player.parts.rod) gameState.player.parts.rod.visible = true;
+          } else if (gameState.fishingState === "biting") {
+            inventory.fish++;
+            gameState.fishingState = "idle";
+            const catchFrom = gameState.bobberMesh
+              ? gameState.bobberMesh.position.clone()
+              : gameState.player.position.clone();
+            if (gameState.bobberMesh) {
+              scene.remove(gameState.bobberMesh);
+              gameState.bobberMesh = null;
+            }
+            if (gameState.player.parts.rod) gameState.player.parts.rod.visible = false;
+            gameState.fishFeedback = { text: "釣到一隻魚！", until: gameState.elapsed + 1.4 };
+            const flyingFish = makeFishProp(Math.random() * 100);
+            flyingFish.scale.setScalar(1.7);
+            scene.add(flyingFish);
+            gameState.catchAnim = {
+              mesh: flyingFish,
+              from: catchFrom,
+              start: gameState.elapsed,
+              duration: 0.7,
+            };
+          }
+          // casting 中途按 E 沒有作用——心急沒有用，這也是釣魚小遊戲的重點
+          return;
+        }
+
+        if (gameState.currentMapName !== "livingArea") return;
+        const { x, z } = gameState.playerGridPos;
+        if (x === POUCH_POS.x && z === POUCH_POS.z) {
+          pickupSeeds();
+          return;
+        }
+        const onOysterRack = OYSTER_RACK_TILES.some(
+          ([ox, oz]) => ox === x && oz === z,
+        );
+        if (onOysterRack) {
+          harvestOysterRack(x, z);
+          return;
+        }
+        const onFarmland = FARMLAND_TILES.some(
+          ([fx, fz]) => fx === x && fz === z,
+        );
+        if (onFarmland) {
+          const key = `${x},${z}`;
+          if (cropState[key] && cropState[key].stage >= 2) harvestCrop(x, z);
+          else if (!cropState[key]) plantSeed(x, z);
+        }
+      });
+      addEventListener("keyup", (e) => {
+        if (e.key.toLowerCase() === "e") gameState.ePressed = false;
+      });
+
+      // 自由移動的碰撞判斷：玩家當成一個小正方形，四個角落分別去查
+      // 「這個角落現在在哪個格子、那格能不能走」，任何一個角落撞到就擋住，
+      // 這樣貼著牆邊走的時候是滑過去，不是整個人卡住
+      export function collidesAt(mapName, x, z, half = 0.22) {
+        const corners = [
+          [x - half, z - half],
+          [x + half, z - half],
+          [x - half, z + half],
+          [x + half, z + half],
+        ];
+        return corners.some(([cx, cz]) => isBlocked(mapName, cx, cz));
+      }
+
+      (window as any).__gameState = () => ({
+        playerGridPos: gameState.playerGridPos,
+        currentMapName: gameState.currentMapName,
+        facing: gameState.facing,
+        isMoving: gameState.isMoving,
+        nightFactor: (window as any).__nightFactor || 0,
+        season: SEASON_NAMES[gameState.currentSeason],
+        weather: WEATHER_NAMES[gameState.currentWeather],
+        musicMuted: gameState.musicMuted,
+        dialogVisible:
+          dialogEl.style.display !== "none" && dialogEl.style.display !== "",
+        day: gameState.currentDay,
+        seasonDay: getSeasonDay(),
+        period: getSeasonPeriod(),
+        time: gameState.currentPhase * TIME_CONFIG.gameHoursPerDay,
+        activeMeteors: meteorPool.filter((meteor) => meteor.active).length,
+        inventory: { ...inventory },
+        fishingState: gameState.fishingState,
+        npcs: npcs.map((n) => ({
+          id: n.id,
+          memory: n.memory,
+          pos: { x: n.mesh.position.x, z: n.mesh.position.z },
+        })),
+        crops: JSON.parse(JSON.stringify(cropState)),
+      });
+
+      export const hudEl = document.getElementById("hud");
+      export function updateHud() {
+        const gameHour = gameState.currentPhase * TIME_CONFIG.gameHoursPerDay;
+        const hh = Math.floor(gameHour) % TIME_CONFIG.gameHoursPerDay;
+        const mm = Math.floor((gameHour - Math.floor(gameHour)) * 60);
+        hudEl.dataset.activeMeteors = String(
+          meteorPool.filter((meteor) => meteor.active).length,
+        );
+        hudEl.dataset.nightFactor = ((window as any).__nightFactor || 0).toFixed(3);
+        const meteorShowerLabel = getMeteorShowerHudLabel();
+        const weatherLabel = `${WEATHER_NAMES[gameState.currentWeather]}${meteorShowerLabel ? `・<b style="color:#a9d8ff">${meteorShowerLabel}</b>` : ""}`;
+        hudEl.innerHTML = `${SEASON_NAMES[gameState.currentSeason]}季 ・ 第 <b>${getSeasonDay()}</b> 日（${getSeasonPeriod()}）・ ${weatherLabel} ・ ${String(hh).padStart(2, "0")}:${String(mm).padStart(2, "0")}${gameState.musicMuted ? " ・ 靜音" : ""}<br>種子 <b>${inventory.seeds}</b> ・ 收成 <b>${inventory.harvested}</b> ・ 魚 <b>${inventory.fish}</b><br>阿姨印象 <b>${npcs[0].memory}</b> ・ 木匠印象 <b>${npcs[1].memory}</b>`;
+      }
