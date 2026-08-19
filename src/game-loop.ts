@@ -1,13 +1,13 @@
 import * as THREE from "three";
 import { gameState, TIME_CONFIG, CAST_ANIM_DURATION, getNightFactor, isUnsafeAnimalWeather, nearWater } from "./game-state";
 import { isGameTimePaused, updateGameClock } from "./game-clock";
-import { SOUTHERNMOST_AVENUE_TREE_Z, aStar, events } from "./layout-maps";
+import { SOUTHERNMOST_AVENUE_TREE_Z, aStar } from "./layout-maps";
 import { npcs, animals, BARN_DOOR, outsideCols, outsideRows } from "./npc-runtime";
 import { getScheduleTarget } from "./npc-defs";
 import { animateWalk, animateAnimalWalk } from "./humanoid";
 import { chooseAnimalPastureTarget, setPastureGrassStage, startFishRoute, tryEatPastureGrass } from "./props";
 import { dialogQueue } from "./dialogue";
-import { isBlocked } from "./build-map";
+import { isBlocked, events } from "./build-map";
 import { collidesAt, keys, updateHud } from "./input-save";
 import { updateMusic } from "./music";
 import { updateWeatherEffects } from "./weather-particles";

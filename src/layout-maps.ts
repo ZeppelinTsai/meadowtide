@@ -1,10 +1,4 @@
-import * as THREE from "three";
 import { hash2 } from "./utils";
-import { loadMap } from "./build-map";
-import {
-  handleCarpenterDockTouch,
-  handleCarpenterDoorstepTouch,
-} from "./carpenter-quest";
 
 // ==============================================================
       // 統一佈局設定 —— 之後要調哪個區域的位置/大小，改這裡就好，不要再
@@ -323,6 +317,20 @@ import {
         for (let i = 0; i < oceanCols; i++) row.push(9);
       });
 
+      // 西北山區入口目前只開放到前段階梯；最後一格是岩壁，保留未來切換山區地圖。
+      export const MOUNTAIN_GATE_BLOCKER = {
+        x: LAYOUT.mountainGateway.startX - (LAYOUT.mountainGateway.steps - 1),
+        z: LAYOUT.mountainGateway.startZ - (LAYOUT.mountainGateway.steps - 1),
+      };
+      if (
+        MOUNTAIN_GATE_BLOCKER.z >= 0 &&
+        MOUNTAIN_GATE_BLOCKER.z < MAPS.livingArea.tiles.length
+      ) {
+        MAPS.livingArea.tiles[MOUNTAIN_GATE_BLOCKER.z][
+          MOUNTAIN_GATE_BLOCKER.x
+        ] = 1;
+      }
+
       // ==============================================================
       // 1.55) 農田依 LAYOUT 排列大區塊(每塊 3×3，區塊間留 1 格路當 gap)，
       //    湖也順便放大——原本 3×3(9格) 放大到空間允許的極限
@@ -568,82 +576,11 @@ import {
         constructionStartDay: -1,
       };
 
-      export const events = [
-        {
-          map: "livingArea",
-          x: LAYOUT.house.doorX,
-          z: LAYOUT.house.z + LAYOUT.house.d,
-          trigger: "touch",
-          action: () => loadMap("house", { x: 3, z: 5 }),
-        },
-        {
-          map: "house",
-          x: 2,
-          z: 6,
-          trigger: "touch",
-          action: () =>
-            loadMap("livingArea", {
-              x: LAYOUT.house.doorX,
-              z: LAYOUT.house.z + LAYOUT.house.d + 1,
-            }),
-        },
-        {
-          map: "house",
-          x: 3,
-          z: 6,
-          trigger: "touch",
-          action: () =>
-            loadMap("livingArea", {
-              x: LAYOUT.house.doorX,
-              z: LAYOUT.house.z + LAYOUT.house.d + 1,
-            }),
-        },
-        // 生活區東側海岸 <-> 港口北端(碼頭附近)
-        {
-          map: "livingArea",
-          x: 40,
-          z: 20,
-          trigger: "touch",
-          action: () => loadMap("port", { x: 7, z: 4 }),
-        },
-        {
-          map: "port",
-          x: 7,
-          z: 2,
-          trigger: "touch",
-          action: () => loadMap("livingArea", { x: 35, z: 20 }),
-        },
-        // 港口南端(市場/倉庫) <-> 舊城鎮
-        {
-          map: "port",
-          x: 7,
-          z: 15,
-          trigger: "touch",
-          action: () => loadMap("oldVillage", { x: 7, z: 2 }),
-        },
-        {
-          map: "oldVillage",
-          x: 7,
-          z: 0,
-          trigger: "touch",
-          action: () => loadMap("port", { x: 7, z: 13 }),
-        },
-        // 木匠抵達事件——港口碼頭見面 + 舊城鎮空屋門口(往返兩段劇情共用同一格)
-        {
-          map: "port",
-          x: 7,
-          z: 3,
-          trigger: "touch",
-          action: () => handleCarpenterDockTouch(),
-        },
-        {
-          map: "oldVillage",
-          x: CARPENTER_DOORSTEP.x,
-          z: CARPENTER_DOORSTEP.z,
-          trigger: "touch",
-          action: () => handleCarpenterDoorstepTouch(),
-        },
-      ];
+      // events（地圖觸碰/互動事件表）需要 loadMap/handleCarpenterDockTouch/
+      // handleCarpenterDoorstepTouch，這些函式所在的模組會遞移載入
+      // scene-sky.ts（THREE.WebGLRenderer／document.getElementById 等 DOM/WebGL
+      // 副作用），若放在這個檔案會讓 map-debug.ts 之類的純 Node 腳本無法單獨
+      // import LAYOUT/MAPS。因此改放進 build-map.ts，見該檔案尾端。
 
       // ==============================================================
       // 2) A* 網格路徑規劃 — 只有上下左右四個方向，跟玩家移動同一套邏輯，

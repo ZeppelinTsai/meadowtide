@@ -1,10 +1,10 @@
 import { gameState, inventory, cropState, TIME_CONFIG, SEASON_NAMES, WEATHER_NAMES, getSeasonDay, getSeasonPeriod, rollWeatherForSeason, growCropsForNewDay, nearWater, plantSeed, harvestCrop, pickupSeeds, CAST_ANIM_DURATION, OYSTER_RACK_TILES, oysterRackState, harvestOysterRack } from "./game-state";
 import { updateSeasonAndDate } from "./game-clock";
-import { carpenterQuest, events, POUCH_POS, FARMLAND_TILES } from "./layout-maps";
+import { carpenterQuest, POUCH_POS, FARMLAND_TILES } from "./layout-maps";
 import { npcs } from "./npc-runtime";
 import { npcLine } from "./npc-defs";
 import { dialogQueue, advanceDialogSequence, showDialog, dialogEl } from "./dialogue";
-import { loadMap, isBlocked } from "./build-map";
+import { loadMap, isBlocked, events } from "./build-map";
 import { updateAvenueTreeColors, updateSeasonalTreeColors, updateSeasonalGroundColors, makeBobber, makeFishProp } from "./props";
 import { syncFarmVisuals } from "./farm-visuals";
 import { scene, clearMeteors, scheduleNextMeteor, updateCameraFrustum, meteorPool, getMeteorShowerHudLabel } from "./scene-sky";

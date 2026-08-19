@@ -85,19 +85,6 @@ export const TIME_CONFIG = Object.freeze({
   seasons: Object.freeze(["spring", "summer", "autumn", "winter"]),
 });
 
-// 西北山區入口目前只開放到前段階梯；最後一格是岩壁，保留未來切換山區地圖。
-export const MOUNTAIN_GATE_BLOCKER = {
-  x: LAYOUT.mountainGateway.startX - (LAYOUT.mountainGateway.steps - 1),
-  z: LAYOUT.mountainGateway.startZ - (LAYOUT.mountainGateway.steps - 1),
-};
-if (
-  MOUNTAIN_GATE_BLOCKER.z >= 0 &&
-  MOUNTAIN_GATE_BLOCKER.z < MAPS.livingArea.tiles.length
-) {
-  MAPS.livingArea.tiles[MOUNTAIN_GATE_BLOCKER.z][
-    MOUNTAIN_GATE_BLOCKER.x
-  ] = 1;
-}
 export const SEASON_NAMES = ["春", "夏", "秋", "冬"];
 export const SEASON_DAYLIGHT = Object.freeze({
   spring: Object.freeze({ sunrise: 6, sunset: 18, peak: 18 }),

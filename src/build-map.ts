@@ -2,7 +2,8 @@ import * as THREE from "three";
 import { hash2 } from "./utils";
 import { gameState } from "./game-state";
 import { scene, TILE, PLATEAU_Y, NORTH_CLIFF_Z, SOUTH_TERRAIN_EXTENSION, NORTH_TERRAIN_EXTENSION, northCliffEdgeZ, groundY } from "./scene-sky";
-import { LAYOUT, MAPS, carpenterQuest, CARPENTER_HOUSE, isInsideLakeShape, AVENUE_TREE_KEYS, TOWN_Z_START, RAMP_CORRIDOR_MIN_Z, RAMP_CORRIDOR_MAX_Z, COAST_ROAD_CENTER_Z, COAST_ROAD_HALF_WIDTH, lakeEdgeFactor, POUCH_POS } from "./layout-maps";
+import { LAYOUT, MAPS, carpenterQuest, CARPENTER_HOUSE, isInsideLakeShape, AVENUE_TREE_KEYS, TOWN_Z_START, RAMP_CORRIDOR_MIN_Z, RAMP_CORRIDOR_MAX_Z, COAST_ROAD_CENTER_Z, COAST_ROAD_HALF_WIDTH, lakeEdgeFactor, POUCH_POS, CARPENTER_DOORSTEP } from "./layout-maps";
+import { handleCarpenterDockTouch, handleCarpenterDoorstepTouch } from "./carpenter-quest";
 import { windowMats, outdoorLampLights, foamMeshes, windmillRotors, lakeShoreColliders, fishSchool, pastureGrassBlades, avenueLeafMaterials, seasonalTreeLeafMaterials, seasonalGroundMaterials, SEA_FISH_SCALE, LAKE_FISH_SCALE, EAST_SEA_WAVE_DIRECTION, NORTHEAST_SEA_WAVE_DIRECTION } from "./scene-registries";
 import { npcGroup, animalGroup, PASTURE, hasPastureGrassAt } from "./npc-runtime";
 import { makeGirlPlayer } from "./humanoid";
@@ -1118,3 +1119,84 @@ import { OYSTER_RACK_VISUAL } from "./game-state";
       export function fadeIn() {
         setTimeout(() => (fadeEl.style.opacity = "0"), 50);
       }
+
+      // events（地圖觸碰/互動事件表）搬自 layout-maps.ts：這裡才有 loadMap 跟
+      // handleCarpenterDockTouch/handleCarpenterDoorstepTouch 可以直接引用，
+      // 保持 layout-maps.ts 是純資料（不牽動 THREE.WebGLRenderer／DOM），
+      // map-debug.ts 才能單獨 import LAYOUT/MAPS 不必啟動整個渲染管線。
+      export const events = [
+        {
+          map: "livingArea",
+          x: LAYOUT.house.doorX,
+          z: LAYOUT.house.z + LAYOUT.house.d,
+          trigger: "touch",
+          action: () => loadMap("house", { x: 3, z: 5 }),
+        },
+        {
+          map: "house",
+          x: 2,
+          z: 6,
+          trigger: "touch",
+          action: () =>
+            loadMap("livingArea", {
+              x: LAYOUT.house.doorX,
+              z: LAYOUT.house.z + LAYOUT.house.d + 1,
+            }),
+        },
+        {
+          map: "house",
+          x: 3,
+          z: 6,
+          trigger: "touch",
+          action: () =>
+            loadMap("livingArea", {
+              x: LAYOUT.house.doorX,
+              z: LAYOUT.house.z + LAYOUT.house.d + 1,
+            }),
+        },
+        // 生活區東側海岸 <-> 港口北端(碼頭附近)
+        {
+          map: "livingArea",
+          x: 40,
+          z: 20,
+          trigger: "touch",
+          action: () => loadMap("port", { x: 7, z: 4 }),
+        },
+        {
+          map: "port",
+          x: 7,
+          z: 2,
+          trigger: "touch",
+          action: () => loadMap("livingArea", { x: 35, z: 20 }),
+        },
+        // 港口南端(市場/倉庫) <-> 舊城鎮
+        {
+          map: "port",
+          x: 7,
+          z: 15,
+          trigger: "touch",
+          action: () => loadMap("oldVillage", { x: 7, z: 2 }),
+        },
+        {
+          map: "oldVillage",
+          x: 7,
+          z: 0,
+          trigger: "touch",
+          action: () => loadMap("port", { x: 7, z: 13 }),
+        },
+        // 木匠抵達事件——港口碼頭見面 + 舊城鎮空屋門口(往返兩段劇情共用同一格)
+        {
+          map: "port",
+          x: 7,
+          z: 3,
+          trigger: "touch",
+          action: () => handleCarpenterDockTouch(),
+        },
+        {
+          map: "oldVillage",
+          x: CARPENTER_DOORSTEP.x,
+          z: CARPENTER_DOORSTEP.z,
+          trigger: "touch",
+          action: () => handleCarpenterDoorstepTouch(),
+        },
+      ];
