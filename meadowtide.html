@@ -126,12 +126,12 @@
           spacingZ: 2.1,
         }, // 小屋右側 12 棵
         windmill: {
-          x: 28,
-          z: 12,
+          x: 29,
+          z: 15,
           w: 4,
           d: 4,
-          visualX: 29.5,
-          visualZ: 13.5,
+          visualX: 30.0,
+          visualZ: 15.0,
           scale: 2,
         },
         houseRoad: { width: 3 },
@@ -358,10 +358,7 @@
         // 海各自佔幾格會跟著波動，海岸線才不會是一條直線
         const sandCols = Math.min(
           BEACH_BAND_WIDTH - 3,
-          Math.max(
-            3,
-            BEACH_SAND_COLS + coastShoreJitter(z),
-          ),
+          Math.max(3, BEACH_SAND_COLS + coastShoreJitter(z)),
         );
         const oceanCols = BEACH_BAND_WIDTH - sandCols;
         for (let i = 0; i < sandCols; i++) row.push(8);
@@ -399,14 +396,12 @@
       }
       // 區塊間的走道完全由欄／排數推導，會自動貫穿整片農田。
       for (let bc = 1; bc < FARM_ORIGIN.columns; bc++) {
-        const pathX =
-          FARM_ORIGIN.x + bc * FARM_BLOCK_STEP - FARM_ORIGIN.gap;
+        const pathX = FARM_ORIGIN.x + bc * FARM_BLOCK_STEP - FARM_ORIGIN.gap;
         for (let z = FARM_ORIGIN.z; z <= FARM_MAX_Z; z++)
           MAPS.outside.tiles[z][pathX] = 5;
       }
       for (let br = 1; br < FARM_ORIGIN.rows; br++) {
-        const pathZ =
-          FARM_ORIGIN.z + br * FARM_BLOCK_STEP - FARM_ORIGIN.gap;
+        const pathZ = FARM_ORIGIN.z + br * FARM_BLOCK_STEP - FARM_ORIGIN.gap;
         for (let x = FARM_ORIGIN.x; x <= FARM_MAX_X; x++)
           MAPS.outside.tiles[pathZ][x] = 5;
       }
@@ -528,10 +523,8 @@
       // 路線全部由 LAYOUT 推導；之後移動房屋或農田時不需要重寫絕對座標。
       const FARM_ACCESS_X = LAYOUT.farm.x - 1;
       const FARM_ACCESS_NORTH_Z = LAYOUT.farm.z - 1;
-      const FARM_ACCESS_SOUTH_Z =
-        FARM_MAX_Z + 1;
-      const FARM_ACCESS_EAST_X =
-        FARM_MAX_X + 1;
+      const FARM_ACCESS_SOUTH_Z = FARM_MAX_Z + 1;
+      const FARM_ACCESS_EAST_X = FARM_MAX_X + 1;
       for (let dz = 0; dz < LAYOUT.farmAccessRoad.width; dz++) {
         const z = FARM_ACCESS_NORTH_Z - dz;
         for (
@@ -750,7 +743,8 @@
         MOUNTAIN_GATE_BLOCKER.z >= 0 &&
         MOUNTAIN_GATE_BLOCKER.z < MAPS.outside.tiles.length
       ) {
-        MAPS.outside.tiles[MOUNTAIN_GATE_BLOCKER.z][MOUNTAIN_GATE_BLOCKER.x] = 1;
+        MAPS.outside.tiles[MOUNTAIN_GATE_BLOCKER.z][MOUNTAIN_GATE_BLOCKER.x] =
+          1;
       }
       const SEASON_NAMES = ["春", "夏", "秋", "冬"];
       const SEASON_DAYLIGHT = Object.freeze({
@@ -824,12 +818,20 @@
         const hour = phase * TIME_CONFIG.gameHoursPerDay;
         const daylight = getDaylightForSeason();
         const blend = METEOR_CONFIG.dawnDuskBlendHours;
-        if (hour < daylight.sunriseHour - blend || hour > daylight.sunsetHour + blend)
+        if (
+          hour < daylight.sunriseHour - blend ||
+          hour > daylight.sunsetHour + blend
+        )
           return 1;
         if (hour <= daylight.sunriseHour + blend)
-          return 1 - smoothstep01((hour - (daylight.sunriseHour - blend)) / (blend * 2));
+          return (
+            1 -
+            smoothstep01((hour - (daylight.sunriseHour - blend)) / (blend * 2))
+          );
         if (hour >= daylight.sunsetHour - blend)
-          return smoothstep01((hour - (daylight.sunsetHour - blend)) / (blend * 2));
+          return smoothstep01(
+            (hour - (daylight.sunsetHour - blend)) / (blend * 2),
+          );
         return 0;
       }
       function isNightTime() {
@@ -838,11 +840,7 @@
       function rollWeatherForSeason(seasonIndex) {
         const r = Math.random();
         if (seasonIndex === 0)
-          return r < 0.55
-            ? "clear"
-            : r < 0.72
-              ? "cloudy"
-              : "rain";
+          return r < 0.55 ? "clear" : r < 0.72 ? "cloudy" : "rain";
         if (seasonIndex === 1)
           return r < 0.52
             ? "clear"
@@ -854,11 +852,7 @@
                   ? "typhoon"
                   : "storm";
         if (seasonIndex === 2)
-          return r < 0.58
-            ? "clear"
-            : r < 0.76
-              ? "cloudy"
-              : "rain";
+          return r < 0.58 ? "clear" : r < 0.76 ? "cloudy" : "rain";
         return r < 0.45
           ? "clear"
           : r < 0.6
@@ -982,8 +976,7 @@
       const NORTH_CLIFF_Z = -5.7;
       const CAMERA_WORLD_BOUNDS = Object.freeze({
         west: -5,
-        east:
-          LAYOUT.coast.rampX + LAYOUT.coast.rampWidth - 0.85 + 26.7,
+        east: LAYOUT.coast.rampX + LAYOUT.coast.rampWidth - 0.85 + 26.7,
       });
       function northCliffEdgeZ(x) {
         return (
@@ -1211,7 +1204,8 @@
         }
         for (let i = 0; i < 900; i++) {
           const x = hash2(i * 2.13, 3.2) * canvas.width;
-          const centerBias = (hash2(i * 7.41, 9.8) + hash2(i * 4.17, 1.2) - 1) * 0.5;
+          const centerBias =
+            (hash2(i * 7.41, 9.8) + hash2(i * 4.17, 1.2) - 1) * 0.5;
           const y = canvas.height * (0.5 + centerBias * 0.62);
           const alpha = 0.12 + hash2(i * 8.2, 6.5) * 0.5;
           const size = 0.35 + hash2(i * 5.4, 7.7) * 1.25;
@@ -1284,7 +1278,10 @@
             fog: false,
             blending: THREE.AdditiveBlending,
           });
-          const milkyWay = new THREE.Mesh(new THREE.PlaneGeometry(112, 19), milkyWayMaterial);
+          const milkyWay = new THREE.Mesh(
+            new THREE.PlaneGeometry(112, 19),
+            milkyWayMaterial,
+          );
           milkyWay.position.set(0, 1, -79);
           milkyWay.rotation.z = -0.31;
           milkyWay.renderOrder = -0.8;
@@ -1324,8 +1321,7 @@
               color: 0xffffff,
               vertexColors: true,
               map: STAR_SPARKLE_TEXTURE,
-              size:
-                (seasonIndex === 3 ? 19 : 16.5) + (phaseGroup % 3) * 1.4,
+              size: (seasonIndex === 3 ? 19 : 16.5) + (phaseGroup % 3) * 1.4,
               sizeAttenuation: false,
               transparent: true,
               opacity: 0,
@@ -1469,11 +1465,7 @@
           nextMeteorAt = elapsed + 0.38 + Math.random() * 0.72;
           return;
         }
-        if (
-          !reset &&
-          activity.shower &&
-          elapsed >= meteorBurstCooldownUntil
-        ) {
+        if (!reset && activity.shower && elapsed >= meteorBurstCooldownUntil) {
           const burstChance =
             activity.shower.phase === "peak"
               ? 0.58
@@ -1495,9 +1487,9 @@
         if (activity.shower?.phase === "peak") {
           interval = 1.35 + Math.random() * 1.55;
         } else {
-          const eventsPerSecond =
-            rate / TIME_CONFIG.realSecondsPerGameHour;
-          interval = -Math.log(Math.max(0.0001, 1 - Math.random())) / eventsPerSecond;
+          const eventsPerSecond = rate / TIME_CONFIG.realSecondsPerGameHour;
+          interval =
+            -Math.log(Math.max(0.0001, 1 - Math.random())) / eventsPerSecond;
           interval = Math.max(0.7, interval);
           // 保留不規則間隔，但流星雨提示日不讓極端亂數造成玩家久候卻看不到。
           if (activity.shower) {
@@ -1535,21 +1527,28 @@
         let angle;
         if (showerMeteor) {
           startX = radiantX + (Math.random() - 0.5) * viewWidth * 0.72;
-          startY = radiantY + (Math.random() - 0.5) * (skyCeiling - skyFloor) * 0.72;
-          startX = THREE.MathUtils.clamp(startX, camera.left + marginX, camera.right - marginX);
+          startY =
+            radiantY + (Math.random() - 0.5) * (skyCeiling - skyFloor) * 0.72;
+          startX = THREE.MathUtils.clamp(
+            startX,
+            camera.left + marginX,
+            camera.right - marginX,
+          );
           startY = THREE.MathUtils.clamp(startY, skyFloor, skyCeiling);
           const outwardX = startX - radiantX;
           const outwardY = startY - radiantY;
           angle = Math.atan2(outwardY, outwardX) + (Math.random() - 0.5) * 0.28;
         } else {
-          startX = camera.left + marginX + Math.random() * (viewWidth - marginX * 2);
+          startX =
+            camera.left + marginX + Math.random() * (viewWidth - marginX * 2);
           startY = skyFloor + Math.random() * (skyCeiling - skyFloor);
           angle = -Math.PI * (0.08 + Math.random() * 0.72);
         }
         const speed = 18 + Math.random() * 17;
         const duration =
           METEOR_CONFIG.minDuration +
-          Math.random() * (METEOR_CONFIG.maxDuration - METEOR_CONFIG.minDuration);
+          Math.random() *
+            (METEOR_CONFIG.maxDuration - METEOR_CONFIG.minDuration);
         slot.active = true;
         slot.age = 0;
         slot.duration =
@@ -1563,7 +1562,9 @@
           (3.8 + Math.random() * 4.2) *
           style.length *
           (activity.shower ? METEOR_CONFIG.showerTrailScale : 1);
-        slot.brightness = activity.shower ? 0.88 + Math.random() * 0.12 : 0.62 + Math.random() * 0.28;
+        slot.brightness = activity.shower
+          ? 0.88 + Math.random() * 0.12
+          : 0.62 + Math.random() * 0.28;
         slot.material.color.setHex(
           style.colors[Math.floor(Math.random() * style.colors.length)],
         );
@@ -1621,7 +1622,8 @@
           const progress = meteor.age / meteor.duration;
           const fadeIn = Math.min(1, progress / 0.14);
           const fadeOut = Math.min(1, (1 - progress) / 0.3);
-          meteor.material.opacity = Math.min(fadeIn, fadeOut) * meteor.brightness;
+          meteor.material.opacity =
+            Math.min(fadeIn, fadeOut) * meteor.brightness;
         });
       }
 
@@ -1821,7 +1823,8 @@
           sunGlowMat.color
             .copy(SUN_SKY_BLEND_COLOR)
             .lerp(SUN_TARGET_COLOR, sunOpacity * (0.28 + arc * 0.16));
-          sunCoreMat.opacity = Math.min(1, sunOpacity * 1.05) * skyOnlyVisibility;
+          sunCoreMat.opacity =
+            Math.min(1, sunOpacity * 1.05) * skyOnlyVisibility;
           sunGlowMat.opacity =
             sunOpacity * (0.2 + arc * 0.16) * skyOnlyVisibility;
           const pulse = 1 + Math.sin(elapsed * 0.7) * 0.015;
@@ -2568,7 +2571,8 @@
 
       function updateSeasonAndDate() {
         currentDay = Math.max(0, Math.floor(elapsed / dayLength));
-        currentPhase = ((elapsed % dayLength) + dayLength) % dayLength / dayLength;
+        currentPhase =
+          (((elapsed % dayLength) + dayLength) % dayLength) / dayLength;
         currentSeason = getSeasonIndex(currentDay);
       }
 
@@ -2578,7 +2582,12 @@
         const menuOpen = Boolean(
           document.querySelector('[data-game-menu="open"], .game-menu.open'),
         );
-        return document.hidden || dialogOpen || menuOpen || window.__gamePaused === true;
+        return (
+          document.hidden ||
+          dialogOpen ||
+          menuOpen ||
+          window.__gamePaused === true
+        );
       }
 
       function updateGameClock(delta) {
@@ -2623,18 +2632,37 @@
       // 東北外海朝西南方推進；sampleDirectedSeaWave 會再次正規化。
       const NORTHEAST_SEA_WAVE_DIRECTION = Object.freeze({ x: -1, z: 1 });
       const EAST_SEA_WAVE = Object.freeze({
-        waveNumber: 1.4, speed: 2.2, height: 0.09, steepness: 0.55,
-        crossNumber: 0.8, crossAmount: 0.5,
-        secondaryNumber: 1.2, secondarySpeed: 1, secondaryHeight: 0.015,
+        waveNumber: 1.4,
+        speed: 2.2,
+        height: 0.09,
+        steepness: 0.55,
+        crossNumber: 0.8,
+        crossAmount: 0.5,
+        secondaryNumber: 1.2,
+        secondarySpeed: 1,
+        secondaryHeight: 0.015,
       });
       const NORTH_SEA_WAVE = Object.freeze({
-        waveNumber: 1.65, speed: 1.25, height: 0.045, steepness: 0.42,
-        crossNumber: 0.28, crossAmount: 0.55,
-        secondaryNumber: 0.72, secondarySpeed: 0.8, secondaryHeight: 0.018,
+        waveNumber: 1.65,
+        speed: 1.25,
+        height: 0.045,
+        steepness: 0.42,
+        crossNumber: 0.28,
+        crossAmount: 0.55,
+        secondaryNumber: 0.72,
+        secondarySpeed: 0.8,
+        secondaryHeight: 0.018,
       });
 
       // 波峰沿 direction 前進；沿浪與橫浪座標都由世界座標投影取得。
-      function sampleDirectedSeaWave(worldX, worldZ, time, direction, settings, out) {
+      function sampleDirectedSeaWave(
+        worldX,
+        worldZ,
+        time,
+        direction,
+        settings,
+        out,
+      ) {
         const length = Math.hypot(direction.x, direction.z) || 1;
         const directionX = direction.x / length;
         const directionZ = direction.z / length;
@@ -2643,14 +2671,17 @@
         const along = worldX * directionX + worldZ * directionZ;
         const across = worldX * sideX + worldZ * sideZ;
         const phase =
-          along * settings.waveNumber - time * settings.speed +
+          along * settings.waveNumber -
+          time * settings.speed +
           Math.sin(across * settings.crossNumber) * settings.crossAmount;
         const sinPhase = Math.sin(phase);
         const displacement =
           Math.cos(phase) * settings.height * settings.steepness;
         out.height =
           sinPhase * settings.height +
-          Math.cos(across * settings.secondaryNumber - time * settings.secondarySpeed) *
+          Math.cos(
+            across * settings.secondaryNumber - time * settings.secondarySpeed,
+          ) *
             settings.secondaryHeight;
         out.crest = sinPhase;
         out.displacementX = directionX * displacement;
@@ -3855,15 +3886,24 @@
             }),
         );
         const columns = [
-          [0.0, 0.0, 1.15, 2.7], [0.8, 0.15, 1.05, 2.35],
-          [1.55, 0.38, 1.2, 2.55], [2.35, 0.62, 1.08, 2.2],
-          [3.15, 0.92, 1.0, 1.95], [4.0, 1.22, 0.92, 1.65],
-          [4.75, 1.55, 0.78, 1.25], [5.4, 1.88, 0.62, 0.92],
-          [0.25, 0.92, 1.08, 2.25], [1.1, 1.12, 1.22, 2.45],
-          [1.95, 1.35, 1.12, 2.15], [2.8, 1.58, 1.04, 1.82],
-          [3.65, 1.82, 0.86, 1.48], [4.4, 2.05, 0.7, 1.05],
-          [0.55, 1.85, 0.9, 1.7], [1.45, 2.02, 1.02, 1.9],
-          [2.35, 2.18, 0.86, 1.5], [3.15, 2.34, 0.72, 1.15],
+          [0.0, 0.0, 1.15, 2.7],
+          [0.8, 0.15, 1.05, 2.35],
+          [1.55, 0.38, 1.2, 2.55],
+          [2.35, 0.62, 1.08, 2.2],
+          [3.15, 0.92, 1.0, 1.95],
+          [4.0, 1.22, 0.92, 1.65],
+          [4.75, 1.55, 0.78, 1.25],
+          [5.4, 1.88, 0.62, 0.92],
+          [0.25, 0.92, 1.08, 2.25],
+          [1.1, 1.12, 1.22, 2.45],
+          [1.95, 1.35, 1.12, 2.15],
+          [2.8, 1.58, 1.04, 1.82],
+          [3.65, 1.82, 0.86, 1.48],
+          [4.4, 2.05, 0.7, 1.05],
+          [0.55, 1.85, 0.9, 1.7],
+          [1.45, 2.02, 1.02, 1.9],
+          [2.35, 2.18, 0.86, 1.5],
+          [3.15, 2.34, 0.72, 1.15],
         ];
         // 從原本岬角尖端向東延伸二十格；越靠外海越低、越窄，避免變成等寬堤防。
         for (let step = 0; step < 20; step++) {
@@ -4310,7 +4350,9 @@
               Math.sin(z * 0.16 + ix * 0.8) * 0.16 * tx;
             const y = PLATEAU_Y + 0.08 + Math.pow(tx, 0.72) * 9.2 + rugged;
             positions.push(x, y, z);
-            const shade = low.clone().lerp(high, Math.min(1, tx * 0.9 + Math.abs(rugged) * 0.18));
+            const shade = low
+              .clone()
+              .lerp(high, Math.min(1, tx * 0.9 + Math.abs(rugged) * 0.18));
             colors.push(shade.r, shade.g, shade.b);
           }
         }
@@ -4327,8 +4369,14 @@
           }
         }
         const geometry = new THREE.BufferGeometry();
-        geometry.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
-        geometry.setAttribute("color", new THREE.Float32BufferAttribute(colors, 3));
+        geometry.setAttribute(
+          "position",
+          new THREE.Float32BufferAttribute(positions, 3),
+        );
+        geometry.setAttribute(
+          "color",
+          new THREE.Float32BufferAttribute(colors, 3),
+        );
         geometry.setIndex(indices);
         geometry.computeVertexNormals();
         const slope = new THREE.Mesh(
@@ -4352,7 +4400,11 @@
           const t = i / 41;
           const z = THREE.MathUtils.lerp(northZ, southZ, t);
           const seed = hash2(i * 4.9, 17.3);
-          const rock = makeStone(-0.85 - seed * 0.75, z + (seed - 0.5) * 1.8, seed);
+          const rock = makeStone(
+            -0.85 - seed * 0.75,
+            z + (seed - 0.5) * 1.8,
+            seed,
+          );
           rock.position.y = PLATEAU_Y + 0.22 + seed * 0.3;
           rock.scale.set(2.2 + seed * 2.1, 2.8 + seed * 3.2, 2 + seed * 2.4);
           group.add(rock);
@@ -4378,7 +4430,11 @@
           const x = gateway.startX - i;
           const z = gateway.startZ - i;
           const step = new THREE.Mesh(
-            new THREE.BoxGeometry(gateway.width, 0.28 + i * 0.08, gateway.width),
+            new THREE.BoxGeometry(
+              gateway.width,
+              0.28 + i * 0.08,
+              gateway.width,
+            ),
             i === gateway.steps - 1 ? edgeMat : stepMat,
           );
           step.position.set(x, top - (0.14 + i * 0.04), z);
@@ -5193,9 +5249,7 @@
           });
 
           const extendedDepth =
-            rows * TILE +
-            NORTH_TERRAIN_EXTENSION +
-            SOUTH_TERRAIN_EXTENSION;
+            rows * TILE + NORTH_TERRAIN_EXTENSION + SOUTH_TERRAIN_EXTENSION;
           const lowland = new THREE.Mesh(
             new THREE.BoxGeometry(cols - lowlandX, 0.2, extendedDepth),
             lowlandMat,
@@ -5203,19 +5257,14 @@
           lowland.position.set(
             lowlandX + (cols - lowlandX) / 2 - 0.5,
             -0.1,
-            zCenter +
-              (SOUTH_TERRAIN_EXTENSION - NORTH_TERRAIN_EXTENSION) / 2,
+            zCenter + (SOUTH_TERRAIN_EXTENSION - NORTH_TERRAIN_EXTENSION) / 2,
           );
           lowland.receiveShadow = true;
           mapGroup.add(lowland);
           const southCoastStartZ = TOWN_Z_START - 0.5;
-          const southCoastDepth =
-            rows - TOWN_Z_START + SOUTH_TERRAIN_EXTENSION;
+          const southCoastDepth = rows - TOWN_Z_START + SOUTH_TERRAIN_EXTENSION;
           const southBeach = new THREE.Mesh(
-            new THREE.PlaneGeometry(
-              LAYOUT.coast.sandCols,
-              southCoastDepth,
-            ),
+            new THREE.PlaneGeometry(LAYOUT.coast.sandCols, southCoastDepth),
             new THREE.MeshStandardMaterial({
               color: 0xe8d29a,
               roughness: 0.96,
@@ -5612,10 +5661,7 @@
                   blend,
                 );
               }
-              const zLo = Math.max(
-                dataMinZ,
-                Math.min(dataMaxZ, Math.floor(z)),
-              );
+              const zLo = Math.max(dataMinZ, Math.min(dataMaxZ, Math.floor(z)));
               const zHi = Math.min(dataMaxZ, zLo + 1);
               const wLo = westXByZ[zLo],
                 wHi = westXByZ[zHi] != null ? westXByZ[zHi] : wLo;
@@ -5725,11 +5771,7 @@
               LAYOUT.coast.sandCols -
               0.5;
             for (let z = dataMaxZ + 2; z <= maxZ; z += 2) {
-              const foam = makeFoam(
-                extendedShoreX + 0.15,
-                z,
-                z * 1.37,
-              );
+              const foam = makeFoam(extendedShoreX + 0.15, z, z * 1.37);
               foamMeshes.push(foam);
               mapGroup.add(foam);
             }
@@ -6177,7 +6219,8 @@
         elapsed = Math.max(0, Number(data.elapsed) || 0);
         updateSeasonAndDate();
         prevDay = currentDay;
-        currentWeather = data.currentWeather || rollWeatherForSeason(currentSeason);
+        currentWeather =
+          data.currentWeather || rollWeatherForSeason(currentSeason);
         pouchCollectedDay = Number.isFinite(data.pouchCollectedDay)
           ? data.pouchCollectedDay
           : -1;
@@ -6221,7 +6264,9 @@
           console.info("[存檔] 已儲存 default 欄位");
         } else if (event.key === "F9") {
           event.preventDefault();
-          console.info(loadGame() ? "[讀檔] 已載入 default 欄位" : "[讀檔] 尚無存檔");
+          console.info(
+            loadGame() ? "[讀檔] 已載入 default 欄位" : "[讀檔] 尚無存檔",
+          );
         }
       });
 
@@ -6732,15 +6777,10 @@
         // 晴朗白天降低 ACES 曝光，保留草地、岩石與建築的色彩層次；
         // 夜間稍微回升，避免星空與燈光變得太暗。
         renderer.toneMappingExposure =
-          currentWeather === "clear"
-            ? 0.76 + nightFactor * 0.26
-            : 1.02;
+          currentWeather === "clear" ? 0.76 + nightFactor * 0.26 : 1.02;
         const noonWarmth =
           daylight *
-          Math.pow(
-            Math.max(0, 1 - Math.abs(currentPhase - 0.5) / 0.2),
-            1.7,
-          );
+          Math.pow(Math.max(0, 1 - Math.abs(currentPhase - 0.5) / 0.2), 1.7);
         const fairWeather =
           currentWeather === "clear" || currentWeather === "cloudy";
         const summerSun =
@@ -6777,17 +6817,13 @@
           sun.intensity *= 1 - daylight * 0.18;
         }
         sun.color.copy(DAY.sunColor).lerp(NIGHT.sunColor, nightFactor);
-        if (summerSun > 0)
-          sun.color.lerp(SUMMER_SUN_COLOR, summerSun * 0.42);
+        if (summerSun > 0) sun.color.lerp(SUMMER_SUN_COLOR, summerSun * 0.42);
         else if (autumnWarmth > 0)
           sun.color.lerp(AUTUMN_SUN_COLOR, autumnWarmth);
         else if (winterSnowReflection > 0)
           sun.color.lerp(WINTER_LIGHT_COLOR, winterSnowReflection * 0.75);
         const noonSeasonStrength = [0.3, 0.46, 0.4, 0.16][currentSeason];
-        sun.color.lerp(
-          NOON_WARM_COLOR,
-          noonWarmth * noonSeasonStrength,
-        );
+        sun.color.lerp(NOON_WARM_COLOR, noonWarmth * noonSeasonStrength);
         seasonalBounceLight.intensity =
           summerSun * 0.22 + winterSnowReflection * 0.75;
         seasonalBounceLight.color
@@ -6816,7 +6852,8 @@
             ? groundY(player.position.x, player.position.z)
             : 0;
         // 玩家模型與相機共用地形高度，走上西北階梯或海岸緩坡時不會穿進台階。
-        player.position.y += (groundOffset - player.position.y) * Math.min(1, dt * 10);
+        player.position.y +=
+          (groundOffset - player.position.y) * Math.min(1, dt * 10);
         let cameraFocusX = player.position.x;
         let cameraFocusZ = player.position.z;
         if (currentMapName === "outside") {
@@ -6825,11 +6862,7 @@
           const maxFocusX = CAMERA_WORLD_BOUNDS.east - halfViewWidth;
           cameraFocusX =
             minFocusX <= maxFocusX
-              ? THREE.MathUtils.clamp(
-                  player.position.x,
-                  minFocusX,
-                  maxFocusX,
-                )
+              ? THREE.MathUtils.clamp(player.position.x, minFocusX, maxFocusX)
               : (CAMERA_WORLD_BOUNDS.west + CAMERA_WORLD_BOUNDS.east) / 2;
 
           // 正交斜視下，畫面下半部在地面上的 z 跨度約為 zoom / cos(傾角)。
@@ -7048,9 +7081,7 @@
             );
             setPastureGrassStage(tuft, Math.floor(tuft.userData.growth));
             const sway =
-              0.16 +
-              tuft.userData.stage * 0.09 +
-              weatherWindStrength * 0.22;
+              0.16 + tuft.userData.stage * 0.09 + weatherWindStrength * 0.22;
             // 雨勢朝 +X；草繞 Z 軸負向傾斜時也會倒向 +X。
             const weatherWindPush =
               weatherWindStrength *
