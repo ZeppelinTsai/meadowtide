@@ -734,6 +734,16 @@
       }
       let currentSeason = getSeasonIndex(0);
       let currentWeather = rollWeatherForSeason(currentSeason);
+      const ANIMAL_INDOOR_WEATHER = new Set([
+        "rain",
+        "typhoon",
+        "storm",
+        "snow",
+        "blizzard",
+      ]);
+      function isUnsafeAnimalWeather() {
+        return ANIMAL_INDOOR_WEATHER.has(currentWeather);
+      }
 
       // --- 釣魚狀態機：idle → casting（等待咬鉤）→ biting（有限時間內按 E 才算釣到）→ idle ---
       let fishingState = "idle";
@@ -934,10 +944,10 @@
 
       // 架空北緯 8°海島的四季星空：四季合計涵蓋大部分南北天代表星群。
       const SEASON_STAR_CONFIGS = [
-        { count: 480, color: 0xe8f4ff, bright: 0xfff2cf }, // 春：柔和、北斗與春季大三角意象
-        { count: 700, color: 0xddeaff, bright: 0xffffff }, // 夏：銀河最密、夏季大三角
-        { count: 540, color: 0xffedcf, bright: 0xffdca8 }, // 秋：清澈、飛馬四邊形
-        { count: 620, color: 0xd7e9ff, bright: 0xbfdcff }, // 冬：冷藍、獵戶與冬季大三角
+        { count: 1440, color: 0xe8f4ff, bright: 0xfff2cf }, // 春：柔和、北斗與春季大三角意象
+        { count: 2100, color: 0xddeaff, bright: 0xffffff }, // 夏：銀河最密、夏季大三角
+        { count: 1620, color: 0xffedcf, bright: 0xffdca8 }, // 秋：清澈、飛馬四邊形
+        { count: 1860, color: 0xd7e9ff, bright: 0xbfdcff }, // 冬：冷藍、獵戶與冬季大三角
       ];
       const CONSTELLATION_PATTERNS = [
         [
@@ -1008,6 +1018,46 @@
         0xffffff, 0xc9e8ff, 0x9fe8ff, 0xaef4dc, 0xffef9f, 0xffc98f, 0xffb3c8,
         0xe6c4ff, 0xb8c8ff, 0xd8ffd0,
       ];
+      function makeMilkyWayTexture() {
+        const canvas = document.createElement("canvas");
+        canvas.width = 1024;
+        canvas.height = 256;
+        const ctx = canvas.getContext("2d");
+        const band = ctx.createLinearGradient(0, 0, 0, canvas.height);
+        band.addColorStop(0, "rgba(90,110,190,0)");
+        band.addColorStop(0.22, "rgba(105,128,220,0.2)");
+        band.addColorStop(0.42, "rgba(176,192,255,0.42)");
+        band.addColorStop(0.5, "rgba(238,239,255,0.62)");
+        band.addColorStop(0.6, "rgba(202,178,244,0.42)");
+        band.addColorStop(0.78, "rgba(139,105,210,0.2)");
+        band.addColorStop(1, "rgba(80,95,170,0)");
+        ctx.fillStyle = band;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.globalCompositeOperation = "lighter";
+        for (let i = 0; i < 180; i++) {
+          const x = hash2(i * 3.7, 8.1) * canvas.width;
+          const y = canvas.height * (0.32 + hash2(i * 5.9, 2.4) * 0.36);
+          const radius = 8 + hash2(i * 7.3, 4.6) * 28;
+          const cloud = ctx.createRadialGradient(x, y, 0, x, y, radius);
+          cloud.addColorStop(0, "rgba(205,215,255,0.12)");
+          cloud.addColorStop(1, "rgba(150,170,240,0)");
+          ctx.fillStyle = cloud;
+          ctx.fillRect(x - radius, y - radius, radius * 2, radius * 2);
+        }
+        for (let i = 0; i < 900; i++) {
+          const x = hash2(i * 2.13, 3.2) * canvas.width;
+          const centerBias = (hash2(i * 7.41, 9.8) + hash2(i * 4.17, 1.2) - 1) * 0.5;
+          const y = canvas.height * (0.5 + centerBias * 0.62);
+          const alpha = 0.12 + hash2(i * 8.2, 6.5) * 0.5;
+          const size = 0.35 + hash2(i * 5.4, 7.7) * 1.25;
+          ctx.fillStyle = `rgba(225,232,255,${alpha})`;
+          ctx.fillRect(x, y, size, size);
+        }
+        const texture = new THREE.CanvasTexture(canvas);
+        texture.minFilter = THREE.LinearFilter;
+        return texture;
+      }
+      const MILKY_WAY_TEXTURE = makeMilkyWayTexture();
       function starSkyPoint(nx, ny, seasonIndex) {
         // 覆蓋最大縮放(zoom=18)與寬螢幕的完整遠景天幕；地形靠深度緩衝遮住星點。
         return new THREE.Vector3(
@@ -1028,7 +1078,7 @@
         }
         // 夏季額外加入一道斜跨天空的銀河密集星帶。
         if (seasonIndex === 1) {
-          for (let i = 0; i < 320; i++) {
+          for (let i = 0; i < 960; i++) {
             const t = hash2(i * 4.3, 12.7);
             const spread = (hash2(i * 8.1, 2.6) - 0.5) * 0.22;
             const p = starSkyPoint(
@@ -1057,6 +1107,24 @@
         const stars = new THREE.Points(geometry, starMaterial);
         stars.renderOrder = -0.5;
         group.add(stars);
+
+        let milkyWayMaterial = null;
+        if (seasonIndex === 1) {
+          milkyWayMaterial = new THREE.MeshBasicMaterial({
+            map: MILKY_WAY_TEXTURE,
+            transparent: true,
+            opacity: 0,
+            depthWrite: false,
+            depthTest: true,
+            fog: false,
+            blending: THREE.AdditiveBlending,
+          });
+          const milkyWay = new THREE.Mesh(new THREE.PlaneGeometry(112, 19), milkyWayMaterial);
+          milkyWay.position.set(0, 1, -79);
+          milkyWay.rotation.z = -0.31;
+          milkyWay.renderOrder = -0.8;
+          group.add(milkyWay);
+        }
 
         // 抽約 1/7 星點做強烈十字星芒，分成五組錯開相位；底下原星點維持穩定亮度。
         const sparklePositions = [[], [], [], [], []];
@@ -1142,6 +1210,7 @@
         group.add(constellationLines);
         group.userData.materials = [starMaterial, lineMaterial];
         group.userData.sparkleMaterials = sparkleMaterials;
+        group.userData.milkyWayMaterial = milkyWayMaterial;
         camera.add(group);
         return group;
       }
@@ -1170,6 +1239,9 @@
               : 0;
           group.userData.materials[0].opacity = visibility * 0.92;
           group.userData.materials[1].opacity = visibility * 0.11;
+          if (group.userData.milkyWayMaterial) {
+            group.userData.milkyWayMaterial.opacity = visibility * 0.88;
+          }
           group.userData.sparkleMaterials.forEach((material, phaseIndex) => {
             const pulse = Math.max(
               0,
@@ -1481,7 +1553,8 @@
               length = currentWeather === "rain" ? 0.62 : 0.95;
             rainPositions[base] = x;
             rainPositions[base + 1] = y;
-            rainPositions[base + 3] = x - slant;
+            // 雨滴往 +X、-Y 移動，線段也要指向同一個下風方向。
+            rainPositions[base + 3] = x + slant;
             rainPositions[base + 4] = y - length;
           }
           rainGeometry.attributes.position.needsUpdate = true;
@@ -5043,10 +5116,11 @@
         updateSkyDome(nightFactor);
         updateWeatherEffects(dt, nightFactor);
 
-        // --- 動物固定作息：06:00 出門，18:00 開始回穀倉 ---
+        // --- 動物固定作息：06:00 出門，18:00 開始回穀倉；惡劣天氣全天留在小屋。 ---
         // 不使用 nightFactor 判斷，因為它是光線漸變值，不等於準確鐘點。
         const gameHour = phase * 24;
-        const animalsShouldBeHome = gameHour < 6 || gameHour >= 18;
+        const animalsShouldBeHome =
+          gameHour < 6 || gameHour >= 18 || isUnsafeAnimalWeather();
         animals.forEach((a) => {
           let moving = false;
           if (animalsShouldBeHome) {
@@ -5330,7 +5404,18 @@
         if (grassAnimationAccumulator >= 1 / 20) {
           const grassDt = grassAnimationAccumulator;
           grassAnimationAccumulator = 0;
-          const windSpeed = 2.15;
+          const windSpeed =
+            currentWeather === "typhoon"
+              ? 4.8
+              : currentWeather === "storm"
+                ? 3.8
+                : 2.15;
+          const weatherWindStrength =
+            currentWeather === "typhoon"
+              ? 0.34
+              : currentWeather === "storm"
+                ? 0.2
+                : 0;
           pastureGrassBlades.forEach((tuft) => {
             const wx = tuft.position.x,
               wz = tuft.position.z;
@@ -5339,7 +5424,14 @@
               tuft.userData.growth + grassDt / GRASS_GROWTH_SECONDS,
             );
             setPastureGrassStage(tuft, Math.floor(tuft.userData.growth));
-            const sway = 0.16 + tuft.userData.stage * 0.09;
+            const sway =
+              0.16 +
+              tuft.userData.stage * 0.09 +
+              weatherWindStrength * 0.22;
+            // 雨勢朝 +X；草繞 Z 軸負向傾斜時也會倒向 +X。
+            const weatherWindPush =
+              weatherWindStrength *
+              (0.78 + Math.sin(elapsed * 2.35 + wz * 0.2) * 0.22);
             const playerDistance =
               currentMapName === "outside"
                 ? Math.hypot(wx - player.position.x, wz - player.position.z)
@@ -5363,7 +5455,10 @@
                 wx * 0.72 +
                 wz * 0.28;
               pivot.rotation.z =
-                pivot.userData.baseRotZ + Math.sin(wave) * sway - wakeX;
+                pivot.userData.baseRotZ +
+                Math.sin(wave) * sway -
+                weatherWindPush -
+                wakeX;
               pivot.rotation.x =
                 pivot.userData.baseRotX +
                 Math.sin(wave * 0.82 + 1.4) * sway * 0.45 +
