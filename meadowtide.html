@@ -64,10 +64,11 @@
         transform: translateX(-50%);
         background: rgba(15, 15, 20, 0.9);
         color: #fff;
-        padding: 34px 32px 20px;
+        padding: 18px 32px 20px;
         border-radius: 6px;
-        font-size: 16px;
+        font-size: 32px;
         display: none;
+        align-items: flex-start;
         width: 90vw;
         min-height: 170px;
         box-sizing: border-box;
@@ -81,14 +82,13 @@
       }
       #dialogName {
         position: absolute;
-        top: -36px;
+        top: -50px;
         left: 18px;
         background: rgba(15, 15, 20, 0.92);
         border: 2px solid #f5c542;
         border-radius: 6px;
-        padding: 4px 18px;
-        font-size: 14px;
-        font-weight: bold;
+        padding: 6px 20px;
+        font-size: 28px;
         color: #f5c542;
         display: none;
       }
@@ -129,7 +129,7 @@
         position: absolute;
         right: 18px;
         bottom: 8px;
-        font-size: 12px;
+        font-size: 24px;
         color: rgba(255, 255, 255, 0.5);
       }
       /* CG 全螢幕層：只有少數關鍵劇情節點會用到，平常對話走 #dialogPortrait
@@ -3119,7 +3119,9 @@
 
       function isGameTimePaused() {
         const dialogOpen =
-          typeof dialogEl !== "undefined" && dialogEl.style.display === "block";
+          typeof dialogEl !== "undefined" &&
+          dialogEl.style.display !== "none" &&
+          dialogEl.style.display !== "";
         const menuOpen = Boolean(
           document.querySelector('[data-game-menu="open"], .game-menu.open'),
         );
@@ -6888,7 +6890,7 @@
           return;
         }
         renderDialogLine(normalizeDialogLine(text));
-        dialogEl.style.display = "block";
+        dialogEl.style.display = "flex"; // flex 才吃得到 align-items:center 讓文字上下置中
       }
       // 多句對話用的小佇列——按 E 一句一句往下推，最後一句再按一次才關掉。
       // 單句對話還是用上面的 showDialog()，這個只給需要「一來一往」的場景用
@@ -6902,7 +6904,7 @@
         dialogIndex = 0;
         dialogSequenceOnComplete = onComplete;
         renderDialogLine(dialogQueue[0]);
-        dialogEl.style.display = "block";
+        dialogEl.style.display = "flex"; // flex 才吃得到 align-items:center 讓文字上下置中
       }
       function advanceDialogSequence() {
         dialogIndex++;
@@ -7127,7 +7129,8 @@
         season: SEASON_NAMES[currentSeason],
         weather: WEATHER_NAMES[currentWeather],
         musicMuted,
-        dialogVisible: dialogEl.style.display === "block",
+        dialogVisible:
+          dialogEl.style.display !== "none" && dialogEl.style.display !== "",
         day: currentDay,
         seasonDay: getSeasonDay(),
         period: getSeasonPeriod(),
@@ -7181,7 +7184,9 @@
         if (keys["a"] || keys["arrowleft"]) dx -= 1;
         if (keys["d"] || keys["arrowright"]) dx += 1;
         const inputLen = Math.hypot(dx, dz);
-        isMoving = inputLen > 0;
+        // dt===0 代表對話開著／遊戲暫停：主角完全鎖住，不只是不移動位置，
+        // 也不能轉向、不能播走路動畫——不然按方向鍵角色會原地轉圈或踏步。
+        isMoving = inputLen > 0 && dt > 0;
         if (inputLen > 0) {
           dx /= inputLen;
           dz /= inputLen;
@@ -7330,14 +7335,22 @@
 
         // 格子座標現在只是「玩家四捨五入後大概在哪一格」，給種田/撿種子/開門這些
         // 本來就是格子概念的系統用，跟移動本身脫鉤
-        const roundedX = Math.round(player.position.x),
-          roundedZ = Math.round(player.position.z);
-        if (roundedX !== playerGridPos.x || roundedZ !== playerGridPos.z) {
-          playerGridPos = { x: roundedX, z: roundedZ };
-          events
-            .filter((ev) => ev.map === currentMapName && ev.trigger === "touch")
-            .filter((ev) => ev.x === roundedX && ev.z === roundedZ)
-            .forEach((ev) => ev.action());
+        // 對話開著的時候整段跳過：主角位置雖然被鎖住(dt=0)不會再移動，但如果
+        // E 鍵開對話那一刻角色剛好卡在格線中間(還沒 round 穩定)，下一幀四捨
+        // 五入結果可能剛好翻過門檻格，誤觸 touch 事件(例如衝進房子/切地圖)，
+        // 對話框卻還開著——曾經真的遇到這個 bug，玩家會卡在錯的地圖裡動不了。
+        if (!dialogQueue.length) {
+          const roundedX = Math.round(player.position.x),
+            roundedZ = Math.round(player.position.z);
+          if (roundedX !== playerGridPos.x || roundedZ !== playerGridPos.z) {
+            playerGridPos = { x: roundedX, z: roundedZ };
+            events
+              .filter(
+                (ev) => ev.map === currentMapName && ev.trigger === "touch",
+              )
+              .filter((ev) => ev.x === roundedX && ev.z === roundedZ)
+              .forEach((ev) => ev.action());
+          }
         }
 
         const phase = currentPhase;
