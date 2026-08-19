@@ -1,0 +1,162 @@
+html,
+body {
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  background: #0d0d0d;
+  font-family: -apple-system, "Noto Sans TC", sans-serif;
+}
+#ui {
+  position: fixed;
+  top: 12px;
+  left: 12px;
+  z-index: 10;
+  color: #eee;
+  background: rgba(0, 0, 0, 0.55);
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-size: 13px;
+  line-height: 1.6;
+  pointer-events: none;
+}
+#ui b {
+  color: #ffd479;
+}
+#hud {
+  position: fixed;
+  top: 12px;
+  right: 12px;
+  z-index: 10;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.55);
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-size: 13px;
+  line-height: 1.7;
+  text-align: right;
+}
+#hud b {
+  color: #7ee787;
+}
+#fade {
+  position: fixed;
+  inset: 0;
+  background: #000;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.4s ease;
+  z-index: 20;
+}
+/* 對話框：固定寬度貼底部（不再隨文字長度縮放，這樣立繪/名牌才有穩定的
+   錨點，不會因為每句台詞長短不同而跳動）。名牌跟立繪都用 position:
+   absolute 疊在 #dialog 外面，#dialog 本身是 position:fixed，剛好也是
+   absolute 子元素的定位基準，不用額外包一層容器。 */
+#dialog {
+  position: fixed;
+  bottom: 30px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(15, 15, 20, 0.9);
+  color: #fff;
+  padding: 18px 32px 20px;
+  border-radius: 6px;
+  font-size: 32px;
+  display: none;
+  align-items: flex-start;
+  width: 90vw;
+  min-height: 170px;
+  box-sizing: border-box;
+  border: 2px solid #f5c542;
+  box-shadow: 0 0 0 1px rgba(245, 197, 66, 0.3) inset;
+  z-index: 15;
+}
+#dialogText {
+  white-space: pre-wrap;
+  line-height: 1.7;
+}
+#dialogName {
+  position: absolute;
+  top: -50px;
+  left: 18px;
+  background: rgba(15, 15, 20, 0.92);
+  border: 2px solid #f5c542;
+  border-radius: 6px;
+  padding: 6px 20px;
+  font-size: 28px;
+  color: #f5c542;
+  display: none;
+}
+#dialogPortrait {
+  position: absolute;
+  bottom: 100%;
+  right: 20px;
+  max-height: 40vh;
+  max-width: 280px;
+  margin-bottom: 6px;
+  display: none;
+  pointer-events: none;
+  filter: drop-shadow(0 10px 18px rgba(0, 0, 0, 0.45));
+}
+/* 立繪還沒生成好時的佔位框——只要有 speaker 就顯示，讓版位在真的圖檔
+   進資料夾之前也看得出比例對不對；真的立繪載入成功後會蓋掉這個。 */
+#dialogPortraitPlaceholder {
+  position: absolute;
+  bottom: 100%;
+  right: 20px;
+  width: 180px;
+  height: 260px;
+  margin-bottom: 6px;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  background: rgba(15, 15, 20, 0.55);
+  border: 2px dashed rgba(245, 197, 66, 0.6);
+  border-radius: 8px;
+  color: rgba(245, 197, 66, 0.85);
+  font-size: 13px;
+  line-height: 1.5;
+  white-space: pre-line;
+  pointer-events: none;
+}
+#dialogContinue {
+  position: absolute;
+  right: 18px;
+  bottom: 8px;
+  font-size: 24px;
+  color: rgba(255, 255, 255, 0.5);
+}
+/* CG 全螢幕層：只有少數關鍵劇情節點會用到，平常對話走 #dialogPortrait
+   的中小立繪、3D 世界維持可見。淡入淡出用 opacity transition，不要
+   生硬切換；z-index 蓋過 3D 畫布但在對話框(15)之下，文字仍讀得到。 */
+#cgOverlay {
+  position: fixed;
+  inset: 0;
+  background: #000;
+  opacity: 0;
+  display: none;
+  z-index: 10;
+  transition: opacity 0.5s ease;
+}
+#cgImg {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+#fishHint {
+  position: fixed;
+  bottom: 30px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(20, 50, 70, 0.85);
+  color: #dff3ff;
+  padding: 8px 16px;
+  border-radius: 10px;
+  font-size: 14px;
+  display: none;
+  border: 1px solid #5fb8e0;
+  z-index: 15;
+}
+canvas {
+  display: block;
+}

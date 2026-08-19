@@ -1,0 +1,5 @@
+{
+  "outFile": "src/layout-maps.ts",
+  "header": "import * as THREE from \"three\";\nimport { hash2 } from \"./utils\";\nimport { loadMap } from \"./build-map\";\nimport {\n  handleCarpenterDockTouch,\n  handleCarpenterDoorstepTouch,\n} from \"./carpenter-quest\";\nimport { showDialogSequence, showDialog } from \"./dialogue\";\n",
+  "ranges": [[196, 889]]
+}

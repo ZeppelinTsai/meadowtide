@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="UTF-8" />
+    <title>海風牧歌 Meadowtide</title>
+    <link rel="stylesheet" href="/style.css" />
+  </head>
+  <body>
+    <div id="ui">
+      <b>海風牧歌</b><br />
+      WASD：移動 ・ 滾輪：縮放 ・ E：互動/種植/收成/釣魚 ・ M：音樂靜音<br />
+      F6：存檔 ・ F9：讀檔<br />
+      <b style="color: #8ecfff">N：快轉時間（看阿姨繞樹）</b>
+    </div>
+    <div id="hud"></div>
+    <div id="fade"></div>
+    <div id="cgOverlay"><img id="cgImg" alt="" /></div>
+    <div id="dialog">
+      <div id="dialogName"></div>
+      <img id="dialogPortrait" alt="" />
+      <div id="dialogPortraitPlaceholder"></div>
+      <div id="dialogText"></div>
+      <div id="dialogContinue">按 E 繼續 ▾</div>
+    </div>
+    <div id="fishHint"></div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

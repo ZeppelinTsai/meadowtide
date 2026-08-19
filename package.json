@@ -1,0 +1,22 @@
+{
+  "name": "meadowtide",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "海風牧歌 Meadowtide — Three.js 農場模擬遊戲",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "map-debug": "tsx scripts/map-debug.ts"
+  },
+  "dependencies": {
+    "three": "0.128.0"
+  },
+  "devDependencies": {
+    "@types/three": "0.128.0",
+    "typescript": "^5.5.4",
+    "vite": "^5.4.0",
+    "tsx": "^4.16.2"
+  }
+}

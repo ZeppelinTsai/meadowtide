@@ -1,0 +1,5 @@
+{
+  "outFile": "src/npc-defs.ts",
+  "header": "import { carpenterQuest } from \"./layout-maps\";\n",
+  "ranges": [[890, 961]]
+}
