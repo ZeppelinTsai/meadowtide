@@ -146,7 +146,14 @@
           sandCols: 10,
           oceanCols: 10,
         },
-        mountainBand: { x: 0, width: 3 },
+        mountainBand: { x: -7, width: 6 },
+        mountainGateway: {
+          startX: 3,
+          startZ: 20,
+          steps: 4,
+          risePerStep: 0.2,
+          width: 1.65,
+        },
       };
 
       function lakeEdgeFactor(theta) {
@@ -550,6 +557,9 @@
       const AVENUE_TREE_KEYS = new Set(
         AVENUE_TREE_TILES.map(([x, z]) => `${x},${z}`),
       );
+      const SOUTHERNMOST_AVENUE_TREE_Z = Math.max(
+        ...AVENUE_TREE_TILES.map(([, z]) => z),
+      );
       // 清掉休息區入口旁的舊樹，讓人能從行道樹間穿進兩個新區域。
       MAPS.outside.tiles[LAYOUT.farm.z + 1][LAYOUT.restArea.x - 1] = 0;
 
@@ -706,6 +716,18 @@
         daysPerSeason: 21,
         seasons: Object.freeze(["spring", "summer", "autumn", "winter"]),
       });
+
+      // 西北山區入口目前只開放到前段階梯；最後一格是岩壁，保留未來切換山區地圖。
+      const MOUNTAIN_GATE_BLOCKER = {
+        x: LAYOUT.mountainGateway.startX - (LAYOUT.mountainGateway.steps - 1),
+        z: LAYOUT.mountainGateway.startZ - (LAYOUT.mountainGateway.steps - 1),
+      };
+      if (
+        MOUNTAIN_GATE_BLOCKER.z >= 0 &&
+        MOUNTAIN_GATE_BLOCKER.z < MAPS.outside.tiles.length
+      ) {
+        MAPS.outside.tiles[MOUNTAIN_GATE_BLOCKER.z][MOUNTAIN_GATE_BLOCKER.x] = 1;
+      }
       const SEASON_NAMES = ["春", "夏", "秋", "冬"];
       const SEASON_DAYLIGHT = Object.freeze({
         spring: Object.freeze({ sunrise: 6, sunset: 18, peak: 18 }),
@@ -934,6 +956,11 @@
       // 最大拉遠時相機會看過南側地圖邊界；延伸純視覺地面，避免天空從底部露出。
       const SOUTH_TERRAIN_EXTENSION = 90;
       const NORTH_CLIFF_Z = -5.7;
+      const CAMERA_WORLD_BOUNDS = Object.freeze({
+        west: -5,
+        east:
+          LAYOUT.coast.rampX + LAYOUT.coast.rampWidth - 0.85 + 26.7,
+      });
       function northCliffEdgeZ(x) {
         return (
           NORTH_CLIFF_Z +
@@ -942,7 +969,14 @@
           (hash2(x * 3.1, 7.4) - 0.5) * 0.12
         );
       }
-      function groundY(x) {
+      function groundY(x, z = Infinity) {
+        const gateway = LAYOUT.mountainGateway;
+        for (let i = 0; i < gateway.steps - 1; i++) {
+          const stepX = gateway.startX - i;
+          const stepZ = gateway.startZ - i;
+          if (Math.abs(x - stepX) <= 0.72 && Math.abs(z - stepZ) <= 0.72)
+            return PLATEAU_Y + i * gateway.risePerStep;
+        }
         const xi = Math.round(x);
         const rampX = LAYOUT.coast.rampX;
         if (xi < rampX) return PLATEAU_Y;
@@ -1028,7 +1062,7 @@
       // 天頂色，每幀跟著日夜循環更新。跟著相機位置走，才會感覺「天空無限遠」
       const SKY_DAY_ZENITH = new THREE.Color(0x0f6fca),
         SKY_DAY_MID = new THREE.Color(0x55b5ee),
-        SKY_DAY_HORIZON = new THREE.Color(0xc7efff);
+        SKY_DAY_HORIZON = new THREE.Color(0x8bd3f5);
       const SKY_NIGHT_ZENITH = new THREE.Color(0x030512),
         SKY_NIGHT_MID = new THREE.Color(0x101b38),
         SKY_NIGHT_HORIZON = new THREE.Color(0x1c2a4a);
@@ -4132,6 +4166,127 @@
         return g;
       }
 
+      function makeWesternMountainTerrain(rows) {
+        const group = new THREE.Group();
+        const xSegments = 10;
+        const zSegments = 24;
+        // 草地主地板的實際西緣是 x=-0.5；坡地多壓進去 0.25 格，避免兩片
+        // 幾何之間露出天空細縫。這段重疊位於地圖外，不會吃掉可行走草地。
+        const eastX = -0.25;
+        const westX = -42;
+        // 山脈只略微越過北側懸崖，不再一路鋪到 z=-34、侵入北方海景。
+        const northZ = NORTH_CLIFF_Z - 3.2;
+        const southZ = rows + SOUTH_TERRAIN_EXTENSION + 24;
+        const positions = [];
+        const colors = [];
+        const indices = [];
+        // 東側近景稍亮、較有植被色；往西升高後才逐漸轉成冷灰岩色。
+        const low = new THREE.Color(0x849276);
+        const high = new THREE.Color(0x626b74);
+        for (let iz = 0; iz <= zSegments; iz++) {
+          const tz = iz / zSegments;
+          const z = THREE.MathUtils.lerp(northZ, southZ, tz);
+          for (let ix = 0; ix <= xSegments; ix++) {
+            const tx = ix / xSegments;
+            const x = THREE.MathUtils.lerp(eastX, westX, tx);
+            const rugged =
+              (hash2(ix * 5.7, iz * 8.3) - 0.5) * (0.2 + tx * 0.9) +
+              Math.sin(z * 0.16 + ix * 0.8) * 0.16 * tx;
+            const y = PLATEAU_Y + 0.08 + Math.pow(tx, 0.72) * 9.2 + rugged;
+            positions.push(x, y, z);
+            const shade = low.clone().lerp(high, Math.min(1, tx * 0.9 + Math.abs(rugged) * 0.18));
+            colors.push(shade.r, shade.g, shade.b);
+          }
+        }
+        for (let iz = 0; iz < zSegments; iz++) {
+          for (let ix = 0; ix < xSegments; ix++) {
+            const a = iz * (xSegments + 1) + ix;
+            const b = a + 1;
+            const c = a + xSegments + 1;
+            const d = c + 1;
+            // ix 往西遞增（world x 反而遞減），所以一般 x/z 網格常用的環繞
+            // 在這裡會把法線翻到地底。兩種棋盤對角線都統一由上方看為正面。
+            if ((ix + iz) % 2) indices.push(a, b, c, b, d, c);
+            else indices.push(a, d, c, a, b, d);
+          }
+        }
+        const geometry = new THREE.BufferGeometry();
+        geometry.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
+        geometry.setAttribute("color", new THREE.Float32BufferAttribute(colors, 3));
+        geometry.setIndex(indices);
+        geometry.computeVertexNormals();
+        const slope = new THREE.Mesh(
+          geometry,
+          new THREE.MeshStandardMaterial({
+            vertexColors: true,
+            flatShading: true,
+            roughness: 1,
+            // 夜間環境光很低，保留極弱的反射底色，避免近山腳整片沉入黑色；
+            // 仍使用受光材質，不改成 MeshBasicMaterial。
+            emissive: 0x11150f,
+            emissiveIntensity: 0.3,
+          }),
+        );
+        slope.receiveShadow = true;
+        slope.castShadow = true;
+        group.add(slope);
+
+        // 島緣外側的碎岩帶，打散筆直接縫並形成概念圖那種山腳峭壁。
+        for (let i = 0; i < 42; i++) {
+          const t = i / 41;
+          const z = THREE.MathUtils.lerp(northZ, southZ, t);
+          const seed = hash2(i * 4.9, 17.3);
+          const rock = makeStone(-0.85 - seed * 0.75, z + (seed - 0.5) * 1.8, seed);
+          rock.position.y = PLATEAU_Y + 0.22 + seed * 0.3;
+          rock.scale.set(2.2 + seed * 2.1, 2.8 + seed * 3.2, 2 + seed * 2.4);
+          group.add(rock);
+        }
+        return group;
+      }
+
+      function makeMountainGateway() {
+        const group = new THREE.Group();
+        const gateway = LAYOUT.mountainGateway;
+        const stepMat = new THREE.MeshStandardMaterial({
+          color: 0xaa916b,
+          flatShading: true,
+          roughness: 1,
+        });
+        const edgeMat = new THREE.MeshStandardMaterial({
+          color: 0x747269,
+          flatShading: true,
+          roughness: 1,
+        });
+        for (let i = 0; i < gateway.steps; i++) {
+          const top = PLATEAU_Y + i * gateway.risePerStep;
+          const x = gateway.startX - i;
+          const z = gateway.startZ - i;
+          const step = new THREE.Mesh(
+            new THREE.BoxGeometry(gateway.width, 0.28 + i * 0.08, gateway.width),
+            i === gateway.steps - 1 ? edgeMat : stepMat,
+          );
+          step.position.set(x, top - (0.14 + i * 0.04), z);
+          step.rotation.y = -0.08 + (hash2(i, 4.2) - 0.5) * 0.07;
+          step.castShadow = true;
+          step.receiveShadow = true;
+          group.add(step);
+          if (i > 0) {
+            [-1, 1].forEach((side) => {
+              const seed = hash2(i * 3.7, side * 8.1);
+              const rock = makeStone(
+                x + side * (gateway.width * 0.58 + seed * 0.12),
+                z - side * (gateway.width * 0.44) + (seed - 0.5) * 0.25,
+                seed,
+              );
+              rock.position.y = top + 0.04;
+              rock.scale.setScalar(1.25 + seed * 0.8);
+              group.add(rock);
+            });
+          }
+        }
+        return group;
+      }
+
       function makeFence(minX, maxX, minZ, maxZ) {
         const g = new THREE.Group();
         const postMat = new THREE.MeshStandardMaterial({ color: 0x8a6a45 });
@@ -4897,7 +5052,7 @@
           ].forEach(([sx, sy]) => {
             const apron = new THREE.Mesh(
               new THREE.BoxGeometry(1, 0.2, southRampDepth),
-              grassMat,
+              cliffMat2,
             );
             apron.position.set(
               sx,
@@ -4924,6 +5079,27 @@
           );
           lowland.receiveShadow = true;
           mapGroup.add(lowland);
+          const southCoastStartZ = TOWN_Z_START - 0.5;
+          const southCoastDepth =
+            rows - TOWN_Z_START + SOUTH_TERRAIN_EXTENSION;
+          const southBeach = new THREE.Mesh(
+            new THREE.PlaneGeometry(
+              LAYOUT.coast.sandCols,
+              southCoastDepth,
+            ),
+            new THREE.MeshStandardMaterial({
+              color: 0xe8d29a,
+              roughness: 0.96,
+            }),
+          );
+          southBeach.rotation.x = -Math.PI / 2;
+          southBeach.position.set(
+            lowlandX + LAYOUT.coast.sandCols / 2 - 0.5,
+            0.015,
+            southCoastStartZ + southCoastDepth / 2,
+          );
+          southBeach.receiveShadow = true;
+          mapGroup.add(southBeach);
           updateSeasonalGroundColors();
 
           // 右側沙灘也往北補齊，接住延伸後的海面與海堤，不留下綠色斷帶。
@@ -5176,7 +5352,7 @@
                 mapName === "outside" && AVENUE_TREE_KEYS.has(`${x},${z}`)
                   ? makeAvenueTree(x, z)
                   : makeTree(x, z);
-              m.position.y += groundY(x);
+              m.position.y += groundY(x, z);
               mapGroup.add(m);
             } else if (tile === 3) {
               const threshold = new THREE.Mesh(
@@ -5185,13 +5361,13 @@
               );
               threshold.position.set(
                 x,
-                0.03 + (mapName === "outside" ? groundY(x) : 0),
+                0.03 + (mapName === "outside" ? groundY(x, z) : 0),
                 z,
               );
               mapGroup.add(threshold);
             } else if (tile === 5) {
               const m = makePath(x, z);
-              m.position.y += groundY(x);
+              m.position.y += groundY(x, z);
               mapGroup.add(m);
             }
             // tile === 6（湖）不逐格建置，改成迴圈結束後蓋成一整片有波紋的水面
@@ -5215,7 +5391,7 @@
                 return;
               if (x >= 14 && x <= 16) return; // 坡道走廊留乾淨，不要長裝飾把路擋亂
               const r = hash2(x * 3.1, z * 7.7);
-              const gy = groundY(x);
+              const gy = groundY(x, z);
               if (r < 0.1) {
                 const m = makeGrassTuft(
                   x + (r - 0.5) * 0.4,
@@ -5282,8 +5458,9 @@
           }, []);
           if (validZ.length) {
             const dataMinZ = validZ[0],
+              dataMaxZ = validZ[validZ.length - 1],
               minZ = -NORTH_TERRAIN_EXTENSION;
-            const maxZ = validZ[validZ.length - 1];
+            const maxZ = rows - 1 + SOUTH_TERRAIN_EXTENSION;
             const minX = Math.min(...westXByZ.filter((v) => v !== null));
             // 海的可玩／碰撞範圍仍由 tile 決定；網格向東額外延伸，最大拉遠也看不到盡頭。
             const maxX = globalMaxX + 90;
@@ -5292,8 +5469,24 @@
 
             const westXAt = (z) => {
               if (z <= dataMinZ) return westXByZ[dataMinZ];
-              const zLo = Math.max(dataMinZ, Math.min(maxZ, Math.floor(z)));
-              const zHi = Math.min(maxZ, zLo + 1);
+              const southShoreX =
+                LAYOUT.coast.rampX +
+                LAYOUT.coast.rampWidth +
+                LAYOUT.coast.sandCols -
+                0.5;
+              if (z >= dataMaxZ) {
+                const blend = Math.min(1, (z - dataMaxZ) / 3);
+                return THREE.MathUtils.lerp(
+                  westXByZ[dataMaxZ],
+                  southShoreX,
+                  blend,
+                );
+              }
+              const zLo = Math.max(
+                dataMinZ,
+                Math.min(dataMaxZ, Math.floor(z)),
+              );
+              const zHi = Math.min(dataMaxZ, zLo + 1);
               const wLo = westXByZ[zLo],
                 wHi = westXByZ[zHi] != null ? westXByZ[zHi] : wLo;
               const t = zHi === zLo ? 0 : (z - zLo) / (zHi - zLo);
@@ -5302,9 +5495,11 @@
 
             const ZSUB = 2; // 每個 tile 排再細分幾段，波浪動畫才夠滑順
             const rowsZ = [];
-            for (let z = minZ; z < maxZ; z++) {
+            for (let z = minZ; z < dataMaxZ; z++) {
               for (let s = 0; s < ZSUB; s++) rowsZ.push(z + s / ZSUB);
             }
+            // 南側延伸使用較疏的列，降低每幀海浪頂點更新成本。
+            for (let z = dataMaxZ; z < maxZ; z += 2) rowsZ.push(z);
             rowsZ.push(maxZ);
             // 遠海不需要維持每格三分割，限制橫向細分數避免延伸後浪費效能。
             const COLS = Math.max(48, Math.min(108, Math.round(width * 1.1)));
@@ -5394,6 +5589,20 @@
                 mapGroup.add(foam);
               }
             });
+            const extendedShoreX =
+              LAYOUT.coast.rampX +
+              LAYOUT.coast.rampWidth +
+              LAYOUT.coast.sandCols -
+              0.5;
+            for (let z = dataMaxZ + 2; z <= maxZ; z += 2) {
+              const foam = makeFoam(
+                extendedShoreX + 0.15,
+                z,
+                z * 1.37,
+              );
+              foamMeshes.push(foam);
+              mapGroup.add(foam);
+            }
 
             // 海魚使用大範圍的長直線巡游；安全邊界取所有海岸線中最靠右的一排，
             // 避免沿 z 直游時切進凹凸不規則的沙灘。
@@ -5465,7 +5674,10 @@
 
           // 依山傍海：海在東側，山放在西側邊界外，人站在房子附近往兩邊看
           // 會同時感覺到背後有山、前面有海——這是純景觀，不能走進去
-          const MOUNTAIN_COUNT = 10;
+          plateauGroup.add(makeWesternMountainTerrain(rows));
+          plateauGroup.add(makeMountainGateway());
+
+          const MOUNTAIN_COUNT = 14;
           for (let i = 0; i < MOUNTAIN_COUNT; i++) {
             const s = hash2(i * 9.7, i * 3.1);
             const mz = (i / (MOUNTAIN_COUNT - 1)) * (rows - 1);
@@ -6093,7 +6305,7 @@
         }
         animateWalk(player, isMoving, elapsed);
         if (currentMapName === "outside")
-          player.position.y += groundY(player.position.x);
+          player.position.y += groundY(player.position.x, player.position.z);
 
         // 拋竿/持竿動畫：雙手一起蓋過 animateWalk 剛設好的角度。左手往內、往前
         // 擺，靠到跟右手（拿竿那手）差不多的位置跟角度，用兩隻手臂同一個朝向
@@ -6370,17 +6582,28 @@
         sky.lerp(weatherFogColor, weatherDim);
         if (currentMapName === "outside") {
           scene.background = sky;
-          const zoomCameraDistanceOffset = Math.max(0, zoom * 1.55 - 16);
-          scene.fog = new THREE.Fog(
-            sky,
-            16 + zoomCameraDistanceOffset - weatherDim * 5,
-            34 + zoomCameraDistanceOffset - weatherDim * 11,
-          );
+          if (currentWeather === "clear") {
+            // 晴天保持高能見度；拉遠時距離霧會讓整座島被天空色洗成白霧。
+            scene.fog = null;
+          } else {
+            const zoomCameraDistanceOffset = Math.max(0, zoom * 1.55 - 16);
+            scene.fog = new THREE.Fog(
+              sky,
+              16 + zoomCameraDistanceOffset - weatherDim * 5,
+              34 + zoomCameraDistanceOffset - weatherDim * 11,
+            );
+          }
         } else {
           scene.background = INTERIOR_BACKGROUND_COLOR;
           scene.fog = null;
         }
         const daylight = Math.pow(1 - nightFactor, 1.25);
+        // 晴朗白天降低 ACES 曝光，保留草地、岩石與建築的色彩層次；
+        // 夜間稍微回升，避免星空與燈光變得太暗。
+        renderer.toneMappingExposure =
+          currentWeather === "clear"
+            ? 0.76 + nightFactor * 0.26
+            : 1.02;
         const noonWarmth =
           daylight *
           Math.pow(
@@ -6417,6 +6640,11 @@
           summerSun * 0.48 +
           autumnWarmth * 0.12 +
           winterSnowReflection * 0.18;
+        if (currentWeather === "clear") {
+          // 降低均勻灑滿全場的白光，改由陰影與材質色建立晴天的清晰對比。
+          ambient.intensity *= 1 - daylight * 0.22;
+          sun.intensity *= 1 - daylight * 0.18;
+        }
         sun.color.copy(DAY.sunColor).lerp(NIGHT.sunColor, nightFactor);
         if (summerSun > 0)
           sun.color.lerp(SUMMER_SUN_COLOR, summerSun * 0.42);
@@ -6453,13 +6681,39 @@
         const camHeight = camDist * Math.cos(TILT_RAD);
         const camZOffset = camDist * Math.sin(TILT_RAD);
         const groundOffset =
-          currentMapName === "outside" ? groundY(player.position.x) : 0;
+          currentMapName === "outside"
+            ? groundY(player.position.x, player.position.z)
+            : 0;
+        // 玩家模型與相機共用地形高度，走上西北階梯或海岸緩坡時不會穿進台階。
+        player.position.y += (groundOffset - player.position.y) * Math.min(1, dt * 10);
+        let cameraFocusX = player.position.x;
+        let cameraFocusZ = player.position.z;
+        if (currentMapName === "outside") {
+          const halfViewWidth = camera.right;
+          const minFocusX = CAMERA_WORLD_BOUNDS.west + halfViewWidth;
+          const maxFocusX = CAMERA_WORLD_BOUNDS.east - halfViewWidth;
+          cameraFocusX =
+            minFocusX <= maxFocusX
+              ? THREE.MathUtils.clamp(
+                  player.position.x,
+                  minFocusX,
+                  maxFocusX,
+                )
+              : (CAMERA_WORLD_BOUNDS.west + CAMERA_WORLD_BOUNDS.east) / 2;
+
+          // 正交斜視下，畫面下半部在地面上的 z 跨度約為 zoom / cos(傾角)。
+          // 南端把最南排行道樹保留在畫面底緣後停止追蹤。
+          const southGroundHalfView = zoom / Math.cos(TILT_RAD);
+          const maxFocusZ =
+            SOUTHERNMOST_AVENUE_TREE_Z + 1.4 - southGroundHalfView;
+          cameraFocusZ = Math.min(player.position.z, maxFocusZ);
+        }
         camera.position.set(
-          player.position.x,
+          cameraFocusX,
           camHeight + groundOffset,
-          player.position.z + camZOffset,
+          cameraFocusZ + camZOffset,
         );
-        camera.lookAt(player.position.x, groundOffset, player.position.z);
+        camera.lookAt(cameraFocusX, groundOffset, cameraFocusZ);
 
         // 海浪：仿 Gerstner 波浪——頂點升高的同時往岸邊(-X)推移，波峰因此變陡、
         // 波谷變平緩，看起來像浪頭在往前捲；捲到最高點時把該處頂點染白模擬碎浪
