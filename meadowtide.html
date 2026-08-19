@@ -714,9 +714,7 @@
             ? "clear"
             : r < 0.72
               ? "cloudy"
-              : r < 0.94
-                ? "rain"
-                : "storm";
+              : "rain";
         if (seasonIndex === 1)
           return r < 0.52
             ? "clear"
@@ -732,9 +730,7 @@
             ? "clear"
             : r < 0.76
               ? "cloudy"
-              : r < 0.94
-                ? "rain"
-                : "storm";
+              : "rain";
         return r < 0.45
           ? "clear"
           : r < 0.6
@@ -907,6 +903,12 @@
       sun.shadow.camera.top = 18;
       sun.shadow.camera.bottom = -18;
       scene.add(sun);
+      const seasonalBounceLight = new THREE.HemisphereLight(
+        0xffffff,
+        0x58704e,
+        0,
+      );
+      scene.add(seasonalBounceLight);
 
       function updateCameraFrustum() {
         const a = innerWidth / innerHeight;
@@ -930,6 +932,12 @@
         sunIntensity: 0.12,
         sunColor: new THREE.Color(0x8fa8ff),
       };
+      const SUMMER_SUN_COLOR = new THREE.Color(0xffedba);
+      const AUTUMN_SUN_COLOR = new THREE.Color(0xffd2a0);
+      const WINTER_LIGHT_COLOR = new THREE.Color(0xe4f3ff);
+      const WINTER_AMBIENT_COLOR = new THREE.Color(0xddecff);
+      const SUMMER_BOUNCE_GROUND = new THREE.Color(0x6f7b4b);
+      const WINTER_BOUNCE_GROUND = new THREE.Color(0xb9cee0);
 
       // 天空球——沒辦法匯入真的照片(單一 HTML 檔案，不接外部圖床)，改用程式生成
       // 的漸層天空：一顆包住整個場景的大球，內側渲染，頂點顏色從地平線色漸層到
@@ -1314,7 +1322,7 @@
       // ==============================================================
       function makeSoftParticleTexture(shape = "round") {
         const canvas = document.createElement("canvas");
-        const textureSize = shape === "petal" ? 64 : 32;
+        const textureSize = shape === "petal" || shape === "leaf" ? 64 : 32;
         canvas.width = canvas.height = textureSize;
         const ctx = canvas.getContext("2d");
         if (shape === "petal") {
@@ -1333,6 +1341,20 @@
           ctx.bezierCurveTo(19, -6, 15, 14, 0, 25);
           ctx.closePath();
           ctx.fill();
+        } else if (shape === "leaf") {
+          ctx.translate(32, 32);
+          ctx.rotate(-0.68);
+          const gradient = ctx.createLinearGradient(-18, -20, 18, 22);
+          gradient.addColorStop(0, "rgba(255,174,70,1)");
+          gradient.addColorStop(0.5, "rgba(220,72,42,0.98)");
+          gradient.addColorStop(1, "rgba(133,35,35,0.94)");
+          ctx.fillStyle = gradient;
+          ctx.beginPath();
+          ctx.moveTo(0, -27);
+          ctx.bezierCurveTo(19, -17, 21, 10, 0, 27);
+          ctx.bezierCurveTo(-21, 10, -19, -17, 0, -27);
+          ctx.closePath();
+          ctx.fill();
         } else {
           const gradient = ctx.createRadialGradient(16, 16, 1, 16, 16, 13);
           gradient.addColorStop(0, "rgba(255,255,255,1)");
@@ -1342,7 +1364,7 @@
           ctx.fillRect(0, 0, 32, 32);
         }
         const texture = new THREE.CanvasTexture(canvas);
-        if (shape === "petal") {
+        if (shape === "petal" || shape === "leaf") {
           // 避免透明像素的黑色 RGB 在縮放取樣時滲入花瓣邊緣，形成假描邊。
           texture.premultiplyAlpha = true;
           texture.minFilter = THREE.LinearFilter;
@@ -1508,6 +1530,19 @@
         20,
         petalTexture,
       );
+      const autumnLeafTexture = makeSoftParticleTexture("leaf");
+      const autumnLeafEffect = makePetalLayer(
+        210,
+        0xffd0a0,
+        12.5,
+        autumnLeafTexture,
+      );
+      const autumnLeafForegroundEffect = makePetalLayer(
+        75,
+        0xffa06f,
+        18,
+        autumnLeafTexture,
+      );
       const weatherFlashLight = new THREE.HemisphereLight(
         0xeaf3ff,
         0x65758b,
@@ -1640,6 +1675,43 @@
             }
             layer.geometry.attributes.position.needsUpdate = true;
           });
+        }
+
+        const autumnLeavesVisible =
+          currentSeason === 2 &&
+          (currentWeather === "clear" || currentWeather === "cloudy");
+        autumnLeafEffect.points.visible = autumnLeavesVisible;
+        autumnLeafForegroundEffect.points.visible = autumnLeavesVisible;
+        if (autumnLeavesVisible) {
+          autumnLeafEffect.material.uniforms.opacity.value =
+            currentWeather === "cloudy" ? 0.72 : 0.88;
+          autumnLeafForegroundEffect.material.uniforms.opacity.value =
+            currentWeather === "cloudy" ? 0.66 : 0.82;
+          [autumnLeafEffect, autumnLeafForegroundEffect].forEach(
+            (layer, layerIndex) => {
+              layer.material.uniforms.time.value = elapsed * 0.86;
+              for (let i = 0; i < layer.count; i++) {
+                const base = i * 3,
+                  seed = layer.seeds[i];
+                const gust =
+                  Math.sin(elapsed * (0.48 + seed * 0.7) + seed * 23) *
+                  (0.75 + layerIndex * 0.4);
+                layer.positions[base] = wrapWeatherParticle(
+                  layer.positions[base] + (0.42 + gust) * dt,
+                  WEATHER_BOUNDS.minX,
+                  WEATHER_BOUNDS.maxX,
+                );
+                layer.positions[base + 1] = wrapWeatherParticle(
+                  layer.positions[base + 1] -
+                    (0.7 + seed * 0.85 + Math.sin(elapsed + seed * 17) * 0.2) *
+                      dt,
+                  WEATHER_BOUNDS.minY,
+                  WEATHER_BOUNDS.maxY,
+                );
+              }
+              layer.geometry.attributes.position.needsUpdate = true;
+            },
+          );
         }
         const flashWave =
           currentWeather === "storm"
@@ -1829,6 +1901,8 @@
         currentSeason = getSeasonIndex(day);
         currentWeather = rollWeatherForSeason(currentSeason);
         updateAvenueTreeColors();
+        updateSeasonalTreeColors();
+        updateSeasonalGroundColors();
         console.info(
           `[天氣] 第 ${day + 1} 天：${SEASON_NAMES[currentSeason]}季／${WEATHER_NAMES[currentWeather]}`,
         );
@@ -1855,6 +1929,8 @@
       const SEA_FISH_SCALE = 3;
       const LAKE_FISH_SCALE = 2.2;
       const avenueLeafMaterials = [];
+      const seasonalTreeLeafMaterials = [];
+      const seasonalGroundMaterials = [];
       const pastureGrassBlades = []; // 牧場裡會被風吹動的草叢，每叢存自己的葉片群組
       const GRASS_STAGE_HEIGHTS = [0.2, 0.46, 0.82]; // 短、中、長；長草約到動物胸高
       const GRASS_GROWTH_SECONDS = 32;
@@ -2177,8 +2253,17 @@
         trunk.castShadow = true;
         group.add(trunk);
         const leafMat = new THREE.MeshStandardMaterial({
-          color: 0x2f8f3f,
+          color: currentSeason === 3 ? 0xeaf0f3 : 0x2f8f3f,
           flatShading: true,
+        });
+        seasonalTreeLeafMaterials.push({
+          material: leafMat,
+          summerColor: new THREE.Color(0x2f8f3f),
+          winterColor: new THREE.Color(0xeaf0f3).offsetHSL(
+            0,
+            -0.08,
+            (r - 0.5) * 0.07,
+          ),
         });
         const leaf1 = new THREE.Mesh(
           new THREE.IcosahedronGeometry(0.36, 0),
@@ -2305,6 +2390,32 @@
         avenueLeafMaterials.forEach(({ material, tint }) => {
           material.color.copy(avenueSeasonColor(tint));
           material.roughness = currentSeason === 3 ? 0.9 : 0.72;
+        });
+      }
+      function updateSeasonalTreeColors() {
+        seasonalTreeLeafMaterials.forEach(
+          ({ material, summerColor, winterColor }) => {
+            material.color.copy(
+              currentSeason === 3 ? winterColor : summerColor,
+            );
+            material.roughness = currentSeason === 3 ? 0.86 : 1;
+          },
+        );
+      }
+      function updateSeasonalGroundColors() {
+        const groundColor = currentSeason === 3 ? 0xe8eef2 : 0x6ab04c;
+        seasonalGroundMaterials.forEach((material) => {
+          material.color.setHex(groundColor);
+          material.roughness = currentSeason === 3 ? 0.82 : 1;
+        });
+        pastureGrassBlades.forEach((tuft) => {
+          tuft.userData.grassMaterial.color.copy(
+            currentSeason === 3
+              ? tuft.userData.winterGrassColor
+              : tuft.userData.baseGrassColor,
+          );
+          tuft.userData.grassMaterial.roughness =
+            currentSeason === 3 ? 0.78 : 1;
         });
       }
       function makeBuilding({ x, z, w, d, doorX }) {
@@ -2528,8 +2639,13 @@
           0.04,
           (seed - 0.5) * 0.08,
         );
+        const winterGrassColor = new THREE.Color(0xe4ecef).offsetHSL(
+          0,
+          -0.08,
+          (seed - 0.5) * 0.08,
+        );
         const mat = new THREE.MeshStandardMaterial({
-          color: grassColor,
+          color: currentSeason === 3 ? winterGrassColor : grassColor,
           flatShading: true,
           side: THREE.DoubleSide,
         });
@@ -2572,6 +2688,9 @@
         g.userData.phase = seed * 12;
         g.userData.growth = seed * 3;
         g.userData.stage = -1;
+        g.userData.grassMaterial = mat;
+        g.userData.baseGrassColor = grassColor;
+        g.userData.winterGrassColor = winterGrassColor;
         return g;
       }
       function setPastureGrassStage(tuft, stage) {
@@ -2668,12 +2787,22 @@
         trunk.scale.setScalar(scale);
         trunk.castShadow = true;
         group.add(trunk);
+        const fruitLeafMat = new THREE.MeshStandardMaterial({
+          color: currentSeason === 3 ? 0xe8eff2 : style.leaf,
+          flatShading: true,
+        });
+        seasonalTreeLeafMaterials.push({
+          material: fruitLeafMat,
+          summerColor: new THREE.Color(style.leaf),
+          winterColor: new THREE.Color(0xe8eff2).offsetHSL(
+            0,
+            -0.08,
+            (seed - 0.5) * 0.08,
+          ),
+        });
         const leaf = new THREE.Mesh(
           new THREE.IcosahedronGeometry(0.32, 0),
-          new THREE.MeshStandardMaterial({
-            color: style.leaf,
-            flatShading: true,
-          }),
+          fruitLeafMat,
         );
         leaf.position.y = 0.62 * scale;
         leaf.scale.setScalar(scale);
@@ -3806,6 +3935,8 @@
         mapGroup = new THREE.Group();
         windowMats.length = 0;
         outdoorLampLights.length = 0;
+        seasonalTreeLeafMaterials.length = 0;
+        seasonalGroundMaterials.length = 0;
 
         const map = MAPS[mapName];
         const rows = map.tiles.length,
@@ -3855,6 +3986,7 @@
           const lowlandMat = new THREE.MeshStandardMaterial({
             color: 0x6ab04c,
           });
+          seasonalGroundMaterials.push(grassMat, lowlandMat);
           const cliffMat2 = new THREE.MeshStandardMaterial({
             color: 0x8a8478,
             flatShading: true,
@@ -3933,7 +4065,7 @@
             SOUTH_TERRAIN_EXTENSION;
           const lowland = new THREE.Mesh(
             new THREE.BoxGeometry(cols - lowlandX, 0.2, extendedDepth),
-            new THREE.MeshStandardMaterial({ color: 0x6ab04c }),
+            lowlandMat,
           );
           lowland.position.set(
             lowlandX + (cols - lowlandX) / 2 - 0.5,
@@ -3943,6 +4075,7 @@
           );
           lowland.receiveShadow = true;
           mapGroup.add(lowland);
+          updateSeasonalGroundColors();
 
           // 右側沙灘也往北補齊，接住延伸後的海面與海堤，不留下綠色斷帶。
           const northOceanStartX = map.tiles[0].indexOf(9);
@@ -5279,14 +5412,52 @@
           16 + zoomCameraDistanceOffset - weatherDim * 5,
           34 + zoomCameraDistanceOffset - weatherDim * 11,
         );
+        const daylight = Math.pow(1 - nightFactor, 1.25);
+        const fairWeather =
+          currentWeather === "clear" || currentWeather === "cloudy";
+        const summerSun =
+          currentSeason === 1 && fairWeather
+            ? daylight * (currentWeather === "clear" ? 1 : 0.42)
+            : 0;
+        const autumnWarmth =
+          currentSeason === 2 && fairWeather ? daylight * 0.32 : 0;
+        const winterSnowReflection =
+          currentSeason === 3 &&
+          (currentWeather === "snow" || currentWeather === "blizzard")
+            ? (currentWeather === "snow" ? 0.34 : 0.22) *
+              (0.35 + daylight * 0.65)
+            : 0;
+
         ambient.intensity =
           (DAY.ambient + (NIGHT.ambient - DAY.ambient) * nightFactor) *
-          (1 - weatherDim * 0.32);
+            (1 - weatherDim * 0.32) +
+          summerSun * 0.08 +
+          winterSnowReflection * 0.38;
+        ambient.color
+          .set(0xffffff)
+          .lerp(WINTER_AMBIENT_COLOR, winterSnowReflection * 0.8);
         sun.intensity =
           (DAY.sunIntensity +
             (NIGHT.sunIntensity - DAY.sunIntensity) * nightFactor) *
-          (1 - weatherDim * 0.72);
+            (1 - weatherDim * 0.72) +
+          summerSun * 0.48 +
+          autumnWarmth * 0.12 +
+          winterSnowReflection * 0.18;
         sun.color.copy(DAY.sunColor).lerp(NIGHT.sunColor, nightFactor);
+        if (summerSun > 0)
+          sun.color.lerp(SUMMER_SUN_COLOR, summerSun * 0.42);
+        else if (autumnWarmth > 0)
+          sun.color.lerp(AUTUMN_SUN_COLOR, autumnWarmth);
+        else if (winterSnowReflection > 0)
+          sun.color.lerp(WINTER_LIGHT_COLOR, winterSnowReflection * 0.75);
+        seasonalBounceLight.intensity =
+          summerSun * 0.22 + winterSnowReflection * 0.75;
+        seasonalBounceLight.color
+          .set(0xfff2c7)
+          .lerp(WINTER_AMBIENT_COLOR, winterSnowReflection > 0 ? 1 : 0);
+        seasonalBounceLight.groundColor
+          .copy(SUMMER_BOUNCE_GROUND)
+          .lerp(WINTER_BOUNCE_GROUND, winterSnowReflection > 0 ? 1 : 0);
         windowMats.forEach((m) => {
           m.emissiveIntensity = nightFactor;
         });
