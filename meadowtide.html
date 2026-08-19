@@ -170,13 +170,6 @@
           1.3 * Math.sin(z * 0.15 + 3.1) + 0.7 * Math.sin(z * 0.42 + 9.4),
         );
       }
-      function coastNorthCornerInset(z) {
-        // 北海轉入東側海岸時，前八排逐步收回四格，形成柔和的圓角海灣。
-        if (z >= 8) return 0;
-        const t = z / 8;
-        return Math.round(4 * Math.pow(1 - t, 1.65));
-      }
-
       // 視覺湖岸、碰撞與釣魚判定共用同一個不規則橢圓輪廓。
       function isInsideLakeShape(x, z, shoreInset = 0) {
         const centerX = LAYOUT.lake.x + (LAYOUT.lake.width - 1) / 2;
@@ -350,9 +343,7 @@
           BEACH_BAND_WIDTH - 3,
           Math.max(
             3,
-            BEACH_SAND_COLS +
-              coastShoreJitter(z) -
-              coastNorthCornerInset(z),
+            BEACH_SAND_COLS + coastShoreJitter(z),
           ),
         );
         const oceanCols = BEACH_BAND_WIDTH - sandCols;
@@ -1264,30 +1255,74 @@
         { sunrise: 0.245, sunset: 0.755, peak: 17 },
         { sunrise: 0.26, sunset: 0.74, peak: 13.5 },
       ];
+      // 太陽/雲原本是硬邊的多邊形圓（CircleGeometry 直接當輪廓），沒有柔化，
+      // 邊緣一圈鋸齒/銳利切線很明顯。用 canvas 畫一張白色放射狀漸層貼圖，
+      // 讓 alpha 從中心到邊緣平滑衰減，套在同一批 mesh 上（不改頂點、不改
+      // 動畫邏輯，material.color/opacity 照舊由 updateSunAndClouds 控制，
+      // 貼圖只負責讓輪廓變柔），太陽變成有暈光的光球，雲變成蓬鬆的絮狀。
+      function makeRadialSpriteTexture(size, stops) {
+        const canvas = document.createElement("canvas");
+        canvas.width = canvas.height = size;
+        const ctx = canvas.getContext("2d");
+        const r = size / 2;
+        const grad = ctx.createRadialGradient(r, r, 0, r, r, r);
+        stops.forEach(([offset, color]) => grad.addColorStop(offset, color));
+        ctx.fillStyle = grad;
+        ctx.fillRect(0, 0, size, size);
+        const tex = new THREE.CanvasTexture(canvas);
+        tex.needsUpdate = true;
+        return tex;
+      }
+      const SUN_CORE_TEXTURE = makeRadialSpriteTexture(128, [
+        [0, "rgba(255,255,255,1)"],
+        [0.68, "rgba(255,255,255,0.98)"],
+        [0.85, "rgba(255,255,255,0.7)"],
+        [1, "rgba(255,255,255,0)"],
+      ]);
+      const SUN_GLOW_TEXTURE = makeRadialSpriteTexture(128, [
+        [0, "rgba(255,255,255,0.85)"],
+        [0.3, "rgba(255,255,255,0.45)"],
+        [0.65, "rgba(255,255,255,0.14)"],
+        [1, "rgba(255,255,255,0)"],
+      ]);
+      const CLOUD_LOBE_TEXTURE = makeRadialSpriteTexture(128, [
+        [0, "rgba(255,255,255,1)"],
+        [0.5, "rgba(255,255,255,0.95)"],
+        [0.8, "rgba(255,255,255,0.5)"],
+        [1, "rgba(255,255,255,0)"],
+      ]);
       const SUN_NOON_COLORS = [0xfff4d2, 0xfff0b0, 0xffd3a0, 0xe8f3ff];
       const SUN_HORIZON_COLOR = new THREE.Color(0xff9b61);
       const SUN_SKY_BLEND_COLOR = new THREE.Color();
       const SUN_TARGET_COLOR = new THREE.Color();
       const sunSkyGroup = new THREE.Group();
+      // depthTest 故意關掉：太陽掛在攝影機底下、z 放得很遠(-74)模擬「在天邊」，
+      // 但這台相機是俯角正交相機，遠處的 local z 換算成世界座標後 y 反而會被
+      // 拉到地面以下（俯角+遠距離，local 前方軸摻了一部分世界的「下」），導致
+      // 太陽的世界座標其實落在地形後面，深度測試一律判定被地形擋住，太陽等於
+      // 整天都被地形蓋住看不見。太陽是純裝飾的天空層，本來就不需要真的跟地形
+      // 比深度，直接關掉深度測試，一律畫在最上面
       const sunGlowMat = new THREE.MeshBasicMaterial({
         color: 0xffd796,
+        map: SUN_GLOW_TEXTURE,
         transparent: true,
         opacity: 0,
         depthWrite: false,
-        depthTest: true,
+        depthTest: false,
         fog: false,
         blending: THREE.AdditiveBlending,
       });
       const sunCoreMat = new THREE.MeshBasicMaterial({
         color: 0xfff4cc,
+        map: SUN_CORE_TEXTURE,
         transparent: true,
         opacity: 0,
         depthWrite: false,
-        depthTest: true,
+        depthTest: false,
         fog: false,
       });
       const sunGlow = new THREE.Mesh(
-        new THREE.CircleGeometry(2.15, 32),
+        new THREE.CircleGeometry(3.1, 32),
         sunGlowMat,
       );
       const sunCore = new THREE.Mesh(
@@ -1305,26 +1340,38 @@
       const cloudLobeGeometry = new THREE.CircleGeometry(1, 18);
       for (let i = 0; i < 9; i++) {
         const cloud = new THREE.Group();
+        // 雲位於相機遠端的天空層，但必須保留深度測試：天空球不寫入深度，
+        // 所以雲仍會出現在天空；島嶼、人物、海岸等近景則會把雲正確遮住，
+        // 避免雲穿過地形疊在遊戲畫面上。
         const material = new THREE.MeshBasicMaterial({
           color: 0xffffff,
+          map: CLOUD_LOBE_TEXTURE,
           transparent: true,
           opacity: 0,
           depthWrite: false,
           depthTest: true,
           fog: false,
         });
+        const seed = hash2(i * 7.3, 18.4);
+        // 原本每朵雲都用同一組固定的 4 顆橢圓，縮放/位置一樣，看起來像
+        // 複製貼上。加 2 顆頂部小凸起、每顆再疊一點隨雲的 seed 決定性
+        // 抖動的位置/縮放，每朵雲的輪廓才會長得不一樣，比較蓬鬆自然
         [
           [-1.45, -0.05, 1.25],
           [-0.45, 0.38, 1.55],
           [0.62, 0.24, 1.3],
           [1.45, -0.12, 0.92],
-        ].forEach(([x, y, scale]) => {
+          [-0.05, 0.62, 0.85],
+          [0.15, 0.58, 0.7],
+        ].forEach(([x, y, scale], li) => {
+          const j1 = hash2(seed * 13 + li * 4.1, li * 2.7) - 0.5;
+          const j2 = hash2(li * 5.3, seed * 9 + li) - 0.5;
           const lobe = new THREE.Mesh(cloudLobeGeometry, material);
-          lobe.position.set(x, y, 0);
-          lobe.scale.set(scale * 1.35, scale * 0.72, 1);
+          lobe.position.set(x + j1 * 0.18, y + j2 * 0.14, li * -0.001);
+          const s = scale * (0.9 + (j1 + j2) * 0.12);
+          lobe.scale.set(s * 1.35, s * 0.72, 1);
           cloud.add(lobe);
         });
-        const seed = hash2(i * 7.3, 18.4);
         cloud.position.set(
           -52 + seed * 104,
           7 + hash2(i, 3.7) * 12,
@@ -1366,7 +1413,12 @@
         sunSkyGroup.visible = sunOpacity > 0.005;
         if (sunSkyGroup.visible) {
           sunSkyGroup.position.x = 40 - sunProgress * 80;
-          sunSkyGroup.position.y = -5.5 + arc * daylight.peak;
+          // daylight.peak（13.5~21）是照原始設計拿來抓「太陽在天空中多高」的
+          // 係數，但預設 zoom=6 時相機視錐只到 top=6，太陽升到接近中午
+          // (arc 接近 1) 就會整個超出視錐範圍，等於中午前後太陽會直接消失。
+          // 乘 0.5 把最高點壓到 zoom=6 也裝得下的範圍，四季相對高低差還在，
+          // 只是整體矮一截
+          sunSkyGroup.position.y = -5.5 + arc * daylight.peak * 0.5;
           const horizonWarmth = Math.pow(1 - arc, 2.4);
           SUN_TARGET_COLOR.setHex(SUN_NOON_COLORS[currentSeason]).lerp(
             SUN_HORIZON_COLOR,
@@ -2138,6 +2190,44 @@
       const lakeShoreColliders = []; // 湖岸石頭的圓形碰撞，建圖時與石頭位置同步
       let seaGlimpseMesh = null; // 北邊的遠方海景背景板，會輕輕起伏
       const fishSchool = []; // 每條魚各自保存尺寸、速度、橢圓半徑、游移與深度參數
+      const EAST_SEA_WAVE_DIRECTION = Object.freeze({ x: -1, z: 0 });
+      // 東北外海朝西南方推進；sampleDirectedSeaWave 會再次正規化。
+      const NORTHEAST_SEA_WAVE_DIRECTION = Object.freeze({ x: -1, z: 1 });
+      const EAST_SEA_WAVE = Object.freeze({
+        waveNumber: 1.4, speed: 2.2, height: 0.09, steepness: 0.55,
+        crossNumber: 0.8, crossAmount: 0.5,
+        secondaryNumber: 1.2, secondarySpeed: 1, secondaryHeight: 0.015,
+      });
+      const NORTH_SEA_WAVE = Object.freeze({
+        waveNumber: 1.65, speed: 1.25, height: 0.045, steepness: 0.42,
+        crossNumber: 0.28, crossAmount: 0.55,
+        secondaryNumber: 0.72, secondarySpeed: 0.8, secondaryHeight: 0.018,
+      });
+
+      // 波峰沿 direction 前進；沿浪與橫浪座標都由世界座標投影取得。
+      function sampleDirectedSeaWave(worldX, worldZ, time, direction, settings, out) {
+        const length = Math.hypot(direction.x, direction.z) || 1;
+        const directionX = direction.x / length;
+        const directionZ = direction.z / length;
+        const sideX = -directionZ;
+        const sideZ = directionX;
+        const along = worldX * directionX + worldZ * directionZ;
+        const across = worldX * sideX + worldZ * sideZ;
+        const phase =
+          along * settings.waveNumber - time * settings.speed +
+          Math.sin(across * settings.crossNumber) * settings.crossAmount;
+        const sinPhase = Math.sin(phase);
+        const displacement =
+          Math.cos(phase) * settings.height * settings.steepness;
+        out.height =
+          sinPhase * settings.height +
+          Math.cos(across * settings.secondaryNumber - time * settings.secondarySpeed) *
+            settings.secondaryHeight;
+        out.crest = sinPhase;
+        out.displacementX = directionX * displacement;
+        out.displacementZ = directionZ * displacement;
+        return out;
+      }
       const SEA_FISH_SCALE = 3;
       const LAKE_FISH_SCALE = 2.2;
       const avenueLeafMaterials = [];
@@ -3322,6 +3412,156 @@
         stone.castShadow = true;
         return stone;
       }
+
+      function makeBasaltHeadland(originX, originZ) {
+        const group = new THREE.Group();
+        const heightScale = 1.742;
+        const rockMaterials = [0x3f3b38, 0x504640, 0x625149, 0x393b3d].map(
+          (color) =>
+            new THREE.MeshStandardMaterial({
+              color,
+              flatShading: true,
+              roughness: 0.96,
+            }),
+        );
+        const columns = [
+          [0.0, 0.0, 1.15, 2.7], [0.8, 0.15, 1.05, 2.35],
+          [1.55, 0.38, 1.2, 2.55], [2.35, 0.62, 1.08, 2.2],
+          [3.15, 0.92, 1.0, 1.95], [4.0, 1.22, 0.92, 1.65],
+          [4.75, 1.55, 0.78, 1.25], [5.4, 1.88, 0.62, 0.92],
+          [0.25, 0.92, 1.08, 2.25], [1.1, 1.12, 1.22, 2.45],
+          [1.95, 1.35, 1.12, 2.15], [2.8, 1.58, 1.04, 1.82],
+          [3.65, 1.82, 0.86, 1.48], [4.4, 2.05, 0.7, 1.05],
+          [0.55, 1.85, 0.9, 1.7], [1.45, 2.02, 1.02, 1.9],
+          [2.35, 2.18, 0.86, 1.5], [3.15, 2.34, 0.72, 1.15],
+        ];
+        // 從原本岬角尖端向東延伸二十格；越靠外海越低、越窄，避免變成等寬堤防。
+        for (let step = 0; step < 20; step++) {
+          const x = 6.0 + step;
+          const taper = 1 - step / 24;
+          const centerZ = 1.95 + Math.sin(step * 0.58) * 0.22;
+          columns.push([
+            x,
+            centerZ - 0.48,
+            0.72 * taper + 0.22,
+            1.28 * taper + 0.58,
+          ]);
+          columns.push([
+            x + 0.2,
+            centerZ + 0.48,
+            0.62 * taper + 0.18,
+            1.08 * taper + 0.42,
+          ]);
+          if (step < 6 && step % 2 === 0) {
+            columns.push([
+              x + 0.48,
+              centerZ,
+              0.55 * taper + 0.2,
+              1.15 * taper + 0.5,
+            ]);
+          }
+        }
+        // 北緣再向 -Z 擴三格。靠陸端保留完整三格寬度，接近岬角尖端時逐層
+        // 收窄，並用錯位與高度差打散格線感。
+        for (let step = 0; step < 23; step++) {
+          const x = 0.25 + step * 1.08;
+          const lengthTaper = Math.max(0.18, 1 - step / 27);
+          const northRows = step < 14 ? 3 : step < 19 ? 2 : 1;
+          for (let row = 1; row <= northRows; row++) {
+            const seed = hash2(step * 4.9, row * 8.3);
+            columns.push([
+              x + (seed - 0.5) * 0.34,
+              -row * 0.92 + Math.sin(step * 0.47 + row) * 0.16,
+              0.52 + lengthTaper * 0.38 - row * 0.035,
+              0.72 + lengthTaper * 1.34 + (seed - 0.5) * 0.28,
+            ]);
+          }
+        }
+        columns.forEach(([x, z, radius, height], index) => {
+          height *= heightScale;
+          const seed = hash2(originX + index * 2.7, originZ - index * 4.1);
+          const column = new THREE.Mesh(
+            new THREE.CylinderGeometry(
+              radius * (0.82 + seed * 0.12),
+              radius,
+              height,
+              5 + (index % 3),
+              1,
+            ),
+            rockMaterials[index % rockMaterials.length],
+          );
+          column.position.set(
+            x + (seed - 0.5) * 0.22,
+            height / 2 - 0.02,
+            z + (hash2(index * 5.3, 7.1) - 0.5) * 0.2,
+          );
+          column.rotation.y = seed * Math.PI;
+          column.rotation.x = (hash2(index, 3.9) - 0.5) * 0.09;
+          column.rotation.z = (hash2(index, 8.2) - 0.5) * 0.07;
+          column.castShadow = true;
+          column.receiveShadow = true;
+          group.add(column);
+
+          if (index % 2 === 0) {
+            const cap = new THREE.Mesh(
+              new THREE.IcosahedronGeometry(radius * (0.58 + seed * 0.16), 0),
+              rockMaterials[(index + 1) % rockMaterials.length],
+            );
+            cap.position.set(
+              column.position.x + (seed - 0.5) * 0.3,
+              height + radius * 0.08,
+              column.position.z,
+            );
+            cap.scale.y = 0.42 + seed * 0.18;
+            cap.rotation.set(seed * 0.4, seed * 2.4, seed * 0.25);
+            cap.castShadow = true;
+            cap.receiveShadow = true;
+            group.add(cap);
+          }
+        });
+
+        const foamMaterial = new THREE.MeshBasicMaterial({
+          color: 0xf4fbff,
+          transparent: true,
+          opacity: 0.62,
+          depthWrite: false,
+          side: THREE.DoubleSide,
+        });
+        [
+          [1.2, 2.85, 1.45, 0.32],
+          [2.75, 2.95, 1.65, 0.3],
+          [4.25, 2.65, 1.35, 0.27],
+          [5.35, 2.25, 0.95, 0.22],
+          [7.0, 2.85, 1.6, 0.28],
+          [9.0, 2.72, 1.7, 0.27],
+          [11.0, 2.78, 1.65, 0.25],
+          [13.0, 2.62, 1.45, 0.22],
+          [15.0, 2.5, 1.1, 0.19],
+          [17.0, 2.72, 1.35, 0.2],
+          [19.0, 2.58, 1.3, 0.19],
+          [21.0, 2.66, 1.2, 0.18],
+          [23.0, 2.5, 1.05, 0.17],
+          [25.0, 2.42, 0.85, 0.15],
+          [2.0, -3.25, 1.45, 0.22],
+          [5.0, -3.18, 1.6, 0.22],
+          [8.0, -3.1, 1.55, 0.21],
+          [11.0, -3.0, 1.4, 0.2],
+          [15.0, -2.25, 1.2, 0.18],
+          [20.0, -1.35, 0.95, 0.16],
+        ].forEach(([x, z, width, depth], index) => {
+          const foam = new THREE.Mesh(
+            new THREE.CircleGeometry(0.5, 14),
+            foamMaterial.clone(),
+          );
+          foam.rotation.x = -Math.PI / 2;
+          foam.position.set(x, 0.285 + index * 0.002, z);
+          foam.scale.set(width, depth, 1);
+          foam.renderOrder = 3;
+          group.add(foam);
+        });
+        group.position.set(originX, 0, originZ);
+        return group;
+      }
       const FLOWER_COLORS = [0xf25f8c, 0xf5c542, 0xffffff, 0x8f6ff5];
       const SAND_TONES = [0xe8d29a, 0xe3cd93, 0xe6d29c, 0xe0c88e];
       function makeSand(x, z) {
@@ -3407,7 +3647,15 @@
           bumps.push(bump);
         }
         g.position.set(x, 0, z);
-        g.userData = { seed, crest, wash, bumps, baseX: x };
+        g.userData = {
+          seed,
+          crest,
+          wash,
+          bumps,
+          baseX: x,
+          baseZ: z,
+          waveDirection: EAST_SEA_WAVE_DIRECTION,
+        };
         return g;
       }
       function makeCropMesh(stage) {
@@ -4411,8 +4659,8 @@
           // 西緣原本停在 x=-2.5，遠山/西側緩衝帶蓋不到那麼北的緯度，從西北角
           // 看過去會看到一塊藍色矩形在星空裡硬生生切一刀。東緣（跟東海融合
           // 那端）維持不動，只把西緣大幅延伸，藏到遠山背景範圍之外
-          const northSeaEastX = cols + 1.5;
-          const northSeaWestX = -20;
+          const northSeaEastX = cols - 8.5;
+          const northSeaWestX = -15;
           const northSeaWidth = northSeaEastX - northSeaWestX;
           const northSeaDepth = 3.2;
           const northSeaNearZ = NORTH_CLIFF_Z - 0.2;
@@ -4429,12 +4677,7 @@
           const sgColors = new Float32Array(sgPos.count * 3);
           const near = new THREE.Color(0x4a90c8),
             far = new THREE.Color(0x9fc4dd);
-          // 東北角原本只用「顏色」跟東海融合，形狀還是一條停在原地的直帶——
-          // 北側懸崖只蓋到 northCliffEndX，過了那裡懸崖不再擋視線，直帶跟
-          // 東海之間會露出一截空隙。改成東緣同時把「形狀」也一起圓弧化：
-          // 沿 x 用跟顏色同一個 eastMix 把整條帶子往南（+z）弧下去，斜斜
-          // 接到東邊沙灘/海的起點，不再只靠顏色硬凑
-          const NORTH_SEA_CURVE_DEPTH = 6.6;
+          // 保持北海帶的岸線筆直；東北角不再把頂點往南拉成圓弧海灣。
           for (let i = 0; i < sgPos.count; i++) {
             const t = Math.min(
               1,
@@ -4446,7 +4689,6 @@
               Math.min(1, (worldX - (LAYOUT.coast.rampX - 2)) / 7),
             );
             const eastMix = eastMixRaw * eastMixRaw * (3 - 2 * eastMixRaw);
-            sgPos.setZ(i, sgPos.getZ(i) + eastMix * NORTH_SEA_CURVE_DEPTH);
             sgBase[i * 3] = sgPos.getX(i);
             sgBase[i * 3 + 1] = sgPos.getY(i);
             sgBase[i * 3 + 2] = sgPos.getZ(i);
@@ -4459,7 +4701,10 @@
             sgColors[i * 3 + 2] = c.b;
           }
           sgGeo.setAttribute("color", new THREE.BufferAttribute(sgColors, 3));
-          sgGeo.userData = { basePositions: sgBase };
+          sgGeo.userData = {
+            basePositions: sgBase,
+            baseColors: sgColors.slice(),
+          };
           // 海面本身保留半透明波光；下方用不透明深海層遮住相機星空，避免星星穿透水面。
           const northSeaMask = new THREE.Mesh(
             new THREE.PlaneGeometry(northSeaWidth + 0.4, northSeaDepth + 0.4),
@@ -4496,6 +4741,12 @@
             northSeaNearZ - northSeaDepth / 2,
           );
           mapGroup.add(seaGlimpseMesh);
+
+          // 北海與東海的接縫用一座天然玄武岩岬角遮住，造型參考城崎海岸的
+          // 柱狀節理；由北側懸崖向東南伸入海中，低處另有碎浪包住礁腳。
+          mapGroup.add(
+            makeBasaltHeadland(northCliffEndX - 0.35, NORTH_CLIFF_Z - 0.12),
+          );
 
           // 固定在高台上的東西(建築、農地、湖、牧草、遠山)統一掛在這個群組下面，
           // 整組往上抬 PLATEAU_Y，不用逐一調整每個物件的座標
@@ -5750,32 +6001,27 @@
           const basePos = oceanMesh.geometry.userData.basePositions;
           const ox = oceanMesh.position.x,
             oz = oceanMesh.position.z;
-          const waveSpeed = 2.2,
-            waveNum = 1.4,
-            waveHeight = 0.09,
-            steepness = 0.55;
+          const waveSample = {};
           for (let i = 0; i < posAttr.count; i++) {
             const bx = basePos[i * 3],
               bz = basePos[i * 3 + 2];
             const worldX = bx + ox,
               worldZ = bz + oz;
-            // 用 +elapsed（不是 -elapsed）相位才會隨時間往 -X 移動——沙灘就在海的
-            // 左邊（x 較小），這樣浪才是「滾向沙灘」而不是詭異地滾回外海
-            const phase =
-              worldX * waveNum +
-              elapsed * waveSpeed +
-              Math.sin(worldZ * 0.8) * 0.5;
-            const sinP = Math.sin(phase),
-              cosP = Math.cos(phase);
-
-            const waveY =
-              sinP * waveHeight + Math.cos(worldZ * 1.2 + elapsed) * 0.015;
-            const displacementX = cosP * waveHeight * steepness;
-            posAttr.setX(i, bx - displacementX);
-            posAttr.setY(i, waveY);
+            // 東海的方向向量朝西，波峰與水平位移都沿該向量推向沙灘。
+            sampleDirectedSeaWave(
+              worldX,
+              worldZ,
+              elapsed,
+              EAST_SEA_WAVE_DIRECTION,
+              EAST_SEA_WAVE,
+              waveSample,
+            );
+            posAttr.setX(i, bx + waveSample.displacementX);
+            posAttr.setZ(i, bz + waveSample.displacementZ);
+            posAttr.setY(i, waveSample.height);
 
             // 浪頭捲到接近最高點時快速染白，模擬碎浪；其餘地方維持海藍色
-            const crestFactor = Math.max(0, (sinP - 0.4) / 0.6);
+            const crestFactor = Math.max(0, (waveSample.crest - 0.4) / 0.6);
             const t = Math.pow(crestFactor, 1.8);
             colorAttr.setXYZ(
               i,
@@ -5810,35 +6056,45 @@
           if (animationFrameCount % 8 === 0)
             lakeMesh.geometry.computeVertexNormals();
         }
-        // 北海以短波呈現；靠右側逐漸混合成東海的浪形，轉角不會出現動畫斷層。
+        // 東北海以短波呈現，整片波峰從東北往西南推進。
         if (seaGlimpseMesh && updateWaterSurface) {
           const sgPosAttr = seaGlimpseMesh.geometry.attributes.position;
+          const sgColorAttr = seaGlimpseMesh.geometry.attributes.color;
           const sgBase = seaGlimpseMesh.geometry.userData.basePositions;
+          const sgBaseColors = seaGlimpseMesh.geometry.userData.baseColors;
+          const northWaveSample = {};
           for (let i = 0; i < sgPosAttr.count; i++) {
             const bx = sgBase[i * 3],
               bz = sgBase[i * 3 + 2];
             const worldX = bx + seaGlimpseMesh.position.x;
             const worldZ = bz + seaGlimpseMesh.position.z;
-            const northWave =
-              Math.sin(
-                worldZ * 1.65 + elapsed * 1.25 + Math.sin(worldX * 0.28) * 0.55,
-              ) *
-                0.045 +
-              Math.cos(worldX * 0.72 - elapsed * 0.8) * 0.018;
-            const eastPhase =
-              worldX * 1.4 + elapsed * 2.2 + Math.sin(worldZ * 0.8) * 0.5;
-            const eastWave =
-              Math.sin(eastPhase) * 0.09 +
-              Math.cos(worldZ * 1.2 + elapsed) * 0.015;
-            const mixRaw = Math.max(
-              0,
-              Math.min(1, (worldX - (LAYOUT.coast.rampX - 2)) / 7),
+            sampleDirectedSeaWave(
+              worldX,
+              worldZ,
+              elapsed,
+              NORTHEAST_SEA_WAVE_DIRECTION,
+              NORTH_SEA_WAVE,
+              northWaveSample,
             );
-            const mix = mixRaw * mixRaw * (3 - 2 * mixRaw);
-            const y = northWave + (eastWave - northWave) * mix;
-            sgPosAttr.setY(i, y);
+            const height = northWaveSample.height;
+            const displacementX = northWaveSample.displacementX;
+            const displacementZ = northWaveSample.displacementZ;
+            const crest = northWaveSample.crest;
+            const foamMix =
+              Math.pow(Math.max(0, (crest - 0.45) / 0.55), 1.8) * 0.72;
+            const colorOffset = i * 3;
+            sgPosAttr.setX(i, bx + displacementX);
+            sgPosAttr.setY(i, height);
+            sgPosAttr.setZ(i, bz + displacementZ);
+            sgColorAttr.setXYZ(
+              i,
+              sgBaseColors[colorOffset] * (1 - foamMix) + foamMix,
+              sgBaseColors[colorOffset + 1] * (1 - foamMix) + foamMix,
+              sgBaseColors[colorOffset + 2] * (1 - foamMix) + foamMix,
+            );
           }
           sgPosAttr.needsUpdate = true;
+          sgColorAttr.needsUpdate = true;
           if (animationFrameCount % 8 === 0)
             seaGlimpseMesh.geometry.computeVertexNormals();
         }
@@ -5846,7 +6102,10 @@
         foamMeshes.forEach((f) => {
           const phase = elapsed * 2.2 + f.userData.seed;
           const cycle = (Math.sin(phase) + 1) / 2; // 0~1，一波一波衝上岸又退回去
-          f.position.x = f.userData.baseX + (-0.18 + cycle * 0.32);
+          const shoreTravel = -0.1 + cycle * 0.32;
+          const waveDirection = f.userData.waveDirection;
+          f.position.x = f.userData.baseX + waveDirection.x * shoreTravel;
+          f.position.z = f.userData.baseZ + waveDirection.z * shoreTravel;
           const impact = Math.pow(cycle, 1.5);
           f.userData.crest.material.opacity = impact * 0.85;
           f.userData.crest.scale.set(1 + impact * 0.2, 0.6 + impact * 0.8, 1);
