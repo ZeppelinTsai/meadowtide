@@ -1,0 +1,5 @@
+{
+  "outFile": "src/game-clock.ts",
+  "header": "import { gameState, dayLength, getSeasonIndex, rollWeatherForSeason, SEASON_NAMES, WEATHER_NAMES, growCropsForNewDay } from \"./game-state\";\nimport { carpenterQuest, CARPENTER_CONSTRUCTION_DAYS } from \"./layout-maps\";\nimport { updateAvenueTreeColors, updateSeasonalTreeColors, updateSeasonalGroundColors } from \"./props\";\nimport { syncFarmVisuals } from \"./farm-visuals\";\nimport { scheduleNextMeteor } from \"./scene-sky\";\nimport { dialogEl } from \"./dialogue\";\n",
+  "ranges": [[3141, 3201], [3290, 3293]]
+}

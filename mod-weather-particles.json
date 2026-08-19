@@ -1,0 +1,5 @@
+{
+  "outFile": "src/weather-particles.ts",
+  "header": "import * as THREE from \"three\";\nimport { hash2 } from \"./utils\";\nimport { scene } from \"./scene-sky\";\nimport { gameState, weatherTransitionRamp } from \"./game-state\";\n",
+  "ranges": [[2436, 2859]]
+}

@@ -1,0 +1,5 @@
+{
+  "outFile": "src/humanoid.ts",
+  "header": "import * as THREE from \"three\";\n",
+  "ranges": [[3296, 3594]]
+}

@@ -1,0 +1,5 @@
+{
+  "outFile": "src/props.ts",
+  "header": "import * as THREE from \"three\";\nimport { hash2 } from \"./utils\";\nimport { gameState } from \"./game-state\";\nimport { TILE, PLATEAU_Y, NORTH_CLIFF_Z, SOUTH_TERRAIN_EXTENSION } from \"./scene-sky\";\nimport { LAYOUT } from \"./layout-maps\";\nimport { windowMats, outdoorLampLights, windmillRotors, pastureGrassBlades, avenueLeafMaterials, seasonalTreeLeafMaterials, seasonalGroundMaterials, GRASS_STAGE_HEIGHTS, EAST_SEA_WAVE_DIRECTION } from \"./scene-registries\";\n",
+  "ranges": [[3595, 5643]]
+}

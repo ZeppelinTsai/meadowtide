@@ -1,0 +1,5 @@
+{
+  "outFile": "src/scene-registries.ts",
+  "header": "import { gameState } from \"./game-state\";\n",
+  "ranges": [[3213, 3289]]
+}

@@ -1,0 +1,5 @@
+{
+  "outFile": "src/dialogue.ts",
+  "header": "import { npcs } from \"./npc-runtime\";\nimport { gameState } from \"./game-state\";\n",
+  "ranges": [[6914, 7046]]
+}
