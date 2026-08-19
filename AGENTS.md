@@ -142,6 +142,12 @@ node map-debug.js 你的檔案.html --legend
   確認沒有重疊/沒有留死資料 → 改完再檢查一次視覺渲染座標有沒有跟著动。
 - 用 git 版本控制取代之前那種「每次存一個新檔名」的做法（`v47`、`v48`…），
   這樣可以直接 diff 看每次改了什麼。
+- **改 `meadowtide.html` 之前，先確認使用者的編輯器（VSCode 等）裡沒有開著
+  這個檔案的分頁，或至少確認該分頁內容跟磁碟上的最新版本一致。** 這個專案
+  已經發生過兩次「編輯器分頁存檔覆蓋掉 agent 剛做的改動」：一次是西側地形
+  的渲染修正、一次是整個三地圖骨架（連同 oldVillage／port／buildMap 相關
+  改動）消失了，而且好幾次提交都沒被發現。開工前務必先跟使用者確認目前
+  檔案狀態，寧可多問一句，也不要事後才發現改動不見了。
 
 ## 背景音樂系統（來源：StockTune，公共領域授權，免費商用不用標示出處）
 
@@ -201,20 +207,16 @@ node map-debug.js 你的檔案.html --legend
 
 ## 遊戲時間節奏
 
-- `meadowtide.html` 的 `dayLength` 是一個完整遊戲日對應的現實秒數。
-- 目前測試值：每個遊戲小時 10 秒，因此 `dayLength = 10 × 24 = 240` 秒，
-  每天約 4 分鐘；`DAYS_PER_SEASON = 3`，每 3 天換一季。
-- 正式版預定：每個遊戲小時 30 秒，因此 `dayLength = 30 × 24 = 720` 秒，
-  每天約 12 分鐘；一個月 21 天。以目前「一季直接由 `DAYS_PER_SEASON`
-  控制」的簡化架構，正式版暫定設定為 `DAYS_PER_SEASON = 21`，相當於
-  一個 21 天月份對應一季。若之後要讓一季包含多個月份，需另加月份層，
-  不要只改這個常數。
-# 季節、日照與流星系統（新版本）
-
-- 新版本檔案：`meadowtide-season-meteor.html`；原本的 `meadowtide.html` 保留不覆寫。
-- `TIME_CONFIG` 是唯一時間參數來源：現實 30 秒＝遊戲 1 小時、一天 720 秒、每季 21 天。
-- `elapsed` 仍是唯一累計時鐘；`updateGameClock()` 統一處理正常計時與 `N` 快轉，跨日事件逐日觸發。
-- `SEASON_DAYLIGHT` 以遊戲小時設定四季日出日落；`getNightFactor()` 的結果供天空、太陽、燈光、音樂與星象共用。
-- HUD 顯示季節內第 1～21 日與上／中／下旬。`F6` 儲存、`F9` 讀取，亦可呼叫 `saveGame(slot)`／`loadGame(slot)`。
-- 流星由 `METEOR_CONFIG`、`METEOR_SHOWER_SCHEDULE` 管理；第 11～14 日為流星雨，第 13 日高峰。
-- `meteorPool` 固定最多 16 個物件；室內、白天或不可見天氣會清空活動狀態，不會累積 geometry/material。
+- `TIME_CONFIG` 是唯一時間參數來源：現實 30 秒＝遊戲 1 小時、一天 24 小時
+  （`dayLength = 720` 秒，約 12 分鐘一天）、`daysPerSeason = 21`（一個 21
+  天月份對應一季）。若之後要讓一季包含多個月份，需另加月份層，不要只改
+  這個常數。
+- `elapsed` 是唯一累計時鐘；`updateGameClock()` 統一處理正常計時與 `N`
+  快轉，跨日事件逐日觸發（不會因為快轉跳過中間天數的 `beginNewDay()`）。
+- `SEASON_DAYLIGHT` 以遊戲小時設定四季日出日落；`getNightFactor()` 的
+  結果供天空、太陽、月亮、燈光、音樂與星象共用。
+- HUD 顯示季節內第 1～21 日與上／中／下旬。`F6` 儲存、`F9` 讀取，亦可
+  呼叫 `saveGame(slot)`／`loadGame(slot)`。
+- 流星由 `METEOR_CONFIG`、`METEOR_SHOWER_SCHEDULE` 管理；第 11～14 日為
+  流星雨，第 13 日高峰。`meteorPool` 固定最多 16 個物件；室內、白天或
+  不可見天氣會清空活動狀態，不會累積 geometry/material。
