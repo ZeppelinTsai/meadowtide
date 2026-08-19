@@ -55,10 +55,6 @@ export const gameState = {
   isMoving: false,
   houseLampLight: null as THREE.PointLight | null,
   houseLampBulbMat: null as THREE.MeshStandardMaterial | null,
-  currentCgId: null as string | null,
-  dialogQueue: [] as any[],
-  dialogIndex: 0,
-  dialogSequenceOnComplete: null as (() => void) | null,
   ePressed: false,
   lastFrame: 0, // main.ts 啟動迴圈時會用 performance.now() 設一次
   prevDay: 0,
