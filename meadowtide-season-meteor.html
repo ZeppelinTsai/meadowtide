@@ -1018,9 +1018,11 @@
       // 天空球——沒辦法匯入真的照片(單一 HTML 檔案，不接外部圖床)，改用程式生成
       // 的漸層天空：一顆包住整個場景的大球，內側渲染，頂點顏色從地平線色漸層到
       // 天頂色，每幀跟著日夜循環更新。跟著相機位置走，才會感覺「天空無限遠」
-      const SKY_DAY_ZENITH = new THREE.Color(0x2f7fd6),
-        SKY_DAY_HORIZON = new THREE.Color(0xcfeaff);
+      const SKY_DAY_ZENITH = new THREE.Color(0x0f6fca),
+        SKY_DAY_MID = new THREE.Color(0x55b5ee),
+        SKY_DAY_HORIZON = new THREE.Color(0xc7efff);
       const SKY_NIGHT_ZENITH = new THREE.Color(0x030512),
+        SKY_NIGHT_MID = new THREE.Color(0x101b38),
         SKY_NIGHT_HORIZON = new THREE.Color(0x1c2a4a);
       const skyGeo = new THREE.SphereGeometry(85, 24, 16);
       const skyColorAttr = new THREE.BufferAttribute(
@@ -1537,6 +1539,7 @@
       const SUN_HORIZON_COLOR = new THREE.Color(0xff9b61);
       const SUN_SKY_BLEND_COLOR = new THREE.Color();
       const SUN_TARGET_COLOR = new THREE.Color();
+      const SUN_MASK_PROJECTED_POINT = new THREE.Vector3();
       const sunSkyGroup = new THREE.Group();
       // 太陽位於相機遠端的天空層，但必須保留深度測試：天空球不寫入深度，
       // 太陽仍能顯示在天空；房屋、地形、角色與海岸等近景則會正確遮住太陽。
@@ -1660,6 +1663,24 @@
           // 乘 0.5 把最高點壓到 zoom=6 也裝得下的範圍，四季相對高低差還在，
           // 只是整體矮一截
           sunSkyGroup.position.y = -5.5 + arc * daylight.peak * 0.5;
+          // 太陽是掛在相機上的透明天空物件；只靠 depthTest，遇到不寫入深度的
+          // 草地/透明特效仍可能穿透。把太陽所在 x 對應的北側懸崖投影到螢幕，
+          // 低於地形輪廓時額外淡出，保證太陽只會留在真正的天空區域。
+          const sunWorldX = player.position.x + sunSkyGroup.position.x;
+          SUN_MASK_PROJECTED_POINT.set(
+            sunWorldX,
+            PLATEAU_Y + 0.35,
+            northCliffEdgeZ(sunWorldX),
+          ).project(camera);
+          const terrainSkylineY = SUN_MASK_PROJECTED_POINT.y * zoom;
+          const skyOnlyVisibility = THREE.MathUtils.smoothstep(
+            sunSkyGroup.position.y - terrainSkylineY,
+            0.15,
+            1.15,
+          );
+          if (skyOnlyVisibility <= 0.001) {
+            sunSkyGroup.visible = false;
+          }
           const horizonWarmth = Math.pow(1 - arc, 2.4);
           SUN_TARGET_COLOR.setHex(SUN_NOON_COLORS[currentSeason]).lerp(
             SUN_HORIZON_COLOR,
@@ -1674,8 +1695,9 @@
           sunGlowMat.color
             .copy(SUN_SKY_BLEND_COLOR)
             .lerp(SUN_TARGET_COLOR, sunOpacity * (0.28 + arc * 0.16));
-          sunCoreMat.opacity = Math.min(1, sunOpacity * 1.05);
-          sunGlowMat.opacity = sunOpacity * (0.2 + arc * 0.16);
+          sunCoreMat.opacity = Math.min(1, sunOpacity * 1.05) * skyOnlyVisibility;
+          sunGlowMat.opacity =
+            sunOpacity * (0.2 + arc * 0.16) * skyOnlyVisibility;
           const pulse = 1 + Math.sin(elapsed * 0.7) * 0.015;
           sunGlow.scale.setScalar(pulse);
         }
@@ -1791,6 +1813,7 @@
           SKY_NIGHT_HORIZON,
           nightFactor,
         );
+        const middle = SKY_DAY_MID.clone().lerp(SKY_NIGHT_MID, nightFactor);
         const weatherShade =
           {
             cloudy: 0.38,
@@ -1805,15 +1828,20 @@
             ? new THREE.Color(0xb9c6d2)
             : new THREE.Color(0x667386);
         zenith.lerp(weatherSky, weatherShade);
+        middle.lerp(weatherSky, weatherShade * 0.9);
         horizon.lerp(weatherSky, weatherShade * 0.78);
         const posAttr = skyGeo.attributes.position;
         for (let i = 0; i < posAttr.count; i++) {
           const t = Math.max(0, posAttr.getY(i) / 85); // 0 地平線 ~1 天頂
+          const lowerSky = t < 0.46;
+          const blend = lowerSky ? t / 0.46 : (t - 0.46) / 0.54;
+          const from = lowerSky ? horizon : middle;
+          const to = lowerSky ? middle : zenith;
           skyColorAttr.setXYZ(
             i,
-            horizon.r + (zenith.r - horizon.r) * t,
-            horizon.g + (zenith.g - horizon.g) * t,
-            horizon.b + (zenith.b - horizon.b) * t,
+            from.r + (to.r - from.r) * blend,
+            from.g + (to.g - from.g) * blend,
+            from.b + (to.b - from.b) * blend,
           );
         }
         skyColorAttr.needsUpdate = true;
