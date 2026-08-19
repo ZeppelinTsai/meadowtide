@@ -1321,9 +1321,9 @@
           ctx.translate(32, 32);
           ctx.rotate(-0.48);
           const gradient = ctx.createLinearGradient(-12, -25, 9, 24);
-          gradient.addColorStop(0, "rgba(255,247,251,1)");
-          gradient.addColorStop(0.48, "rgba(255,200,220,0.96)");
-          gradient.addColorStop(1, "rgba(239,130,170,0.9)");
+          gradient.addColorStop(0, "rgba(255,255,255,1)");
+          gradient.addColorStop(0.52, "rgba(255,239,246,0.98)");
+          gradient.addColorStop(1, "rgba(255,213,229,0.94)");
           ctx.fillStyle = gradient;
           ctx.beginPath();
           ctx.moveTo(0, 25);
@@ -1341,7 +1341,15 @@
           ctx.fillStyle = gradient;
           ctx.fillRect(0, 0, 32, 32);
         }
-        return new THREE.CanvasTexture(canvas);
+        const texture = new THREE.CanvasTexture(canvas);
+        if (shape === "petal") {
+          // 避免透明像素的黑色 RGB 在縮放取樣時滲入花瓣邊緣，形成假描邊。
+          texture.premultiplyAlpha = true;
+          texture.minFilter = THREE.LinearFilter;
+          texture.magFilter = THREE.LinearFilter;
+          texture.needsUpdate = true;
+        }
+        return texture;
       }
       const WEATHER_BOUNDS = {
         minX: -2,
@@ -1474,7 +1482,7 @@
         vec2 uv=p+0.5;
         if(uv.x<0.0||uv.x>1.0||uv.y<0.0||uv.y>1.0) discard;
         vec4 tex=texture2D(petalMap,uv);
-        if(tex.a<0.025) discard;
+        if(tex.a<0.055) discard;
         gl_FragColor=vec4(tex.rgb*tint,tex.a*opacity);
       }`,
           transparent: true,
@@ -1493,10 +1501,10 @@
         makeSoftParticleTexture(),
       );
       const petalTexture = makeSoftParticleTexture("petal");
-      const petalEffect = makePetalLayer(360, 0xfff0f5, 13.5, petalTexture);
+      const petalEffect = makePetalLayer(360, 0xfffbfd, 13.5, petalTexture);
       const petalForegroundEffect = makePetalLayer(
         140,
-        0xffc9dc,
+        0xffedf4,
         20,
         petalTexture,
       );
