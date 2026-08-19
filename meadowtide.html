@@ -499,15 +499,19 @@ let currentPhase = 0;      // 一天中的比例(0~1)，animate() 每幀更新�
 // --- 季節與每日天氣：測試階段每 3 天換季；正式版預定每季 21 天 ---
 const DAYS_PER_SEASON = 3;
 const SEASON_NAMES = ['春', '夏', '秋', '冬'];
-const WEATHER_NAMES = { clear: '晴', rain: '雨', typhoon: '颱風', snow: '下雪', blizzard: '暴風雪' };
+const WEATHER_NAMES = {
+  clear: '晴', cloudy: '陰', rain: '雨', typhoon: '颱風', storm: '暴風雨',
+  snow: '下雪', blizzard: '暴風雪',
+};
 function getSeasonIndex(day = currentDay) {
   return Math.floor(day / DAYS_PER_SEASON) % SEASON_NAMES.length;
 }
 function rollWeatherForSeason(seasonIndex) {
   const r = Math.random();
-  if (seasonIndex === 1) return r < 0.65 ? 'clear' : r < 0.87 ? 'rain' : 'typhoon';
-  if (seasonIndex === 3) return r < 0.55 ? 'clear' : r < 0.87 ? 'snow' : 'blizzard';
-  return r < (seasonIndex === 0 ? 0.68 : 0.75) ? 'clear' : 'rain';
+  if (seasonIndex === 0) return r < 0.55 ? 'clear' : r < 0.72 ? 'cloudy' : r < 0.94 ? 'rain' : 'storm';
+  if (seasonIndex === 1) return r < 0.52 ? 'clear' : r < 0.65 ? 'cloudy' : r < 0.82 ? 'rain' : r < 0.93 ? 'typhoon' : 'storm';
+  if (seasonIndex === 2) return r < 0.58 ? 'clear' : r < 0.76 ? 'cloudy' : r < 0.94 ? 'rain' : 'storm';
+  return r < 0.45 ? 'clear' : r < 0.60 ? 'cloudy' : r < 0.84 ? 'snow' : 'blizzard';
 }
 let currentSeason = getSeasonIndex(0);
 let currentWeather = rollWeatherForSeason(currentSeason);
@@ -769,7 +773,8 @@ for (let season = 0; season < 4; season++) seasonalStarGroups.push(makeSeasonSta
 
 function updateSeasonalStars(nightFactor) {
   const weatherVisibility = {
-    clear: 1, rain: 0.28, typhoon: 0, snow: 0.55, blizzard: 0.06,
+    clear: 1, cloudy: 0.38, rain: 0.18, typhoon: 0, storm: 0,
+    snow: 0.45, blizzard: 0.03,
   }[currentWeather] ?? 1;
   const nightVisibility = Math.max(0, Math.min(1, (nightFactor - 0.38) / 0.5));
   seasonalStarGroups.forEach((group, seasonIndex) => {
@@ -888,9 +893,10 @@ function updateMusic(nightFactor, dt) {
   if (!musicReady) return;
   const [dayKey, nightKey] = SEASON_MUSIC_KEYS[currentSeason];
   // 嚴格單軌：壞天氣時由天氣曲取代旋律；晴天只選日曲或夜曲其中一首。
-  const desiredKey = currentWeather === 'clear'
+  const fairWeather = currentWeather === 'clear' || currentWeather === 'cloudy';
+  const desiredKey = fairWeather
     ? (nightFactor >= 0.5 ? nightKey : dayKey)
-    : currentWeather;
+    : (currentWeather === 'storm' ? 'typhoon' : currentWeather);
   if (desiredKey !== activeMusicKey) pendingMusicKey = desiredKey;
   if (!activeMusicKey) {
     activeMusicKey = pendingMusicKey;
@@ -901,7 +907,7 @@ function updateMusic(nightFactor, dt) {
     // 有待切換曲目時，舊曲必須先完整淡出；新曲要等舊曲 pause 後才啟動。
     const isActive = key === activeMusicKey;
     const target = isActive && !pendingMusicKey
-      ? (currentWeather === 'clear' ? MELODY_VOLUME : WEATHER_VOLUME)
+      ? (fairWeather ? MELODY_VOLUME : WEATHER_VOLUME)
       : 0;
     if (target > 0.0005 || track.currentGain > 0.0005) ensureMusicTrackPlaying(track, key);
     // 不建立第二個音源做交疊；在單一實例抵達尾端留白前直接回到有效開頭。
