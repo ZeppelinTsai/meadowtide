@@ -714,18 +714,20 @@
         winter: Object.freeze({ sunrise: 7, sunset: 17, peak: 13.5 }),
       });
       const METEOR_CONFIG = Object.freeze({
-        maxActive: 16,
+        maxActive: 20,
         normalMinPerHour: 0.35,
         normalMaxPerHour: 1.65,
         minDuration: 0.4,
         maxDuration: 1.2,
         dawnDuskBlendHours: 1,
+        showerTrailScale: 1.35,
+        showerDurationScale: 1.18,
       });
       const METEOR_SHOWER_SCHEDULE = Object.freeze({
-        11: Object.freeze({ phase: "approach", minPerHour: 2, maxPerHour: 4 }),
-        12: Object.freeze({ phase: "rising", minPerHour: 4, maxPerHour: 6 }),
-        13: Object.freeze({ phase: "peak", minPerHour: 8, maxPerHour: 12 }),
-        14: Object.freeze({ phase: "fading", minPerHour: 3, maxPerHour: 5 }),
+        11: Object.freeze({ phase: "approach", minPerHour: 4, maxPerHour: 7 }),
+        12: Object.freeze({ phase: "rising", minPerHour: 8, maxPerHour: 12 }),
+        13: Object.freeze({ phase: "peak", minPerHour: 18, maxPerHour: 26 }),
+        14: Object.freeze({ phase: "fading", minPerHour: 6, maxPerHour: 9 }),
       });
       const METEOR_SHOWER_PHASE_NAMES = Object.freeze({
         approach: "流星雨前夕",
@@ -1329,6 +1331,8 @@
       camera.add(meteorLayer);
       const meteorPool = [];
       let nextMeteorAt = Infinity;
+      let meteorBurstRemaining = 0;
+      let meteorBurstCooldownUntil = 0;
       const METEOR_SEASON_STYLES = [
         { colors: [0xf2fff6, 0xffffff], length: 0.9, width: 1 },
         { colors: [0xdcecff, 0xffffff], length: 1.2, width: 1 },
@@ -1336,10 +1340,10 @@
         { colors: [0xffffff, 0xe8f3ff], length: 0.92, width: 1.25 },
       ];
       const METEOR_RADIANTS = [
-        { x: -18, y: 22 },
-        { x: 12, y: 25 },
-        { x: 24, y: 20 },
-        { x: -8, y: 27 },
+        { x: -0.42, y: 0.72 },
+        { x: 0.24, y: 0.78 },
+        { x: 0.48, y: 0.66 },
+        { x: -0.2, y: 0.8 },
       ];
 
       for (let index = 0; index < METEOR_CONFIG.maxActive; index++) {
@@ -1401,17 +1405,52 @@
           nextMeteorAt = Infinity;
           return;
         }
+        if (reset) meteorBurstRemaining = 0;
+        if (meteorBurstRemaining > 0) {
+          meteorBurstRemaining--;
+          nextMeteorAt = elapsed + 0.38 + Math.random() * 0.72;
+          return;
+        }
+        if (
+          !reset &&
+          activity.shower &&
+          elapsed >= meteorBurstCooldownUntil
+        ) {
+          const burstChance =
+            activity.shower.phase === "peak"
+              ? 0.58
+              : activity.shower.phase === "rising"
+                ? 0.38
+                : 0.24;
+          if (Math.random() < burstChance) {
+            meteorBurstRemaining =
+              activity.shower.phase === "peak" && Math.random() < 0.55 ? 2 : 1;
+            meteorBurstCooldownUntil = elapsed + 3.5 + Math.random() * 3;
+            nextMeteorAt = elapsed + 0.38 + Math.random() * 0.72;
+            return;
+          }
+        }
         const rate =
           activity.minPerHour +
           Math.random() * (activity.maxPerHour - activity.minPerHour);
         let interval;
         if (activity.shower?.phase === "peak") {
-          interval = 2.5 + Math.random() * 1.5;
+          interval = 1.35 + Math.random() * 1.55;
         } else {
           const eventsPerSecond =
             rate / TIME_CONFIG.realSecondsPerGameHour;
           interval = -Math.log(Math.max(0.0001, 1 - Math.random())) / eventsPerSecond;
           interval = Math.max(0.7, interval);
+          // 保留不規則間隔，但流星雨提示日不讓極端亂數造成玩家久候卻看不到。
+          if (activity.shower) {
+            const maxShowerGap =
+              activity.shower.phase === "approach"
+                ? 10
+                : activity.shower.phase === "rising"
+                  ? 6.5
+                  : 8;
+            interval = Math.min(interval, maxShowerGap);
+          }
         }
         nextMeteorAt = elapsed + interval;
       }
@@ -1424,18 +1463,29 @@
         const style = METEOR_SEASON_STYLES[currentSeason];
         const radiant = METEOR_RADIANTS[currentSeason];
         const showerMeteor = activity.shower && Math.random() < 0.82;
+        // 使用相機目前的正交視錐，而不是寫死大範圍天空座標；如此預設 zoom=6
+        // 與最小縮放都會把流星生成在玩家實際看得到的天空內。
+        const viewWidth = camera.right - camera.left;
+        const viewHeight = camera.top - camera.bottom;
+        const marginX = Math.min(1.1, viewWidth * 0.08);
+        const skyFloor = Math.max(0.8, camera.bottom + viewHeight * 0.58);
+        const skyCeiling = camera.top - Math.min(0.45, viewHeight * 0.06);
+        const radiantX = radiant.x * viewWidth * 0.5;
+        const radiantY = skyFloor + (skyCeiling - skyFloor) * radiant.y;
         let startX;
         let startY;
         let angle;
         if (showerMeteor) {
-          startX = radiant.x + (Math.random() - 0.5) * 12;
-          startY = radiant.y + (Math.random() - 0.5) * 7;
-          const outwardX = startX - radiant.x;
-          const outwardY = startY - radiant.y;
+          startX = radiantX + (Math.random() - 0.5) * viewWidth * 0.72;
+          startY = radiantY + (Math.random() - 0.5) * (skyCeiling - skyFloor) * 0.72;
+          startX = THREE.MathUtils.clamp(startX, camera.left + marginX, camera.right - marginX);
+          startY = THREE.MathUtils.clamp(startY, skyFloor, skyCeiling);
+          const outwardX = startX - radiantX;
+          const outwardY = startY - radiantY;
           angle = Math.atan2(outwardY, outwardX) + (Math.random() - 0.5) * 0.28;
         } else {
-          startX = -38 + Math.random() * 76;
-          startY = 8 + Math.random() * 22;
+          startX = camera.left + marginX + Math.random() * (viewWidth - marginX * 2);
+          startY = skyFloor + Math.random() * (skyCeiling - skyFloor);
           angle = -Math.PI * (0.08 + Math.random() * 0.72);
         }
         const speed = 18 + Math.random() * 17;
@@ -1444,13 +1494,18 @@
           Math.random() * (METEOR_CONFIG.maxDuration - METEOR_CONFIG.minDuration);
         slot.active = true;
         slot.age = 0;
-        slot.duration = duration;
+        slot.duration =
+          duration * (activity.shower ? METEOR_CONFIG.showerDurationScale : 1);
         slot.x = startX;
         slot.y = startY;
         slot.dx = Math.cos(angle);
         slot.dy = Math.sin(angle);
         slot.speed = speed;
-        slot.length = (3.8 + Math.random() * 4.2) * style.length;
+        slot.length =
+          (3.8 + Math.random() * 4.2) *
+          style.length *
+          (activity.shower ? METEOR_CONFIG.showerTrailScale : 1);
+        slot.brightness = activity.shower ? 0.88 + Math.random() * 0.12 : 0.62 + Math.random() * 0.28;
         slot.material.color.setHex(
           style.colors[Math.floor(Math.random() * style.colors.length)],
         );
@@ -1467,6 +1522,7 @@
           meteor.material.opacity = 0;
         });
         nextMeteorAt = Infinity;
+        meteorBurstRemaining = 0;
       }
 
       function updateMeteors(delta) {
@@ -1507,8 +1563,7 @@
           const progress = meteor.age / meteor.duration;
           const fadeIn = Math.min(1, progress / 0.14);
           const fadeOut = Math.min(1, (1 - progress) / 0.3);
-          meteor.material.opacity = Math.min(fadeIn, fadeOut) *
-            (0.62 + Math.random() * 0.28);
+          meteor.material.opacity = Math.min(fadeIn, fadeOut) * meteor.brightness;
         });
       }
 
