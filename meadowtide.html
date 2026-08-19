@@ -64,11 +64,12 @@
         transform: translateX(-50%);
         background: rgba(15, 15, 20, 0.9);
         color: #fff;
-        padding: 20px 26px 16px;
+        padding: 34px 32px 20px;
         border-radius: 6px;
-        font-size: 15px;
+        font-size: 16px;
         display: none;
-        width: min(900px, 90vw);
+        width: 90vw;
+        min-height: 170px;
         box-sizing: border-box;
         border: 2px solid #f5c542;
         box-shadow: 0 0 0 1px rgba(245, 197, 66, 0.3) inset;
@@ -76,7 +77,7 @@
       }
       #dialogText {
         white-space: pre-wrap;
-        line-height: 1.6;
+        line-height: 1.7;
       }
       #dialogName {
         position: absolute;
@@ -101,6 +102,28 @@
         display: none;
         pointer-events: none;
         filter: drop-shadow(0 10px 18px rgba(0, 0, 0, 0.45));
+      }
+      /* 立繪還沒生成好時的佔位框——只要有 speaker 就顯示，讓版位在真的圖檔
+         進資料夾之前也看得出比例對不對；真的立繪載入成功後會蓋掉這個。 */
+      #dialogPortraitPlaceholder {
+        position: absolute;
+        bottom: 100%;
+        right: 20px;
+        width: 180px;
+        height: 260px;
+        margin-bottom: 6px;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        background: rgba(15, 15, 20, 0.55);
+        border: 2px dashed rgba(245, 197, 66, 0.6);
+        border-radius: 8px;
+        color: rgba(245, 197, 66, 0.85);
+        font-size: 13px;
+        line-height: 1.5;
+        white-space: pre-line;
+        pointer-events: none;
       }
       #dialogContinue {
         position: absolute;
@@ -158,6 +181,7 @@
     <div id="dialog">
       <div id="dialogName"></div>
       <img id="dialogPortrait" alt="" />
+      <div id="dialogPortraitPlaceholder"></div>
       <div id="dialogText"></div>
       <div id="dialogContinue">按 E 繼續 ▾</div>
     </div>
@@ -2068,7 +2092,7 @@
         moonGlowMat.color
           .setHex(0xcdd8f2)
           .lerp(SUN_HORIZON_COLOR, horizonWarmth * 0.3);
-        const pulse = 1 + Math.sin(elapsed * 0.5) * 0.01;
+        const pulse = 1 + Math.sin(effectElapsed * 0.5) * 0.01;
         moonGlow.scale.setScalar(pulse);
       }
 
@@ -2196,7 +2220,7 @@
             Math.min(1, sunOpacity * 1.05) * skyOnlyVisibility;
           sunGlowMat.opacity =
             sunOpacity * (0.2 + arc * 0.16) * skyOnlyVisibility;
-          const pulse = 1 + Math.sin(elapsed * 0.7) * 0.015;
+          const pulse = 1 + Math.sin(effectElapsed * 0.7) * 0.015;
           sunGlow.scale.setScalar(pulse);
         }
 
@@ -2246,11 +2270,11 @@
         skyClouds.forEach((cloud, index) => {
           cloud.visible = index < cloudCount;
           if (!cloud.visible) return;
-          const travel = cloud.userData.baseX + elapsed * cloudSpeed;
+          const travel = cloud.userData.baseX + effectElapsed * cloudSpeed;
           cloud.position.x = -55 + ((((travel + 55) % 110) + 110) % 110);
           cloud.position.y =
             cloud.userData.baseY +
-            Math.sin(elapsed * 0.08 + cloud.userData.seed * 12) * 0.32;
+            Math.sin(effectElapsed * 0.08 + cloud.userData.seed * 12) * 0.32;
           cloud.userData.material.color.setHex(cloudColor);
           cloud.userData.material.opacity =
             cloudOpacity * (0.3 + (1 - nightFactor) * 0.7);
@@ -2287,7 +2311,7 @@
             const pulse = Math.max(
               0,
               Math.sin(
-                elapsed * (1.42 + (phaseIndex % 3) * 0.17) +
+                effectElapsed * (1.42 + (phaseIndex % 3) * 0.17) +
                   (phaseIndex * Math.PI * 2) /
                     group.userData.sparkleMaterials.length +
                   seasonIndex * 0.7,
@@ -2668,7 +2692,7 @@
             snowEffect.positions[base] = wrapWeatherParticle(
               snowEffect.positions[base] +
                 ((currentWeather === "blizzard" ? 10 : 1.2) +
-                  Math.sin(elapsed * 1.4 + seed * 20)) *
+                  Math.sin(effectElapsed * 1.4 + seed * 20)) *
                   dt,
               WEATHER_BOUNDS.minX,
               WEATHER_BOUNDS.maxX,
@@ -2694,13 +2718,15 @@
           petalForegroundEffect.material.uniforms.opacity.value =
             currentWeather === "cloudy" ? 0.7 : 0.86;
           [petalEffect, petalForegroundEffect].forEach((layer, layerIndex) => {
-            layer.material.uniforms.time.value = elapsed;
+            layer.material.uniforms.time.value = effectElapsed;
             for (let i = 0; i < layer.count; i++) {
               const base = i * 3,
                 seed = layer.seeds[i];
               const swirl =
                 Math.sin(
-                  elapsed * (0.72 + seed * 0.55) + seed * 19 + layerIndex,
+                  effectElapsed * (0.72 + seed * 0.55) +
+                    seed * 19 +
+                    layerIndex,
                 ) *
                 (0.55 + layerIndex * 0.35);
               layer.positions[base] = wrapWeatherParticle(
@@ -2712,7 +2738,7 @@
                 layer.positions[base + 1] -
                   (0.5 +
                     seed * 0.68 +
-                    Math.sin(elapsed * 1.15 + seed * 13) * 0.18) *
+                    Math.sin(effectElapsed * 1.15 + seed * 13) * 0.18) *
                     dt,
                 WEATHER_BOUNDS.minY,
                 WEATHER_BOUNDS.maxY,
@@ -2734,12 +2760,12 @@
             currentWeather === "cloudy" ? 0.66 : 0.82;
           [autumnLeafEffect, autumnLeafForegroundEffect].forEach(
             (layer, layerIndex) => {
-              layer.material.uniforms.time.value = elapsed * 0.86;
+              layer.material.uniforms.time.value = effectElapsed * 0.86;
               for (let i = 0; i < layer.count; i++) {
                 const base = i * 3,
                   seed = layer.seeds[i];
                 const gust =
-                  Math.sin(elapsed * (0.48 + seed * 0.7) + seed * 23) *
+                  Math.sin(effectElapsed * (0.48 + seed * 0.7) + seed * 23) *
                   (0.75 + layerIndex * 0.4);
                 layer.positions[base] = wrapWeatherParticle(
                   layer.positions[base] + (0.42 + gust) * dt,
@@ -2748,7 +2774,9 @@
                 );
                 layer.positions[base + 1] = wrapWeatherParticle(
                   layer.positions[base + 1] -
-                    (0.7 + seed * 0.85 + Math.sin(elapsed + seed * 17) * 0.2) *
+                    (0.7 +
+                      seed * 0.85 +
+                      Math.sin(effectElapsed + seed * 17) * 0.2) *
                       dt,
                   WEATHER_BOUNDS.minY,
                   WEATHER_BOUNDS.maxY,
@@ -2763,7 +2791,9 @@
             ? Math.pow(
                 Math.max(
                   0,
-                  Math.sin(elapsed * 0.73 + Math.sin(elapsed * 0.19) * 2.1),
+                  Math.sin(
+                    effectElapsed * 0.73 + Math.sin(effectElapsed * 0.19) * 2.1,
+                  ),
                 ),
                 34,
               )
@@ -2772,6 +2802,11 @@
           flashWave * (nightFactor > 0.45 ? 2.8 : 1.5) * weatherTransitionRamp();
       }
       let elapsed = 0;
+      // elapsed 是遊戲時鐘，對話開啟時會凍結(isGameTimePaused())；effectElapsed
+      // 專門給「純視覺效果」的動畫相位用(太陽/月亮光暈脈動、雲/星星/水面/浪花/
+      // 風車、天氣粒子等)，每一幀都照真實時間累加、不會被對話暫停，這樣對話
+      // 演出時背景效果還是活的，只有主角動作跟遊戲時間本身被鎖住。
+      let effectElapsed = 0;
 
       // ==============================================================
       // 5.5) 背景音樂：季節日夜旋律層 + 天氣疊加層，全部經 GainNode 淡入淡出
@@ -6754,6 +6789,9 @@
       const dialogTextEl = document.getElementById("dialogText");
       const dialogNameEl = document.getElementById("dialogName");
       const dialogPortraitEl = document.getElementById("dialogPortrait");
+      const dialogPortraitPlaceholderEl = document.getElementById(
+        "dialogPortraitPlaceholder",
+      );
       const cgOverlayEl = document.getElementById("cgOverlay");
       const cgImgEl = document.getElementById("cgImg");
 
@@ -6772,15 +6810,22 @@
       function setDialogPortrait(speakerId) {
         if (currentCgId || !speakerId) {
           dialogPortraitEl.style.display = "none";
+          dialogPortraitPlaceholderEl.style.display = "none";
           return;
         }
+        // 圖檔還沒生成好之前，先顯示一個佔位框(虛線邊框+角色代號)，讓版位/
+        // 比例現在就看得出來；真的立繪載入成功後蓋掉佔位框，失敗就留著佔位框。
+        dialogPortraitEl.style.display = "none";
+        dialogPortraitPlaceholderEl.textContent = `〔立繪佔位〕\n${speakerId}`;
+        dialogPortraitPlaceholderEl.style.display = "flex";
         const img = new Image();
         img.onload = () => {
           dialogPortraitEl.src = img.src;
           dialogPortraitEl.style.display = "block";
+          dialogPortraitPlaceholderEl.style.display = "none";
         };
         img.onerror = () => {
-          dialogPortraitEl.style.display = "none"; // 還沒有這個角色的立繪，不顯示、不報錯
+          dialogPortraitEl.style.display = "none"; // 還沒有這個角色的立繪，佔位框留著
         };
         img.src = `src/assets/portraits/${speakerId}.png`;
       }
@@ -7123,6 +7168,7 @@
         const frameDt = Math.min((now - lastFrame) / 1000, 0.05);
         lastFrame = now;
         const dt = isGameTimePaused() ? 0 : frameDt;
+        effectElapsed += frameDt; // 不受暫停影響，純視覺效果一律吃這個
         updateGameClock(dt);
         animationFrameCount++;
         const updateWaterSurface = animationFrameCount % 2 === 0; // 水面維持約 30fps，減少大量頂點運算
@@ -7360,10 +7406,13 @@
         // 日照、天空、燈光與星象共用同一個依季節日出日落計算的夜色權重。
         const nightFactor = getNightFactor(phase);
         window.__nightFactor = nightFactor;
-        updateMusic(nightFactor, dt);
+        // 這四個都是純演出/氣氛效果，故意傳 frameDt(真實時間)而不是 dt——
+        // 對話開啟時遊戲時鐘跟主角動作凍結，但音樂淡入淡出、流星、天氣粒子
+        // 不該跟著卡住，繼續播才像「世界還活著」而不是整個遊戲暫停。
+        updateMusic(nightFactor, frameDt);
         updateSkyDome(nightFactor);
-        updateMeteors(dt);
-        updateWeatherEffects(dt, nightFactor);
+        updateMeteors(frameDt);
+        updateWeatherEffects(frameDt, nightFactor);
 
         // --- 動物固定作息：06:00 出門，18:00 開始回穀倉；惡劣天氣全天留在小屋。 ---
         // 不使用 nightFactor 判斷，因為它是光線漸變值，不等於準確鐘點。
@@ -7588,7 +7637,7 @@
             sampleDirectedSeaWave(
               worldX,
               worldZ,
-              elapsed,
+              effectElapsed,
               EAST_SEA_WAVE_DIRECTION,
               EAST_SEA_WAVE,
               waveSample,
@@ -7625,8 +7674,8 @@
             const wx = bx + llx,
               wz = bz + llz;
             const y =
-              Math.sin(wx * 2.4 + elapsed * 1.1) * 0.011 +
-              Math.cos(wz * 2.0 + elapsed * 0.85) * 0.009;
+              Math.sin(wx * 2.4 + effectElapsed * 1.1) * 0.011 +
+              Math.cos(wz * 2.0 + effectElapsed * 0.85) * 0.009;
             lPosAttr.setY(i, y);
           }
           lPosAttr.needsUpdate = true;
@@ -7648,7 +7697,7 @@
             sampleDirectedSeaWave(
               worldX,
               worldZ,
-              elapsed,
+              effectElapsed,
               NORTHEAST_SEA_WAVE_DIRECTION,
               NORTH_SEA_WAVE,
               northWaveSample,
@@ -7677,7 +7726,7 @@
         }
         // 拍岸浪花：浪頭衝上岸時放大、變亮、泡沫顆粒跟著滾動碎裂；退潮時很快收回去
         foamMeshes.forEach((f) => {
-          const phase = elapsed * 2.2 + f.userData.seed;
+          const phase = effectElapsed * 2.2 + f.userData.seed;
           const cycle = (Math.sin(phase) + 1) / 2; // 0~1，一波一波衝上岸又退回去
           const shoreTravel = -0.1 + cycle * 0.32;
           const waveDirection = f.userData.waveDirection;
@@ -7692,27 +7741,29 @@
             const bp = phase * 1.3 + i * 0.7;
             const bumpScale = Math.max(0.01, Math.sin(bp));
             b.scale.set(bumpScale, bumpScale * (0.3 + impact * 0.5), bumpScale);
-            b.rotation.z = elapsed * 3 + i; // 滾動感
+            b.rotation.z = effectElapsed * 3 + i; // 滾動感
             b.material.opacity = impact * 0.8;
           });
         });
 
         windmillRotors.forEach((rotor) => {
-          rotor.rotation.z -= dt * 0.62;
+          rotor.rotation.z -= frameDt * 0.62; // 純視覺，對話中不暫停
         });
 
         // 真魚通常會直線巡游一段、短暫停留，再改成橫向或縱向的新路線；
         // 路線只加一點側向弧度，方向與停留時間每段都不同。
         fishSchool.forEach((f) => {
-          if (!f.route && elapsed >= f.pauseUntil) startFishRoute(f, elapsed);
+          if (!f.route && effectElapsed >= f.pauseUntil)
+            startFishRoute(f, effectElapsed);
           if (!f.route) {
             f.mesh.position.y =
-              f.baseY + Math.sin(elapsed * 0.8 + f.phase) * f.depthAmp * 0.35;
+              f.baseY +
+              Math.sin(effectElapsed * 0.8 + f.phase) * f.depthAmp * 0.35;
             return;
           }
           const progress = Math.min(
             1,
-            (elapsed - f.route.start) / f.route.duration,
+            (effectElapsed - f.route.start) / f.route.duration,
           );
           const sideCurve = Math.sin(progress * Math.PI) * f.route.curve;
           const nx =
@@ -7736,12 +7787,13 @@
           f.mesh.position.x = nx;
           f.mesh.position.z = nz;
           f.mesh.position.y =
-            f.baseY + Math.sin(elapsed * 0.75 + f.phase) * f.depthAmp;
+            f.baseY + Math.sin(effectElapsed * 0.75 + f.phase) * f.depthAmp;
           if (progress >= 1) {
             f.route = null;
             // 約七成路段結束後會停 0.7～3.2 秒，其餘直接接下一段。
             f.pauseUntil =
-              elapsed + (Math.random() < 0.7 ? 0.7 + Math.random() * 2.5 : 0);
+              effectElapsed +
+              (Math.random() < 0.7 ? 0.7 + Math.random() * 2.5 : 0);
           }
         });
 
