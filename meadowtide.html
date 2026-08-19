@@ -1815,7 +1815,9 @@
         const deltaFromRise = (((currentPhase - moonRiseFrac) % 1) + 1) % 1;
         const aboveHorizon = deltaFromRise < daySpan;
         const moonProgress = deltaFromRise / daySpan;
-        const arc = aboveHorizon ? Math.sin(moonProgress * Math.PI) : 0;
+        // 拋物線弧線(4t(1-t))取代原本的正弦：軌跡是真正的拋物線，兩端起落
+        // 更利落、頂點更飽滿，看起來比正弦的「扁圓頂」更凸一點。
+        const arc = aboveHorizon ? 4 * moonProgress * (1 - moonProgress) : 0;
         const illuminatedFraction =
           (1 - Math.cos(moonAgeFraction * Math.PI * 2)) / 2;
         const weatherMoonVisibility =
@@ -1831,7 +1833,8 @@
         const moonOpacity = arc * illuminatedFraction * weatherMoonVisibility;
         moonSkyGroup.visible = moonOpacity > 0.005;
         if (!moonSkyGroup.visible) return;
-        moonSkyGroup.position.x = 40 - moonProgress * 80;
+        // 左右移動範圍縮窄(80→64)，同樣的高度在較窄的弧寬下視覺上更凸。
+        moonSkyGroup.position.x = 32 - moonProgress * 64;
         moonSkyGroup.position.y = -5.5 + arc * daylight.peak * 0.5;
         // 跟太陽用同一招：把月亮所在 x 對應的北側懸崖投影到螢幕，低於地形
         // 輪廓時額外淡出，避免月亮掛在地形前面穿幫。
@@ -1923,7 +1926,8 @@
         const daySpan = daylight.sunset - daylight.sunrise;
         const sunProgress = (currentPhase - daylight.sunrise) / daySpan;
         const aboveHorizon = sunProgress > 0 && sunProgress < 1;
-        const arc = aboveHorizon ? Math.sin(sunProgress * Math.PI) : 0;
+        // 跟月亮同一招：拋物線弧線取代正弦，頂點更飽滿、看起來更凸。
+        const arc = aboveHorizon ? 4 * sunProgress * (1 - sunProgress) : 0;
         const weatherSunVisibility =
           {
             clear: 1,
@@ -1937,7 +1941,8 @@
         const sunOpacity = arc * weatherSunVisibility;
         sunSkyGroup.visible = sunOpacity > 0.005;
         if (sunSkyGroup.visible) {
-          sunSkyGroup.position.x = 40 - sunProgress * 80;
+          // 左右移動範圍縮窄(80→64)，同樣的高度在較窄的弧寬下視覺上更凸。
+          sunSkyGroup.position.x = 32 - sunProgress * 64;
           // daylight.peak（13.5~21）是照原始設計拿來抓「太陽在天空中多高」的
           // 係數，但預設 zoom=6 時相機視錐只到 top=6，太陽升到接近中午
           // (arc 接近 1) 就會整個超出視錐範圍，等於中午前後太陽會直接消失。
