@@ -792,6 +792,10 @@ function updateSeasonalStars(nightFactor) {
 function updateSkyDome(nightFactor) {
   const zenith = SKY_DAY_ZENITH.clone().lerp(SKY_NIGHT_ZENITH, nightFactor);
   const horizon = SKY_DAY_HORIZON.clone().lerp(SKY_NIGHT_HORIZON, nightFactor);
+  const weatherShade = { cloudy: 0.38, rain: 0.5, typhoon: 0.68, storm: 0.76, snow: 0.22, blizzard: 0.58 }[currentWeather] || 0;
+  const weatherSky = currentWeather === 'snow' || currentWeather === 'blizzard'
+    ? new THREE.Color(0xb9c6d2) : new THREE.Color(0x667386);
+  zenith.lerp(weatherSky, weatherShade); horizon.lerp(weatherSky, weatherShade * 0.78);
   const posAttr = skyGeo.attributes.position;
   for (let i = 0; i < posAttr.count; i++) {
     const t = Math.max(0, posAttr.getY(i) / 85); // 0 地平線 ~1 天頂
@@ -803,6 +807,141 @@ function updateSkyDome(nightFactor) {
   skyColorAttr.needsUpdate = true;
   skyDome.position.copy(camera.position);
   updateSeasonalStars(nightFactor);
+}
+
+// ==============================================================
+// 5.4) 低成本天氣粒子：雨線、雪片、春季櫻花，以及暴風雨閃電
+// ==============================================================
+function makeSoftParticleTexture(shape = 'round') {
+  const canvas = document.createElement('canvas');
+  canvas.width = canvas.height = 32;
+  const ctx = canvas.getContext('2d');
+  if (shape === 'petal') {
+    ctx.translate(16, 16); ctx.rotate(-0.55);
+    const gradient = ctx.createRadialGradient(-3, -2, 1, 0, 0, 11);
+    gradient.addColorStop(0, 'rgba(255,255,255,1)');
+    gradient.addColorStop(0.55, 'rgba(255,190,215,0.9)');
+    gradient.addColorStop(1, 'rgba(255,160,200,0)');
+    ctx.fillStyle = gradient; ctx.beginPath(); ctx.ellipse(0, 0, 5, 11, 0, 0, Math.PI * 2); ctx.fill();
+  } else {
+    const gradient = ctx.createRadialGradient(16, 16, 1, 16, 16, 13);
+    gradient.addColorStop(0, 'rgba(255,255,255,1)');
+    gradient.addColorStop(0.45, 'rgba(255,255,255,0.82)');
+    gradient.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.fillStyle = gradient; ctx.fillRect(0, 0, 32, 32);
+  }
+  return new THREE.CanvasTexture(canvas);
+}
+const WEATHER_BOUNDS = { x: 38, y: 22 };
+const weatherEffectGroup = new THREE.Group();
+weatherEffectGroup.position.z = -12;
+camera.add(weatherEffectGroup);
+
+const MAX_RAIN_DROPS = 360;
+const rainPositions = new Float32Array(MAX_RAIN_DROPS * 6);
+const rainSeeds = new Float32Array(MAX_RAIN_DROPS);
+for (let i = 0; i < MAX_RAIN_DROPS; i++) {
+  rainSeeds[i] = hash2(i * 4.17, 8.3);
+  rainPositions[i * 6] = rainPositions[i * 6 + 3] = (hash2(i, 2.1) - 0.5) * WEATHER_BOUNDS.x * 2;
+  rainPositions[i * 6 + 1] = (hash2(i, 7.9) - 0.5) * WEATHER_BOUNDS.y * 2;
+  rainPositions[i * 6 + 4] = rainPositions[i * 6 + 1] - 0.65;
+  rainPositions[i * 6 + 2] = rainPositions[i * 6 + 5] = 0;
+}
+const rainGeometry = new THREE.BufferGeometry();
+rainGeometry.setAttribute('position', new THREE.BufferAttribute(rainPositions, 3));
+const rainMaterial = new THREE.LineBasicMaterial({ color: 0xaed5ef, transparent: true, opacity: 0, depthTest: false });
+const rainEffect = new THREE.LineSegments(rainGeometry, rainMaterial);
+rainEffect.frustumCulled = false; weatherEffectGroup.add(rainEffect);
+
+function makeWeatherPointLayer(count, color, size, texture) {
+  const positions = new Float32Array(count * 3);
+  const seeds = new Float32Array(count);
+  for (let i = 0; i < count; i++) {
+    seeds[i] = hash2(i * 5.31, count * 0.17);
+    positions[i * 3] = (hash2(i, 1.7) - 0.5) * WEATHER_BOUNDS.x * 2;
+    positions[i * 3 + 1] = (hash2(i, 6.4) - 0.5) * WEATHER_BOUNDS.y * 2;
+  }
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+  const material = new THREE.PointsMaterial({
+    color, size, map: texture, transparent: true, opacity: 0,
+    depthWrite: false, depthTest: false, sizeAttenuation: false,
+  });
+  const points = new THREE.Points(geometry, material);
+  points.frustumCulled = false; weatherEffectGroup.add(points);
+  return { points, geometry, material, positions, seeds, count };
+}
+const snowEffect = makeWeatherPointLayer(260, 0xf4f8ff, 6.5, makeSoftParticleTexture());
+const petalTexture = makeSoftParticleTexture('petal');
+const petalEffect = makeWeatherPointLayer(360, 0xffc0d8, 13.5, petalTexture);
+const petalForegroundEffect = makeWeatherPointLayer(140, 0xff8fbd, 20, petalTexture);
+const weatherFlashLight = new THREE.HemisphereLight(0xeaf3ff, 0x65758b, 0);
+scene.add(weatherFlashLight);
+
+function wrapWeatherParticle(value, bound) {
+  if (value < -bound) return bound;
+  if (value > bound) return -bound;
+  return value;
+}
+function updateWeatherEffects(dt, nightFactor) {
+  const outside = currentMapName === 'outside';
+  weatherEffectGroup.visible = outside;
+  if (!outside) { weatherFlashLight.intensity = 0; return; }
+  const rainMode = currentWeather === 'rain' || currentWeather === 'typhoon' || currentWeather === 'storm';
+  const rainCount = currentWeather === 'rain' ? 190 : currentWeather === 'typhoon' ? 360 : currentWeather === 'storm' ? 300 : 0;
+  const rainDrift = currentWeather === 'typhoon' ? 13 : currentWeather === 'storm' ? 7 : 2;
+  rainEffect.visible = rainMode;
+  if (rainMode) {
+    rainGeometry.setDrawRange(0, rainCount * 2);
+    rainMaterial.opacity = currentWeather === 'rain' ? 0.52 : 0.72;
+    for (let i = 0; i < rainCount; i++) {
+      const base = i * 6, speed = 14 + rainSeeds[i] * 10;
+      let x = rainPositions[base] + rainDrift * dt;
+      let y = rainPositions[base + 1] - speed * dt;
+      x = wrapWeatherParticle(x, WEATHER_BOUNDS.x); y = wrapWeatherParticle(y, WEATHER_BOUNDS.y);
+      const slant = rainDrift * 0.055, length = currentWeather === 'rain' ? 0.62 : 0.95;
+      rainPositions[base] = x; rainPositions[base + 1] = y;
+      rainPositions[base + 3] = x - slant; rainPositions[base + 4] = y - length;
+    }
+    rainGeometry.attributes.position.needsUpdate = true;
+  }
+
+  const snowMode = currentWeather === 'snow' || currentWeather === 'blizzard';
+  snowEffect.points.visible = snowMode;
+  if (snowMode) {
+    snowEffect.material.opacity = currentWeather === 'blizzard' ? 0.9 : 0.72;
+    snowEffect.material.size = currentWeather === 'blizzard' ? 7.5 : 6.5;
+    for (let i = 0; i < snowEffect.count; i++) {
+      const base = i * 3, seed = snowEffect.seeds[i];
+      snowEffect.positions[base] = wrapWeatherParticle(snowEffect.positions[base]
+        + ((currentWeather === 'blizzard' ? 10 : 1.2) + Math.sin(elapsed * 1.4 + seed * 20)) * dt, WEATHER_BOUNDS.x);
+      snowEffect.positions[base + 1] = wrapWeatherParticle(snowEffect.positions[base + 1]
+        - (currentWeather === 'blizzard' ? 5.2 : 1.4 + seed) * dt, WEATHER_BOUNDS.y);
+    }
+    snowEffect.geometry.attributes.position.needsUpdate = true;
+  }
+
+  const petalsVisible = currentSeason === 0 && (currentWeather === 'clear' || currentWeather === 'cloudy');
+  petalEffect.points.visible = petalsVisible;
+  petalForegroundEffect.points.visible = petalsVisible;
+  if (petalsVisible) {
+    petalEffect.material.opacity = currentWeather === 'cloudy' ? 0.76 : 0.9;
+    petalForegroundEffect.material.opacity = currentWeather === 'cloudy' ? 0.7 : 0.86;
+    [petalEffect, petalForegroundEffect].forEach((layer, layerIndex) => {
+      for (let i = 0; i < layer.count; i++) {
+        const base = i * 3, seed = layer.seeds[i];
+        const swirl = Math.sin(elapsed * (0.72 + seed * 0.55) + seed * 19 + layerIndex) * (0.55 + layerIndex * 0.35);
+        layer.positions[base] = wrapWeatherParticle(layer.positions[base]
+          + (0.7 + swirl) * dt, WEATHER_BOUNDS.x);
+        layer.positions[base + 1] = wrapWeatherParticle(layer.positions[base + 1]
+          - (0.5 + seed * 0.68 + Math.sin(elapsed * 1.15 + seed * 13) * 0.18) * dt, WEATHER_BOUNDS.y);
+      }
+      layer.geometry.attributes.position.needsUpdate = true;
+    });
+  }
+  const flashWave = currentWeather === 'storm'
+    ? Math.pow(Math.max(0, Math.sin(elapsed * 0.73 + Math.sin(elapsed * 0.19) * 2.1)), 34) : 0;
+  weatherFlashLight.intensity = flashWave * (nightFactor > 0.45 ? 2.8 : 1.5);
 }
 const dayLength = 240; // 測試：遊戲內每小時 10 秒（一天 4 分鐘）
 let elapsed = 0;
@@ -3065,6 +3204,7 @@ function animate(now) {
   window.__nightFactor = nightFactor;
   updateMusic(nightFactor, dt);
   updateSkyDome(nightFactor);
+  updateWeatherEffects(dt, nightFactor);
 
   // --- 動物固定作息：06:00 出門，18:00 開始回穀倉 ---
   // 不使用 nightFactor 判斷，因為它是光線漸變值，不等於準確鐘點。
@@ -3130,10 +3270,14 @@ function animate(now) {
   });
 
   const sky = DAY.sky.clone().lerp(NIGHT.sky, nightFactor);
+  const weatherDim = { cloudy: 0.28, rain: 0.38, typhoon: 0.55, storm: 0.62, snow: 0.16, blizzard: 0.46 }[currentWeather] || 0;
+  const weatherFogColor = currentWeather === 'snow' || currentWeather === 'blizzard'
+    ? new THREE.Color(0xcbd4dc) : new THREE.Color(0x697685);
+  sky.lerp(weatherFogColor, weatherDim);
   scene.background = sky;
-  scene.fog = new THREE.Fog(sky, 16, 34);
-  ambient.intensity = DAY.ambient + (NIGHT.ambient - DAY.ambient) * nightFactor;
-  sun.intensity = DAY.sunIntensity + (NIGHT.sunIntensity - DAY.sunIntensity) * nightFactor;
+  scene.fog = new THREE.Fog(sky, 16 - weatherDim * 5, 34 - weatherDim * 11);
+  ambient.intensity = (DAY.ambient + (NIGHT.ambient - DAY.ambient) * nightFactor) * (1 - weatherDim * 0.32);
+  sun.intensity = (DAY.sunIntensity + (NIGHT.sunIntensity - DAY.sunIntensity) * nightFactor) * (1 - weatherDim * 0.72);
   sun.color.copy(DAY.sunColor).lerp(NIGHT.sunColor, nightFactor);
   windowMats.forEach(m => { m.emissiveIntensity = nightFactor; });
   outdoorLampLights.forEach(light => { light.intensity = nightFactor * 1.35; });
