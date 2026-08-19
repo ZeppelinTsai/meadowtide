@@ -125,6 +125,15 @@
           spacingX: 2,
           spacingZ: 2.1,
         }, // 小屋右側 12 棵
+        windmill: {
+          x: 28,
+          z: 12,
+          w: 4,
+          d: 4,
+          visualX: 29.5,
+          visualZ: 13.5,
+          scale: 2,
+        },
         houseRoad: { width: 3 },
         farmAccessRoad: { width: 3 },
         coastRoad: { width: 3 },
@@ -432,6 +441,21 @@
           }
         }
       });
+
+      // 果園南側紅色風車占地。
+      for (
+        let z = LAYOUT.windmill.z;
+        z < LAYOUT.windmill.z + LAYOUT.windmill.d;
+        z++
+      ) {
+        for (
+          let x = LAYOUT.windmill.x;
+          x < LAYOUT.windmill.x + LAYOUT.windmill.w;
+          x++
+        ) {
+          MAPS.outside.tiles[z][x] = 1;
+        }
+      }
 
       const POUCH_POS = { x: LAYOUT.farm.x + 3, z: LAYOUT.farm.z + 1 }; // 農田走道上
 
@@ -1043,7 +1067,7 @@
         sunColor: new THREE.Color(0xffffff),
       };
       const NIGHT = {
-        sky: new THREE.Color(0x0b1230),
+        sky: new THREE.Color(0x01030a),
         ambient: 0.18,
         sunIntensity: 0.12,
         sunColor: new THREE.Color(0x8fa8ff),
@@ -1063,9 +1087,9 @@
       const SKY_DAY_ZENITH = new THREE.Color(0x0f6fca),
         SKY_DAY_MID = new THREE.Color(0x55b5ee),
         SKY_DAY_HORIZON = new THREE.Color(0x8bd3f5);
-      const SKY_NIGHT_ZENITH = new THREE.Color(0x030512),
-        SKY_NIGHT_MID = new THREE.Color(0x101b38),
-        SKY_NIGHT_HORIZON = new THREE.Color(0x1c2a4a);
+      const SKY_NIGHT_ZENITH = new THREE.Color(0x000103),
+        SKY_NIGHT_MID = new THREE.Color(0x020612),
+        SKY_NIGHT_HORIZON = new THREE.Color(0x060d20);
       const skyGeo = new THREE.SphereGeometry(85, 24, 16);
       const skyColorAttr = new THREE.BufferAttribute(
         new Float32Array(skyGeo.attributes.position.count * 3),
@@ -2589,6 +2613,7 @@
       const windowMats = [];
       const outdoorLampLights = [];
       const foamMeshes = []; // 沙灘跟海交界的拍岸泡沫，animate() 裡逐幀讓它忽明忽暗
+      const windmillRotors = [];
       let oceanMesh = null; // 整片海面網格，animate() 裡逐頂點做波浪動畫
       let lakeMesh = null; // 湖面，跟海一樣是合併網格，只是波浪幅度小很多、沒有碎浪
       const lakeShoreColliders = []; // 湖岸石頭的圓形碰撞，建圖時與石頭位置同步
@@ -4138,6 +4163,97 @@
       // 超出邊界的座標判定為擋路，不用額外寫碰撞）。顏色刻意調成偏藍灰、不飽和，
       // 這是「空氣透視」的偷吃步：越遠的東西，人眼會自動感覺它偏藍偏淡，
       // 不用真的做距離霧化計算，選對顏色就有「這座山很遠」的錯覺
+      function makeRedWindmill(area) {
+        const group = new THREE.Group();
+        const redMat = new THREE.MeshStandardMaterial({
+          color: 0xb73535,
+          flatShading: true,
+          roughness: 0.88,
+        });
+        const darkRedMat = new THREE.MeshStandardMaterial({
+          color: 0x76252a,
+          flatShading: true,
+          roughness: 0.92,
+        });
+        const creamMat = new THREE.MeshStandardMaterial({
+          color: 0xf1dfbd,
+          flatShading: true,
+          roughness: 0.82,
+        });
+        const woodMat = new THREE.MeshStandardMaterial({
+          color: 0x5c3629,
+          flatShading: true,
+          roughness: 1,
+        });
+
+        const tower = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.72, 1.02, 2.35, 8),
+          redMat,
+        );
+        tower.position.y = 1.18;
+        // CylinderGeometry 的八邊形預設讓頂角朝向正面；轉半個分段，改成平面朝前。
+        tower.rotation.y = Math.PI / 8;
+        tower.castShadow = true;
+        tower.receiveShadow = true;
+        group.add(tower);
+
+        const roof = new THREE.Mesh(
+          new THREE.ConeGeometry(0.95, 0.72, 8),
+          darkRedMat,
+        );
+        roof.position.y = 2.68;
+        roof.rotation.y = Math.PI / 8;
+        roof.castShadow = true;
+        group.add(roof);
+
+        const door = new THREE.Mesh(
+          new THREE.BoxGeometry(0.36, 0.62, 0.08),
+          woodMat,
+        );
+        door.position.set(0, 0.34, 1.01);
+        group.add(door);
+
+        const rotor = new THREE.Group();
+        // 整組轉軸往塔身正面外推，保留葉片厚度與屋身間隙，避免旋轉時穿模。
+        rotor.position.set(0, 2.14, 1.2);
+        rotor.scale.setScalar(0.9);
+        for (let i = 0; i < 4; i++) {
+          const arm = new THREE.Group();
+          arm.rotation.z = i * Math.PI * 0.5;
+          const spar = new THREE.Mesh(
+            new THREE.BoxGeometry(0.12, 1.42, 0.09),
+            woodMat,
+          );
+          spar.position.y = 0.7;
+          const sail = new THREE.Mesh(
+            new THREE.BoxGeometry(0.34, 0.82, 0.075),
+            creamMat,
+          );
+          sail.position.set(0.12, 0.91, 0.02);
+          sail.rotation.z = -0.08;
+          sail.castShadow = true;
+          arm.add(spar, sail);
+          rotor.add(arm);
+        }
+        const hub = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.2, 0.24, 0.22, 10),
+          darkRedMat,
+        );
+        hub.rotation.x = Math.PI / 2;
+        hub.position.z = 0.08;
+        rotor.add(hub);
+        group.add(rotor);
+        windmillRotors.push(rotor);
+
+        group.position.set(
+          area.visualX ?? area.x + (area.w - 1) / 2,
+          0,
+          area.visualZ ?? area.z + (area.d - 1) / 2,
+        );
+        group.scale.setScalar(area.scale || 1);
+        return group;
+      }
+
       function makeMountain(x, z, height, seed) {
         const g = new THREE.Group();
         const rockMat = new THREE.MeshStandardMaterial({
@@ -4870,6 +4986,13 @@
         // 小屋門口保留三格寬的短空地，動物進出時不會被高草遮住。
         if (z <= BARN_DOOR.z + 1 && Math.abs(x - BARN_DOOR.x) <= 1)
           return false;
+        if (
+          x >= LAYOUT.windmill.x - 1 &&
+          x < LAYOUT.windmill.x + LAYOUT.windmill.w + 1 &&
+          z >= LAYOUT.windmill.z - 1 &&
+          z < LAYOUT.windmill.z + LAYOUT.windmill.d + 1
+        )
+          return false;
         const onEdge =
           x === PASTURE.minX ||
           x === PASTURE.maxX ||
@@ -4893,7 +5016,13 @@
             x: PASTURE.minX + Math.random() * (PASTURE.maxX - PASTURE.minX),
             z: PASTURE.minZ + Math.random() * (PASTURE.maxZ - PASTURE.minZ),
           };
-          if (!isInsideLakeShape(point.x, point.z, -0.2)) return point;
+          const insideWindmill =
+            point.x >= LAYOUT.windmill.x - 0.8 &&
+            point.x < LAYOUT.windmill.x + LAYOUT.windmill.w + 0.8 &&
+            point.z >= LAYOUT.windmill.z - 0.8 &&
+            point.z < LAYOUT.windmill.z + LAYOUT.windmill.d + 0.8;
+          if (!isInsideLakeShape(point.x, point.z, -0.2) && !insideWindmill)
+            return point;
         }
         return { x: PASTURE.maxX, z: PASTURE.maxZ };
       }
@@ -5424,6 +5553,7 @@
         // 海面：支援頂點著色（浪頭捲到最高點時自動染白模擬碎浪），網格加密讓
         // 捲浪的幾何細節看得出來；只涵蓋 tile 9 的範圍，動畫在 animate() 逐頂點更新
         foamMeshes.length = 0;
+        windmillRotors.length = 0;
         oceanMesh = null;
         lakeMesh = null;
         lakeShoreColliders.length = 0;
@@ -5707,6 +5837,7 @@
               plateauGroup.add(makeFruitTree(fx, fz, hash2(fx, fz), index));
             }
           }
+          plateauGroup.add(makeRedWindmill(LAYOUT.windmill));
 
           // 瀑布——湖西側邊緣，靜態占位，還沒做真的水流動畫
           plateauGroup.add(
@@ -6840,6 +6971,10 @@
             b.rotation.z = elapsed * 3 + i; // 滾動感
             b.material.opacity = impact * 0.8;
           });
+        });
+
+        windmillRotors.forEach((rotor) => {
+          rotor.rotation.z -= dt * 0.62;
         });
 
         // 真魚通常會直線巡游一段、短暫停留，再改成橫向或縱向的新路線；
