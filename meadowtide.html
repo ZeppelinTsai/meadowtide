@@ -2,7 +2,7 @@
 <html lang="zh-Hant">
 <head>
 <meta charset="UTF-8">
-<title>Low-poly v49 — 統一LAYOUT + 農田西移 + 湖放大</title>
+<title>海風牧歌 Meadowtide</title>
 <style>
   html, body { margin: 0; padding: 0; overflow: hidden; background: #0d0d0d; font-family: -apple-system, "Noto Sans TC", sans-serif; }
   #ui {
@@ -39,7 +39,7 @@
 <body>
 <div id="ui">
   <b>Low-poly v49 — 統一LAYOUT + 農田西移 + 湖放大</b><br>
-  WASD：移動 ・ 滾輪：縮放 ・ E：互動/種植/收成/釣魚<br>
+  WASD：移動 ・ 滾輪：縮放 ・ E：互動/種植/收成/釣魚 ・ M：音樂靜音<br>
   <b style="color:#8ecfff">N：快轉時間（看阿姨繞樹）</b>
 </div>
 <div id="hud"></div>
@@ -80,6 +80,18 @@ function lakeEdgeFactor(theta) {
     + 0.20 * Math.sin(theta * 2 + seed)
     + 0.12 * Math.sin(theta * 3 + seed * 1.6)
     + 0.07 * Math.sin(theta * 5 + seed * 2.4);
+}
+
+// 海岸線沙灘/海的分界不要是直線——每一排(z)算一個決定性的偏移量。故意
+// 只疊兩個低頻正弦波、振幅也收斂到 2 格內：頻率太高、振幅太大會讓相鄰
+// 排落差超過 1 格，邊界變成尖銳鋸齒，沿岸的浪花(makeFoam，一排一組)
+// 也會因為忽左忽右而斷成一塊塊，不像連續的海岸線。只動沙灘/海的交界，
+// 懸崖/沙灘那條邊維持筆直（那是碰撞用的山壁，搖它風險比較高）
+function coastShoreJitter(z) {
+  return Math.round(
+    1.3 * Math.sin(z * 0.15 + 3.1)
+    + 0.7 * Math.sin(z * 0.42 + 9.4)
+  );
 }
 
 // 視覺湖岸、碰撞與釣魚判定共用同一個不規則橢圓輪廓。
@@ -215,9 +227,14 @@ MAPS.outside.tiles.forEach(row => row.splice(26, 0, ...new Array(3 + LAYOUT.coas
 
 const BEACH_SAND_COLS = LAYOUT.coast.sandCols;
 const BEACH_OCEAN_COLS = LAYOUT.coast.oceanCols;
-MAPS.outside.tiles.forEach(row => {
-  for (let i = 0; i < BEACH_SAND_COLS; i++) row.push(8);
-  for (let i = 0; i < BEACH_OCEAN_COLS; i++) row.push(9);
+const BEACH_BAND_WIDTH = BEACH_SAND_COLS + BEACH_OCEAN_COLS;
+MAPS.outside.tiles.forEach((row, z) => {
+  // 沙灘/海交界沿 z 抖動，總寬度固定不變（陣列仍是矩形），只有沙灘跟
+  // 海各自佔幾格會跟著波動，海岸線才不會是一條直線
+  const sandCols = Math.min(BEACH_BAND_WIDTH - 3, Math.max(3, BEACH_SAND_COLS + coastShoreJitter(z)));
+  const oceanCols = BEACH_BAND_WIDTH - sandCols;
+  for (let i = 0; i < sandCols; i++) row.push(8);
+  for (let i = 0; i < oceanCols; i++) row.push(9);
 });
 
 // ==============================================================
@@ -399,6 +416,22 @@ let pouchCollectedDay = -1;
 let currentDay = 0;
 let currentPhase = 0;      // 一天中的比例(0~1)，animate() 每幀更新，E 鍵事件也要讀
 
+// --- 季節與每日天氣：測試階段一天換一季；之後只改 DAYS_PER_SEASON 即可 ---
+const DAYS_PER_SEASON = 1;
+const SEASON_NAMES = ['春', '夏', '秋', '冬'];
+const WEATHER_NAMES = { clear: '晴', rain: '雨', typhoon: '颱風', snow: '下雪', blizzard: '暴風雪' };
+function getSeasonIndex(day = currentDay) {
+  return Math.floor(day / DAYS_PER_SEASON) % SEASON_NAMES.length;
+}
+function rollWeatherForSeason(seasonIndex) {
+  const r = Math.random();
+  if (seasonIndex === 1) return r < 0.65 ? 'clear' : r < 0.87 ? 'rain' : 'typhoon';
+  if (seasonIndex === 3) return r < 0.55 ? 'clear' : r < 0.87 ? 'snow' : 'blizzard';
+  return r < (seasonIndex === 0 ? 0.68 : 0.75) ? 'clear' : 'rain';
+}
+let currentSeason = getSeasonIndex(0);
+let currentWeather = rollWeatherForSeason(currentSeason);
+
 // --- 釣魚狀態機：idle → casting（等待咬鉤）→ biting（有限時間內按 E 才算釣到）→ idle ---
 let fishingState = 'idle';
 let fishingTimer = 0;
@@ -541,6 +574,140 @@ function updateSkyDome(nightFactor) {
 }
 const dayLength = 60;
 let elapsed = 0;
+
+// ==============================================================
+// 5.5) 背景音樂：季節日夜旋律層 + 天氣疊加層，全部經 GainNode 淡入淡出
+// ==============================================================
+const BGM_BASE_PATH = 'src/assets/audio/bgm/';
+const BGM_TRACKS = {
+  springDay: 'StockTune-Playful Springtime Garden Dance_1787119801.mp3',
+  springNight: 'StockTune-Whispering Sakura Moonlight_1787119848.mp3',
+  summerDay: 'StockTune-Summer Breeze Echoes_1787119952.mp3',
+  summerNight: 'StockTune-Summer Evening Lake View_1787119973.mp3',
+  autumnDay: 'StockTune-Autumn Leaves Serenade_1787120062.mp3',
+  autumnNight: 'StockTune-Moonlit Autumn Serenade_1787120090.mp3',
+  winterDay: "StockTune-Winter's Quiet Piano Whisper_1787120103.mp3",
+  winterNight: 'StockTune-Soft Blanket Of White_1787120137.mp3',
+  rain: 'StockTune-Raindrops On A Quiet Day_1787119556.mp3',
+  typhoon: 'StockTune-Tropical Storm Approaching_1787119620.mp3',
+  snow: 'StockTune-Icy Dawn Arising_1787119640.mp3',
+  blizzard: 'StockTune-Gliding Alpine White Peaks_1787119663.mp3',
+};
+const SEASON_MUSIC_KEYS = [
+  ['springDay', 'springNight'], ['summerDay', 'summerNight'],
+  ['autumnDay', 'autumnNight'], ['winterDay', 'winterNight'],
+];
+const MELODY_VOLUME = 0.32, WEATHER_VOLUME = 0.2;
+let audioContext = null, musicMasterGain = null;
+let musicMuted = false, musicReady = false;
+let activeMusicKey = null, pendingMusicKey = null;
+const musicTracks = {};
+
+function createMusicTrack(key, filename) {
+  const audio = new Audio(BGM_BASE_PATH + filename);
+  audio.loop = true;
+  audio.preload = 'auto';
+  const source = audioContext.createMediaElementSource(audio);
+  const gain = audioContext.createGain();
+  gain.gain.value = 0;
+  source.connect(gain).connect(musicMasterGain);
+  audio.addEventListener('error', () => console.warn(`[BGM] 找不到或無法載入：${filename}`), { once: true });
+  // 每個 key 永遠只建立一個 Audio 實例；playPending 防止逐幀重複呼叫 play()。
+  musicTracks[key] = { audio, gain, currentGain: 0, playPending: false, failed: false };
+}
+
+function ensureMusicTrackPlaying(track, key) {
+  if (track.failed || track.playPending || !track.audio.paused) return;
+  track.playPending = true;
+  track.audio.play()
+    .catch(error => {
+      track.failed = true;
+      console.warn(`[BGM] 跳過無法播放的曲目：${BGM_TRACKS[key]}`, error);
+    })
+    .finally(() => { track.playPending = false; });
+}
+
+function initializeMusic() {
+  if (musicReady) {
+    if (audioContext && audioContext.state === 'suspended') audioContext.resume();
+    return;
+  }
+  const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+  if (!AudioContextClass) {
+    console.warn('[BGM] 此瀏覽器不支援 Web Audio API，背景音樂已停用。');
+    return;
+  }
+  audioContext = new AudioContextClass();
+  musicMasterGain = audioContext.createGain();
+  musicMasterGain.gain.value = musicMuted ? 0 : 1;
+  musicMasterGain.connect(audioContext.destination);
+  Object.entries(BGM_TRACKS).forEach(([key, filename]) => createMusicTrack(key, filename));
+  musicReady = true;
+}
+
+function setMusicMuted(muted) {
+  musicMuted = muted;
+  initializeMusic();
+  if (!musicMasterGain || !audioContext) return;
+  const now = audioContext.currentTime;
+  musicMasterGain.gain.cancelScheduledValues(now);
+  musicMasterGain.gain.setTargetAtTime(muted ? 0 : 1, now, 0.08);
+}
+
+function updateMusic(nightFactor, dt) {
+  if (!musicReady) return;
+  const [dayKey, nightKey] = SEASON_MUSIC_KEYS[currentSeason];
+  // 嚴格單軌：壞天氣時由天氣曲取代旋律；晴天只選日曲或夜曲其中一首。
+  const desiredKey = currentWeather === 'clear'
+    ? (nightFactor >= 0.5 ? nightKey : dayKey)
+    : currentWeather;
+  if (desiredKey !== activeMusicKey) pendingMusicKey = desiredKey;
+  if (!activeMusicKey) {
+    activeMusicKey = pendingMusicKey;
+    pendingMusicKey = null;
+  }
+
+  Object.entries(musicTracks).forEach(([key, track]) => {
+    // 有待切換曲目時，舊曲必須先完整淡出；新曲要等舊曲 pause 後才啟動。
+    const isActive = key === activeMusicKey;
+    const target = isActive && !pendingMusicKey
+      ? (currentWeather === 'clear' ? MELODY_VOLUME : WEATHER_VOLUME)
+      : 0;
+    if (target > 0.0005 || track.currentGain > 0.0005) ensureMusicTrackPlaying(track, key);
+    const fadeSeconds = 0.65;
+    const blend = 1 - Math.exp(-dt / fadeSeconds);
+    track.currentGain += (target - track.currentGain) * blend;
+    if (target === 0 && track.currentGain < 0.0005) {
+      track.currentGain = 0;
+      // 淡出完成才暫停；之後再次需要時從頭播放，避免 12 首全部靜音空轉。
+      if (!track.audio.paused) {
+        track.audio.pause();
+        track.audio.currentTime = 0;
+      }
+    }
+    track.gain.gain.value = track.currentGain;
+  });
+
+  if (pendingMusicKey && activeMusicKey) {
+    const oldTrack = musicTracks[activeMusicKey];
+    if (!oldTrack || oldTrack.currentGain === 0) {
+      activeMusicKey = pendingMusicKey;
+      pendingMusicKey = null;
+    }
+  }
+}
+
+function beginNewDay(day) {
+  currentSeason = getSeasonIndex(day);
+  currentWeather = rollWeatherForSeason(currentSeason);
+  console.info(`[天氣] 第 ${day + 1} 天：${SEASON_NAMES[currentSeason]}季／${WEATHER_NAMES[currentWeather]}`);
+}
+
+addEventListener('pointerdown', initializeMusic, { once: true });
+addEventListener('keydown', e => {
+  initializeMusic();
+  if (e.key.toLowerCase() === 'm' && !e.repeat) setMusicMuted(!musicMuted);
+}, { capture: true });
 const windowMats = [];
 const foamMeshes = []; // 沙灘跟海交界的拍岸泡沫，animate() 裡逐幀讓它忽明忽暗
 let oceanMesh = null;  // 整片海面網格，animate() 裡逐頂點做波浪動畫
@@ -1078,10 +1245,19 @@ function makeStone(x, z, seed) {
   return stone;
 }
 const FLOWER_COLORS = [0xf25f8c, 0xf5c542, 0xffffff, 0x8f6ff5];
+const SAND_TONES = [0xe8d29a, 0xe3cd93, 0xe6d29c, 0xe0c88e];
 function makeSand(x, z) {
-  const sand = new THREE.Mesh(new THREE.BoxGeometry(TILE * 0.98, 0.05, TILE * 0.98),
-    new THREE.MeshStandardMaterial({ color: 0xe8d29a }));
-  sand.position.set(x, 0.01, z); sand.receiveShadow = true;
+  // 每格顏色/高度各自用座標算出來的決定性亂數微調，同一格重整頁面長得
+  // 一樣，但不會每格都是完全一樣的色塊。色調刻意收得很近（只在同一個
+  // 沙色附近微調），差太多在方格排列上反而會被看成棋盤格，比純色更
+  // 「格子狀」。方塊之間不留縫（scale=1）避免每格描邊出網格線；旋轉/
+  // 位移也不做——方形磚塊旋轉後邊角會互相重疊/露縫，更像碎裂的磁磚
+  const seed = hash2(x * 5.7, z * 3.1);
+  const tone = SAND_TONES[Math.floor(seed * 100) % SAND_TONES.length];
+  const sand = new THREE.Mesh(new THREE.BoxGeometry(TILE, 0.04 + seed * 0.02, TILE),
+    new THREE.MeshStandardMaterial({ color: tone }));
+  sand.position.set(x, 0.01, z);
+  sand.receiveShadow = true;
   return sand;
 }
 function makeFoam(x, z, seed) {
@@ -1091,7 +1267,10 @@ function makeFoam(x, z, seed) {
   // 海面波浪的最高點大約在 y=0.235 左右（見 buildMap 裡的海面設定），泡沫要
   // 蓋在更上面，不然幾乎共平面的透明面會 z-fighting，畫面會閃出詭異的雜色條紋
   const FOAM_Y = 0.27;
-  const crest = new THREE.Mesh(new THREE.PlaneGeometry(TILE * 0.9, TILE * 0.25),
+  // crest/wash 用圓形(非矩形)當底——矩形有直角硬邊，海岸線抖動之後相鄰
+  // 幾組浪花沿 x 各自跳動一點，硬邊矩形疊起來會露出樓梯狀的格線；圓形
+  // 疊在一起邊緣是弧形，重疊處自然融在一起，看不出方塊拼接的痕跡
+  const crest = new THREE.Mesh(new THREE.CircleGeometry(TILE * 0.45, 10),
     new THREE.MeshStandardMaterial({ color: 0xffffff, transparent: true, opacity: 0.85, roughness: 0.9 }));
   // renderOrder 故意設得比海面高：一大片海面 vs. 好幾個小小的泡沫物件，
   // Three.js 用物件中心點到相機的距離排半透明物件的前後順序，海面這種
@@ -1100,7 +1279,7 @@ function makeFoam(x, z, seed) {
   crest.rotation.x = -Math.PI / 2; crest.position.y = FOAM_Y + 0.02; crest.renderOrder = 2;
   g.add(crest);
   const wash = new THREE.Mesh(new THREE.PlaneGeometry(TILE * 1.1, TILE * 0.6),
-    new THREE.MeshStandardMaterial({ color: 0xffffff, transparent: true, opacity: 0.3, roughness: 0.95 }));
+    new THREE.MeshStandardMaterial({ color: 0xffffff, transparent: true, opacity: 0.22, roughness: 0.95 }));
   wash.rotation.x = -Math.PI / 2; wash.position.set(0.15, FOAM_Y, 0); wash.renderOrder = 1;
   g.add(wash);
   const bumps = [];
@@ -1650,38 +1829,83 @@ function buildMap(mapName) {
   fishSchool.length = 0;
   pastureGrassBlades.length = 0;
   if (mapName === 'outside') {
-    const oceanCells = [];
-    map.tiles.forEach((row, z) => row.forEach((t, x) => { if (t === 9) oceanCells.push({ x, z }); }));
-    if (oceanCells.length) {
-      const minX = Math.min(...oceanCells.map(c => c.x)) - 0.5;
-      const maxX = Math.max(...oceanCells.map(c => c.x)) + 0.5;
-      const minZ = Math.min(...oceanCells.map(c => c.z)) - 0.5;
-      const maxZ = Math.max(...oceanCells.map(c => c.z)) + 0.5;
+    // 海面不再是一塊矩形 PlaneGeometry——那樣不管沙灘/海怎麼抖動，海面
+    // 西緣永遠是直線，會整片蓋掉抖動出來的沙灘。改成逐排(z)照當排實際
+    // 沙灘/海分界點織一條緞帶狀網格，西緣（岸邊）跟著陣列裡的抖動走，
+    // 東緣（外海）維持平直即可，看不到也不需要不規則
+    const westXByZ = [];
+    let globalMaxX = -Infinity;
+    for (let z = 0; z < map.tiles.length; z++) {
+      const row = map.tiles[z];
+      const firstOceanX = row.indexOf(9);
+      if (firstOceanX === -1) { westXByZ[z] = null; continue; }
+      westXByZ[z] = firstOceanX - 0.5;
+      for (let x = row.length - 1; x >= 0; x--) { if (row[x] === 9) { globalMaxX = Math.max(globalMaxX, x + 0.5); break; } }
+    }
+    const validZ = westXByZ.reduce((acc, v, z) => { if (v !== null) acc.push(z); return acc; }, []);
+    if (validZ.length) {
+      const minZ = validZ[0], maxZ = validZ[validZ.length - 1];
+      const minX = Math.min(...westXByZ.filter(v => v !== null));
+      const maxX = globalMaxX;
       const width = maxX - minX, depth = maxZ - minZ;
-      const geo = new THREE.PlaneGeometry(width, depth, Math.max(2, Math.round(width * 4)), Math.max(2, Math.round(depth * 3)));
-      geo.rotateX(-Math.PI / 2);
+
+      const westXAt = (z) => {
+        const zLo = Math.max(minZ, Math.min(maxZ, Math.floor(z)));
+        const zHi = Math.min(maxZ, zLo + 1);
+        const wLo = westXByZ[zLo], wHi = westXByZ[zHi] != null ? westXByZ[zHi] : wLo;
+        const t = zHi === zLo ? 0 : (z - zLo) / (zHi - zLo);
+        return wLo + (wHi - wLo) * t;
+      };
+
+      const ZSUB = 2; // 每個 tile 排再細分幾段，波浪動畫才夠滑順
+      const rowsZ = [];
+      for (let z = minZ; z < maxZ; z++) { for (let s = 0; s < ZSUB; s++) rowsZ.push(z + s / ZSUB); }
+      rowsZ.push(maxZ);
+      const COLS = Math.max(4, Math.round(width * 3));
+
+      // 欄位用固定世界座標（每一排都是同一組 x），不要照各排西緣重新內插
+      // ——內插會讓相鄰排的同一欄位落在不同的絕對 x，格子被拉斜，疊上波浪
+      // 動畫的正弦相位後會出現對角條紋。改成每排只把落在陸地那側的頂點
+      // 「夾」到該排的西緣，退化成貼齊邊界的窄三角形，欄位本身不歪斜
+      const positions = [], colors = [];
+      rowsZ.forEach(z => {
+        const westX = westXAt(z);
+        for (let c = 0; c <= COLS; c++) {
+          const t = c / COLS;
+          const gridX = minX + (maxX - minX) * t;
+          positions.push(Math.max(gridX, westX), 0, z);
+          colors.push(0.18, 0.43, 0.68); // 0x2f6fae
+        }
+      });
+      const indices = [];
+      const rowLen = COLS + 1;
+      for (let r = 0; r < rowsZ.length - 1; r++) {
+        for (let c = 0; c < COLS; c++) {
+          const i0 = r * rowLen + c, i1 = r * rowLen + c + 1;
+          const i2 = (r + 1) * rowLen + c, i3 = (r + 1) * rowLen + c + 1;
+          indices.push(i0, i2, i1, i1, i2, i3);
+        }
+      }
 
       // 幫每個頂點記錄「原始座標」：波浪位移一定要從固定的原始位置重算，
       // 不能直接在目前位置上疊加，不然每幀都會愈飄愈遠。顏色則用來畫浪頭泡沫
-      const pos = geo.attributes.position;
-      const basePositions = new Float32Array(pos.count * 3);
-      const colors = new Float32Array(pos.count * 3);
-      for (let i = 0; i < pos.count; i++) {
-        basePositions[i * 3] = pos.getX(i);
-        basePositions[i * 3 + 1] = pos.getY(i);
-        basePositions[i * 3 + 2] = pos.getZ(i);
-        colors[i * 3] = 0.18; colors[i * 3 + 1] = 0.43; colors[i * 3 + 2] = 0.68; // 0x2f6fae
-      }
-      geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
-      geo.userData = { basePositions };
+      const posArray = new Float32Array(positions);
+      const geo = new THREE.BufferGeometry();
+      geo.setAttribute('position', new THREE.BufferAttribute(posArray, 3));
+      geo.setAttribute('color', new THREE.BufferAttribute(new Float32Array(colors), 3));
+      geo.setIndex(indices);
+      geo.computeVertexNormals();
+      geo.userData = { basePositions: posArray.slice() };
 
       oceanMesh = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({
         vertexColors: true, roughness: 0.2, metalness: 0.1, flatShading: true,
         transparent: true, opacity: 0.92,
       }));
+      // 頂點座標已經是世界座標（每排西緣各自不同，不能再用單一中心點套用
+      // PlaneGeometry 的本地座標系），mesh 本身只需要負責 y 的抬高量。
       // y 抬高一點：波浪的位移量如果蓋過地面（y=0）就會被不透明的地面擋住，
       // 變成海面中間破一個洞。留出安全間距讓波浪永遠浮在地面之上
-      oceanMesh.position.set((minX + maxX) / 2, 0.13, (minZ + maxZ) / 2);
+      oceanMesh.position.set(0, 0.13, 0);
       oceanMesh.receiveShadow = true;
       mapGroup.add(oceanMesh);
 
@@ -2010,6 +2234,7 @@ function collidesAt(mapName, x, z, half = 0.22) {
 window.__gameState = () => ({
   playerGridPos, currentMapName, facing, isMoving,
   nightFactor: window.__nightFactor || 0,
+  season: SEASON_NAMES[currentSeason], weather: WEATHER_NAMES[currentWeather], musicMuted,
   dialogVisible: dialogEl.style.display === 'block',
   day: currentDay, inventory: { ...inventory }, fishingState,
   npcs: npcs.map(n => ({ id: n.id, memory: n.memory, pos: { x: n.mesh.position.x, z: n.mesh.position.z } })),
@@ -2019,7 +2244,7 @@ window.__gameState = () => ({
 const hudEl = document.getElementById('hud');
 function updateHud() {
   const hh = Math.floor(((elapsed % dayLength) / dayLength) * 24);
-  hudEl.innerHTML = `第 <b>${currentDay + 1}</b> 天 ・ ${String(hh).padStart(2,'0')}:00<br>種子 <b>${inventory.seeds}</b> ・ 收成 <b>${inventory.harvested}</b> ・ 魚 <b>${inventory.fish}</b><br>阿姨印象 <b>${npcs[0].memory}</b> ・ 木匠印象 <b>${npcs[1].memory}</b>`;
+  hudEl.innerHTML = `第 <b>${currentDay + 1}</b> 天 ・ ${SEASON_NAMES[currentSeason]}季 ・ ${WEATHER_NAMES[currentWeather]} ・ ${String(hh).padStart(2,'0')}:00${musicMuted ? ' ・ 靜音' : ''}<br>種子 <b>${inventory.seeds}</b> ・ 收成 <b>${inventory.harvested}</b> ・ 魚 <b>${inventory.fish}</b><br>阿姨印象 <b>${npcs[0].memory}</b> ・ 木匠印象 <b>${npcs[1].memory}</b>`;
 }
 
 let lastFrame = performance.now();
@@ -2041,7 +2266,7 @@ function animate(now) {
   isMoving = inputLen > 0;
   if (inputLen > 0) { dx /= inputLen; dz /= inputLen; }
 
-  const moveSpeed = 6.2; // 格/秒（原本 3.1 的兩倍）
+  const moveSpeed = 10; // 格/秒
   const stepX = dx * moveSpeed * dt, stepZ = dz * moveSpeed * dt;
   // X / Z 分開檢查碰撞，撞到一個軸還能沿著另一個軸繼續滑，這是「平穩」的關鍵
   const tryX = player.position.x + stepX;
@@ -2157,6 +2382,7 @@ function animate(now) {
   currentDay = Math.floor(elapsed / dayLength);
   if (currentDay !== prevDay) {
     prevDay = currentDay;
+    beginNewDay(currentDay);
     growCropsForNewDay();
     syncFarmVisuals();
   }
@@ -2204,6 +2430,7 @@ function animate(now) {
   // 午夜最黑、中午最亮；先前使用 1 - cos 會讓 00:00 與 12:00 顛倒。
   const nightFactor = (1 + Math.cos(phase * Math.PI * 2)) / 2;
   window.__nightFactor = nightFactor;
+  updateMusic(nightFactor, dt);
   updateSkyDome(nightFactor);
 
   // --- 動物固定作息：06:00 出門，18:00 開始回穀倉 ---
