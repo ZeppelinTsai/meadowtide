@@ -63,14 +63,16 @@ const NORTH_EXPANSION = 5;
 const LAYOUT = {
   // 北側新增 5 排：動物區留在新空間，其餘舊區域整體往南順延。
   house:   { x: 20, z: 9 + NORTH_EXPANSION,  w: 3, d: 2, doorX: 21 },
-  barn:    { x: 23, z: 1,  w: 3, d: 2, doorX: 24 },
-  pasture: { x: 18, z: 4,  width: 13, height: 6 }, // 左擴 3、右擴 5、向南擴 3
-  orchard: { houseOffsetX: 9.5, houseOffsetZ: -8.5 },
+  barn:    { x: 23, z: -2, w: 3, d: 2, doorX: 24 }, // 整座動物小屋向北移 3 格
+  pasture: { x: 17, z: -2, width: 15, height: 16 }, // 延伸到小屋左右，外緣由渲染做不規則化
+  orchard: { x: 28, z: -1, columns: 3, rows: 4, spacingX: 2, spacingZ: 2.1 }, // 小屋右側 12 棵
   houseRoad: { width: 3 },
-  restArea: { x: 25, z: 21, width: 8, height: 6 },
-  garden:  { x: 25, z: 28, width: 8, height: 7 },
+  farmAccessRoad: { width: 3 },
+  coastRoad: { width: 3 },
+  restArea: { x: 25, z: 24, width: 8, height: 6 },
+  garden:  { x: 25, z: 31, width: 8, height: 7 },
   farm:    { x: 5,  z: 17 + NORTH_EXPANSION, blocks: 3, plotSize: 3, gap: 1 }, // 左移 3、南移 3
-  lake:    { x: 3,  z: 3, width: 18, height: 17 }, // 再向南擴 3 格
+  lake:    { x: 2,  z: 0, width: 18, height: 17 }, // 整座湖西移 1 格、北移 3 格
   coast:   { eastExpansion: 5, rampX: 34, rampWidth: 3, sandCols: 10, oceanCols: 10 },
   mountainBand: { x: 0, width: 3 },
 };
@@ -193,6 +195,7 @@ for (let z = 1 + NORTH_EXPANSION; z <= 3 + NORTH_EXPANSION; z++) {
   for (let x = LAYOUT.barn.x; x < LAYOUT.barn.x + LAYOUT.barn.w; x++) MAPS.outside.tiles[z][x] = 0;
 }
 for (let z = LAYOUT.barn.z; z < LAYOUT.barn.z + LAYOUT.barn.d; z++) {
+  if (z < 0 || z >= MAPS.outside.tiles.length) continue;
   for (let x = LAYOUT.barn.x; x < LAYOUT.barn.x + LAYOUT.barn.w; x++) MAPS.outside.tiles[z][x] = 1;
 }
 // 清掉動物小屋門前偏左一格的樹；位置從穀倉門推導，不另寫絕對座標。
@@ -267,6 +270,8 @@ for (let x = FARM_ORIGIN.x; x <= FARM_ORIGIN.x + 10; x++) {
 // 講清楚空間上的硬限制：房子在 x=5~7，西邊到地圖邊界(山區背景開始的
 // 地方)只有大概 5~6 格寬，9 格寬真的放不下，除非房子搬家或地圖再往
 // 西擴——這次先把牧場往東擠一點，把讓出來的空間全部給湖
+// 每次依 LAYOUT 重建湖泊前，先清掉所有舊湖水，避免搬遷後殘留死資料。
+MAPS.outside.tiles.forEach(row => row.forEach((tile, x) => { if (tile === 6) row[x] = 0; }));
 for (let z = LAYOUT.lake.z; z < LAYOUT.lake.z + LAYOUT.lake.height; z++) {
   for (let x = LAYOUT.lake.x; x < LAYOUT.lake.x + LAYOUT.lake.width; x++) {
     MAPS.outside.tiles[z][x] = isInsideLakeShape(x, z) ? 6 : 0;
@@ -277,6 +282,7 @@ for (let z = LAYOUT.lake.z; z < LAYOUT.lake.z + LAYOUT.lake.height; z++) {
 // 完整佔地，確保主屋與穀倉的視覺、tile 碰撞永遠一致。
 MAPS.outside.buildings.forEach(building => {
   for (let z = building.z; z < building.z + building.d; z++) {
+    if (z < 0 || z >= MAPS.outside.tiles.length) continue;
     for (let x = building.x; x < building.x + building.w; x++) {
       MAPS.outside.tiles[z][x] = 1;
     }
@@ -310,7 +316,6 @@ const TOWN_Z_START = MAPS.outside.tiles.length; // 現在是 25（農田南移�
   const width = MAPS.outside.tiles[0].length;
   for (let i = 0; i < TOWN_ROWS; i++) {
     const row = new Array(width).fill(0);
-    row[6] = 5; // 保留城區原有的西側支路；主屋直路會在下方統一鋪設
     MAPS.outside.tiles.push(row);
   }
 })();
@@ -319,12 +324,51 @@ const TOWN_Z_START = MAPS.outside.tiles.length; // 現在是 25（農田南移�
 MAPS.outside.tiles[LAYOUT.farm.z + 1][LAYOUT.farm.x + 10] = 0;
 MAPS.outside.tiles[LAYOUT.farm.z + 1][LAYOUT.house.doorX] = 0;
 
+// 牧草地保持開闊：清掉範圍內原始地圖的普通樹；果樹由果園系統獨立生成。
+for (let z = Math.max(0, LAYOUT.pasture.z); z < LAYOUT.pasture.z + LAYOUT.pasture.height; z++) {
+  for (let x = LAYOUT.pasture.x; x < LAYOUT.pasture.x + LAYOUT.pasture.width; x++) {
+    if (MAPS.outside.tiles[z][x] === 2) MAPS.outside.tiles[z][x] = 0;
+  }
+}
+
 // 主屋門外道路以門中心對齊，寬三格並一路筆直延伸到地圖最南端。
 const HOUSE_ROAD_X = LAYOUT.house.doorX;
 const HOUSE_ROAD_START_Z = LAYOUT.house.z + LAYOUT.house.d + 1;
 const HOUSE_ROAD_HALF_WIDTH = Math.floor(LAYOUT.houseRoad.width / 2);
 for (let z = HOUSE_ROAD_START_Z; z < MAPS.outside.tiles.length; z++) {
   for (let x = HOUSE_ROAD_X - HOUSE_ROAD_HALF_WIDTH; x <= HOUSE_ROAD_X + HOUSE_ROAD_HALF_WIDTH; x++) {
+    MAPS.outside.tiles[z][x] = 5;
+  }
+}
+
+// 主屋門前道路往西分支；接近農田的北側入口向北加寬兩格，形成三格深的入口。
+// 農田本體四周另鋪一圈一格寬道路，南側不再繼續向城區延伸。
+// 路線全部由 LAYOUT 推導；之後移動房屋或農田時不需要重寫絕對座標。
+const FARM_ACCESS_X = LAYOUT.farm.x - 1;
+const FARM_ACCESS_NORTH_Z = LAYOUT.farm.z - 1;
+const FARM_ACCESS_SOUTH_Z = LAYOUT.farm.z + (LAYOUT.farm.blocks - 1) * (LAYOUT.farm.plotSize + LAYOUT.farm.gap) + LAYOUT.farm.plotSize;
+const FARM_ACCESS_EAST_X = LAYOUT.farm.x + (LAYOUT.farm.blocks - 1) * (LAYOUT.farm.plotSize + LAYOUT.farm.gap) + LAYOUT.farm.plotSize;
+for (let dz = 0; dz < LAYOUT.farmAccessRoad.width; dz++) {
+  const z = FARM_ACCESS_NORTH_Z - dz;
+  for (let x = FARM_ACCESS_X; x <= HOUSE_ROAD_X - HOUSE_ROAD_HALF_WIDTH; x++) {
+    MAPS.outside.tiles[z][x] = 5;
+  }
+}
+for (let z = FARM_ACCESS_NORTH_Z; z <= FARM_ACCESS_SOUTH_Z; z++) {
+  MAPS.outside.tiles[z][FARM_ACCESS_X] = 5;
+  MAPS.outside.tiles[z][FARM_ACCESS_EAST_X] = 5;
+}
+for (let x = FARM_ACCESS_X; x <= FARM_ACCESS_EAST_X; x++) {
+  MAPS.outside.tiles[FARM_ACCESS_NORTH_Z][x] = 5;
+  MAPS.outside.tiles[FARM_ACCESS_SOUTH_Z][x] = 5;
+}
+
+// 在海堤走廊位置向東鋪出三格寬支路，接到階梯前；階梯本身由地形系統渲染。
+const COAST_ROAD_CENTER_Z = Math.floor((RAMP_CORRIDOR_MIN_Z + RAMP_CORRIDOR_MAX_Z) / 2);
+const COAST_ROAD_HALF_WIDTH = Math.floor(LAYOUT.coastRoad.width / 2);
+for (let z = COAST_ROAD_CENTER_Z - COAST_ROAD_HALF_WIDTH;
+  z <= COAST_ROAD_CENTER_Z + COAST_ROAD_HALF_WIDTH; z++) {
+  for (let x = HOUSE_ROAD_X - HOUSE_ROAD_HALF_WIDTH; x < LAYOUT.coast.rampX; x++) {
     MAPS.outside.tiles[z][x] = 5;
   }
 }
@@ -566,6 +610,7 @@ document.body.appendChild(renderer.domElement);
 
 let zoom = 6.5;
 const camera = new THREE.OrthographicCamera(-zoom * (innerWidth/innerHeight), zoom * (innerWidth/innerHeight), zoom, -zoom, 0.1, 100);
+scene.add(camera); // 星空遠景層掛在相機下，確保正交視角中穩定可見
 const TILT_DEG = 55;
 const TILT_RAD = TILT_DEG * Math.PI / 180;
 
@@ -603,6 +648,89 @@ const skyDome = new THREE.Mesh(skyGeo, new THREE.MeshBasicMaterial({
 }));
 skyDome.renderOrder = -1;
 scene.add(skyDome);
+
+// 架空北緯 8°海島的四季星空：四季合計涵蓋大部分南北天代表星群。
+const SEASON_STAR_CONFIGS = [
+  { count: 190, color: 0xe8f4ff, bright: 0xfff2cf }, // 春：柔和、北斗與春季大三角意象
+  { count: 285, color: 0xddeaff, bright: 0xffffff }, // 夏：銀河最密、夏季大三角
+  { count: 215, color: 0xffedcf, bright: 0xffdca8 }, // 秋：清澈、飛馬四邊形
+  { count: 245, color: 0xd7e9ff, bright: 0xbfdcff }, // 冬：冷藍、獵戶與冬季大三角
+];
+const CONSTELLATION_PATTERNS = [
+  [[-0.62,0.3],[-0.4,0.42],[-0.18,0.37],[0.02,0.48],[0.2,0.39],[0.37,0.53],[0.56,0.47]],
+  [[-0.58,0.28],[0,0.72],[0.55,0.25],[-0.58,0.28],[0.55,0.25]],
+  [[-0.48,0.32],[-0.45,0.66],[0.06,0.7],[0.1,0.31],[-0.48,0.32],[0.1,0.31],[0.5,0.5]],
+  [[-0.42,0.67],[-0.18,0.43],[0.06,0.49],[0.32,0.7],[-0.18,0.43],[-0.12,0.18],[0.15,0.2],[0.06,0.49]],
+];
+const seasonalStarGroups = [];
+function starSkyPoint(nx, ny, seasonIndex) {
+  // 相機本地座標的遠景天幕：Z 固定在地形後方，X/Y 對應畫面水平與垂直位置。
+  return new THREE.Vector3(nx * 28, 4 + ny * 14 + seasonIndex * 0.22, -78);
+}
+function makeSeasonStarGroup(seasonIndex) {
+  const config = SEASON_STAR_CONFIGS[seasonIndex];
+  const group = new THREE.Group();
+  const positions = [];
+  for (let i = 0; i < config.count; i++) {
+    const nx = (hash2(i * 7.17 + seasonIndex * 19, 3.4) - 0.5) * 1.4;
+    const ny = hash2(i * 2.91, seasonIndex * 11 + 5.2);
+    const p = starSkyPoint(nx, ny, seasonIndex);
+    positions.push(p.x, p.y, p.z);
+  }
+  // 夏季額外加入一道斜跨天空的銀河密集星帶。
+  if (seasonIndex === 1) {
+    for (let i = 0; i < 125; i++) {
+      const t = hash2(i * 4.3, 12.7);
+      const spread = (hash2(i * 8.1, 2.6) - 0.5) * 0.22;
+      const p = starSkyPoint(-0.82 + t * 1.64 + spread, 0.18 + t * 0.62 + spread, seasonIndex);
+      positions.push(p.x, p.y, p.z);
+    }
+  }
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  const starMaterial = new THREE.PointsMaterial({
+    color: config.color, size: seasonIndex === 3 ? 3.8 : 3.15,
+    sizeAttenuation: false, transparent: true, opacity: 0,
+    depthWrite: false, depthTest: true, fog: false,
+  });
+  const stars = new THREE.Points(geometry, starMaterial);
+  stars.renderOrder = -0.5;
+  group.add(stars);
+
+  const nodes = CONSTELLATION_PATTERNS[seasonIndex].map(([x, y]) => starSkyPoint(x, y, seasonIndex));
+  const linePositions = [];
+  for (let i = 0; i < nodes.length - 1; i++) {
+    linePositions.push(nodes[i].x, nodes[i].y, nodes[i].z,
+      nodes[i + 1].x, nodes[i + 1].y, nodes[i + 1].z);
+  }
+  const lineGeometry = new THREE.BufferGeometry();
+  lineGeometry.setAttribute('position', new THREE.Float32BufferAttribute(linePositions, 3));
+  const lineMaterial = new THREE.LineBasicMaterial({
+    color: config.bright, transparent: true, opacity: 0,
+    depthWrite: false, depthTest: true, fog: false,
+  });
+  const constellationLines = new THREE.LineSegments(lineGeometry, lineMaterial);
+  constellationLines.renderOrder = -0.5;
+  group.add(constellationLines);
+  group.userData.materials = [starMaterial, lineMaterial];
+  camera.add(group);
+  return group;
+}
+for (let season = 0; season < 4; season++) seasonalStarGroups.push(makeSeasonStarGroup(season));
+
+function updateSeasonalStars(nightFactor) {
+  const weatherVisibility = {
+    clear: 1, rain: 0.28, typhoon: 0, snow: 0.55, blizzard: 0.06,
+  }[currentWeather] ?? 1;
+  const nightVisibility = Math.max(0, Math.min(1, (nightFactor - 0.38) / 0.5));
+  seasonalStarGroups.forEach((group, seasonIndex) => {
+    const visibility = seasonIndex === currentSeason ? nightVisibility * weatherVisibility : 0;
+    group.userData.materials[0].opacity = visibility * 0.92;
+    group.userData.materials[1].opacity = visibility * 0.11;
+    group.visible = visibility > 0.008;
+    group.rotation.z = currentPhase * 0.08 + seasonIndex * 0.012;
+  });
+}
 function updateSkyDome(nightFactor) {
   const zenith = SKY_DAY_ZENITH.clone().lerp(SKY_NIGHT_ZENITH, nightFactor);
   const horizon = SKY_DAY_HORIZON.clone().lerp(SKY_NIGHT_HORIZON, nightFactor);
@@ -616,6 +744,7 @@ function updateSkyDome(nightFactor) {
   }
   skyColorAttr.needsUpdate = true;
   skyDome.position.copy(camera.position);
+  updateSeasonalStars(nightFactor);
 }
 const dayLength = 240; // 測試：遊戲內每小時 10 秒（一天 4 分鐘）
 let elapsed = 0;
@@ -764,6 +893,7 @@ addEventListener('keydown', e => {
   if (e.key.toLowerCase() === 'm' && !e.repeat) setMusicMuted(!musicMuted);
 }, { capture: true });
 const windowMats = [];
+const outdoorLampLights = [];
 const foamMeshes = []; // 沙灘跟海交界的拍岸泡沫，animate() 裡逐幀讓它忽明忽暗
 let oceanMesh = null;  // 整片海面網格，animate() 裡逐頂點做波浪動畫
 let lakeMesh = null;   // 湖面，跟海一樣是合併網格，只是波浪幅度小很多、沒有碎浪
@@ -1199,29 +1329,33 @@ function makeGrassTuft(x, z, seed) {
 function makeWindGrass(x, z, seed) {
   const g = new THREE.Group();
   const grassColor = new THREE.Color(0x5fae52).offsetHSL((seed - 0.5) * 0.035, 0.04, (seed - 0.5) * 0.08);
-  const mat = new THREE.MeshStandardMaterial({ color: grassColor, flatShading: true });
-  const blades = [];
-  const bladeCount = 8;
+  const mat = new THREE.MeshStandardMaterial({ color: grassColor, flatShading: true, side: THREE.DoubleSide });
+  // 一叢草只用一個合併網格；舊版每片葉子都是獨立 Mesh，牧場會產生數千 draw calls。
+  const positions = [];
+  const bladeCount = 14;
   for (let i = 0; i < bladeCount; i++) {
-    // ConeGeometry 的原點在中心；外層 pivot 才是真正的草根。
-    // 葉片往上掛在 pivot 下，旋轉與高度縮放才會以地面為基準。
-    const pivot = new THREE.Group();
-    const blade = new THREE.Mesh(new THREE.ConeGeometry(0.025, 1, 4), mat);
     const a = (i / bladeCount) * Math.PI * 2 + seed * 6;
-    const spread = 0.07 + hash2(seed * 9.1, i * 4.7) * 0.08;
-    pivot.position.set(Math.cos(a) * spread, 0, Math.sin(a) * spread);
-    pivot.userData.baseRotZ = (hash2(seed, i) - 0.5) * 0.35;
-    pivot.userData.baseRotX = (hash2(seed + 3.7, i) - 0.5) * 0.22;
-    pivot.userData.phase = seed * 12 + i * 1.7;
-    pivot.rotation.z = pivot.userData.baseRotZ;
-    pivot.rotation.x = pivot.userData.baseRotX;
-    blade.position.y = 0.5;
-    pivot.add(blade);
-    g.add(pivot);
-    blades.push(pivot);
+    const spread = 0.04 + hash2(seed * 9.1, i * 4.7) * 0.21;
+    const cx = Math.cos(a) * spread, cz = Math.sin(a) * spread;
+    const halfWidth = 0.019 + hash2(seed * 5.2, i) * 0.014;
+    const px = -Math.sin(a) * halfWidth, pz = Math.cos(a) * halfWidth;
+    const lean = (hash2(seed + i * 2.3, 7.1) - 0.5) * 0.16;
+    positions.push(
+      cx - px, 0, cz - pz,
+      cx + px, 0, cz + pz,
+      cx + Math.cos(a) * lean, 1, cz + Math.sin(a) * lean
+    );
   }
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  geometry.computeVertexNormals();
+  const bladeMesh = new THREE.Mesh(geometry, mat);
+  g.add(bladeMesh);
   g.position.set(x, 0, z);
-  g.userData.blades = blades;
+  g.userData.blades = [g];
+  g.userData.baseRotZ = (hash2(seed, 2.4) - 0.5) * 0.12;
+  g.userData.baseRotX = (hash2(seed + 3.7, 8.2) - 0.5) * 0.08;
+  g.userData.phase = seed * 12;
   g.userData.growth = seed * 3;
   g.userData.stage = -1;
   return g;
@@ -1234,7 +1368,7 @@ function setPastureGrassStage(tuft, stage) {
   tuft.userData.blades.forEach(pivot => {
     const blade = pivot.children[0];
     blade.scale.y = height;
-    blade.position.y = height / 2;
+    blade.position.y = 0;
   });
 }
 function findLongGrassNear(x, z, maxDistance = Infinity) {
@@ -1276,7 +1410,22 @@ function makeFlower(x, z, color) {
 // 參考圖裡還沒做的區域——先求佈局對，能做完整模型的做，還沒空做的
 // 就用簡單方塊/平面卡位，之後再回頭精修
 // ==============================================================
-function makeFruitTree(x, z, seed) {
+const ORCHARD_FRUIT_STYLES = [
+  { name: 'apple', fruit: 0xd9432f, leaf: 0x438f3b },
+  { name: 'orange', fruit: 0xf28c28, leaf: 0x3f963e },
+  { name: 'lemon', fruit: 0xf3d34a, leaf: 0x559b3d },
+  { name: 'pear', fruit: 0xa9c84b, leaf: 0x4b913c },
+  { name: 'peach', fruit: 0xf49a82, leaf: 0x579f47 },
+  { name: 'plum', fruit: 0x7750a8, leaf: 0x3d813b },
+  { name: 'cherry', fruit: 0xc92f45, leaf: 0x4a963f },
+  { name: 'apricot', fruit: 0xf4ad55, leaf: 0x659c42 },
+  { name: 'lime', fruit: 0x78b947, leaf: 0x37883b },
+  { name: 'fig', fruit: 0x8d4c78, leaf: 0x4f8740 },
+  { name: 'persimmon', fruit: 0xe56f2d, leaf: 0x658f3c },
+  { name: 'whitePeach', fruit: 0xf4c4bd, leaf: 0x509344 },
+];
+function makeFruitTree(x, z, seed, typeIndex = 0) {
+  const style = ORCHARD_FRUIT_STYLES[typeIndex % ORCHARD_FRUIT_STYLES.length];
   const scale = 0.8 + seed * 0.3;
   const group = new THREE.Group();
   const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.09, 0.5, 6),
@@ -1284,10 +1433,10 @@ function makeFruitTree(x, z, seed) {
   trunk.position.y = 0.25 * scale; trunk.scale.setScalar(scale); trunk.castShadow = true;
   group.add(trunk);
   const leaf = new THREE.Mesh(new THREE.IcosahedronGeometry(0.32, 0),
-    new THREE.MeshStandardMaterial({ color: 0x4a9e3f, flatShading: true }));
+    new THREE.MeshStandardMaterial({ color: style.leaf, flatShading: true }));
   leaf.position.y = 0.62 * scale; leaf.scale.setScalar(scale); leaf.castShadow = true;
   group.add(leaf);
-  const fruitMat = new THREE.MeshStandardMaterial({ color: 0xd9432f });
+  const fruitMat = new THREE.MeshStandardMaterial({ color: style.fruit });
   for (let i = 0; i < 4; i++) {
     const a = (i / 4) * Math.PI * 2 + seed * 5;
     const fruit = new THREE.Mesh(new THREE.SphereGeometry(0.045, 6, 5), fruitMat);
@@ -1296,6 +1445,7 @@ function makeFruitTree(x, z, seed) {
   }
   group.position.set(x, 0, z);
   group.scale.multiplyScalar(2);
+  group.userData.fruitType = style.name;
   return group;
 }
 
@@ -1740,6 +1890,33 @@ function makeLamp() {
   return { group, bulbMat, light };
 }
 
+function makeStreetLamp(x, z, towardRoad) {
+  const group = new THREE.Group();
+  const metal = new THREE.MeshStandardMaterial({ color: 0x30383b, flatShading: true, roughness: 0.78 });
+  const base = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.17, 0.12, 8), metal);
+  base.position.y = 0.06;
+  const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.065, 1.55, 8), metal);
+  pole.position.y = 0.82;
+  const arm = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.07, 0.42), metal);
+  arm.position.set(0, 1.56, towardRoad * 0.16);
+  const shade = new THREE.Mesh(new THREE.ConeGeometry(0.2, 0.18, 8, 1, true), metal);
+  shade.position.set(0, 1.48, towardRoad * 0.34);
+  shade.rotation.x = Math.PI;
+  const bulbMat = new THREE.MeshStandardMaterial({
+    color: 0xffedb0, emissive: new THREE.Color(0xffc96b), emissiveIntensity: 0,
+  });
+  const bulb = new THREE.Mesh(new THREE.SphereGeometry(0.085, 8, 6), bulbMat);
+  bulb.position.set(0, 1.43, towardRoad * 0.34);
+  const light = new THREE.PointLight(0xffc978, 0, 4.2, 2);
+  light.position.copy(bulb.position);
+  [base, pole, arm, shade].forEach(mesh => { mesh.castShadow = true; });
+  group.add(base, pole, arm, shade, bulb, light);
+  group.position.set(x, 0, z);
+  windowMats.push(bulbMat);
+  outdoorLampLights.push(light);
+  return group;
+}
+
 function makeInteriorWall(x, z, windowSide) {
   const g = new THREE.Group();
   const wall = new THREE.Mesh(new THREE.BoxGeometry(TILE * 0.98, 1.4, TILE * 0.98),
@@ -1863,6 +2040,19 @@ const PASTURE = {
   minZ: LAYOUT.pasture.z, maxZ: LAYOUT.pasture.z + LAYOUT.pasture.height - 1,
 };
 const BARN_DOOR = { x: LAYOUT.barn.doorX, z: LAYOUT.barn.z + LAYOUT.barn.d };
+function hasPastureGrassAt(x, z) {
+  if (isInsideLakeShape(x, z, -0.2)) return false;
+  if (x >= LAYOUT.barn.x && x < LAYOUT.barn.x + LAYOUT.barn.w
+    && z >= LAYOUT.barn.z && z < LAYOUT.barn.z + LAYOUT.barn.d) return false;
+  // 小屋門口保留三格寬的短空地，動物進出時不會被高草遮住。
+  if (z <= BARN_DOOR.z + 1 && Math.abs(x - BARN_DOOR.x) <= 1) return false;
+  const onEdge = x === PASTURE.minX || x === PASTURE.maxX || z === PASTURE.minZ || z === PASTURE.maxZ;
+  if (onEdge && hash2(x * 4.7, z * 8.3) < 0.38) return false;
+  // 次外圈少量缺口，避免牧草邊界看起來像裁切整齊的長方形。
+  const nearEdge = x <= PASTURE.minX + 1 || x >= PASTURE.maxX - 1
+    || z <= PASTURE.minZ + 1 || z >= PASTURE.maxZ - 1;
+  return !nearEdge || hash2(x * 6.1 + 2.4, z * 3.9) > 0.16;
+}
 const animalGroup = new THREE.Group();
 animalGroup.position.y = PLATEAU_Y; // 牧場整個都在高台範圍內
 scene.add(animalGroup);
@@ -1911,6 +2101,7 @@ function buildMap(mapName) {
   scene.remove(mapGroup);
   mapGroup = new THREE.Group();
   windowMats.length = 0;
+  outdoorLampLights.length = 0;
 
   const map = MAPS[mapName];
   const rows = map.tiles.length, cols = map.tiles[0].length;
@@ -2046,10 +2237,12 @@ function buildMap(mapName) {
       boulder.scale.setScalar(1.4 + bz * 1.8);
       mapGroup.add(boulder);
     }
-    // 遠方海景升級：加大、加密網格、頂點染色做出「越遠越淡越融進霧裡」的
-    // 漸層，再疊一點點輕微波動——比一片死板的純色平面更有「一直延伸出去」
-    // 的感覺，但幅度比真正的海浪(oceanMesh)小很多，畢竟這只是背景
-    const sgGeo = new THREE.PlaneGeometry(34, 22, 14, 10);
+    // 北海只露出約三格深的動態海帶，後方留給天空／夜空；右端與東海重疊。
+    const northSeaWidth = cols + 4;
+    const northSeaDepth = 3.2;
+    const northSeaNearZ = NORTH_CLIFF_Z - 0.2;
+    const northSeaCenterX = (cols - 1) / 2;
+    const sgGeo = new THREE.PlaneGeometry(northSeaWidth, northSeaDepth, 30, 8);
     sgGeo.rotateX(-Math.PI / 2);
     const sgPos = sgGeo.attributes.position;
     const sgBase = new Float32Array(sgPos.count * 3);
@@ -2059,17 +2252,22 @@ function buildMap(mapName) {
       sgBase[i * 3] = sgPos.getX(i);
       sgBase[i * 3 + 1] = sgPos.getY(i);
       sgBase[i * 3 + 2] = sgPos.getZ(i);
-      // z 越負(越遠、越靠近懸崖/地平線)顏色越淡，模擬融入霧裡的感覺
-      const t = Math.min(1, Math.max(0, (-sgPos.getZ(i) - 3) / 16));
-      const c = near.clone().lerp(far, t);
+      const t = Math.min(1, Math.max(0,
+        (northSeaDepth / 2 - sgPos.getZ(i)) / northSeaDepth));
+      const worldX = sgPos.getX(i) + northSeaCenterX;
+      const eastMixRaw = Math.max(0, Math.min(1,
+        (worldX - (LAYOUT.coast.rampX - 2)) / 7));
+      const eastMix = eastMixRaw * eastMixRaw * (3 - 2 * eastMixRaw);
+      const c = near.clone().lerp(far, t).lerp(new THREE.Color(0x2f6fae), eastMix);
       sgColors[i * 3] = c.r; sgColors[i * 3 + 1] = c.g; sgColors[i * 3 + 2] = c.b;
     }
     sgGeo.setAttribute('color', new THREE.BufferAttribute(sgColors, 3));
     sgGeo.userData = { basePositions: sgBase };
     seaGlimpseMesh = new THREE.Mesh(sgGeo, new THREE.MeshStandardMaterial({
-      vertexColors: true, roughness: 0.25, transparent: true, opacity: 0.85,
+      vertexColors: true, roughness: 0.23, metalness: 0.08,
+      transparent: true, opacity: 0.92, side: THREE.DoubleSide,
     }));
-    seaGlimpseMesh.position.set(5, 0, -14);
+    seaGlimpseMesh.position.set(northSeaCenterX, 0.13, northSeaNearZ - northSeaDepth / 2);
     mapGroup.add(seaGlimpseMesh);
 
     // 固定在高台上的東西(建築、農地、湖、牧草、遠山)統一掛在這個群組下面，
@@ -2266,24 +2464,26 @@ function buildMap(mapName) {
       }
     }
 
-    // 圍欄拿掉了，牧場現在是開放式的草地，不用柵欄圍起來
-    // 每格用 3x3 密植網格鋪滿，葉片會一路接到格子邊緣；
-    // 小幅錯位打破方格感，但不再留下明顯的裸土空洞。
+    // 每格以三個完全散點的合併草叢覆蓋，不再使用固定 2×2 排列；高度由跨格
+    // 的低頻波形混合細微亂數，避免同一 tile 四叢同高造成棋盤式分隔。
     for (let gx = PASTURE.minX; gx <= PASTURE.maxX; gx++) {
       for (let gz = PASTURE.minZ; gz <= PASTURE.maxZ; gz++) {
-        if (isInsideLakeShape(gx, gz, -0.2)) continue;
-        const tileGrowth = hash2(gx * 3.3, gz * 5.1) * 3;
-        for (let ix = 0; ix < 3; ix++) {
-          for (let iz = 0; iz < 3; iz++) {
-            const i = ix * 3 + iz;
-            const seed = hash2(gx + i * 1.9, gz + i * 2.7);
-            const jx = gx + (ix - 1) * 0.34 + (seed - 0.5) * 0.07;
-            const jz = gz + (iz - 1) * 0.34 + (hash2(gx + i, gz + i * 4.1) - 0.5) * 0.07;
-            const tuft = makeWindGrass(jx, jz, seed);
-            tuft.userData.growth = tileGrowth;
-            plateauGroup.add(tuft);
-            pastureGrassBlades.push(tuft);
-          }
+        if (!hasPastureGrassAt(gx, gz)) continue;
+        for (let i = 0; i < 3; i++) {
+          const seed = hash2(gx * 7.1 + i * 2.3, gz * 5.9 + i * 4.7);
+          const jx = gx + (hash2(gx + i * 11.3, gz * 2.1 + i) - 0.5) * 0.94;
+          const jz = gz + (hash2(gz + i * 13.7, gx * 3.4 + i) - 0.5) * 0.94;
+          const broadGrowth = 1.5
+            + Math.sin(jx * 0.43 + jz * 0.18) * 0.62
+            + Math.cos(jz * 0.37 - jx * 0.12) * 0.48
+            + (seed - 0.5) * 0.34;
+          const tuft = makeWindGrass(jx, jz, seed);
+          tuft.userData.growth = Math.max(0.08, Math.min(2.98, broadGrowth));
+          tuft.rotation.y = seed * Math.PI * 2;
+          const widthScale = 0.88 + hash2(seed * 8.4, 1.7) * 0.28;
+          tuft.scale.x = widthScale; tuft.scale.z = widthScale;
+          plateauGroup.add(tuft);
+          pastureGrassBlades.push(tuft);
         }
       }
     }
@@ -2298,18 +2498,13 @@ function buildMap(mapName) {
       plateauGroup.add(makeMountain(LAYOUT.mountainBand.x + s * (LAYOUT.mountainBand.width - 1), mz, height, s));
     }
 
-    // 房子當原點：新東西都算「房子 + 偏移」，不要再對著散落各處的絕對座標
-    // 湊數字——這也是這次會擠成一團的根本原因，數字是憑感覺湊出來的，
-    // 沒有一個共同的參考點去檢查「這樣間距合理嗎」
-    const HOUSE = { x: LAYOUT.house.x + 1, z: LAYOUT.house.z + 0.5 };
-
-    // 果園——原本位置現在被放大的湖蓋掉了，挪到穀倉東側，一樣是
-    // 3×3 網格、格距 1.1
-    for (let ox = 0; ox < 3; ox++) {
-      for (let oz = 0; oz < 3; oz++) {
-        const fx = HOUSE.x + LAYOUT.orchard.houseOffsetX + ox * 1.0 + (hash2(ox, oz) - 0.5) * 0.3;
-        const fz = HOUSE.z + LAYOUT.orchard.houseOffsetZ + oz * 1.0 + (hash2(oz, ox) - 0.5) * 0.3;
-        plateauGroup.add(makeFruitTree(fx, fz, hash2(fx, fz)));
+    // 小屋右側果園：3×4 共 12 棵，間距加大並為每棵配置不同果色與葉色。
+    for (let ox = 0; ox < LAYOUT.orchard.columns; ox++) {
+      for (let oz = 0; oz < LAYOUT.orchard.rows; oz++) {
+        const index = ox * LAYOUT.orchard.rows + oz;
+        const fx = LAYOUT.orchard.x + ox * LAYOUT.orchard.spacingX + (hash2(ox, oz) - 0.5) * 0.2;
+        const fz = LAYOUT.orchard.z + oz * LAYOUT.orchard.spacingZ + (hash2(oz, ox) - 0.5) * 0.2;
+        plateauGroup.add(makeFruitTree(fx, fz, hash2(fx, fz), index));
       }
     }
 
@@ -2319,6 +2514,11 @@ function buildMap(mapName) {
     // 行道樹右側正式分成上下兩區：上方聚會／個人放鬆，下方小花園。
     plateauGroup.add(makeRestArea(LAYOUT.restArea));
     plateauGroup.add(makeSmallGarden(LAYOUT.garden));
+
+    // 海堤入口左右各一盞路燈，燈頭朝向道路中央。
+    const lampX = LAYOUT.coast.rampX - 1.15;
+    plateauGroup.add(makeStreetLamp(lampX, COAST_ROAD_CENTER_Z - COAST_ROAD_HALF_WIDTH - 0.55, 1));
+    plateauGroup.add(makeStreetLamp(lampX, COAST_ROAD_CENTER_Z + COAST_ROAD_HALF_WIDTH + 0.55, -1));
 
     // 湖：不再是矩形平面，改成手刻的極座標網格——從中心點往外拉幾圈同心圓，
     // 每個角度的半徑疊加幾層不同頻率的正弦波，做出雲朵/天然湖泊那種不規則
@@ -2447,6 +2647,10 @@ function buildMap(mapName) {
 function isBlocked(mapName, x, z) {
   const map = MAPS[mapName];
   const tx = Math.round(x), tz = Math.round(z);
+  // 北側延伸高台允許負 z；先檢查位於該區的小屋，避免提前返回漏掉碰撞。
+  if ((map.buildings || []).some(building =>
+    tx >= building.x && tx < building.x + building.w
+    && tz >= building.z && tz < building.z + building.d)) return true;
   if (mapName === 'outside' && z < 0) {
     const onNorthPlateau = x >= 0 && x < LAYOUT.coast.rampX
       && z >= northCliffEdgeZ(x) + 0.62;
@@ -2456,9 +2660,6 @@ function isBlocked(mapName, x, z) {
   if (mapName === 'outside' && lakeShoreColliders.some(rock =>
     Math.hypot(x - rock.x, z - rock.z) < rock.radius)) return true;
   if (mapName === 'outside' && isInsideLakeShape(x, z)) return true;
-  if ((map.buildings || []).some(building =>
-    tx >= building.x && tx < building.x + building.w
-    && tz >= building.z && tz < building.z + building.d)) return true;
   const t = map.tiles[tz][tx];
   if (t === 6) return true;
   if (t === 1 || t === 2 || t === 9) return true;
@@ -2614,12 +2815,17 @@ function updateHud() {
 
 let lastFrame = performance.now();
 let prevDay = 0;
+let animationFrameCount = 0;
+let grassAnimationAccumulator = 0;
+let hudUpdateAccumulator = 0;
 function animate(now) {
   requestAnimationFrame(animate);
   if (!player) return;
   const dt = Math.min((now - lastFrame) / 1000, 0.05);
   lastFrame = now;
   elapsed += dt;
+  animationFrameCount++;
+  const updateWaterSurface = animationFrameCount % 2 === 0; // 水面維持約 30fps，減少大量頂點運算
 
   // --- 自由移動：方向鍵給的是速度向量，不是格子跳，可以八方向、可以貼牆滑 ---
   let dx = 0, dz = 0;
@@ -2871,6 +3077,7 @@ function animate(now) {
   sun.intensity = DAY.sunIntensity + (NIGHT.sunIntensity - DAY.sunIntensity) * nightFactor;
   sun.color.copy(DAY.sunColor).lerp(NIGHT.sunColor, nightFactor);
   windowMats.forEach(m => { m.emissiveIntensity = nightFactor; });
+  outdoorLampLights.forEach(light => { light.intensity = nightFactor * 1.35; });
   if (houseLampLight) {
     houseLampBulbMat.emissiveIntensity = nightFactor;
     houseLampLight.intensity = nightFactor * 1.6;
@@ -2885,7 +3092,7 @@ function animate(now) {
 
   // 海浪：仿 Gerstner 波浪——頂點升高的同時往岸邊(-X)推移，波峰因此變陡、
   // 波谷變平緩，看起來像浪頭在往前捲；捲到最高點時把該處頂點染白模擬碎浪
-  if (oceanMesh) {
+  if (oceanMesh && updateWaterSurface) {
     const posAttr = oceanMesh.geometry.attributes.position;
     const colorAttr = oceanMesh.geometry.attributes.color;
     const basePos = oceanMesh.geometry.userData.basePositions;
@@ -2911,11 +3118,11 @@ function animate(now) {
     }
     posAttr.needsUpdate = true;
     colorAttr.needsUpdate = true;
-    oceanMesh.geometry.computeVertexNormals();
+    if (animationFrameCount % 8 === 0) oceanMesh.geometry.computeVertexNormals();
   }
   // 湖的波紋——幅度只有海的十分之一左右，沒有碎浪、沒有顏色變化，
   // 純粹是輕輕晃動的水面，配上平滑法線去接收陽光的反光高光
-  if (lakeMesh) {
+  if (lakeMesh && updateWaterSurface) {
     const lPosAttr = lakeMesh.geometry.attributes.position;
     const lBase = lakeMesh.geometry.userData.basePositions;
     const llx = lakeMesh.position.x, llz = lakeMesh.position.z;
@@ -2926,19 +3133,28 @@ function animate(now) {
       lPosAttr.setY(i, y);
     }
     lPosAttr.needsUpdate = true;
-    lakeMesh.geometry.computeVertexNormals();
+    if (animationFrameCount % 8 === 0) lakeMesh.geometry.computeVertexNormals();
   }
-  // 北邊遠方海景的輕微起伏——幅度比湖還小，純粹是「這不是靜止的圖片」的訊號
-  if (seaGlimpseMesh) {
+  // 北海以短波呈現；靠右側逐漸混合成東海的浪形，轉角不會出現動畫斷層。
+  if (seaGlimpseMesh && updateWaterSurface) {
     const sgPosAttr = seaGlimpseMesh.geometry.attributes.position;
     const sgBase = seaGlimpseMesh.geometry.userData.basePositions;
     for (let i = 0; i < sgPosAttr.count; i++) {
       const bx = sgBase[i * 3], bz = sgBase[i * 3 + 2];
-      const y = Math.sin(bx * 1.3 + elapsed * 0.9) * 0.03 + Math.cos(bz * 1.1 + elapsed * 0.7) * 0.025;
+      const worldX = bx + seaGlimpseMesh.position.x;
+      const worldZ = bz + seaGlimpseMesh.position.z;
+      const northWave = Math.sin(worldZ * 1.65 + elapsed * 1.25 + Math.sin(worldX * 0.28) * 0.55) * 0.045
+        + Math.cos(worldX * 0.72 - elapsed * 0.8) * 0.018;
+      const eastPhase = worldX * 1.4 + elapsed * 2.2 + Math.sin(worldZ * 0.8) * 0.5;
+      const eastWave = Math.sin(eastPhase) * 0.09 + Math.cos(worldZ * 1.2 + elapsed) * 0.015;
+      const mixRaw = Math.max(0, Math.min(1,
+        (worldX - (LAYOUT.coast.rampX - 2)) / 7));
+      const mix = mixRaw * mixRaw * (3 - 2 * mixRaw);
+      const y = northWave + (eastWave - northWave) * mix;
       sgPosAttr.setY(i, y);
     }
     sgPosAttr.needsUpdate = true;
-    seaGlimpseMesh.geometry.computeVertexNormals();
+    if (animationFrameCount % 8 === 0) seaGlimpseMesh.geometry.computeVertexNormals();
   }
   // 拍岸浪花：浪頭衝上岸時放大、變亮、泡沫顆粒跟著滾動碎裂；退潮時很快收回去
   foamMeshes.forEach(f => {
@@ -2990,10 +3206,14 @@ function animate(now) {
 
   // 牧草會依序長成短、中、長三階段；長草被牛羊吃掉後回到短草。
   // 風擺施加在葉片底部的 pivot，草根因此會固定在地面。
-  const windSpeed = 2.15;
-  pastureGrassBlades.forEach(tuft => {
+  grassAnimationAccumulator += dt;
+  if (grassAnimationAccumulator >= 1 / 20) {
+    const grassDt = grassAnimationAccumulator;
+    grassAnimationAccumulator = 0;
+    const windSpeed = 2.15;
+    pastureGrassBlades.forEach(tuft => {
     const wx = tuft.position.x, wz = tuft.position.z;
-    tuft.userData.growth = Math.min(3, tuft.userData.growth + dt / GRASS_GROWTH_SECONDS);
+    tuft.userData.growth = Math.min(3, tuft.userData.growth + grassDt / GRASS_GROWTH_SECONDS);
     setPastureGrassStage(tuft, Math.floor(tuft.userData.growth));
     const sway = 0.16 + tuft.userData.stage * 0.09;
     const playerDistance = currentMapName === 'outside'
@@ -3006,9 +3226,14 @@ function animate(now) {
       pivot.rotation.z = pivot.userData.baseRotZ + Math.sin(wave) * sway - wakeX;
       pivot.rotation.x = pivot.userData.baseRotX + Math.sin(wave * 0.82 + 1.4) * sway * 0.45 + wakeZ;
     });
-  });
+    });
+  }
 
-  updateHud();
+  hudUpdateAccumulator += dt;
+  if (hudUpdateAccumulator >= 0.2) {
+    hudUpdateAccumulator = 0;
+    updateHud();
+  }
   renderer.render(scene, camera);
 }
 
