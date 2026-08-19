@@ -3,10 +3,12 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
+  "main": "main.js",
   "description": "海風牧歌 Meadowtide — Three.js 農場模擬遊戲",
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
+    "build:win": "npm run build && electron-builder --win nsis",
     "preview": "vite preview",
     "map-debug": "tsx scripts/map-debug.ts"
   },
@@ -16,8 +18,27 @@
   "devDependencies": {
     "@types/node": "^26.2.0",
     "@types/three": "0.128.0",
+    "electron": "^31.7.7",
+    "electron-builder": "^26.15.3",
     "tsx": "^4.16.2",
     "typescript": "^5.5.4",
     "vite": "^5.4.0"
+  },
+  "build": {
+    "appId": "com.meadowtide.game",
+    "productName": "Meadowtide",
+    "directories": {
+      "output": "C:/temp/meadowtide-release"
+    },
+    "files": [
+      "dist/**/*",
+      "main.js"
+    ],
+    "win": {
+      "target": [
+        "nsis",
+        "zip"
+      ]
+    }
   }
 }
