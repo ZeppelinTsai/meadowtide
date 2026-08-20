@@ -1,6 +1,38 @@
 import { gameState } from "./game-state";
 
 export const windowMats = [];
+      // 地圖切換點的黃色門檻標記，跟其他登記表同一套：buildMap() 清空重建，
+      // 之後不用重新整理地圖也能一次切換全部標記的顯示/隱藏(見 build-map.ts
+      // 的 setThresholdMarkersVisible)。
+      export const thresholdMarkerMeshes = [];
+      const THRESHOLD_VISIBLE_KEY = "meadowtide.debug.thresholdMarkersVisible";
+      // 開發模式下記住這個開關：Vite 幾乎每次存檔都會整頁重新載入(見
+      // chef-quest.ts 對同一個現象的說明)，沒有這段的話每次改完程式碼
+      // 都要重新在主控台關一次，不算「快速隱藏」。production build 這個
+      // if 會被靜態消掉。
+      let initialVisible = true;
+      if (import.meta.env.DEV) {
+        try {
+          const saved = localStorage.getItem(THRESHOLD_VISIBLE_KEY);
+          if (saved !== null) initialVisible = saved === "true";
+        } catch (err) {
+          // 開發輔助功能而已，讀取失敗就用預設值
+        }
+      }
+      export let thresholdMarkersVisible = initialVisible;
+      export function setThresholdMarkersVisible(visible) {
+        thresholdMarkersVisible = visible;
+        thresholdMarkerMeshes.forEach((m) => {
+          m.visible = visible;
+        });
+        if (import.meta.env.DEV) {
+          try {
+            localStorage.setItem(THRESHOLD_VISIBLE_KEY, String(visible));
+          } catch (err) {
+            // 同上，寫入失敗不影響遊戲本身
+          }
+        }
+      }
       export const outdoorLampLights = [];
       export const foamMeshes = []; // 沙灘跟海交界的拍岸泡沫，animate() 裡逐幀讓它忽明忽暗
       export const windmillRotors = [];

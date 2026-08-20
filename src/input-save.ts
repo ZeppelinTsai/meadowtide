@@ -9,6 +9,7 @@ import { loadMap, isBlocked, events } from "./build-map";
 import { updateAvenueTreeColors, updateSeasonalTreeColors, updateSeasonalGroundColors, makeBobber, makeFishProp } from "./props";
 import { syncFarmVisuals } from "./farm-visuals";
 import { scene, clearMeteors, scheduleNextMeteor, updateCameraFrustum, meteorPool, getMeteorShowerHudLabel } from "./scene-sky";
+import { setThresholdMarkersVisible } from "./scene-registries";
 
 export const SAVE_KEY_PREFIX = "meadowtide.save.";
       export function saveGame(slot = "default") {
@@ -240,6 +241,12 @@ export const SAVE_KEY_PREFIX = "meadowtide.save.";
       // 重新載入（改任何檔案幾乎都會觸發）時會自動讀回來——不用每次都
       // 重新打一次 __chefQuest.stage = "proving"。
       (window as any).__chefQuest = chefQuest;
+      // 所有地圖切換點的黃色門檻標記共用一個開關：除錯階段用得到、確認
+      // 座標之後想全部藏起來，不用一個一個地圖改 tile 資料，主控台打
+      // __setThresholdMarkersVisible(false) 就好，重新整理後也會維持
+      // （靠 thresholdMarkersVisible 這個模組層級變數，跟 buildMap()
+      // 每次重建地圖時套用的是同一份）。
+      (window as any).__setThresholdMarkersVisible = setThresholdMarkersVisible;
       (window as any).__gameState = () => ({
         playerGridPos: gameState.playerGridPos,
         currentMapName: gameState.currentMapName,

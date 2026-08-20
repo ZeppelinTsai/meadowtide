@@ -4,7 +4,7 @@ import { gameState } from "./game-state";
 import { scene, TILE, PLATEAU_Y, NORTH_CLIFF_Z, SOUTH_TERRAIN_EXTENSION, NORTH_TERRAIN_EXTENSION, northCliffEdgeZ, groundY } from "./scene-sky";
 import { LAYOUT, MAPS, carpenterQuest, CARPENTER_HOUSE, isInsideLakeShape, AVENUE_TREE_KEYS, TOWN_Z_START, RAMP_CORRIDOR_MIN_Z, RAMP_CORRIDOR_MAX_Z, COAST_ROAD_CENTER_Z, COAST_ROAD_HALF_WIDTH, lakeEdgeFactor, POUCH_POS, CARPENTER_DOORSTEP, SHRINE_PATH_START_X, SHRINE_PATH_LENGTH, SHRINE_PATH_ELEVATION } from "./layout-maps";
 import { handleCarpenterDockTouch, handleCarpenterDoorstepTouch } from "./carpenter-quest";
-import { windowMats, outdoorLampLights, foamMeshes, windmillRotors, lakeShoreColliders, fishSchool, pastureGrassBlades, avenueLeafMaterials, seasonalTreeLeafMaterials, seasonalGroundMaterials, SEA_FISH_SCALE, LAKE_FISH_SCALE, EAST_SEA_WAVE_DIRECTION, NORTHEAST_SEA_WAVE_DIRECTION } from "./scene-registries";
+import { windowMats, outdoorLampLights, foamMeshes, windmillRotors, lakeShoreColliders, fishSchool, pastureGrassBlades, avenueLeafMaterials, seasonalTreeLeafMaterials, seasonalGroundMaterials, SEA_FISH_SCALE, LAKE_FISH_SCALE, EAST_SEA_WAVE_DIRECTION, NORTHEAST_SEA_WAVE_DIRECTION, thresholdMarkerMeshes, thresholdMarkersVisible } from "./scene-registries";
 import { npcGroup, animalGroup, PASTURE, hasPastureGrassAt } from "./npc-runtime";
 import { makeGirlPlayer } from "./humanoid";
 import { makeTree, makeAvenueTree, makeBuilding, makeBarn, makePath, makeLakeShoreRock, makeGrassTuft, makeWindGrass, makeFlower, makeFruitTree, makeWaterfallPlaceholder, makeOysterRack, makeRestArea, makeSmallGarden, makeDock, makeCargoShip, makeToriiGate, makeShrinePathCauseway, makeTownPlaceholder, makeConstructionSign, makeStone, makeBasaltHeadland, makeSand, makeFoam, makeRedWindmill, makeMountain, makeWesternMountainTerrain, makeMountainGateway, makeFishProp, makeLamp, makeStreetLamp, makeInteriorWall, makeFurniture, updateSeasonalGroundColors, FLOWER_COLORS } from "./props";
@@ -21,6 +21,7 @@ import { OYSTER_RACK_VISUAL } from "./game-state";
         outdoorLampLights.length = 0;
         seasonalTreeLeafMaterials.length = 0;
         seasonalGroundMaterials.length = 0;
+        thresholdMarkerMeshes.length = 0;
 
         const map = MAPS[mapName];
         const rows = map.tiles.length,
@@ -519,6 +520,8 @@ import { OYSTER_RACK_VISUAL } from "./game-state";
                 0.03 + (mapName === "livingArea" ? groundY(x, z) : 0),
                 z,
               );
+              threshold.visible = thresholdMarkersVisible;
+              thresholdMarkerMeshes.push(threshold);
               gameState.mapGroup.add(threshold);
             } else if (tile === 5) {
               const m = makePath(x, z);
@@ -1188,9 +1191,10 @@ import { OYSTER_RACK_VISUAL } from "./game-state";
               z: LAYOUT.house.z + LAYOUT.house.d + 1,
             }),
         },
-        // 生活區南側海岸(x=37~46 整排) <-> 港口北端(碼頭附近)——關係圖把
-        // 港口改畫在生活區南側，原本東側海岸(40,20)單點觸碰改成南側整排
-        // 都能觸發，落點座標刻意跟這排同一個範圍，回來時才會自然接回去。
+        // 生活區南側海岸(x=37~46，z=42 整排，地圖最南端) <-> 港口北端
+        // (碼頭附近)——z=37~42 這段南側延伸地形已經在 layout-maps.ts 補上
+        // 真的沙灘/海資料(coastShoreJitter 那段)，不再是純視覺蓋住的假
+        // 草地，可以放回原本要求的最南端。
         ...Array.from({ length: 10 }, (_, i) => ({
           map: "livingArea",
           x: 37 + i,
@@ -1205,21 +1209,8 @@ import { OYSTER_RACK_VISUAL } from "./game-state";
           trigger: "touch",
           action: () => loadMap("livingArea", { x: 41, z: 41 }),
         },
-        // 港口南端(市場/倉庫) <-> 舊城鎮
-        {
-          map: "port",
-          x: 7,
-          z: 15,
-          trigger: "touch",
-          action: () => loadMap("oldVillage", { x: 7, z: 2 }),
-        },
-        {
-          map: "oldVillage",
-          x: 7,
-          z: 0,
-          trigger: "touch",
-          action: () => loadMap("port", { x: 7, z: 13 }),
-        },
+        // 港口<->舊城鎮的直接連通已經拆掉：舊城鎮現在改從生活區南側直接
+        // 進入（見下面 oldVillage(7,0) 那組），不用再繞經港口。
         // 木匠抵達事件——港口碼頭見面 + 舊城鎮空屋門口(往返兩段劇情共用同一格)
         {
           map: "port",
@@ -1236,51 +1227,48 @@ import { OYSTER_RACK_VISUAL } from "./game-state";
           action: () => handleCarpenterDoorstepTouch(),
         },
         // 生活區私人海岸北端 <-> 女神祠堂（骨架先接通，退潮限定判斷之後再加）
-        {
+        // 觸發點整排(x=60,z=0~2)都能走進去，不是只有單一格。
+        ...[0, 1, 2].map((z) => ({
           map: "livingArea",
-          x: SHRINE_PATH_START_X + SHRINE_PATH_LENGTH - 1,
-          z: 1,
+          x: SHRINE_PATH_START_X + SHRINE_PATH_LENGTH - 2,
+          z,
           trigger: "touch",
           action: () => loadMap("shrine", { x: 4, z: 4 }),
-        },
+        })),
         {
           map: "shrine",
           x: 4,
           z: 5,
           trigger: "touch",
           action: () =>
+            // 落點刻意跟上面往返觸發點同一欄(x=60)：loadMap() 直接把
+            // playerGridPos 設成這個座標，不是透過移動判斷觸發，所以落在
+            // 觸發格本身不會立刻反彈回祠堂——跟其他連通點「落點跟觸發點
+            // 錯開一格」的慣例不同，這裡照這輪的要求刻意對齊。
             loadMap("livingArea", {
-              x: SHRINE_PATH_START_X + SHRINE_PATH_LENGTH - 1,
-              z: 2,
+              x: SHRINE_PATH_START_X + SHRINE_PATH_LENGTH - 2,
+              z: 1,
             }),
         },
-        // 生活區南側路(x=20~22，既有的死路，這次接上)<-> 舊城鎮東北角
-        {
+        // 生活區南側路(x=20~22，房子那條南北向大路)<-> 舊城鎮，直接落在
+        // 原本「舊城鎮往港口」的那個門檻(7,0)——那條路現在改指向這裡，
+        // 不再通往港口。門檻放回 z=42(生活區最南端)：這個 x 範圍離海很遠，
+        // 沒有港口那組「海面網格視覺延伸蓋住草地」的問題，不用像港口那組
+        // 挪到 z=36。
+        ...[20, 21, 22].map((x) => ({
           map: "livingArea",
-          x: 20,
+          x,
           z: 42,
           trigger: "touch",
-          action: () => loadMap("oldVillage", { x: 11, z: 1 }),
-        },
-        {
-          map: "livingArea",
-          x: 21,
-          z: 42,
-          trigger: "touch",
-          action: () => loadMap("oldVillage", { x: 11, z: 1 }),
-        },
-        {
-          map: "livingArea",
-          x: 22,
-          z: 42,
-          trigger: "touch",
-          action: () => loadMap("oldVillage", { x: 11, z: 1 }),
-        },
+          action: () => loadMap("oldVillage", { x: 7, z: 0 }),
+        })),
         {
           map: "oldVillage",
-          x: 11,
-          z: 2,
+          x: 7,
+          z: 0,
           trigger: "touch",
+          // 跟女神祠堂那組同樣的道理：loadMap() 直接設 playerGridPos，落在
+          // 觸發格本身不會立刻反彈，所以往返可以共用同一個(7,0)。
           action: () => loadMap("livingArea", { x: 21, z: 41 }),
         },
         // 美術村 <-> 舊城鎮（南側新門檻）／港口（南側新門檻），兩邊都通
@@ -1312,4 +1300,22 @@ import { OYSTER_RACK_VISUAL } from "./game-state";
           trigger: "touch",
           action: () => loadMap("port", { x: 3, z: 14 }),
         },
+        // 舊城鎮(東側 x=13)<-> 港口(西側 x=0)：整條邊界都能走過去，不是單一
+        // 傳送點——沿邊每一排各自登記一組雙向觸發，逐格對應同一個 z。
+        // 舊城鎮擴高到 15 排(z=0~14)才跟港口(16 排)的西側邊界對得起來，
+        // 港口多出來的最後一排(z=15)沒有對應的舊城鎮列，不參與這組。
+        ...Array.from({ length: 15 }, (_, z) => ({
+          map: "oldVillage",
+          x: 13,
+          z,
+          trigger: "touch",
+          action: () => loadMap("port", { x: 1, z }),
+        })),
+        ...Array.from({ length: 15 }, (_, z) => ({
+          map: "port",
+          x: 0,
+          z,
+          trigger: "touch",
+          action: () => loadMap("oldVillage", { x: 12, z }),
+        })),
       ];
