@@ -2,6 +2,7 @@ import { gameState } from "./game-state";
 
 export const windowMats = [];
 export const waterSurfaceMaterials: import("three").MeshStandardMaterial[] = [];
+export const waterSkyUnderlayMaterials: import("three").MeshStandardMaterial[] = [];
       // 水面上的星光點點——跟水面本身的天空色調不是同一個效果：那個是
       // MeshStandardMaterial 唯一的 emissive 通道，一旦被拿來畫散落的星星
       // 亮點，原本「整片水面隨天空變色」的效果就會被蓋掉。這裡另外疊一層

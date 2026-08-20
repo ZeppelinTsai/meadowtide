@@ -8,7 +8,7 @@ import {
   SHRINE_PATH_LENGTH,
   SHRINE_PATH_ELEVATION,
 } from "./layout-maps";
-import { windowMats, waterSurfaceMaterials, outdoorLampLights, foamMeshes, windmillRotors, pastureGrassBlades, avenueLeafMaterials, seasonalTreeLeafMaterials, seasonalGroundMaterials, GRASS_STAGE_HEIGHTS, EAST_SEA_WAVE_DIRECTION } from "./scene-registries";
+import { windowMats, waterSurfaceMaterials, waterSkyUnderlayMaterials, outdoorLampLights, foamMeshes, windmillRotors, pastureGrassBlades, avenueLeafMaterials, seasonalTreeLeafMaterials, seasonalGroundMaterials, GRASS_STAGE_HEIGHTS, EAST_SEA_WAVE_DIRECTION } from "./scene-registries";
 import { randomPasturePoint } from "./npc-runtime";
 
 // 7) 樹 / 建築 / 地形（沿用 v11）
@@ -191,7 +191,16 @@ import { randomPasturePoint } from "./npc-runtime";
             gameState.currentSeason === 3 ? 0.78 : 1;
         });
       }
-      export function makeBuilding({ x, z, w, d, doorX }) {
+      export function makeBuilding({
+        x,
+        z,
+        w,
+        d,
+        doorX,
+        wallColor = 0xe8ddc7,
+        roofColor = 0xa8402f,
+        skipWindowGlow = false,
+      }) {
         const group = new THREE.Group();
         const centerX = x + (w - 1) / 2,
           centerZ = z + (d - 1) / 2;
@@ -201,7 +210,7 @@ import { randomPasturePoint } from "./npc-runtime";
           roofHeight = 0.85;
         const wall = new THREE.Mesh(
           new THREE.BoxGeometry(width * 0.96, wallHeight, depth * 0.96),
-          new THREE.MeshStandardMaterial({ color: 0xe8ddc7 }),
+          new THREE.MeshStandardMaterial({ color: wallColor }),
         );
         wall.position.y = wallHeight / 2;
         wall.castShadow = true;
@@ -216,7 +225,7 @@ import { randomPasturePoint } from "./npc-runtime";
         const roof = new THREE.Mesh(
           roofGeo,
           new THREE.MeshStandardMaterial({
-            color: 0xa8402f,
+            color: roofColor,
             flatShading: true,
           }),
         );
@@ -237,6 +246,9 @@ import { randomPasturePoint } from "./npc-runtime";
         );
         door.position.set(doorX - centerX, 0.3, (depth / 2) * 0.98);
         group.add(door);
+        // skipWindowGlow：某些空屋(例如木匠事件用的那間)有自己一套跟劇情
+        // stage 綁定的發光邏輯，窗戶不該一蓋好就自動加入全域 windowMats、
+        // 每晚自動亮——那樣會蓋掉「還沒有人住」這件事本身的意義。
         function makeWindow(px, pz, rotY) {
           const winMat = new THREE.MeshStandardMaterial({
             color: 0x2b3a55,
@@ -250,7 +262,7 @@ import { randomPasturePoint } from "./npc-runtime";
           win.position.set(px, 0.7, pz);
           win.rotation.y = rotY;
           group.add(win);
-          windowMats.push(winMat);
+          if (!skipWindowGlow) windowMats.push(winMat);
         }
         makeWindow(doorX - centerX - width * 0.32, (depth / 2) * 0.98, 0);
         makeWindow(doorX - centerX + width * 0.32, (depth / 2) * 0.98, 0);
@@ -261,7 +273,15 @@ import { randomPasturePoint } from "./npc-runtime";
 
       // 穀倉 — 跟 makeBuilding 同一套「佔地範圍→算中心→算屋頂」邏輯，只是外觀
       // 換成穀倉常見的紅牆、深色屋頂、雙開木門、閣樓圓窗，跟主屋一眼就能分辨
-      export function makeBarn({ x, z, w, d, doorX }) {
+      export function makeBarn({
+        x,
+        z,
+        w,
+        d,
+        doorX,
+        wallColor = 0x9c4a3a,
+        roofColor = 0x4a3428,
+      }) {
         const group = new THREE.Group();
         const centerX = x + (w - 1) / 2,
           centerZ = z + (d - 1) / 2;
@@ -271,7 +291,7 @@ import { randomPasturePoint } from "./npc-runtime";
           roofHeight = 0.7;
         const wall = new THREE.Mesh(
           new THREE.BoxGeometry(width * 0.96, wallHeight, depth * 0.96),
-          new THREE.MeshStandardMaterial({ color: 0x9c4a3a }),
+          new THREE.MeshStandardMaterial({ color: wallColor }),
         );
         wall.position.y = wallHeight / 2;
         wall.castShadow = true;
@@ -282,7 +302,7 @@ import { randomPasturePoint } from "./npc-runtime";
         const roof = new THREE.Mesh(
           roofGeo,
           new THREE.MeshStandardMaterial({
-            color: 0x4a3428,
+            color: roofColor,
             flatShading: true,
           }),
         );
@@ -1026,6 +1046,7 @@ import { randomPasturePoint } from "./npc-runtime";
           side: THREE.DoubleSide,
         });
         waterSurfaceMaterials.push(waterMat);
+        waterSkyUnderlayMaterials.push(waterDepthMat);
         const addWater = (x, z, width, depth) => {
           const geometry = new THREE.PlaneGeometry(
             width,
@@ -1060,23 +1081,19 @@ import { randomPasturePoint } from "./npc-runtime";
           );
           gameState.portWaterMeshes.push(water);
           group.add(water);
-
-          // 每塊水面自己撒一批星光點，數量跟面積成比例，小水塘不會跟大船塢
-          // 一樣密。
-          const sparkleCount = Math.max(
-            6,
-            Math.min(40, Math.round((width * depth) / 15)),
-          );
           group.add(
             makeWaterSparklePoints(
               x,
               x + width,
               z,
               z + depth,
-              sparkleCount,
-              0.12,
+              Math.max(10, Math.min(55, Math.round((width * depth) / 10))),
+              0.055,
             ),
           );
+
+          // 每塊水面自己撒一批星光點，數量跟面積成比例，小水塘不會跟大船塢
+          // 一樣密。
         };
         addWater(
           port.basin.x,
@@ -2435,6 +2452,47 @@ import { randomPasturePoint } from "./npc-runtime";
         group.position.set(x, 0, z);
         windowMats.push(bulbMat);
         outdoorLampLights.push(light);
+        return group;
+      }
+
+      // 廣場長椅——兩片木板(座面/椅背)+ 兩支金屬椅腳，跟路燈同一套低模語彙
+      // (簡單方塊拼接)，facing 決定椅背朝哪個方向(玩家會從椅背對面走近)。
+      export function makeBench(x, z, facing = 0) {
+        const group = new THREE.Group();
+        const woodMat = new THREE.MeshStandardMaterial({
+          color: 0x8a6a45,
+          flatShading: true,
+        });
+        const metal = new THREE.MeshStandardMaterial({
+          color: 0x2f2b28,
+          flatShading: true,
+        });
+        const seat = new THREE.Mesh(
+          new THREE.BoxGeometry(0.9, 0.06, 0.36),
+          woodMat,
+        );
+        seat.position.y = 0.32;
+        seat.castShadow = true;
+        seat.receiveShadow = true;
+        group.add(seat);
+        const back = new THREE.Mesh(
+          new THREE.BoxGeometry(0.9, 0.4, 0.06),
+          woodMat,
+        );
+        back.position.set(0, 0.52, -0.15);
+        back.castShadow = true;
+        group.add(back);
+        [-0.36, 0.36].forEach((legX) => {
+          const leg = new THREE.Mesh(
+            new THREE.BoxGeometry(0.06, 0.32, 0.32),
+            metal,
+          );
+          leg.position.set(legX, 0.16, 0);
+          leg.castShadow = true;
+          group.add(leg);
+        });
+        group.position.set(x, 0, z);
+        group.rotation.y = facing;
         return group;
       }
 

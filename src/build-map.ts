@@ -4,10 +4,10 @@ import { gameState } from "./game-state";
 import { scene, TILE, PLATEAU_Y, NORTH_CLIFF_Z, SOUTH_TERRAIN_EXTENSION, NORTH_TERRAIN_EXTENSION, northCliffEdgeZ, groundY, updateCameraFrustum, makeWaterSparklePoints } from "./scene-sky";
 import { LAYOUT, MAPS, carpenterQuest, CARPENTER_HOUSE, isInsideLakeShape, AVENUE_TREE_KEYS, TOWN_Z_START, RAMP_CORRIDOR_MIN_Z, RAMP_CORRIDOR_MAX_Z, COAST_ROAD_CENTER_Z, COAST_ROAD_HALF_WIDTH, lakeEdgeFactor, POUCH_POS, CARPENTER_DOORSTEP, SHRINE_PATH_START_X, SHRINE_PATH_LENGTH, SHRINE_PATH_ELEVATION, portGroundY } from "./layout-maps";
 import { handleCarpenterDockTouch, handleCarpenterDoorstepTouch } from "./carpenter-quest";
-import { windowMats, waterSurfaceMaterials, waterSparkleMaterials, outdoorLampLights, foamMeshes, windmillRotors, lakeShoreColliders, fishSchool, pastureGrassBlades, avenueLeafMaterials, seasonalTreeLeafMaterials, seasonalGroundMaterials, SEA_FISH_SCALE, LAKE_FISH_SCALE, EAST_SEA_WAVE_DIRECTION, NORTHEAST_SEA_WAVE_DIRECTION, thresholdMarkerMeshes, thresholdMarkersVisible } from "./scene-registries";
+import { windowMats, waterSurfaceMaterials, waterSkyUnderlayMaterials, waterSparkleMaterials, outdoorLampLights, foamMeshes, windmillRotors, lakeShoreColliders, fishSchool, pastureGrassBlades, avenueLeafMaterials, seasonalTreeLeafMaterials, seasonalGroundMaterials, SEA_FISH_SCALE, LAKE_FISH_SCALE, EAST_SEA_WAVE_DIRECTION, NORTHEAST_SEA_WAVE_DIRECTION, thresholdMarkerMeshes, thresholdMarkersVisible } from "./scene-registries";
 import { npcGroup, animalGroup, PASTURE, hasPastureGrassAt } from "./npc-runtime";
 import { makeGirlPlayer } from "./humanoid";
-import { makeTree, makeAvenueTree, makeBuilding, makeBarn, makePath, makeLakeShoreRock, makeGrassTuft, makeWindGrass, makeFlower, makeFruitTree, makeWaterfallPlaceholder, makeOysterRack, makeRestArea, makeSmallGarden, makePortScene, makeToriiGate, makeShrinePathCauseway, makeTownPlaceholder, makeConstructionSign, makeStone, makeBasaltHeadland, makeSand, makeFoam, makeRedWindmill, makeMountain, makeWesternMountainTerrain, makeMountainGateway, makeFishProp, makeLamp, makeStreetLamp, makeInteriorWall, makeFurniture, updateSeasonalGroundColors, FLOWER_COLORS } from "./props";
+import { makeTree, makeAvenueTree, makeBuilding, makeBarn, makePath, makeLakeShoreRock, makeGrassTuft, makeWindGrass, makeFlower, makeFruitTree, makeWaterfallPlaceholder, makeOysterRack, makeRestArea, makeSmallGarden, makePortScene, makeToriiGate, makeShrinePathCauseway, makeTownPlaceholder, makeConstructionSign, makeStone, makeBasaltHeadland, makeSand, makeFoam, makeRedWindmill, makeMountain, makeWesternMountainTerrain, makeMountainGateway, makeFishProp, makeLamp, makeStreetLamp, makeBench, makeInteriorWall, makeFurniture, updateSeasonalGroundColors, FLOWER_COLORS } from "./props";
 import { syncFarmVisuals } from "./farm-visuals";
 import { OYSTER_RACK_VISUAL } from "./game-state";
 
@@ -19,6 +19,7 @@ import { OYSTER_RACK_VISUAL } from "./game-state";
         gameState.mapGroup = new THREE.Group();
         windowMats.length = 0;
         waterSurfaceMaterials.length = 0;
+        waterSkyUnderlayMaterials.length = 0;
         waterSparkleMaterials.length = 0;
         outdoorLampLights.length = 0;
         seasonalTreeLeafMaterials.length = 0;
@@ -360,6 +361,9 @@ import { OYSTER_RACK_VISUAL } from "./game-state";
           );
           northSeaMask.receiveShadow = true;
           gameState.mapGroup.add(northSeaMask);
+          waterSkyUnderlayMaterials.push(
+            northSeaMask.material as THREE.MeshStandardMaterial,
+          );
 
           gameState.seaGlimpseMesh = new THREE.Mesh(
             sgGeo,
@@ -447,7 +451,18 @@ import { OYSTER_RACK_VISUAL } from "./game-state";
           plateauGroup.add(b.style === "barn" ? makeBarn(b) : makeBuilding(b)),
         );
         (map.placeholders || []).forEach((p) => {
-          plateauGroup.add(makeTownPlaceholder(p.x, p.z, p.seed));
+          // p.wallColor 存在代表這輪升級過的完整建築(makeBuilding/makeBarn，
+          // 有窗/門/煙囪)；沒有的話(目前只剩木匠事件那間空屋)維持原本的
+          // 純色佔位方塊，佔地格子(tiles 裡的 1)完全不受影響。
+          if (p.wallColor !== undefined) {
+            plateauGroup.add(
+              p.style === "barn"
+                ? makeBarn(p)
+                : makeBuilding(p),
+            );
+          } else {
+            plateauGroup.add(makeTownPlaceholder(p.x, p.z, p.seed));
+          }
           // 木匠事件的空屋：不是新蓋一棟，是拿 oldVillage 既有佔位空屋之一
           // 疊視覺狀態——施工中立牌，或入住後補一顆跟其他房子同一套
           // windowMats 系統驅動的發光窗戶，晚上自動跟著 nightFactor 亮。
@@ -484,6 +499,16 @@ import { OYSTER_RACK_VISUAL } from "./game-state";
           const torii = makeToriiGate();
           torii.position.set(4, 0, 3);
           plateauGroup.add(torii);
+        }
+        if (mapName === "oldVillage") {
+          // 廣場(LAYOUT.oldVillage.plaza：x=22~32,z=4~25)裡放兩盞路燈、兩張
+          // 長椅，位置刻意離廣場邊界(x=22/33、跟港口門的垂直通道)有一段
+          // 緩衝，不會卡到既有的門檻/道路。
+          const lamp1 = makeStreetLamp(25, 8, 1);
+          const lamp2 = makeStreetLamp(29, 18, -1);
+          plateauGroup.add(lamp1, lamp2);
+          plateauGroup.add(makeBench(26, 12, 0));
+          plateauGroup.add(makeBench(30, 14, Math.PI));
         }
         (map.furniture || []).forEach((item) => {
           const w = item.w || 1,
@@ -733,6 +758,9 @@ import { OYSTER_RACK_VISUAL } from "./game-state";
             oceanDepthMask.position.y = 0.025;
             oceanDepthMask.receiveShadow = true;
             gameState.mapGroup.add(oceanDepthMask);
+            waterSkyUnderlayMaterials.push(
+              oceanDepthMask.material as THREE.MeshStandardMaterial,
+            );
 
             gameState.oceanMesh = new THREE.Mesh(
               geo,
@@ -755,19 +783,12 @@ import { OYSTER_RACK_VISUAL } from "./game-state";
             gameState.oceanMesh.position.set(0, 0.13, 0);
             gameState.oceanMesh.receiveShadow = true;
             gameState.mapGroup.add(gameState.oceanMesh);
+            gameState.mapGroup.add(
+              makeWaterSparklePoints(minX, minX + 32, dataMinZ, dataMaxZ, 95, 0.075),
+            );
 
             // 星光倒影散布在真實資料涵蓋的海域(dataMinZ~dataMaxZ)，不撒到
             // 純視覺延伸的南側/遠海——那邊玩家平常看不到，撒了也是浪費。
-            gameState.mapGroup.add(
-              makeWaterSparklePoints(
-                minX,
-                minX + 32,
-                dataMinZ,
-                dataMaxZ,
-                70,
-                0.16,
-              ),
-            );
 
             // 沙灘跟海交界處放幾組會捲上岸、碎開、又退回去的浪花——原本每一
             // 排(z)都放一組，太密集、疊起來一片白，改成每兩排放一組
@@ -1018,20 +1039,34 @@ import { OYSTER_RACK_VISUAL } from "./game-state";
             gameState.lakeMesh.position.set(centerX, 0.1, centerZ);
             gameState.lakeMesh.receiveShadow = true; // 房子跟樹的影子可以真的落在水面上
             plateauGroup.add(gameState.lakeMesh);
-
-            // 湖是橢圓形，用 isInsideLakeShape 篩掉外接矩形四個角落，星光點
-            // 才不會漂在湖岸旁的草地上。
+            const lakeSkyUnderlay = new THREE.Mesh(
+              lGeo.clone(),
+              new THREE.MeshStandardMaterial({
+                color: 0x174968,
+                roughness: 1,
+                metalness: 0,
+                side: THREE.DoubleSide,
+              }),
+            );
+            lakeSkyUnderlay.position.set(centerX, 0.035, centerZ);
+            plateauGroup.add(lakeSkyUnderlay);
+            waterSkyUnderlayMaterials.push(
+              lakeSkyUnderlay.material as THREE.MeshStandardMaterial,
+            );
             plateauGroup.add(
               makeWaterSparklePoints(
                 centerX - radiusX,
                 centerX + radiusX,
                 centerZ - radiusZ,
                 centerZ + radiusZ,
-                26,
-                0.13,
+                34,
+                0.065,
                 (x, z) => isInsideLakeShape(x, z, 0.3),
               ),
             );
+
+            // 湖是橢圓形，用 isInsideLakeShape 篩掉外接矩形四個角落，星光點
+            // 才不會漂在湖岸旁的草地上。
 
             // 大石完整圍住湖岸，間距小於石頭直徑，讓相鄰石塊自然重疊、沒有缺口。
             const SHORE_ROCK_COUNT = 72;

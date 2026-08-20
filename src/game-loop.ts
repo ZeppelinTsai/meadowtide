@@ -20,7 +20,7 @@ import {
   updateMeteors, updateSkyDome, updateCameraFrustum,
 } from "./scene-sky";
 import {
-  windowMats, waterSurfaceMaterials, waterSparkleMaterials, outdoorLampLights, foamMeshes, windmillRotors, fishSchool,
+  windowMats, waterSurfaceMaterials, waterSkyUnderlayMaterials, waterSparkleMaterials, outdoorLampLights, foamMeshes, windmillRotors, fishSchool,
   pastureGrassBlades, GRASS_GROWTH_SECONDS, EAST_SEA_WAVE, NORTH_SEA_WAVE,
   EAST_SEA_WAVE_DIRECTION, NORTHEAST_SEA_WAVE_DIRECTION, sampleDirectedSeaWave,
 } from "./scene-registries";
@@ -483,6 +483,12 @@ gameState.lastFrame = performance.now();
           material.emissive.copy(sky);
           material.emissiveIntensity = skyReflectionAlpha;
         });
+        const underwaterSky = sky.clone().multiplyScalar(0.58 + nightFactor * 0.12);
+        waterSkyUnderlayMaterials.forEach((material) => {
+          material.color.copy(underwaterSky);
+          material.emissive.copy(underwaterSky);
+          material.emissiveIntensity = 0.28;
+        });
         // 水面星光點點：PointsMaterial 不受場景光照影響，深夜環境光再暗都會
         // 維持原本亮度，跟上面那層 emissive 天空色調(會被夜色蓋暗)是刻意分開
         // 的兩個效果，互不干擾。可見度公式跟星空本身(updateSeasonalStars)
@@ -498,10 +504,20 @@ gameState.lastFrame = performance.now();
             snow: 0.45,
             blizzard: 0.03,
           }[gameState.currentWeather] ?? 1);
-        waterSparkleMaterials.forEach((material, i) => {
-          const pulse =
-            0.65 + 0.35 * Math.sin(gameState.effectElapsed * 1.4 + i * 12.7);
-          material.opacity = starReflectionVisibility * 0.85 * pulse;
+        // 每組獨立閃爍的公式直接比照星空自己那套(updateSeasonalStars)：
+        // sin 波取正值再四次方，大部分時間壓在暗處、只在波峰附近瞬間衝亮，
+        // 才會是「一閃一閃」而不是均勻淡入淡出的一片光。
+        waterSparkleMaterials.forEach((material) => {
+          const phaseGroup = (material as any).userData.phaseGroup ?? 0;
+          const pulse = Math.max(
+            0,
+            Math.sin(
+              gameState.effectElapsed * (1.42 + (phaseGroup % 3) * 0.17) +
+                (phaseGroup * Math.PI * 2) / 6,
+            ),
+          );
+          material.opacity =
+            starReflectionVisibility * (0.05 + Math.pow(pulse, 4) * 0.95);
         });
         if (isOutdoorMap()) {
           scene.background = sky;

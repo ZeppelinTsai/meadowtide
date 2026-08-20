@@ -71,12 +71,54 @@ import { hash2 } from "./utils";
           artVillageGate: { x: 0, z: 18 },
           plaza: { x: 22, z: 4, width: 11, height: 22 },
           carpenterHouse: { x: 6, z: 20 },
+          // w/d/doorX/wallColor/roofColor/style：這輪把原本純色佔位方塊
+          // (makeTownPlaceholder)升級成完整建築(makeBuilding/makeBarn，有窗
+          // /門/煙囪)，參考圖片裡那種每棟顏色/屋頂都不一樣的聚落感。座標
+          // 完全不動——w/d 只是視覺上略微加大(佔地仍是單格 tile=1，見
+          // makeOldVillageTiles)，不影響碰撞跟既有的城鎮<->生活區/港口/
+          // 美術村事件。carpenterHouse(6,20) 沒有 wallColor/roofColor，維持
+          // 原本的 makeTownPlaceholder 佔位——那間是木匠事件用的「還沒整修
+          // 好」空屋，施工告示牌/入住後的發光窗戶都是靠劇情 stage 另外疊上
+          // 去的(見 build-map.ts)，太早把它做漂亮會跟「這間需要修」的敘事
+          // 衝突，等木匠劇情真的做到那一步再回頭一起處理。
           houses: [
-            { x: 4, z: 5, seed: 0.18 }, { x: 9, z: 5, seed: 0.34 },
-            { x: 14, z: 5, seed: 0.52 }, { x: 18, z: 5, seed: 0.68 },
-            { x: 5, z: 12, seed: 0.27 }, { x: 11, z: 12, seed: 0.46 },
-            { x: 17, z: 12, seed: 0.73 }, { x: 6, z: 20, seed: 0.22 },
-            { x: 12, z: 20, seed: 0.57 }, { x: 18, z: 20, seed: 0.81 },
+            {
+              x: 4, z: 5, seed: 0.18, w: 2, d: 2, doorX: 4,
+              wallColor: 0xe8d9a8, roofColor: 0xc46a3a,
+            },
+            {
+              x: 9, z: 5, seed: 0.34, w: 2, d: 2, doorX: 9,
+              wallColor: 0xeceae0, roofColor: 0x3a6b6b,
+            },
+            {
+              x: 14, z: 5, seed: 0.52, w: 2, d: 2, doorX: 14,
+              wallColor: 0x8a6a4a, roofColor: 0x3a5a3a, style: "barn",
+            },
+            {
+              x: 18, z: 5, seed: 0.68, w: 2, d: 2, doorX: 18,
+              wallColor: 0xd8cdb8, roofColor: 0x5a4a42,
+            },
+            {
+              x: 5, z: 12, seed: 0.27, w: 2, d: 2, doorX: 5,
+              wallColor: 0xf0e6c8, roofColor: 0xa8402f,
+            },
+            {
+              x: 11, z: 12, seed: 0.46, w: 2, d: 2, doorX: 11,
+              wallColor: 0x9c6b4a, roofColor: 0x4a3428, style: "barn",
+            },
+            {
+              x: 17, z: 12, seed: 0.73, w: 2, d: 2, doorX: 17,
+              wallColor: 0xdde3e0, roofColor: 0x2f4a5a,
+            },
+            { x: 6, z: 20, seed: 0.22 },
+            {
+              x: 12, z: 20, seed: 0.57, w: 2, d: 2, doorX: 12,
+              wallColor: 0xe0d0b0, roofColor: 0x6a7a4a,
+            },
+            {
+              x: 18, z: 20, seed: 0.81, w: 2, d: 2, doorX: 18,
+              wallColor: 0x7a6048, roofColor: 0x384a38, style: "barn",
+            },
           ],
         },
         port: {
