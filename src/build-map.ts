@@ -4,7 +4,7 @@ import { gameState } from "./game-state";
 import { scene, TILE, PLATEAU_Y, NORTH_CLIFF_Z, SOUTH_TERRAIN_EXTENSION, NORTH_TERRAIN_EXTENSION, northCliffEdgeZ, groundY, updateCameraFrustum } from "./scene-sky";
 import { LAYOUT, MAPS, carpenterQuest, CARPENTER_HOUSE, isInsideLakeShape, AVENUE_TREE_KEYS, TOWN_Z_START, RAMP_CORRIDOR_MIN_Z, RAMP_CORRIDOR_MAX_Z, COAST_ROAD_CENTER_Z, COAST_ROAD_HALF_WIDTH, lakeEdgeFactor, POUCH_POS, CARPENTER_DOORSTEP, SHRINE_PATH_START_X, SHRINE_PATH_LENGTH, SHRINE_PATH_ELEVATION, portGroundY } from "./layout-maps";
 import { handleCarpenterDockTouch, handleCarpenterDoorstepTouch } from "./carpenter-quest";
-import { windowMats, outdoorLampLights, foamMeshes, windmillRotors, lakeShoreColliders, fishSchool, pastureGrassBlades, avenueLeafMaterials, seasonalTreeLeafMaterials, seasonalGroundMaterials, SEA_FISH_SCALE, LAKE_FISH_SCALE, EAST_SEA_WAVE_DIRECTION, NORTHEAST_SEA_WAVE_DIRECTION, thresholdMarkerMeshes, thresholdMarkersVisible } from "./scene-registries";
+import { windowMats, waterSurfaceMaterials, outdoorLampLights, foamMeshes, windmillRotors, lakeShoreColliders, fishSchool, pastureGrassBlades, avenueLeafMaterials, seasonalTreeLeafMaterials, seasonalGroundMaterials, SEA_FISH_SCALE, LAKE_FISH_SCALE, EAST_SEA_WAVE_DIRECTION, NORTHEAST_SEA_WAVE_DIRECTION, thresholdMarkerMeshes, thresholdMarkersVisible } from "./scene-registries";
 import { npcGroup, animalGroup, PASTURE, hasPastureGrassAt } from "./npc-runtime";
 import { makeGirlPlayer } from "./humanoid";
 import { makeTree, makeAvenueTree, makeBuilding, makeBarn, makePath, makeLakeShoreRock, makeGrassTuft, makeWindGrass, makeFlower, makeFruitTree, makeWaterfallPlaceholder, makeOysterRack, makeRestArea, makeSmallGarden, makePortScene, makeToriiGate, makeShrinePathCauseway, makeTownPlaceholder, makeConstructionSign, makeStone, makeBasaltHeadland, makeSand, makeFoam, makeRedWindmill, makeMountain, makeWesternMountainTerrain, makeMountainGateway, makeFishProp, makeLamp, makeStreetLamp, makeInteriorWall, makeFurniture, updateSeasonalGroundColors, FLOWER_COLORS } from "./props";
@@ -18,6 +18,7 @@ import { OYSTER_RACK_VISUAL } from "./game-state";
         scene.remove(gameState.mapGroup);
         gameState.mapGroup = new THREE.Group();
         windowMats.length = 0;
+        waterSurfaceMaterials.length = 0;
         outdoorLampLights.length = 0;
         seasonalTreeLeafMaterials.length = 0;
         seasonalGroundMaterials.length = 0;
@@ -369,6 +370,9 @@ import { OYSTER_RACK_VISUAL } from "./game-state";
               opacity: 0.92,
               side: THREE.DoubleSide,
             }),
+          );
+          waterSurfaceMaterials.push(
+            gameState.seaGlimpseMesh.material as THREE.MeshStandardMaterial,
           );
           gameState.seaGlimpseMesh.position.set(
             northSeaCenterX,
@@ -740,6 +744,9 @@ import { OYSTER_RACK_VISUAL } from "./game-state";
                 opacity: 0.92,
               }),
             );
+            waterSurfaceMaterials.push(
+              gameState.oceanMesh.material as THREE.MeshStandardMaterial,
+            );
             // 頂點座標已經是世界座標（每排西緣各自不同，不能再用單一中心點套用
             // PlaneGeometry 的本地座標系），mesh 本身只需要負責 y 的抬高量。
             // y 抬高一點：波浪的位移量如果蓋過地面（y=0）就會被不透明的地面擋住，
@@ -990,6 +997,9 @@ import { OYSTER_RACK_VISUAL } from "./game-state";
                 opacity: 0.9,
                 side: THREE.DoubleSide,
               }),
+            );
+            waterSurfaceMaterials.push(
+              gameState.lakeMesh.material as THREE.MeshStandardMaterial,
             );
             gameState.lakeMesh.position.set(centerX, 0.1, centerZ);
             gameState.lakeMesh.receiveShadow = true; // 房子跟樹的影子可以真的落在水面上

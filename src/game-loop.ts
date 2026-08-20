@@ -20,10 +20,63 @@ import {
   updateMeteors, updateSkyDome, updateCameraFrustum,
 } from "./scene-sky";
 import {
-  windowMats, outdoorLampLights, foamMeshes, windmillRotors, fishSchool,
+  windowMats, waterSurfaceMaterials, outdoorLampLights, foamMeshes, windmillRotors, fishSchool,
   pastureGrassBlades, GRASS_GROWTH_SECONDS, EAST_SEA_WAVE, NORTH_SEA_WAVE,
   EAST_SEA_WAVE_DIRECTION, NORTHEAST_SEA_WAVE_DIRECTION, sampleDirectedSeaWave,
 } from "./scene-registries";
+
+function sampleStarlightReflection(
+  worldX: number,
+  worldZ: number,
+  nightFactor: number,
+  elapsed: number,
+) {
+  const weatherVisibility = {
+    clear: 1,
+    cloudy: 0.24,
+    rain: 0.08,
+    snow: 0.28,
+    typhoon: 0,
+    storm: 0,
+    blizzard: 0.02,
+  }[gameState.currentWeather] ?? 0;
+  const nightVisibility = THREE.MathUtils.smoothstep(nightFactor, 0.45, 0.92);
+  if (nightVisibility <= 0 || weatherVisibility <= 0) return 0;
+
+  // Stable world-space star seeds, broken into short horizontal glints by the waves.
+  const cellX = Math.floor(worldX * 1.35);
+  const cellZ = Math.floor(worldZ * 0.72);
+  const seed = Math.sin(cellX * 127.1 + cellZ * 311.7) * 43758.5453;
+  const random = seed - Math.floor(seed);
+  const star = THREE.MathUtils.smoothstep(random, 0.76, 0.975);
+  const twinkle = Math.pow(
+    Math.max(0, Math.sin(elapsed * (1.25 + random * 1.8) + random * 31.4)),
+    5,
+  );
+  const ripple = 0.55 + 0.45 * Math.sin(worldX * 4.2 - elapsed * 2.1);
+  return nightVisibility * weatherVisibility * star * (0.28 + 0.72 * twinkle) * ripple;
+}
+
+function setSeaVertexColor(
+  colors: THREE.BufferAttribute | THREE.InterleavedBufferAttribute,
+  index: number,
+  baseR: number,
+  baseG: number,
+  baseB: number,
+  foamMix: number,
+  starlight: number,
+) {
+  const r = baseR * (1 - foamMix) + foamMix;
+  const g = baseG * (1 - foamMix) + foamMix;
+  const b = baseB * (1 - foamMix) + foamMix;
+  const glow = Math.min(1, starlight * 1.18);
+  colors.setXYZ(
+    index,
+    r + (0.78 - r) * glow,
+    g + (0.9 - g) * glow,
+    b + (1 - b) * glow,
+  );
+}
 
 gameState.lastFrame = performance.now();
 
@@ -414,6 +467,22 @@ gameState.lastFrame = performance.now();
             ? new THREE.Color(0xcbd4dc)
             : new THREE.Color(0x697685);
         sky.lerp(weatherFogColor, weatherDim);
+        const skyReflectionAlpha =
+          ({
+            clear: 0.2,
+            cloudy: 0.14,
+            rain: 0.1,
+            typhoon: 0.055,
+            storm: 0.045,
+            snow: 0.15,
+            blizzard: 0.065,
+          }[gameState.currentWeather] ?? 0.12) *
+          (0.82 + nightFactor * 0.42);
+        waterSurfaceMaterials.forEach((material) => {
+          // Opaque water remains the base; emissive sky tint acts as the alpha reflection layer.
+          material.emissive.copy(sky);
+          material.emissiveIntensity = skyReflectionAlpha;
+        });
         if (isOutdoorMap()) {
           scene.background = sky;
           if (gameState.currentWeather === "clear") {
@@ -581,11 +650,19 @@ gameState.lastFrame = performance.now();
             // 浪頭捲到接近最高點時快速染白，模擬碎浪；其餘地方維持海藍色
             const crestFactor = Math.max(0, (waveSample.crest - 0.4) / 0.6);
             const t = Math.pow(crestFactor, 1.8);
-            colorAttr.setXYZ(
+            setSeaVertexColor(
+              colorAttr,
               i,
-              0.18 + 0.82 * t,
-              0.43 + 0.57 * t,
-              0.68 + 0.32 * t,
+              0.18,
+              0.43,
+              0.68,
+              t,
+              sampleStarlightReflection(
+                worldX,
+                worldZ,
+                nightFactor,
+                gameState.effectElapsed,
+              ),
             );
           }
           posAttr.needsUpdate = true;
@@ -640,11 +717,21 @@ gameState.lastFrame = performance.now();
                 (waveSample.crest - 0.4) / 0.6,
               );
               const t = Math.pow(crestFactor, 1.8);
-              colors.setXYZ(
+              const worldX = localX + water.position.x;
+              const worldZ = water.position.z - localY;
+              setSeaVertexColor(
+                colors,
                 i,
-                0.18 + 0.82 * t,
-                0.43 + 0.57 * t,
-                0.68 + 0.32 * t,
+                0.18,
+                0.43,
+                0.68,
+                t,
+                sampleStarlightReflection(
+                  worldX,
+                  worldZ,
+                  nightFactor,
+                  gameState.effectElapsed,
+                ),
               );
             }
             pos.needsUpdate = true;
@@ -682,11 +769,19 @@ gameState.lastFrame = performance.now();
             sgPosAttr.setX(i, bx + displacementX);
             sgPosAttr.setY(i, height);
             sgPosAttr.setZ(i, bz + displacementZ);
-            sgColorAttr.setXYZ(
+            setSeaVertexColor(
+              sgColorAttr,
               i,
-              sgBaseColors[colorOffset] * (1 - foamMix) + foamMix,
-              sgBaseColors[colorOffset + 1] * (1 - foamMix) + foamMix,
-              sgBaseColors[colorOffset + 2] * (1 - foamMix) + foamMix,
+              sgBaseColors[colorOffset],
+              sgBaseColors[colorOffset + 1],
+              sgBaseColors[colorOffset + 2],
+              foamMix,
+              sampleStarlightReflection(
+                worldX,
+                worldZ,
+                nightFactor,
+                gameState.effectElapsed,
+              ),
             );
           }
           sgPosAttr.needsUpdate = true;

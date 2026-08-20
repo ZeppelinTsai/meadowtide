@@ -8,7 +8,7 @@ import {
   SHRINE_PATH_LENGTH,
   SHRINE_PATH_ELEVATION,
 } from "./layout-maps";
-import { windowMats, outdoorLampLights, foamMeshes, windmillRotors, pastureGrassBlades, avenueLeafMaterials, seasonalTreeLeafMaterials, seasonalGroundMaterials, GRASS_STAGE_HEIGHTS, EAST_SEA_WAVE_DIRECTION } from "./scene-registries";
+import { windowMats, waterSurfaceMaterials, outdoorLampLights, foamMeshes, windmillRotors, pastureGrassBlades, avenueLeafMaterials, seasonalTreeLeafMaterials, seasonalGroundMaterials, GRASS_STAGE_HEIGHTS, EAST_SEA_WAVE_DIRECTION } from "./scene-registries";
 import { randomPasturePoint } from "./npc-runtime";
 
 // 7) 樹 / 建築 / 地形（沿用 v11）
@@ -1025,6 +1025,7 @@ import { randomPasturePoint } from "./npc-runtime";
           metalness: 0,
           side: THREE.DoubleSide,
         });
+        waterSurfaceMaterials.push(waterMat);
         const addWater = (x, z, width, depth) => {
           const geometry = new THREE.PlaneGeometry(
             width,
