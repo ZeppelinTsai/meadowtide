@@ -720,22 +720,256 @@ export function buildMap(mapName) {
         color: 0x78945a,
         roughness: 0.98,
       });
+      const mountainPositions: number[] = [];
+      const mountainColors: number[] = [];
+      const mountainIndices: number[] = [];
+      const summitLeft = mountain.summit.x - 0.5;
+      const summitRight = mountain.summit.x + mountain.summit.width - 0.5;
+      const summitNorth = mountain.summit.z - 0.5;
+      const summitSouth = mountain.summit.z + mountain.summit.depth - 0.5;
+      const waistLeft = mountain.waist.x - 0.5;
+      const waistRight = mountain.waist.x + mountain.waist.width - 0.5;
+      const waistNorth = mountain.waist.z - 0.5;
+      const waistSouth = mountain.waist.z + mountain.waist.depth - 0.5;
+      const footLeft = mountain.foot.x - 0.5;
+      const footRight = mountain.foot.x + mountain.foot.width - 0.5;
+      const footNorth = mountain.foot.z - 0.5;
+      const footSouth = mountain.foot.z + mountain.foot.depth - 0.5;
+      const worldLeft = -8;
+      const worldRight = mountain.width + 7;
+      const summitY = mountain.summit.elevation + 0.08;
+      const waistY = mountain.waist.elevation + 0.08;
+      const footY = mountain.foot.elevation + 0.08;
+
+      // 舊版每段斜面只用「四角雙線性插值 + 中央一個 edgeFade 拱起」，不管
+      // 隆起量調多大，整片看起來都還是一塊平滑的斜面（一個包子貼在方形
+      // 斜坡上），這才是「很方」的真正原因——斜坡本身的大形狀還是四角
+      // 決定的矩形。這一版改成：緊貼鄰接面（平台邊、樓梯缺口、相鄰斜面）
+      // 的那幾邊維持 0 隆起（貼合、不露縫），但只要有一邊是「地圖外緣的
+      // 自由邊」（worldLeft/worldRight、地圖最北/最南），隆起就直接開到底、
+      // 而且用好幾組不同頻率、不同相位的稜線疊加（不是單一中央凸起），
+      // 才會在自由邊那一側長出好幾座斷斷續續的山頭，不是一片平滑斜面。
+      const axisOpen = (t: number, free1: boolean, free2: boolean) => {
+        // t=0 端若不是自由邊（free1=false），要在靠近 t=0 的地方壓回 0，
+        // 貼合鄰接面；t=1 端同理看 free2。兩邊都自由就整段開好開滿。
+        const startFactor = free1 ? 1 : Math.min(1, t / 0.15);
+        const endFactor = free2 ? 1 : Math.min(1, (1 - t) / 0.15);
+        return Math.min(startFactor, endFactor);
+      };
+      const addMountainSlope = (
+        x1: number,
+        x2: number,
+        z1: number,
+        z2: number,
+        y00: number,
+        y10: number,
+        y01: number,
+        y11: number,
+      ) => {
+        const freeX1 = x1 === worldLeft;
+        const freeX2 = x2 === worldRight;
+        const freeZ1 = z1 === -9;
+        const freeZ2 = z2 === mountain.height + 8;
+        const xSegments = Math.max(8, Math.ceil(Math.abs(x2 - x1) / 0.9));
+        const zSegments = Math.max(8, Math.ceil(Math.abs(z2 - z1) / 0.9));
+        const base = mountainPositions.length / 3;
+        // 每段斜面自己的雜訊/相位種子，避免不同段落的稜線花紋重複、或
+        // 左右兩側鏡射出完全對稱的山頭。
+        const seedX = x1 * 3.7 + z1 * 1.3;
+        const seedZ = z1 * 4.1 - x1 * 0.9;
+        const phaseA = hash2(seedX, 5.1) * Math.PI * 2;
+        const phaseB = hash2(seedZ, 9.7) * Math.PI * 2;
+        const freqA = 4.5 + hash2(seedX, 2.2) * 3;
+        const freqB = 3.5 + hash2(seedZ, 6.4) * 3;
+        for (let iz = 0; iz <= zSegments; iz++) {
+          const tz = iz / zSegments;
+          const zOpen = axisOpen(tz, freeZ1, freeZ2);
+          for (let ix = 0; ix <= xSegments; ix++) {
+            const tx = ix / xSegments;
+            const x = THREE.MathUtils.lerp(x1, x2, tx);
+            const z = THREE.MathUtils.lerp(z1, z2, tz);
+            const north = THREE.MathUtils.lerp(y00, y10, tx);
+            const south = THREE.MathUtils.lerp(y01, y11, tx);
+            const baseY = THREE.MathUtils.lerp(north, south, tz);
+            const xOpen = axisOpen(tx, freeX1, freeX2);
+            const envelope = xOpen * zOpen;
+            // 兩組不同頻率/相位的稜線疊加，才會沿著自由邊斷斷續續冒出好幾
+            // 座山頭，而不是單一一個中央凸起；再加一點細碎雜訊做岩面粗糙感。
+            const ridgeA = Math.sin(tx * freqA + phaseA) * Math.cos(tz * freqB * 0.7 + phaseB) * 0.72;
+            const ridgeB = Math.cos(tx * freqB + phaseB) * Math.sin(tz * freqA * 0.6 + phaseA) * 0.46;
+            const jitter = (hash2(ix * 7.3 + seedX, iz * 6.1 + seedZ) - 0.5) * 0.42;
+            const roundedBulge = Math.sin(tx * Math.PI) * Math.sin(tz * Math.PI) * 0.9;
+            const relief = Math.pow(envelope, 0.72) * (0.42 + ridgeA + ridgeB + jitter) + roundedBulge;
+            const y = baseY + relief;
+            mountainPositions.push(x, y, z);
+            const shade = new THREE.Color(0x555b53).lerp(
+              new THREE.Color(0x7d8070),
+              Math.max(0, Math.min(1, 0.28 + envelope * 0.5 + jitter * 0.2)),
+            );
+            mountainColors.push(shade.r, shade.g, shade.b);
+          }
+        }
+        const rowLength = xSegments + 1;
+        for (let iz = 0; iz < zSegments; iz++) {
+          for (let ix = 0; ix < xSegments; ix++) {
+            const a = base + iz * rowLength + ix;
+            const b = a + 1;
+            const c = a + rowLength;
+            const d = c + 1;
+            if ((ix + iz) % 2) mountainIndices.push(a, b, c, b, d, c);
+            else mountainIndices.push(a, d, c, a, b, d);
+          }
+        }
+      };
+
+      const addMountainDome = () => {
+        const xSegments = 72;
+        const zSegments = 72;
+        const xMin = worldLeft;
+        const xMax = worldRight;
+        const zMin = -9;
+        const zMax = mountain.height + 8;
+        const base = mountainPositions.length / 3;
+        const centerX = mountain.summit.x + (mountain.summit.width - 1) / 2;
+        const summitCenterZ = mountain.summit.z + (mountain.summit.depth - 1) / 2;
+        const waistCenterZ = mountain.waist.z + (mountain.waist.depth - 1) / 2;
+        const footCenterZ = mountain.foot.z + (mountain.foot.depth - 1) / 2;
+        const profileAt = (z: number) => {
+          if (z <= summitCenterZ) {
+            const t = Math.max(0, Math.min(1, (z - zMin) / (summitCenterZ - zMin)));
+            return { height: THREE.MathUtils.lerp(0.25, summitY, t), halfWidth: THREE.MathUtils.lerp(5, 15, t) };
+          }
+          if (z <= waistCenterZ) {
+            const t = (z - summitCenterZ) / (waistCenterZ - summitCenterZ);
+            return { height: THREE.MathUtils.lerp(summitY, waistY, t), halfWidth: THREE.MathUtils.lerp(15, 19, t) };
+          }
+          if (z <= footCenterZ) {
+            const t = (z - waistCenterZ) / (footCenterZ - waistCenterZ);
+            return { height: THREE.MathUtils.lerp(waistY, footY + 0.2, t), halfWidth: THREE.MathUtils.lerp(19, 22, t) };
+          }
+          const t = Math.max(0, Math.min(1, (z - footCenterZ) / (zMax - footCenterZ)));
+          return { height: THREE.MathUtils.lerp(footY + 0.2, 0.05, t), halfWidth: THREE.MathUtils.lerp(22, 24, t) };
+        };
+        for (let iz = 0; iz <= zSegments; iz++) {
+          const tz = iz / zSegments;
+          const z = THREE.MathUtils.lerp(zMin, zMax, tz);
+          const profile = profileAt(z);
+          for (let ix = 0; ix <= xSegments; ix++) {
+            const tx = ix / xSegments;
+            const x = THREE.MathUtils.lerp(xMin, xMax, tx);
+            const radial = Math.min(1, Math.abs(x - centerX) / profile.halfWidth);
+            const dome = Math.pow(Math.max(0, 1 - radial * radial), 0.48);
+            const envelope = Math.sin(tx * Math.PI) * Math.sin(tz * Math.PI);
+            const broad = Math.sin(x * 0.34 + z * 0.11) * 0.22;
+            const broken = (hash2(ix * 5.7, iz * 8.3) - 0.5) * 0.22;
+            const y = Math.max(-0.12, profile.height * dome + (broad + broken) * envelope);
+            mountainPositions.push(x, y, z);
+            const shade = new THREE.Color(0x535a52).lerp(
+              new THREE.Color(0x7b806f),
+              Math.max(0, Math.min(1, 0.2 + dome * 0.58 + broken)),
+            );
+            mountainColors.push(shade.r, shade.g, shade.b);
+          }
+        }
+        const rowLength = xSegments + 1;
+        const shouldRender = (x: number, z: number) => {
+          if (
+            z >= mountain.height - 1 &&
+            Math.abs(x - mountain.townGate.x) <= 1.4
+          ) return false;
+          if (
+            x >= mountain.width - 1 &&
+            Math.abs(z - mountain.homeGate.z) <= 1.5
+          ) return false;
+          const tileX = Math.round(x);
+          const tileZ = Math.round(z);
+          if (tileZ >= 0 && tileZ < map.tiles.length && tileX >= 0 && tileX < map.tiles[0].length)
+            return map.tiles[tileZ][tileX] === 1;
+          const profile = profileAt(z);
+          return Math.abs(x - centerX) < profile.halfWidth;
+        };
+        for (let iz = 0; iz < zSegments; iz++) {
+          for (let ix = 0; ix < xSegments; ix++) {
+            const tx = (ix + 0.5) / xSegments;
+            const tz = (iz + 0.5) / zSegments;
+            const x = THREE.MathUtils.lerp(xMin, xMax, tx);
+            const z = THREE.MathUtils.lerp(zMin, zMax, tz);
+            if (!shouldRender(x, z)) continue;
+            const a = base + iz * rowLength + ix;
+            const b = a + 1;
+            const c = a + rowLength;
+            const d = c + 1;
+            if ((ix + iz) % 2) mountainIndices.push(a, b, c, b, d, c);
+            else mountainIndices.push(a, d, c, a, b, d);
+          }
+        }
+      };
+
+      // 三層平台左右各是一整片連續山坡；靠平台處低，往地圖外形成高山脊。
+      addMountainDome();
+      const mountainGeometry = new THREE.BufferGeometry();
+      mountainGeometry.setAttribute(
+        "position",
+        new THREE.Float32BufferAttribute(mountainPositions, 3),
+      );
+      mountainGeometry.setAttribute(
+        "color",
+        new THREE.Float32BufferAttribute(mountainColors, 3),
+      );
+      mountainGeometry.setIndex(mountainIndices);
+      mountainGeometry.computeVertexNormals();
+      const mountainMesh = new THREE.Mesh(
+        mountainGeometry,
+        new THREE.MeshStandardMaterial({
+          vertexColors: true,
+          roughness: 1,
+          flatShading: true,
+          side: THREE.DoubleSide,
+          emissive: 0x11150f,
+          emissiveIntensity: 0.28,
+          depthWrite: false,
+        }),
+      );
+      mountainMesh.castShadow = true;
+      mountainMesh.receiveShadow = true;
+      mountainMesh.renderOrder = 0;
+      gameState.mapGroup.add(mountainMesh);
+      // 跟生活區西側山壁（makeWesternMountainTerrain）一樣，在山壁外緣散一圈
+      // 大石頭打散筆直的地圖邊界，避免整座山的最外圍看起來像切齊的方形。
+      for (let i = 0; i < 26; i++) {
+        const t = i / 25;
+        const z = THREE.MathUtils.lerp(-8, mountain.height + 7, t);
+        const seed = hash2(i * 5.3, 41.7);
+        [worldLeft + 1.4 + seed * 1.6, worldRight - 1.4 - seed * 1.6].forEach(
+          (edgeX, side) => {
+            const rock = makeStone(
+              edgeX,
+              z + (seed - 0.5) * 2.2,
+              hash2(i * 3.1 + side * 9.2, 12.6),
+            );
+            rock.position.y += mountainGroundY(Math.round(edgeX), Math.round(z));
+            rock.scale.set(1.6 + seed * 2.4, 2 + seed * 2.8, 1.6 + seed * 2.4);
+            gameState.mapGroup.add(rock);
+          },
+        );
+      }
       const addPlatform = (platform) => {
         const mesh = new THREE.Mesh(
           new THREE.BoxGeometry(
             platform.width,
-            platform.elevation + 0.24,
+            0.24,
             platform.depth,
           ),
           [cliffMat, cliffMat, grassMat, cliffMat, cliffMat, cliffMat],
         );
         mesh.position.set(
           platform.x + (platform.width - 1) / 2,
-          (platform.elevation - 0.24) / 2 + 0.025,
+          platform.elevation - 0.095,
           platform.z + (platform.depth - 1) / 2,
         );
         mesh.castShadow = true;
         mesh.receiveShadow = true;
+        mesh.renderOrder = 2;
         gameState.mapGroup.add(mesh);
       };
       addPlatform(mountain.foot);

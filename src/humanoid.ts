@@ -299,11 +299,12 @@ export function addDefaultHumanoidSmile(
         const group: any = new THREE.Group();
         const parts: any = {};
         const mat = (color) => new THREE.MeshStandardMaterial({ color, flatShading: true });
-        const skinMat = mat(0xb96f43), hairMat = mat(0x30241f);
-        const jacketMat = mat(0x3f6266), shirtMat = mat(0xe7d7bd);
-        const trouserMat = mat(0x874326), patchMat = mat(0x9b7651);
-        const leatherMat = mat(0x4b3023), bootMat = mat(0x2f251f);
-        const brassMat = mat(0xa8712d), redMat = mat(0xc84f32);
+        const skinMat = mat(0xc77b49), hairMat = mat(0x65351f);
+        const jacketMat = mat(0x294f48), jacketEdgeMat = mat(0x416b5f);
+        const shirtMat = mat(0xead9b8);
+        const trouserMat = mat(0xa64f25), patchMat = mat(0x765137);
+        const leatherMat = mat(0x56351f), bootMat = mat(0x3a2a20);
+        const soleMat = mat(0x211b17), brassMat = mat(0xb27b2d);
         const woodMat = mat(0x6a4228), metalMat = mat(0x5d6260);
 
         const pelvis = new THREE.Mesh(new THREE.CylinderGeometry(0.205, 0.215, 0.18, 8), trouserMat);
@@ -318,6 +319,19 @@ export function addDefaultHumanoidSmile(
           const lapel = new THREE.Mesh(new THREE.ConeGeometry(0.07, 0.22, 3), jacketMat);
           lapel.position.set(side * 0.085, 0.91, -0.075); lapel.rotation.z = side * 0.38;
           group.add(lapel);
+          const pocket = new THREE.Mesh(new THREE.BoxGeometry(0.105, 0.105, 0.025), jacketEdgeMat);
+          pocket.position.set(side * 0.125, 0.75, -0.115); group.add(pocket);
+          const flap = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.035, 0.032), jacketMat);
+          flap.position.set(side * 0.125, 0.815, -0.126); flap.rotation.z = side * -0.05;
+          group.add(flap);
+          const pocketButton = new THREE.Mesh(new THREE.SphereGeometry(0.012, 6, 4), brassMat);
+          pocketButton.position.set(side * 0.125, 0.803, -0.147); group.add(pocketButton);
+        }
+        const shirtPlacket = new THREE.Mesh(new THREE.BoxGeometry(0.055, 0.31, 0.018), mat(0xf3e6ca));
+        shirtPlacket.position.set(0, 0.77, -0.207); group.add(shirtPlacket);
+        for (let i = 0; i < 3; i++) {
+          const shirtButton = new THREE.Mesh(new THREE.SphereGeometry(0.012, 6, 4), leatherMat);
+          shirtButton.position.set(0, 0.68 + i * 0.09, -0.221); group.add(shirtButton);
         }
         for (let i = 0; i < 3; i++) {
           const button = new THREE.Mesh(new THREE.CylinderGeometry(0.016, 0.016, 0.012, 7), brassMat);
@@ -328,6 +342,8 @@ export function addDefaultHumanoidSmile(
         belt.position.y = 0.535; group.add(belt);
         const buckle = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.07, 0.025), brassMat);
         buckle.position.set(0, 0.535, -0.225); group.add(buckle);
+        const buckleCenter = new THREE.Mesh(new THREE.BoxGeometry(0.052, 0.038, 0.03), leatherMat);
+        buckleCenter.position.set(0, 0.535, -0.242); group.add(buckleCenter);
 
         const pouch = new THREE.Mesh(new THREE.BoxGeometry(0.13, 0.18, 0.08), leatherMat);
         pouch.position.set(-0.17, 0.43, -0.12); pouch.rotation.z = -0.08; group.add(pouch);
@@ -337,15 +353,19 @@ export function addDefaultHumanoidSmile(
         hammerHandle.position.set(0.18, 0.43, -0.08); hammerHandle.rotation.z = -0.12; group.add(hammerHandle);
         const hammerHead = new THREE.Mesh(new THREE.BoxGeometry(0.13, 0.055, 0.055), metalMat);
         hammerHead.position.set(0.165, 0.565, -0.08); group.add(hammerHead);
-        const scarf = new THREE.Mesh(new THREE.ConeGeometry(0.1, 0.3, 3), redMat);
-        scarf.position.set(0.235, 0.43, -0.025); scarf.rotation.z = -0.2; group.add(scarf);
+        const tapeMeasure = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 0.055, 10), brassMat);
+        tapeMeasure.rotation.x = Math.PI / 2;
+        tapeMeasure.position.set(0.19, 0.45, -0.205); group.add(tapeMeasure);
+        const tapeHub = new THREE.Mesh(new THREE.CylinderGeometry(0.027, 0.027, 0.061, 8), leatherMat);
+        tapeHub.rotation.x = Math.PI / 2;
+        tapeHub.position.copy(tapeMeasure.position); group.add(tapeHub);
 
         const head = new THREE.Mesh(new THREE.SphereGeometry(0.205, 10, 8), skinMat);
         head.scale.set(0.92, 1.08, 0.92); head.position.y = 1.105;
         head.castShadow = true; group.add(head);
         const hairCap = new THREE.Mesh(new THREE.SphereGeometry(0.218, 9, 7), hairMat);
         hairCap.scale.set(1.04, 0.7, 1.03); hairCap.position.set(0, 1.225, 0.005); group.add(hairCap);
-        [[-0.17,1.25,-0.08,-0.45],[-0.08,1.3,-0.1,-0.2],[0.03,1.31,-0.08,0.15],[0.14,1.27,-0.06,0.42],[0.18,1.18,-0.1,0.65]].forEach(([x,y,z,r]) => {
+        [[-0.19,1.23,-0.08,-0.58],[-0.13,1.3,-0.11,-0.38],[-0.05,1.34,-0.12,-0.18],[0.04,1.34,-0.11,0.12],[0.12,1.31,-0.1,0.34],[0.19,1.25,-0.07,0.58],[0.18,1.16,-0.11,0.78]].forEach(([x,y,z,r]) => {
           const tuft = new THREE.Mesh(new THREE.ConeGeometry(0.055, 0.18, 5), hairMat);
           tuft.position.set(x,y,z); tuft.rotation.z = r; group.add(tuft);
         });
@@ -365,10 +385,12 @@ export function addDefaultHumanoidSmile(
           const pivot: any = new THREE.Group(); pivot.position.set(side * 0.255, 0.91, 0);
           const sleeve = new THREE.Mesh(new THREE.CylinderGeometry(0.067, 0.057, 0.25, 7), jacketMat);
           sleeve.position.y = -0.12; pivot.add(sleeve);
+          const rolledCuff = new THREE.Mesh(new THREE.CylinderGeometry(0.064, 0.061, 0.075, 7), shirtMat);
+          rolledCuff.position.y = -0.255; pivot.add(rolledCuff);
           const forearm = new THREE.Mesh(new THREE.CylinderGeometry(0.048, 0.043, 0.19, 7), skinMat);
-          forearm.position.y = -0.33; pivot.add(forearm);
+          forearm.position.y = -0.36; pivot.add(forearm);
           const hand = new THREE.Mesh(new THREE.SphereGeometry(0.052, 7, 5), skinMat);
-          hand.scale.set(0.85, 1.08, 0.8); hand.position.y = -0.45; pivot.add(hand);
+          hand.scale.set(0.85, 1.08, 0.8); hand.position.y = -0.475; pivot.add(hand);
           group.add(pivot); return pivot;
         }
         parts.armL = makeArm(-1); parts.armR = makeArm(1);
@@ -379,24 +401,19 @@ export function addDefaultHumanoidSmile(
           const kneePatch = new THREE.Mesh(new THREE.BoxGeometry(0.115, 0.13, 0.025), patchMat);
           kneePatch.position.set(0, -0.19, -0.072); pivot.add(kneePatch);
           const boot = new THREE.Mesh(new THREE.BoxGeometry(0.145, 0.13, 0.22), bootMat);
-          boot.position.set(0, -0.395, -0.04); pivot.add(boot); group.add(pivot); return pivot;
+          boot.position.set(0, -0.395, -0.04); pivot.add(boot);
+          const sole = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.035, 0.235), soleMat);
+          sole.position.set(0, -0.442, -0.045); pivot.add(sole);
+          for (let lace = 0; lace < 3; lace++) {
+            const bootLace = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.009, 0.012), brassMat);
+            bootLace.position.set(0, -0.36 - lace * 0.027, -0.158); pivot.add(bootLace);
+          }
+          group.add(pivot); return pivot;
         }
         parts.legL = makeLeg(-1); parts.legR = makeLeg(1);
 
-        const toolBox = new THREE.Group();
-        const box = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.21, 0.18), woodMat);
-        box.position.set(0.1, -0.59, 0); box.castShadow = true; toolBox.add(box);
-        const lid = new THREE.Mesh(new THREE.BoxGeometry(0.36, 0.055, 0.2), leatherMat);
-        lid.position.set(0.1, -0.465, 0); toolBox.add(lid);
-        for (const x of [-0.04, 0.24]) {
-          const post = new THREE.Mesh(new THREE.BoxGeometry(0.035, 0.13, 0.035), leatherMat);
-          post.position.set(x, -0.385, 0); toolBox.add(post);
-        }
-        const handle = new THREE.Mesh(new THREE.BoxGeometry(0.31, 0.035, 0.04), leatherMat);
-        handle.position.set(0.1, -0.32, 0); toolBox.add(handle); parts.armL.add(toolBox);
-
         group.parts = parts;
-        group.scale.setScalar(humanoidScale(1.39));
+        group.scale.setScalar(humanoidScale(1.378));
         return group;
       }
 
