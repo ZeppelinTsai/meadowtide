@@ -115,22 +115,22 @@ import { hash2 } from "./utils";
             // 學校——雙倍寬度，磚紅屋頂+暖色牆面，屋頂鐘塔+旗桿是最醒目
             // 的地標。
             {
-              x: 4, z: 5, seed: 0.18, w: 4, d: 2, doorX: 5.5, role: "school",
+              x: 3, z: 5, seed: 0.18, w: 2, d: 2, doorX: 3.5, role: "school",
               wallColor: 0xe4c9a0, roofColor: 0x7a2e2e,
             },
             // 醫院——白牆+藍灰屋頂的醫療配色，門口上方掛紅十字招牌。
             {
-              x: 9, z: 5, seed: 0.34, w: 2, d: 2, doorX: 9.5, role: "hospital",
+              x: 7, z: 5, seed: 0.34, w: 2, d: 2, doorX: 7.5, role: "hospital",
               wallColor: 0xf2f0ea, roofColor: 0x3a5a72,
             },
             // 醫生家——跟醫院同一套藍調但降一階彩度，門口掛小十字牌。
             {
-              x: 14, z: 5, seed: 0.52, w: 2, d: 2, doorX: 14.5, role: "doctor",
+              x: 11, z: 5, seed: 0.52, w: 2, d: 2, doorX: 11.5, role: "doctor",
               wallColor: 0xd7e3e6, roofColor: 0x4a5a5e,
             },
             // 護士家——淺薄荷綠牆+暖陶土屋頂，跟醫生家同組但用色區分開來。
             {
-              x: 18, z: 5, seed: 0.68, w: 2, d: 2, doorX: 18.5, role: "nurse",
+              x: 15, z: 5, seed: 0.68, w: 2, d: 2, doorX: 15.5, role: "nurse",
               wallColor: 0xdce8dc, roofColor: 0x8a5a42,
             },
             // 老師家——暖芥末黃牆面，門口一疊書本裝飾。
@@ -140,26 +140,26 @@ import { hash2 } from "./utils";
             },
             // 海洋學家家——藍綠牆面+風化灰藍屋頂，門口掛一個簡化船舵裝飾。
             {
-              x: 11, z: 14, seed: 0.46, w: 2, d: 2, doorX: 11.5,
+              x: 9, z: 14, seed: 0.46, w: 2, d: 2, doorX: 9.5,
               role: "oceanographer", wallColor: 0x9fc4c9, roofColor: 0x33525c,
             },
             // 雜貨店兼行政中心——雙倍寬度，整個城鎮視覺上的商業/行政門面：
             // 遮陽棚+吊招牌。
             {
-              x: 17, z: 14, seed: 0.73, w: 4, d: 2, doorX: 18.5,
+              x: 13, z: 14, seed: 0.73, w: 4, d: 2, doorX: 14.5,
               role: "generalStore", wallColor: 0xd9a94a, roofColor: 0x2f6b63,
             },
             // 木匠家——木匠事件用的「還沒整修好」空屋，見上方說明。
             { x: 6, z: 24, seed: 0.22, role: "carpenter" },
             // 藝術家家——粉調牆面+梅紫屋頂，門口擺一個簡化畫架。
             {
-              x: 12, z: 24, seed: 0.57, w: 2, d: 2, doorX: 12.5,
+              x: 10, z: 24, seed: 0.57, w: 2, d: 2, doorX: 10.5,
               role: "artist", wallColor: 0xd6a0c4, roofColor: 0x5a3a6a,
             },
             // 民宿——雙倍寬度，門口一支吊招牌+一盞燈籠，比住宅群更有「迎賓」
             // 的存在感。
             {
-              x: 18, z: 24, seed: 0.81, w: 4, d: 2, doorX: 19.5,
+              x: 14, z: 24, seed: 0.81, w: 4, d: 2, doorX: 15.5,
               role: "guesthouse", wallColor: 0xdcb894, roofColor: 0x4a3428,
             },
           ],
@@ -776,8 +776,9 @@ import { hash2 } from "./utils";
       // 只覆寫這 3×15 格，不動其餘沙灘/海的既有生成邏輯；上面 coast.oceanCols
       // 已經加大過，這排改完後面仍留得下至少一格真的海，海岸線偵測才不會
       // 找不到海而跑掉。
-      export const SHRINE_PATH_START_X = 47;
-      export const SHRINE_PATH_LENGTH = 15;
+      // 西端多含一格抬高入口；終點仍固定在 x=62，不改祠堂傳送位置。
+      export const SHRINE_PATH_START_X = 46;
+      export const SHRINE_PATH_LENGTH = 17;
       // 步道刻意墊高、浮出海面(不是跟一般沙灘一樣貼著水面)，視覺上像一條
       // 從海裡浮出來的沙洲步道；makeShrinePathCauseway()(build-map.ts)跟
       // groundY()(scene-sky.ts)都要讀同一個數字，保持高度跟碰撞地板對齊。
@@ -787,6 +788,9 @@ import { hash2 } from "./utils";
           MAPS.livingArea.tiles[z][SHRINE_PATH_START_X + i] = 8;
         }
       }
+      // 步道西端的幾何從半格邊界開始，入口南側也補一格沙灘，避免沙灘與
+      // 堤道之間殘留單格海水裂縫。
+      MAPS.livingArea.tiles[2][SHRINE_PATH_START_X - 1] = 8;
 
       // ==============================================================
       // 1.55) 農田依 LAYOUT 排列大區塊(每塊 3×3，區塊間留 1 格路當 gap)，
