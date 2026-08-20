@@ -8,7 +8,7 @@ import { dialogQueue, advanceDialogSequence, showDialog, showDialogSequence, dia
 import { loadMap, isBlocked, events } from "./build-map";
 import { updateAvenueTreeColors, updateSeasonalTreeColors, updateSeasonalGroundColors, makeBobber, makeFishProp } from "./props";
 import { syncFarmVisuals } from "./farm-visuals";
-import { scene, clearMeteors, scheduleNextMeteor, updateCameraFrustum, meteorPool, getMeteorShowerHudLabel, groundY } from "./scene-sky";
+import { scene, renderer, clearMeteors, scheduleNextMeteor, updateCameraFrustum, meteorPool, getMeteorShowerHudLabel, groundY } from "./scene-sky";
 import { setThresholdMarkersVisible } from "./scene-registries";
 
 export const SAVE_KEY_PREFIX = "meadowtide.save.";
@@ -145,14 +145,41 @@ export const SAVE_KEY_PREFIX = "meadowtide.save.";
       export const keys = {};
       addEventListener("keydown", (e) => (keys[e.key.toLowerCase()] = true));
       addEventListener("keyup", (e) => (keys[e.key.toLowerCase()] = false));
-      addEventListener("wheel", (e) => {
+      function setCameraZoom(zoom) {
         const maxZoom = gameState.currentMapName === "port" ? 20 : 18;
-        gameState.zoom = Math.max(
-          2,
-          Math.min(maxZoom, gameState.zoom + e.deltaY * 0.01),
-        );
+        gameState.zoom = Math.max(2, Math.min(maxZoom, zoom));
         updateCameraFrustum();
+      }
+      addEventListener("wheel", (e) => {
+        setCameraZoom(gameState.zoom + e.deltaY * 0.01);
       });
+
+      let pinchStartDistance = 0;
+      let pinchStartZoom = gameState.zoom;
+      function touchDistance(touches) {
+        const dx = touches[0].clientX - touches[1].clientX;
+        const dy = touches[0].clientY - touches[1].clientY;
+        return Math.hypot(dx, dy);
+      }
+      renderer.domElement.addEventListener("touchstart", (e) => {
+        if (e.touches.length !== 2) return;
+        pinchStartDistance = touchDistance(e.touches);
+        pinchStartZoom = gameState.zoom;
+        e.preventDefault();
+      }, { passive: false });
+      renderer.domElement.addEventListener("touchmove", (e) => {
+        if (e.touches.length !== 2 || pinchStartDistance <= 0) return;
+        const distance = touchDistance(e.touches);
+        if (distance > 0) {
+          setCameraZoom(pinchStartZoom * pinchStartDistance / distance);
+        }
+        e.preventDefault();
+      }, { passive: false });
+      const endPinch = () => {
+        pinchStartDistance = 0;
+      };
+      renderer.domElement.addEventListener("touchend", endPinch);
+      renderer.domElement.addEventListener("touchcancel", endPinch);
 
       addEventListener("keydown", (e) => {
         if (e.key.toLowerCase() !== "e" || gameState.ePressed) return;
