@@ -272,6 +272,112 @@ const humanoidScale = (unscaledHeight) => HUMANOID_WORLD_HEIGHT / unscaledHeight
 
       // 可愛女孩角色 — parts 結構(armL/armR/legL/legR)跟 makeHumanoid 完全一致，
       // 所以 animateWalk() / FACING_ANGLE 那套邏輯不用改一行，純粹是外觀差異
+      export function makeCarpenter() {
+        const group: any = new THREE.Group();
+        const parts: any = {};
+        const mat = (color) => new THREE.MeshStandardMaterial({ color, flatShading: true });
+        const skinMat = mat(0xb96f43), hairMat = mat(0x30241f);
+        const jacketMat = mat(0x3f6266), shirtMat = mat(0xe7d7bd);
+        const trouserMat = mat(0x874326), patchMat = mat(0x9b7651);
+        const leatherMat = mat(0x4b3023), bootMat = mat(0x2f251f);
+        const brassMat = mat(0xa8712d), redMat = mat(0xc84f32);
+        const woodMat = mat(0x6a4228), metalMat = mat(0x5d6260);
+
+        const pelvis = new THREE.Mesh(new THREE.CylinderGeometry(0.205, 0.215, 0.18, 8), trouserMat);
+        pelvis.position.y = 0.48; group.add(pelvis);
+        const torso = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.22, 0.42, 8), shirtMat);
+        torso.position.y = 0.76; torso.castShadow = true; group.add(torso);
+
+        for (const side of [-1, 1]) {
+          const panel = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.46, 0.105), jacketMat);
+          panel.position.set(side * 0.13, 0.74, 0.015); panel.rotation.z = side * -0.045;
+          panel.castShadow = true; group.add(panel);
+          const lapel = new THREE.Mesh(new THREE.ConeGeometry(0.07, 0.22, 3), jacketMat);
+          lapel.position.set(side * 0.085, 0.91, -0.075); lapel.rotation.z = side * 0.38;
+          group.add(lapel);
+        }
+        for (let i = 0; i < 3; i++) {
+          const button = new THREE.Mesh(new THREE.CylinderGeometry(0.016, 0.016, 0.012, 7), brassMat);
+          button.rotation.x = Math.PI / 2; button.position.set(-0.125, 0.66 + i * 0.12, -0.055);
+          group.add(button);
+        }
+        const belt = new THREE.Mesh(new THREE.CylinderGeometry(0.222, 0.222, 0.075, 8), leatherMat);
+        belt.position.y = 0.535; group.add(belt);
+        const buckle = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.07, 0.025), brassMat);
+        buckle.position.set(0, 0.535, -0.225); group.add(buckle);
+
+        const pouch = new THREE.Mesh(new THREE.BoxGeometry(0.13, 0.18, 0.08), leatherMat);
+        pouch.position.set(-0.17, 0.43, -0.12); pouch.rotation.z = -0.08; group.add(pouch);
+        const ruler = new THREE.Mesh(new THREE.BoxGeometry(0.035, 0.22, 0.025), brassMat);
+        ruler.position.set(-0.245, 0.45, -0.105); ruler.rotation.z = -0.1; group.add(ruler);
+        const hammerHandle = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.018, 0.25, 6), woodMat);
+        hammerHandle.position.set(0.18, 0.43, -0.08); hammerHandle.rotation.z = -0.12; group.add(hammerHandle);
+        const hammerHead = new THREE.Mesh(new THREE.BoxGeometry(0.13, 0.055, 0.055), metalMat);
+        hammerHead.position.set(0.165, 0.565, -0.08); group.add(hammerHead);
+        const scarf = new THREE.Mesh(new THREE.ConeGeometry(0.1, 0.3, 3), redMat);
+        scarf.position.set(0.235, 0.43, -0.025); scarf.rotation.z = -0.2; group.add(scarf);
+
+        const head = new THREE.Mesh(new THREE.SphereGeometry(0.205, 10, 8), skinMat);
+        head.scale.set(0.92, 1.08, 0.92); head.position.y = 1.105;
+        head.castShadow = true; group.add(head);
+        const hairCap = new THREE.Mesh(new THREE.SphereGeometry(0.218, 9, 7), hairMat);
+        hairCap.scale.set(1.04, 0.7, 1.03); hairCap.position.set(0, 1.225, 0.005); group.add(hairCap);
+        [[-0.17,1.25,-0.08,-0.45],[-0.08,1.3,-0.1,-0.2],[0.03,1.31,-0.08,0.15],[0.14,1.27,-0.06,0.42],[0.18,1.18,-0.1,0.65]].forEach(([x,y,z,r]) => {
+          const tuft = new THREE.Mesh(new THREE.ConeGeometry(0.055, 0.18, 5), hairMat);
+          tuft.position.set(x,y,z); tuft.rotation.z = r; group.add(tuft);
+        });
+        const nose = new THREE.Mesh(new THREE.ConeGeometry(0.027, 0.062, 5), skinMat);
+        nose.rotation.x = Math.PI / 2; nose.position.set(0, 1.09, -0.195); group.add(nose);
+        for (const side of [-1, 1]) {
+          const eye = new THREE.Mesh(new THREE.SphereGeometry(0.017, 6, 4), mat(0x281d18));
+          eye.scale.set(1, 0.62, 0.35); eye.position.set(side * 0.072, 1.135, -0.188); group.add(eye);
+          const brow = new THREE.Mesh(new THREE.BoxGeometry(0.066, 0.014, 0.012), hairMat);
+          brow.position.set(side * 0.072, 1.18, -0.193); brow.rotation.z = side * -0.1; group.add(brow);
+        }
+        const smile = new THREE.Mesh(new THREE.TorusGeometry(0.043, 0.007, 5, 10, Math.PI), mat(0x63382e));
+        smile.rotation.z = Math.PI; smile.position.set(0, 1.045, -0.2); group.add(smile);
+        const pencil = new THREE.Mesh(new THREE.CylinderGeometry(0.009, 0.009, 0.17, 6), mat(0xd78a31));
+        pencil.position.set(-0.205, 1.18, -0.015); pencil.rotation.z = -0.32; group.add(pencil);
+
+        function makeArm(side) {
+          const pivot: any = new THREE.Group(); pivot.position.set(side * 0.255, 0.91, 0);
+          const sleeve = new THREE.Mesh(new THREE.CylinderGeometry(0.067, 0.057, 0.25, 7), jacketMat);
+          sleeve.position.y = -0.12; pivot.add(sleeve);
+          const forearm = new THREE.Mesh(new THREE.CylinderGeometry(0.048, 0.043, 0.19, 7), skinMat);
+          forearm.position.y = -0.33; pivot.add(forearm);
+          const hand = new THREE.Mesh(new THREE.SphereGeometry(0.052, 7, 5), skinMat);
+          hand.scale.set(0.85, 1.08, 0.8); hand.position.y = -0.45; pivot.add(hand);
+          group.add(pivot); return pivot;
+        }
+        parts.armL = makeArm(-1); parts.armR = makeArm(1);
+        function makeLeg(side) {
+          const pivot = new THREE.Group(); pivot.position.set(side * 0.105, 0.46, 0.01);
+          const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.075, 0.07, 0.38, 7), trouserMat);
+          leg.position.y = -0.19; pivot.add(leg);
+          const kneePatch = new THREE.Mesh(new THREE.BoxGeometry(0.115, 0.13, 0.025), patchMat);
+          kneePatch.position.set(0, -0.19, -0.072); pivot.add(kneePatch);
+          const boot = new THREE.Mesh(new THREE.BoxGeometry(0.145, 0.13, 0.22), bootMat);
+          boot.position.set(0, -0.42, -0.04); pivot.add(boot); group.add(pivot); return pivot;
+        }
+        parts.legL = makeLeg(-1); parts.legR = makeLeg(1);
+
+        const toolBox = new THREE.Group();
+        const box = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.21, 0.18), woodMat);
+        box.position.set(0.1, -0.59, 0); box.castShadow = true; toolBox.add(box);
+        const lid = new THREE.Mesh(new THREE.BoxGeometry(0.36, 0.055, 0.2), leatherMat);
+        lid.position.set(0.1, -0.465, 0); toolBox.add(lid);
+        for (const x of [-0.04, 0.24]) {
+          const post = new THREE.Mesh(new THREE.BoxGeometry(0.035, 0.13, 0.035), leatherMat);
+          post.position.set(x, -0.385, 0); toolBox.add(post);
+        }
+        const handle = new THREE.Mesh(new THREE.BoxGeometry(0.31, 0.035, 0.04), leatherMat);
+        handle.position.set(0.1, -0.32, 0); toolBox.add(handle); parts.armL.add(toolBox);
+
+        group.parts = parts;
+        group.scale.setScalar(humanoidScale(1.39));
+        return group;
+      }
+
       export function makeGirlPlayer({
         skin = 0xffe3c9,
         outfit = 0xff8fab,
