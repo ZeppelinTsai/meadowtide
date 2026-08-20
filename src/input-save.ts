@@ -1,10 +1,10 @@
 import { gameState, inventory, cropState, TIME_CONFIG, SEASON_NAMES, WEATHER_NAMES, getSeasonDay, getSeasonPeriod, rollWeatherForSeason, growCropsForNewDay, nearWater, plantSeed, harvestCrop, pickupSeeds, CAST_ANIM_DURATION, OYSTER_RACK_TILES, oysterRackState, harvestOysterRack } from "./game-state";
 import { updateSeasonAndDate } from "./game-clock";
 import { carpenterQuest, POUCH_POS, FARMLAND_TILES, chefQuest } from "./layout-maps";
-import { tryShareChefMeal } from "./chef-quest";
+import { tryShareChefMeal, mergeChefMealIntoChatLine } from "./chef-quest";
 import { npcs } from "./npc-runtime";
 import { npcLine } from "./npc-defs";
-import { dialogQueue, advanceDialogSequence, showDialog, dialogEl } from "./dialogue";
+import { dialogQueue, advanceDialogSequence, showDialog, showDialogSequence, dialogEl } from "./dialogue";
 import { loadMap, isBlocked, events } from "./build-map";
 import { updateAvenueTreeColors, updateSeasonalTreeColors, updateSeasonalGroundColors, makeBobber, makeFishProp } from "./props";
 import { syncFarmVisuals } from "./farm-visuals";
@@ -141,7 +141,13 @@ export const SAVE_KEY_PREFIX = "meadowtide.save.";
             return Math.sqrt(dx * dx + dz * dz) <= 1.3;
           });
           if (nearby) {
-            showDialog(npcLine(nearby));
+            const chatLine = npcLine(nearby);
+            // 閒聊台詞永遠都會顯示；共餐條件如果剛好也同時成立，用「對了……」
+            // 接在後面串成一組，不是讓共餐搶走閒聊——玩家單純想打招呼時不該
+            // 連一句「哈囉」都聽不到。
+            const merged = mergeChefMealIntoChatLine(chatLine);
+            if (merged) showDialogSequence(merged);
+            else showDialog(chatLine);
             return;
           }
         }
@@ -229,6 +235,10 @@ export const SAVE_KEY_PREFIX = "meadowtide.save.";
       // __chefQuest.stage = "proving" 就能單獨測試共餐判定跟天數延遲，
       // 不用等座標定案。這裡掛的是活物件本身（不是快照），改了會直接
       // 影響遊戲狀態；座標接上、正式走過抵達事件之後留著也無妨。
+      // chef-quest.ts 裡在開發模式下把這個物件的欄位包成 getter/setter，
+      // 每次在主控台改動都會同步存進 localStorage，下次開發伺服器整頁
+      // 重新載入（改任何檔案幾乎都會觸發）時會自動讀回來——不用每次都
+      // 重新打一次 __chefQuest.stage = "proving"。
       (window as any).__chefQuest = chefQuest;
       (window as any).__gameState = () => ({
         playerGridPos: gameState.playerGridPos,

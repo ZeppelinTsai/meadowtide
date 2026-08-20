@@ -13,6 +13,48 @@ import {
 } from "./dialogue";
 import { npcs } from "./npc-runtime";
 
+// ==============================================================
+// 開發模式除錯覆寫：Vite 的 HMR 只有模組自己呼叫 import.meta.hot.accept()
+// 才會做局部熱替換，這個專案沒有任何模組這樣做（整個場景圖/DOM 副作用
+// 沒辦法安全局部替換），所以幾乎每次存檔改動，Vite 都會直接觸發整頁重新
+// 載入——不只 chefQuest，gameState/inventory/carpenterQuest 全部模組層級
+// 狀態都會被重新初始化，這不是廚師事件專屬的問題，是這個開發模式下全專
+// 案共通的行為。
+// 這裡只先解決 chefQuest：用 Object.defineProperty 把它的欄位換成
+// getter/setter，每次「透過主控台 __chefQuest.xxx = ...」寫入時同步存進
+// localStorage；模組載入的當下（也就是每次整頁重新載入的當下）再從
+// localStorage 讀回來蓋掉預設值。只在 import.meta.env.DEV 生效——
+// production build（含匯出的 exe）這個 if 整塊會被靜態消掉，不會影響
+// 正式遊戲，也不會佔用打包體積。
+if (import.meta.env.DEV) {
+  const DEBUG_STORAGE_KEY = "meadowtide.debug.chefQuest";
+  try {
+    const saved = localStorage.getItem(DEBUG_STORAGE_KEY);
+    if (saved) Object.assign(chefQuest, JSON.parse(saved));
+  } catch (err) {
+    console.warn("[廚師] 讀取開發模式除錯覆寫值失敗，維持預設值", err);
+  }
+  const persist = () => {
+    try {
+      localStorage.setItem(DEBUG_STORAGE_KEY, JSON.stringify(chefQuest));
+    } catch (err) {
+      // 開發輔助功能而已，localStorage 寫入失敗不該讓遊戲掛掉
+    }
+  };
+  (Object.keys(chefQuest) as (keyof typeof chefQuest)[]).forEach((key) => {
+    let value: any = (chefQuest as any)[key];
+    Object.defineProperty(chefQuest, key, {
+      enumerable: true,
+      configurable: true,
+      get: () => value,
+      set: (next) => {
+        value = next;
+        persist();
+      },
+    });
+  });
+}
+
 export function hasEnoughSharedMeals() {
   return chefQuest.sharedMealCount >= CHEF_MEAL_THRESHOLD;
 }
@@ -136,31 +178,126 @@ export function isInRestArea(x: number, z: number) {
   );
 }
 
-export function tryShareChefMeal() {
-  if (chefQuest.stage !== "proving") return false;
-  if (chefQuest.lastMealDay === gameState.currentDay) return false;
-  if (!gameState.player) return false;
-  if (!isInRestArea(gameState.player.position.x, gameState.player.position.z))
-    return false;
-  const hour = gameState.currentPhase * TIME_CONFIG.gameHoursPerDay;
-  if (hour < CHEF_MEAL_WINDOW_START || hour >= CHEF_MEAL_WINDOW_END) return false;
-  if (inventory.harvested <= 0 && inventory.fish <= 0) return false;
-  if (!nearAnyNpc()) return false;
+// 「一起吃飯」不用嚴格到公尺級的距離判定——只要生活區裡有任何一個已經
+// 現身的 NPC（阿姨/入住後的木匠），就算大家共處在同一個生活空間裡，敘事
+// 上足夠了。故意不比座標距離：省掉一整類「座標系統/門檻抓多少才對」可能
+// 出錯的地方，呼叫端本來就只在 currentMapName==="livingArea" 時才會問這
+// 個問題，不需要另外比對地圖名稱。
+function isAnyNpcPresent() {
+  return npcs.some((n) => n.mesh.visible);
+}
 
+function formatGameHour(hour: number) {
+  const wrapped = ((hour % TIME_CONFIG.gameHoursPerDay) + TIME_CONFIG.gameHoursPerDay) %
+    TIME_CONFIG.gameHoursPerDay;
+  const hh = Math.floor(wrapped);
+  const mm = Math.floor((wrapped - hh) * 60);
+  return `${String(hh).padStart(2, "0")}:${String(mm).padStart(2, "0")}`;
+}
+
+// 純判斷，不呼叫 showDialogSequence、不動 inventory：回傳 null 代表玩家根本
+// 不在休息區（不算「試著共餐」，呼叫端不用理會）；否則回傳每個條件現在
+// 各自的判定結果，讓「單獨按 E 觸發」跟「跟閒聊台詞合併」兩條路徑共用
+// 同一份檢查邏輯，不用各寫一次、以後容易兜不齊。
+function evaluateChefMealConditions() {
+  if (!gameState.player) return null;
+  const inRestArea = isInRestArea(
+    gameState.player.position.x,
+    gameState.player.position.z,
+  );
+  if (!inRestArea) return null;
+  const stageOk = chefQuest.stage === "proving";
+  const alreadyToday = chefQuest.lastMealDay === gameState.currentDay;
+  // 次數到門檻之後就不要再往上疊：門檻到了不會自動推進 stage（要等玩家去
+  // 敲她家門口），累加次數卻不封頂的話，玩家會一直看到次數往上跳（4、5、
+  // 6...）卻不知道自己到底卡在哪一步，容易誤以為又是新的 bug。
+  const alreadyProven = hasEnoughSharedMeals();
+  const hour = gameState.currentPhase * TIME_CONFIG.gameHoursPerDay;
+  const inWindow = hour >= CHEF_MEAL_WINDOW_START && hour < CHEF_MEAL_WINDOW_END;
+  const hasFood = inventory.harvested > 0 || inventory.fish > 0;
+  const npcPresent = isAnyNpcPresent();
+  return {
+    ok: stageOk && !alreadyToday && !alreadyProven && inWindow && hasFood && npcPresent,
+    inRestArea,
+    alreadyToday,
+    alreadyProven,
+    hour,
+    inWindow,
+    hasFood,
+    npcPresent,
+  };
+}
+
+function logChefMealFailure(
+  conditions: NonNullable<ReturnType<typeof evaluateChefMealConditions>>,
+) {
+  // 這個不是「條件沒湊齊」的失敗，是「已經證明過了，次數故意不再往上跳」，
+  // 訊息要跟下面那種「哪個條件不滿足」的診斷分開講，避免又被誤讀成 bug。
+  if (conditions.alreadyProven) {
+    console.info(
+      `[廚師共餐] 次數已達門檻 ${CHEF_MEAL_THRESHOLD}/${CHEF_MEAL_THRESHOLD}，不再繼續累加——` +
+        `等玩家去敲她家門口觸發「條件達成」的場景才會推進 stage（門口觸碰點還沒接上座標前，這步測不到）。`,
+    );
+    return;
+  }
+  console.info(
+    `[廚師共餐] 失敗 — quest階段: ${chefQuest.stage}(需要proving) / ` +
+      `今天已用過: ${conditions.alreadyToday} / 在休息區: ${conditions.inRestArea} / ` +
+      `時間: ${formatGameHour(conditions.hour)}(需要${String(CHEF_MEAL_WINDOW_START).padStart(2, "0")}:00-${String(CHEF_MEAL_WINDOW_END).padStart(2, "0")}:00內) / ` +
+      `有收成或漁獲: ${conditions.hasFood} / 同地圖有NPC在場: ${conditions.npcPresent}`,
+  );
+}
+
+// 條件已經確認全部成立時才呼叫：真的扣掉食物、累加次數，回傳共餐的對話
+// 內容（純資料，不呼叫 showDialogSequence）——單獨觸發跟合併進閒聊台詞
+// 兩條路徑都靠這個回傳值組出最終要顯示的那組對話。
+function applyChefMeal() {
   if (inventory.harvested > 0) inventory.harvested--;
   else inventory.fish--;
   chefQuest.lastMealDay = gameState.currentDay;
   chefQuest.sharedMealCount++;
+  nearAnyNpc(); // 這次是真的成立的共餐，補呼叫一次讓在場 NPC 印象值照舊+1
   console.info(
     `[廚師] 共餐次數 ${chefQuest.sharedMealCount}/${CHEF_MEAL_THRESHOLD}`,
   );
-
   const lines: (string | { text: string })[] = [
     "[你把今天的收穫分給大家，簡單但暖和的一餐]",
   ];
   if (hasEnoughSharedMeals()) {
     lines.push("[不知道什麼時候開始，廚師已經站在不遠處看著這一切]");
   }
-  showDialogSequence(lines);
+  return lines;
+}
+
+// E 鍵處理裡「附近沒有可以聊天的 NPC」時走的路徑：單獨判斷、單獨顯示，
+// 條件不成立時把診斷結果印出來（玩家站在休息區特地按 E，代表他很可能
+// 就是在嘗試共餐，這種情況才需要告訴他是哪個環節不對）。
+export function tryShareChefMeal() {
+  const conditions = evaluateChefMealConditions();
+  if (!conditions) return false;
+  if (!conditions.ok) {
+    logChefMealFailure(conditions);
+    return false;
+  }
+  showDialogSequence(applyChefMeal());
   return true;
+}
+
+// E 鍵處理裡「附近有 NPC 可以聊天」時走的路徑：日常閒聊台詞永遠都會顯示，
+// 不會因為共餐條件湊齊就被跳過——共餐條件同時成立時，用「對了……」接在
+// 閒聊後面，兩段接成同一組 showDialogSequence；條件不成立就回傳 null，
+// 呼叫端維持原樣只顯示 chatLine，不加轉折詞（沒有下文可接，硬加會很怪），
+// 也不印失敗診斷——玩家這時候是單純想聊天，不代表他在嘗試共餐。
+export function mergeChefMealIntoChatLine(chatLine: {
+  text: string;
+  speaker?: string;
+  name?: string;
+}) {
+  const conditions = evaluateChefMealConditions();
+  if (!conditions || !conditions.ok) return null;
+  return [
+    chatLine,
+    { text: "「對了……」", speaker: chatLine.speaker, name: chatLine.name },
+    ...applyChefMeal(),
+  ];
 }
