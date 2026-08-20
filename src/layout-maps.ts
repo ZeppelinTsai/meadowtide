@@ -350,10 +350,20 @@ import { hash2 } from "./utils";
           x >= southBeach.x - 0.5 &&
           x <= southBeach.x + southBeach.width - 0.5 &&
           z >= southBeach.z - 0.5 &&
-          z <= southBeach.z + southBeach.depth - 0.5
+          z <= portSouthBeachEndZ(Math.round(x)) + 0.5
         )
           return 0;
         return z >= port.beachDepth + 0.5 ? port.elevation : 0;
+      }
+
+      // 南沙灘的海岸線以 x 為種子產生穩定的小幅凹凸。地圖、碰撞與水面
+      // 都呼叫這個函式，避免沙格已經彎曲但水面仍維持一條直線。
+      export function portSouthBeachEndZ(x: number) {
+        const beach = LAYOUT.port.southBeach;
+        const wave = Math.sin((x + 1.5) * 0.72) * 1.05;
+        const noise = (hash2(x * 1.91, 73.4) - 0.5) * 1.1;
+        const offset = Math.max(-1, Math.min(1, Math.round(wave + noise)));
+        return beach.z + beach.depth - 1 + offset;
       }
 
       export function oldVillageGroundY(x: number, z: number) {
@@ -501,16 +511,24 @@ import { hash2 } from "./utils";
         // 港口南側低地沙灘。先完成外海配置再覆寫沙地，確保擴建後的
         // z=30~39 是可行走沙灘，而新增加的最南十列仍維持外海。
         for (
-          let z = p.southBeach.z;
-          z < p.southBeach.z + p.southBeach.depth;
-          z++
+          let x = p.southBeach.x;
+          x < p.southBeach.x + p.southBeach.width;
+          x++
         ) {
           for (
-            let x = p.southBeach.x;
-            x < p.southBeach.x + p.southBeach.width;
-            x++
+            let z = p.southBeach.z;
+            z <= p.southBeach.z + p.southBeach.depth;
+            z++
           )
-            tiles[z][x] = 8;
+            tiles[z][x] = 9;
+        }
+        for (
+          let x = p.southBeach.x;
+          x < p.southBeach.x + p.southBeach.width;
+          x++
+        ) {
+          const shoreEndZ = portSouthBeachEndZ(x);
+          for (let z = p.southBeach.z; z <= shoreEndZ; z++) tiles[z][x] = 8;
         }
 
         // 中央內港、右側航道與南側外海；石造碼頭保留在四周的 0 格。

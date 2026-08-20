@@ -7,6 +7,7 @@ import {
   SHRINE_PATH_START_X,
   SHRINE_PATH_LENGTH,
   SHRINE_PATH_ELEVATION,
+  portSouthBeachEndZ,
 } from "./layout-maps";
 import { windowMats, waterSurfaceMaterials, waterSkyUnderlayMaterials, outdoorLampLights, foamMeshes, windmillRotors, pastureGrassBlades, avenueLeafMaterials, seasonalTreeLeafMaterials, seasonalGroundMaterials, GRASS_STAGE_HEIGHTS, EAST_SEA_WAVE_DIRECTION, gangplankMeshes } from "./scene-registries";
 import { randomPasturePoint } from "./npc-runtime";
@@ -1486,12 +1487,15 @@ import { randomPasturePoint } from "./npc-runtime";
           port.oceanExpansion,
           port.basin.z - port.beachDepth - 2,
         );
-        addWater(
-          0,
-          port.height - port.oceanExpansion,
-          port.smallBoatDock.x,
-          port.oceanExpansion,
-        );
+        // 南側水面逐欄從實際岸線後開始，讓沙灘凹凸不會被矩形水面蓋住。
+        for (
+          let x = port.southBeach.x;
+          x < port.southBeach.x + port.southBeach.width;
+          x++
+        ) {
+          const waterStartZ = portSouthBeachEndZ(x) + 1;
+          addWater(x, waterStartZ, 1, port.height - waterStartZ);
+        }
         addWater(
           0,
           port.height,
@@ -1572,7 +1576,7 @@ import { randomPasturePoint } from "./npc-runtime";
             port.southBeachStairs.depth;
           const step = new THREE.Mesh(
             new THREE.BoxGeometry(port.southBeachStairs.width, stepHeight, 1),
-            southStairMats[i % southStairMats.length],
+            i === 0 ? concreteMat : southStairMats[(i - 1) % southStairMats.length],
           );
           step.position.set(
             port.southBeachStairs.x +
@@ -1635,6 +1639,46 @@ import { randomPasturePoint } from "./npc-runtime";
         };
         addSafetyRail(2.5, -0.5, 2.5, 10.5);
         addSafetyRail(-0.5, -0.5, 2.5, -0.5);
+
+        const addSouthStairRail = (x: number) => {
+          const stairs = port.southBeachStairs;
+          const railHeight = 0.78;
+          for (let i = 0; i <= stairs.depth; i++) {
+            const groundHeight =
+              (port.elevation * (stairs.depth - i)) / stairs.depth;
+            const post = new THREE.Mesh(
+              new THREE.BoxGeometry(0.11, railHeight, 0.11),
+              safetyRailMat,
+            );
+            post.position.set(
+              x,
+              groundHeight + railHeight / 2,
+              stairs.z + i,
+            );
+            post.castShadow = true;
+            group.add(post);
+          }
+
+          const dz = stairs.depth;
+          const dy = -port.elevation;
+          const railLength = Math.hypot(dz, dy);
+          const rail = new THREE.Mesh(
+            new THREE.BoxGeometry(0.1, 0.1, railLength),
+            safetyRailMat,
+          );
+          rail.rotation.x = -Math.atan2(dy, dz);
+          rail.position.set(
+            x,
+            port.elevation / 2 + railHeight,
+            stairs.z + stairs.depth / 2,
+          );
+          rail.castShadow = true;
+          group.add(rail);
+        };
+        addSouthStairRail(port.southBeachStairs.x - 0.55);
+        addSouthStairRail(
+          port.southBeachStairs.x + port.southBeachStairs.width - 0.45,
+        );
 
         const basinCenterX =
           port.basin.x + (port.basin.width - 1) / 2;
