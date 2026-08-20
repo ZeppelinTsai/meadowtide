@@ -211,15 +211,16 @@ carpenterQuest.constructionStartDay >= CARPENTER_CONSTRUCTION_DAYS`
   隱藏的 NPC），直到入住場景播完才真正出現、開始照排程走動。
 - **帶路演出**：港口事件先黑幕，再顯示村長與木匠的實際 3D 模型；`escorting`
   階段兩人不是自行尋路追趕，而是重播玩家的歷史 X/Z 座標與朝向，像貪吃蛇
-  尾巴一樣依序緊跟。Y 高度不可從歷史點插值，必須用該點目前的 X/Z 重新呼叫
-  `portGroundY()`／`oldVillageGroundY()`，才能貼合每一階樓梯；這也能確保他們
+  尾巴一樣依序緊跟。Y 高度不可從歷史點插值，必須用該點目前的 X/Z 呼叫
+  `game-loop.ts` 的 `characterGroundY()`；主角逐幀落地、最後高度校正與演出 NPC
+  必須共用這個函式，才能貼合每一階樓梯；這也能確保他們
   不切進水面或扶手。跨到 `oldVillage` 時會清空並重建軌跡，抵達
   `CARPENTER_DOORSTEP` 才進入看房與材料檢查。舊存檔的 `en_route_village`
   讀取時會遷移成 `escorting`。
 - 看房對話開始後 stage 雖已是 `village_scene_done`，村長與木匠仍必須留在
   尾巴／定點更新分支，禁止恢復 `livingArea` 的日常排程；直到材料檢查轉為
-  `construction` 才隱藏演出模型。NPC 的 Y 直接使用地面函式結果，不套玩家
-  樓梯用的額外 `+0.18` 視覺補正。
+  `construction` 才隱藏演出模型。不得再讓最後的 `groundOffset` 只處理生活區／
+  港口；舊村與山區若落回 0，會把主角和跟隨 NPC 拉進高台下方。
 - **視覺**：沿用 `oldVillage.placeholders` 裡既有的一間空屋（座標見
   `CARPENTER_HOUSE`），入住後補一顆跟其他建築同一套 `windowMats` 系統
   驅動的窗戶，晚上自動隨 `nightFactor` 亮燈，不用另外寫特效。

@@ -187,12 +187,13 @@ function sampleCarpenterEscortTrail(distanceBehind: number) {
   return carpenterEscortTrail[0];
 }
 
-function carpenterEscortGroundY(x: number, z: number) {
-  if (gameState.currentMapName === "port") return portGroundY(x, z);
-  if (gameState.currentMapName === "oldVillage")
-    return (
-      oldVillageGroundY(x, z)
-    );
+function characterGroundY(mapName: string, x: number, z: number) {
+  if (mapName === "livingArea") return groundY(x, z);
+  if (mapName === "port") return portGroundY(x, z);
+  if (mapName === "oldVillage")
+    return oldVillageGroundY(x, z) + (isOnOldVillageStair(x, z) ? 0.18 : 0.03);
+  if (mapName === "mountain")
+    return mountainGroundY(x, z) + (isOnMountainStair(x, z) ? 0.3 : 0.08);
   return 0;
 }
 
@@ -315,40 +316,11 @@ export function animate(now) {
   }
   if (gameState.isSitting) animateSit(gameState.player);
   else animateRun(gameState.player, gameState.isMoving, gameState.elapsed);
-  if (gameState.currentMapName === "livingArea")
-    gameState.player.position.y += groundY(
-      gameState.player.position.x,
-      gameState.player.position.z,
-    );
-  else if (gameState.currentMapName === "port")
-    gameState.player.position.y += portGroundY(
-      gameState.player.position.x,
-      gameState.player.position.z,
-    );
-  else if (gameState.currentMapName === "oldVillage")
-    gameState.player.position.y +=
-      oldVillageGroundY(
-        gameState.player.position.x,
-        gameState.player.position.z,
-      ) +
-      (isOnOldVillageStair(
-        gameState.player.position.x,
-        gameState.player.position.z,
-      )
-        ? 0.18
-        : 0.03);
-  else if (gameState.currentMapName === "mountain")
-    gameState.player.position.y +=
-      mountainGroundY(
-        gameState.player.position.x,
-        gameState.player.position.z,
-      ) +
-      (isOnMountainStair(
-        gameState.player.position.x,
-        gameState.player.position.z,
-      )
-        ? 0.3
-        : 0.08);
+  gameState.player.position.y += characterGroundY(
+    gameState.currentMapName,
+    gameState.player.position.x,
+    gameState.player.position.z,
+  );
   const mountainStairVisibilityZone =
     gameState.currentMapName === "mountain" &&
     [LAYOUT.mountain.lowerStair, LAYOUT.mountain.upperStair].some(
@@ -555,7 +527,11 @@ export function animate(now) {
       );
       n.mesh.position.set(
         trailPoint.x,
-        carpenterEscortGroundY(trailPoint.x, trailPoint.z),
+        characterGroundY(
+          gameState.currentMapName,
+          trailPoint.x,
+          trailPoint.z,
+        ),
         trailPoint.z,
       );
       n.mesh.rotation.y = trailPoint.rotation;
@@ -880,18 +856,11 @@ export function animate(now) {
   const camDist = Math.max(16, gameState.zoom * 1.55);
   const camHeight = camDist * Math.cos(TILT_RAD);
   const camZOffset = camDist * Math.sin(TILT_RAD);
-  let groundOffset = 0;
-  if (gameState.currentMapName === "livingArea") {
-    groundOffset = groundY(
-      gameState.player.position.x,
-      gameState.player.position.z,
-    );
-  } else if (gameState.currentMapName === "port") {
-    groundOffset = portGroundY(
-      gameState.player.position.x,
-      gameState.player.position.z,
-    );
-  }
+  let groundOffset = characterGroundY(
+    gameState.currentMapName,
+    gameState.player.position.x,
+    gameState.player.position.z,
+  );
   if (gameState.isSitting) groundOffset -= 0.03;
   // 玩家模型與相機共用地形高度，走上西北階梯或海岸緩坡時不會穿進台階。
   gameState.player.position.y +=
