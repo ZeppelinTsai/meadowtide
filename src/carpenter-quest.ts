@@ -86,8 +86,12 @@ export function carpenterHasMaterials() {
         carpenterQuest.stage = "construction";
         carpenterQuest.constructionStartDay = gameState.currentDay;
         const carpenterNpc = npcs.find((n) => n.id === "carpenter");
-        if (carpenterNpc) carpenterNpc.mesh.visible = false;
-        npcGroup.visible = false;
+        if (carpenterNpc) {
+          carpenterNpc.mesh.visible = true;
+          carpenterNpc.mesh.position.x = CARPENTER_EVENT_WAIT_POS.x;
+          carpenterNpc.mesh.position.z = CARPENTER_EVENT_WAIT_POS.z;
+        }
+        npcGroup.visible = true;
         showDialogSequence([
           {
             text: "「夠了。剩下的我自己來——不是不信任你，是這種事我習慣自己看著。」",

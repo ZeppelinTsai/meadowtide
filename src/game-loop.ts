@@ -513,14 +513,23 @@ export function animate(now) {
   const npcSpeed = 1.6;
   updateCarpenterEscortTrail();
   npcs.forEach((n) => {
-    if (
+    const isCarpenterEscortActor =
       (carpenterQuest.stage === "escorting" ||
         carpenterQuest.stage === "village_scene_done") &&
+      (n.id === "aunt" || n.id === "carpenter");
+    const isCarpenterWaitingAtHouse =
+      (carpenterQuest.stage === "construction" ||
+        carpenterQuest.stage === "ready_for_move_in") &&
+      n.id === "carpenter";
+    if (
+      (isCarpenterEscortActor || isCarpenterWaitingAtHouse) &&
       (gameState.currentMapName === "port" || gameState.currentMapName === "oldVillage") &&
       (n.id === "aunt" || n.id === "carpenter")
     ) {
       if (
-        carpenterQuest.stage === "village_scene_done" &&
+        (carpenterQuest.stage === "village_scene_done" ||
+          carpenterQuest.stage === "construction" ||
+          carpenterQuest.stage === "ready_for_move_in") &&
         gameState.currentMapName === "oldVillage" &&
         n.id === "carpenter"
       ) {

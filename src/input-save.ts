@@ -63,7 +63,10 @@ export const SAVE_KEY_PREFIX = "meadowtide.save.";
             carpenterNpc.mesh.visible =
               carpenterQuest.stage === "escorting" ||
               carpenterQuest.stage === "village_scene_done" ||
-              carpenterQuest.stage === "moved_in";
+              carpenterQuest.stage === "moved_in" ||
+              ((carpenterQuest.stage === "construction" ||
+                carpenterQuest.stage === "ready_for_move_in") &&
+                data.currentMapName === "oldVillage");
           const escortMap = data.currentMapName === "port" || data.currentMapName === "oldVillage";
           npcGroup.visible =
             data.currentMapName === "livingArea" ||

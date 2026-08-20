@@ -1729,7 +1729,10 @@ export function buildMap(mapName) {
   npcs.forEach((npc) => {
     if (npc.id === "carpenter") {
       npc.mesh.visible =
-        carpenterQuest.stage === "moved_in" && npc.map === mapName;
+        (carpenterQuest.stage === "moved_in" && npc.map === mapName) ||
+        ((carpenterQuest.stage === "construction" ||
+          carpenterQuest.stage === "ready_for_move_in") &&
+          mapName === "oldVillage");
     } else {
       npc.mesh.visible = npc.map === mapName;
     }
