@@ -69,18 +69,24 @@ import { hash2 } from "./utils";
           livingAreaGate: { x: 20, z: 42, width: 3 },
           portGate: { x: 40, z: 9, height: 15, portZ: 20 },
           mountainRoad: { x: 3, z: 29, width: 3 },
-          artVillageGate: { x: 0, z: 18 },
+          artVillageGate: { x: 3, z: 29 },
           plaza: { x: 22, z: 4, width: 18, height: 22 },
           terraces: {
             upper: { maxZ: 9, elevation: 2 },
-            middle: { minZ: 10, maxZ: 17, elevation: 1 },
+            middle: { minZ: 10, maxZ: 19, elevation: 1 },
             westEdge: 21.5,
           },
+          mountainLanding: { x: 0, z: 0, width: 3, depth: 2, elevation: 3 },
           plazaStairs: [
             { z: 7, width: 3, fromX: 19, toX: 22, elevation: 2, steps: 6 },
-            { z: 14, width: 3, fromX: 19, toX: 22, elevation: 1, steps: 6 },
+            { z: 16, width: 3, fromX: 19, toX: 22, elevation: 1, steps: 6 },
           ],
-          carpenterHouse: { x: 6, z: 20 },
+          westStairs: [
+            { x: 0, width: 3, fromZ: 2, toZ: 7, baseElevation: 2, elevation: 1, steps: 6 },
+            { x: 0, width: 3, fromZ: 9, toZ: 16, baseElevation: 1, elevation: 1, steps: 7 },
+            { x: 0, width: 3, fromZ: 19, toZ: 26, baseElevation: 0, elevation: 1, steps: 7 },
+          ],
+          carpenterHouse: { x: 6, z: 24 },
           // w/d/doorX/wallColor/roofColor/style：這輪把原本純色佔位方塊
           // (makeTownPlaceholder)升級成完整建築(makeBuilding/makeBarn，有窗
           // /門/煙囪)，參考圖片裡那種每棟顏色/屋頂都不一樣的聚落感。座標
@@ -93,40 +99,40 @@ import { hash2 } from "./utils";
           // 衝突，等木匠劇情真的做到那一步再回頭一起處理。
           houses: [
             {
-              x: 4, z: 5, seed: 0.18, w: 2, d: 2, doorX: 4,
+              x: 4, z: 5, seed: 0.18, w: 2, d: 2, doorX: 4.5,
               wallColor: 0xe8d9a8, roofColor: 0xc46a3a,
             },
             {
-              x: 9, z: 5, seed: 0.34, w: 2, d: 2, doorX: 9,
+              x: 9, z: 5, seed: 0.34, w: 2, d: 2, doorX: 9.5,
               wallColor: 0xeceae0, roofColor: 0x3a6b6b,
             },
             {
-              x: 14, z: 5, seed: 0.52, w: 2, d: 2, doorX: 14,
+              x: 14, z: 5, seed: 0.52, w: 2, d: 2, doorX: 14.5,
               wallColor: 0x8a6a4a, roofColor: 0x3a5a3a, style: "barn",
             },
             {
-              x: 18, z: 5, seed: 0.68, w: 2, d: 2, doorX: 18,
+              x: 18, z: 5, seed: 0.68, w: 2, d: 2, doorX: 18.5,
               wallColor: 0xd8cdb8, roofColor: 0x5a4a42,
             },
             {
-              x: 5, z: 12, seed: 0.27, w: 2, d: 2, doorX: 5,
+              x: 5, z: 14, seed: 0.27, w: 2, d: 2, doorX: 5.5,
               wallColor: 0xf0e6c8, roofColor: 0xa8402f,
             },
             {
-              x: 11, z: 12, seed: 0.46, w: 2, d: 2, doorX: 11,
+              x: 11, z: 14, seed: 0.46, w: 2, d: 2, doorX: 11.5,
               wallColor: 0x9c6b4a, roofColor: 0x4a3428, style: "barn",
             },
             {
-              x: 17, z: 12, seed: 0.73, w: 2, d: 2, doorX: 17,
+              x: 17, z: 14, seed: 0.73, w: 2, d: 2, doorX: 17.5,
               wallColor: 0xdde3e0, roofColor: 0x2f4a5a,
             },
-            { x: 6, z: 20, seed: 0.22 },
+            { x: 6, z: 24, seed: 0.22 },
             {
-              x: 12, z: 20, seed: 0.57, w: 2, d: 2, doorX: 12,
+              x: 12, z: 24, seed: 0.57, w: 2, d: 2, doorX: 12.5,
               wallColor: 0xe0d0b0, roofColor: 0x6a7a4a,
             },
             {
-              x: 18, z: 20, seed: 0.81, w: 2, d: 2, doorX: 18,
+              x: 18, z: 24, seed: 0.81, w: 2, d: 2, doorX: 18.5,
               wallColor: 0x7a6048, roofColor: 0x384a38, style: "barn",
             },
           ],
@@ -179,6 +185,32 @@ import { hash2 } from "./utils";
 
       export function oldVillageGroundY(x: number, z: number) {
         const village = LAYOUT.oldVillage;
+        const landing = village.mountainLanding;
+        if (
+          x >= landing.x - 0.5 &&
+          x <= landing.x + landing.width - 0.5 &&
+          z >= landing.z - 0.5 &&
+          z <= landing.z + landing.depth
+        )
+          return landing.elevation;
+        const westStair = village.westStairs.find(
+          (candidate) =>
+            x >= candidate.x - 0.5 &&
+            x <= candidate.x + candidate.width - 0.5 &&
+            z >= candidate.fromZ &&
+            z <= candidate.toZ,
+        );
+        if (westStair) {
+          const progress = Math.max(
+            0,
+            Math.min(1, (westStair.toZ - z) / (westStair.toZ - westStair.fromZ)),
+          );
+          return (
+            westStair.baseElevation +
+            Math.ceil(progress * westStair.steps - Number.EPSILON) *
+              (westStair.elevation / westStair.steps)
+          );
+        }
         const stair = village.plazaStairs.find(
           (entry) =>
             z >= entry.z - 0.5 &&
@@ -192,7 +224,7 @@ import { hash2 } from "./utils";
             Math.min(1, (stair.toX - x) / (stair.toX - stair.fromX)),
           );
           return (
-            Math.round(progress * stair.steps) *
+            Math.ceil(progress * stair.steps - Number.EPSILON) *
             (stair.elevation / stair.steps)
           );
         }
@@ -205,6 +237,31 @@ import { hash2 } from "./utils";
         )
           return village.terraces.middle.elevation;
         return 0;
+      }
+
+      export function isOnOldVillageStair(x: number, z: number) {
+        const village = LAYOUT.oldVillage;
+        const landing = village.mountainLanding;
+        return (
+          (x >= landing.x - 0.5 &&
+            x <= landing.x + landing.width - 0.5 &&
+            z >= landing.z - 0.5 &&
+            z <= landing.z + landing.depth) ||
+          village.westStairs.some(
+            (stair) =>
+              x >= stair.x - 0.5 &&
+              x <= stair.x + stair.width - 0.5 &&
+              z >= stair.fromZ &&
+              z <= stair.toZ,
+          ) ||
+          village.plazaStairs.some(
+            (stair) =>
+              z >= stair.z - 0.5 &&
+              z <= stair.z + stair.width - 0.5 &&
+              x >= stair.fromX &&
+              x <= stair.toX,
+          )
+        );
       }
 
       function makePortTiles() {
@@ -274,18 +331,23 @@ import { hash2 } from "./utils";
         // Cinque Terre-inspired hillside circulation: three terraces, narrow climbs,
         // and a broad civic space opening toward the old fishing port.
         paint(2, 7, 21, 3);
-        paint(2, 14, 21, 3);
-        paint(2, 22, 21, 3);
+        paint(2, 16, 21, 3);
+        paint(2, 26, 21, 3);
         paint(19, 3, 4, 24);
         paint(village.plaza.x, village.plaza.z, village.plaza.width, village.plaza.height);
         paint(village.livingGate.x, 0, village.livingGate.width, 5);
+        paint(
+          village.mountainLanding.x,
+          village.mountainLanding.z,
+          village.mountainLanding.width,
+          8,
+        );
         paint(3, 24, village.mountainRoad.width, 6);
 
         for (let x = 0; x < village.livingGate.width; x++)
           tiles[0][village.livingGate.x + x] = 3;
         for (let z = 0; z < village.portGate.height; z++)
           tiles[village.portGate.z + z][village.portGate.x] = 3;
-        paint(0, village.artVillageGate.z, 4, 2);
         tiles[village.artVillageGate.z][village.artVillageGate.x] = 3;
         village.houses.forEach((house) => (tiles[house.z][house.x] = 1));
         return tiles;

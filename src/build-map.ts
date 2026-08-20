@@ -449,6 +449,7 @@ import { OYSTER_RACK_VISUAL } from "./game-state";
             const terraceMat = new THREE.MeshStandardMaterial({
               color: 0x8f8779,
               roughness: 0.98,
+              depthWrite: false,
             });
             // 從地面(y=0)一路實心蓋到 elevation，不是只有一片薄薄的頂面——
             // 之前只做 0.18 厚的浮板，頂面高度沒錯，但浮板底下到地面之間
@@ -463,22 +464,56 @@ import { OYSTER_RACK_VISUAL } from "./game-state";
               terrace.position.set(10.5, elevation / 2, z + (depth - 1) / 2);
               terrace.receiveShadow = true;
               terrace.castShadow = true;
+              terrace.renderOrder = 1;
               gameState.mapGroup.add(terrace);
             };
             addTerrace(0, 10, LAYOUT.oldVillage.terraces.upper.elevation);
-            addTerrace(10, 8, LAYOUT.oldVillage.terraces.middle.elevation);
+            addTerrace(10, 10, LAYOUT.oldVillage.terraces.middle.elevation);
+            const mountainLanding = LAYOUT.oldVillage.mountainLanding;
+            const mountainLandingMesh = new THREE.Mesh(
+              new THREE.BoxGeometry(
+                mountainLanding.width,
+                mountainLanding.elevation,
+                mountainLanding.depth,
+              ),
+              terraceMat,
+            );
+            mountainLandingMesh.position.set(
+              mountainLanding.x + (mountainLanding.width - 1) / 2,
+              mountainLanding.elevation / 2,
+              mountainLanding.z + (mountainLanding.depth - 1) / 2,
+            );
+            mountainLandingMesh.receiveShadow = true;
+            mountainLandingMesh.castShadow = true;
+            mountainLandingMesh.renderOrder = 1;
+            gameState.mapGroup.add(mountainLandingMesh);
 
-            const stairMat = new THREE.MeshStandardMaterial({
-              color: 0xb7ad9d,
-              roughness: 0.96,
+            const stairTopMats = [0xcdbf9d, 0x918472].map(
+              (color) =>
+                new THREE.MeshStandardMaterial({
+                  color,
+                  roughness: 0.96,
+                }),
+            );
+            const stairSideMat = new THREE.MeshStandardMaterial({
+              color: 0x625b54,
+              roughness: 1,
             });
             LAYOUT.oldVillage.plazaStairs.forEach((stair) => {
               const stepDepth = (stair.toX - stair.fromX) / stair.steps;
               for (let step = 0; step < stair.steps; step++) {
                 const height = ((step + 1) / stair.steps) * stair.elevation;
+                const topMat = stairTopMats[step % stairTopMats.length];
                 const mesh = new THREE.Mesh(
                   new THREE.BoxGeometry(stepDepth, height, stair.width),
-                  stairMat,
+                  [
+                    stairSideMat,
+                    stairSideMat,
+                    topMat,
+                    stairSideMat,
+                    stairSideMat,
+                    stairSideMat,
+                  ],
                 );
                 mesh.position.set(
                   stair.toX - (step + 0.5) * stepDepth,
@@ -486,6 +521,35 @@ import { OYSTER_RACK_VISUAL } from "./game-state";
                   stair.z + 1,
                 );
                 mesh.receiveShadow = true;
+                mesh.castShadow = true;
+                mesh.renderOrder = 2;
+                gameState.mapGroup.add(mesh);
+              }
+            });
+            LAYOUT.oldVillage.westStairs.forEach((stair) => {
+              const stepDepth = (stair.toZ - stair.fromZ) / stair.steps;
+              for (let step = 0; step < stair.steps; step++) {
+                const height = ((step + 1) / stair.steps) * stair.elevation;
+                const topMat = stairTopMats[step % stairTopMats.length];
+                const mesh = new THREE.Mesh(
+                  new THREE.BoxGeometry(stair.width, height, stepDepth),
+                  [
+                    stairSideMat,
+                    stairSideMat,
+                    topMat,
+                    stairSideMat,
+                    stairSideMat,
+                    stairSideMat,
+                  ],
+                );
+                mesh.position.set(
+                  stair.x + 1,
+                  stair.baseElevation + height / 2,
+                  stair.toZ - (step + 0.5) * stepDepth,
+                );
+                mesh.receiveShadow = true;
+                mesh.castShadow = true;
+                mesh.renderOrder = 2;
                 gameState.mapGroup.add(mesh);
               }
             });
@@ -507,6 +571,11 @@ import { OYSTER_RACK_VISUAL } from "./game-state";
               : makeTownPlaceholder(p.x, p.z, p.seed);
           townHouse.position.y +=
             mapName === "oldVillage" ? oldVillageGroundY(p.x, p.z) : 0;
+          if (mapName === "oldVillage") {
+            townHouse.traverse((child: any) => {
+              if (child.isMesh) child.renderOrder = 2;
+            });
+          }
           plateauGroup.add(townHouse);
           // 木匠事件的空屋：不是新蓋一棟，是拿 oldVillage 既有佔位空屋之一
           // 疊視覺狀態——施工中立牌，或入住後補一顆跟其他房子同一套
@@ -557,9 +626,20 @@ import { OYSTER_RACK_VISUAL } from "./game-state";
           // 緩衝，不會卡到既有的門檻/道路。
           const lamp1 = makeStreetLamp(25, 8, 1);
           const lamp2 = makeStreetLamp(29, 18, -1);
+          [lamp1, lamp2].forEach((prop) =>
+            prop.traverse((child: any) => {
+              if (child.isMesh) child.renderOrder = 2;
+            }),
+          );
           plateauGroup.add(lamp1, lamp2);
-          plateauGroup.add(makeBench(26, 12, 0));
-          plateauGroup.add(makeBench(30, 14, Math.PI));
+          const bench1 = makeBench(26, 12, 0);
+          const bench2 = makeBench(30, 14, Math.PI);
+          [bench1, bench2].forEach((prop) =>
+            prop.traverse((child: any) => {
+              if (child.isMesh) child.renderOrder = 2;
+            }),
+          );
+          plateauGroup.add(bench1, bench2);
         }
         (map.furniture || []).forEach((item) => {
           const w = item.w || 1,
@@ -615,6 +695,23 @@ import { OYSTER_RACK_VISUAL } from "./game-state";
               thresholdMarkerMeshes.push(threshold);
               gameState.mapGroup.add(threshold);
             } else if (tile === 5) {
+              const isOldVillageStair =
+                mapName === "oldVillage" &&
+                (LAYOUT.oldVillage.plazaStairs.some(
+                  (stair) =>
+                    x >= stair.fromX &&
+                    x < stair.toX &&
+                    z >= stair.z &&
+                    z < stair.z + stair.width,
+                ) ||
+                  LAYOUT.oldVillage.westStairs.some(
+                    (stair) =>
+                      x >= stair.x &&
+                      x < stair.x + stair.width &&
+                      z >= stair.fromZ &&
+                      z < stair.toZ,
+                  ));
+              if (isOldVillageStair) return;
               const m = makePath(x, z);
               m.position.y +=
                 mapName === "livingArea"
@@ -622,6 +719,10 @@ import { OYSTER_RACK_VISUAL } from "./game-state";
                   : mapName === "oldVillage"
                     ? oldVillageGroundY(x, z)
                     : 0;
+              if (mapName === "oldVillage") {
+                (m.material as THREE.Material).depthWrite = false;
+                m.renderOrder = 1;
+              }
               gameState.mapGroup.add(m);
             }
             // tile === 6（湖）不逐格建置，改成迴圈結束後蓋成一整片有波紋的水面
@@ -1467,8 +1568,8 @@ import { OYSTER_RACK_VISUAL } from "./game-state";
           trigger: "touch",
           action: () =>
             loadMap("oldVillage", {
-              x: LAYOUT.oldVillage.artVillageGate.x + 1,
-              z: LAYOUT.oldVillage.artVillageGate.z,
+              x: LAYOUT.oldVillage.artVillageGate.x,
+              z: LAYOUT.oldVillage.artVillageGate.z - 1,
             }),
         },
         {

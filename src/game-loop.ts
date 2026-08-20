@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import { gameState, TIME_CONFIG, CAST_ANIM_DURATION, getNightFactor, isUnsafeAnimalWeather, nearWater } from "./game-state";
 import { isGameTimePaused, updateGameClock } from "./game-clock";
-import { LAYOUT, SOUTHERNMOST_AVENUE_TREE_Z, aStar, portGroundY, oldVillageGroundY } from "./layout-maps";
+import { LAYOUT, SOUTHERNMOST_AVENUE_TREE_Z, aStar, portGroundY, oldVillageGroundY, isOnOldVillageStair } from "./layout-maps";
 import { npcs, animals, BARN_DOOR, outsideCols, outsideRows } from "./npc-runtime";
 import { getScheduleTarget } from "./npc-defs";
 import { animateWalk, animateAnimalWalk } from "./humanoid";
@@ -110,12 +110,33 @@ gameState.lastFrame = performance.now();
         const moveSpeed = 10; // 格/秒
         const stepX = dx * moveSpeed * dt,
           stepZ = dz * moveSpeed * dt;
+        const canTraverseVillageHeight = (fromX, fromZ, toX, toZ) =>
+          gameState.currentMapName !== "oldVillage" ||
+          Math.abs(
+            oldVillageGroundY(toX, toZ) - oldVillageGroundY(fromX, fromZ),
+          ) <= 0.7;
         // X / Z 分開檢查碰撞，撞到一個軸還能沿著另一個軸繼續滑，這是「平穩」的關鍵
         const tryX = gameState.player.position.x + stepX;
-        if (!collidesAt(gameState.currentMapName, tryX, gameState.player.position.z))
+        if (
+          !collidesAt(gameState.currentMapName, tryX, gameState.player.position.z) &&
+          canTraverseVillageHeight(
+            gameState.player.position.x,
+            gameState.player.position.z,
+            tryX,
+            gameState.player.position.z,
+          )
+        )
           gameState.player.position.x = tryX;
         const tryZ = gameState.player.position.z + stepZ;
-        if (!collidesAt(gameState.currentMapName, gameState.player.position.x, tryZ))
+        if (
+          !collidesAt(gameState.currentMapName, gameState.player.position.x, tryZ) &&
+          canTraverseVillageHeight(
+            gameState.player.position.x,
+            gameState.player.position.z,
+            gameState.player.position.x,
+            tryZ,
+          )
+        )
           gameState.player.position.z = tryZ;
 
         if (gameState.isMoving) {
@@ -148,7 +169,17 @@ gameState.lastFrame = performance.now();
             oldVillageGroundY(
               gameState.player.position.x,
               gameState.player.position.z,
-            ) + 0.03;
+            ) +
+            (isOnOldVillageStair(
+              gameState.player.position.x,
+              gameState.player.position.z,
+            )
+              ? 0.18
+              : 0.03);
+        gameState.player.traverse((child: any) => {
+          if (child.isMesh)
+            child.renderOrder = gameState.currentMapName === "oldVillage" ? 3 : 0;
+        });
 
         // 拋竿/持竿動畫：雙手一起蓋過 animateWalk 剛設好的角度。左手往內、往前
         // 擺，靠到跟右手（拿竿那手）差不多的位置跟角度，用兩隻手臂同一個朝向
