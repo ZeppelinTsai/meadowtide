@@ -1,8 +1,27 @@
 # 專案筆記 — 《海風牧歌》 Meadowtide
 
-單一 HTML 檔案、純 Three.js(r128, CDN 引入)、沒有建置流程、沒有外部圖片
-素材。所有視覺都是程式生成的幾何圖形。這份筆記是接手這個專案前應該先讀的
-規則跟已知的坑，不是功能清單。
+目前正式程式是 **Vite + TypeScript + Three.js r128 的 ES module 專案**；入口為
+`index.html` → `src/main.ts`。`meadowtide.html` 是模組化前的舊版遷移來源，
+不是正式執行入口，除非使用者明確要求維護舊版，否則不要再修改它。
+
+目前磁碟版本**尚未使用 Vue**：`package.json` 沒有 `vue` 或
+`@vitejs/plugin-vue`，專案也沒有 `.vue` 元件。不要只因使用 Vite 就把架構描述成
+Vue；若之後真的遷移到 Vue，應在依賴、入口與元件檔落地後再更新本段。
+
+主要模組分工：
+
+- `src/layout-maps.ts`：`LAYOUT`、`MAPS` 與純座標／地圖資料。
+- `src/build-map.ts`：地圖與場景幾何建置。
+- `src/main.ts`：啟動、場景接線與瀏覽器入口。
+- `src/game-state.ts`：共享遊戲狀態與通用玩法資料。
+- `src/game-loop.ts`、`src/game-clock.ts`：逐幀更新與遊戲時間。
+- `src/scene-sky.ts`、`src/weather-particles.ts`、`src/music.ts`：天空、天氣與音樂。
+- `src/*-quest.ts`：各角色劇情狀態機。
+- `scripts/map-debug.ts`：可直接 import 地圖資料的 Node 除錯工具。
+- `public/assets/`：Vite 靜態素材；程式內以 `/assets/...` 或相容打包的相對 URL 引用。
+
+所有 3D 視覺仍以程式生成的幾何圖形為主。這份筆記是接手專案前應先讀的規則與
+已知陷阱，不是功能清單。
 
 **專案名稱**：中文《海風牧歌》，英文 Meadowtide。海洋養殖（貝類/蝦蟹/陷阱）
 是討論過的長期方向，但**還沒開始做**——現階段先把核心循環（種田＋NPC 排程
@@ -13,7 +32,7 @@
 - 舞台設定為**北緯約 8°、四面環海、低光害的架空海島**。這個緯度讓北極星
   位於北方低空，也能讓南十字星等南天星群在特定季節升起；設計目標是四季
   合計看遍大部分南北天代表星空，不宣稱同一晚能看到所有星星。
-- 星空由 `meadowtide.html` 的 `SEASON_STAR_CONFIGS`、
+- 星空由 `src/scene-sky.ts` 的 `SEASON_STAR_CONFIGS`、
   `CONSTELLATION_PATTERNS`、`makeSeasonStarGroup()` 程式生成。春夏秋冬各有
   不同密度、色溫與代表星座構圖，夏季另有密集銀河星帶。
 - `updateSeasonalStars()` 依 `currentSeason` 切換配置、依 `nightFactor` 淡入，
@@ -32,14 +51,15 @@
   沒有變。但 UI 層（疊在畫面上的 2D 平面元素：對話框立繪、劇情 CG、之後
   可能的物品欄圖示）**允許使用外部圖片**，這是效能考量、不只是美術考量：
   UI 圖示是平面元素，用圖片比額外跑一次 3D 渲染管線再截圖便宜。素材放
-  `src/assets/<用途>/`，跟音樂資料夾（`src/assets/audio/bgm/`）同一套組織
-  邏輯：立繪在 `src/assets/portraits/<npc id>.png`、劇情 CG 在
-  `src/assets/cg/<cg id>.png`。程式碼一律用相對路徑引用，不寫死絕對路徑。
+  `public/assets/<用途>/`：立繪在 `public/assets/portraits/<npc id>.png`、劇情 CG 在
+  `public/assets/cg/<cg id>.png`、音樂在 `public/assets/audio/bgm/`。程式碼不寫死
+  本機絕對路徑。
   對話框的立繪/CG 載入都用 `Image().onerror` 偵測檔案存不存在，跟 BGM
   載入失敗的處理邏輯一樣：只在 console 警告、不中斷對話，圖檔還沒生成時
   版位就是空的，之後直接把 PNG 丟進資料夾就會自動生效，不用改程式碼。
-- **pip/npm 不適用**：這是純前端專案，不需要任何套件管理，改完直接用瀏覽器
-  開就能玩。
+- **使用 npm**：`npm run dev` 啟動 Vite；`npm run build` 先跑 TypeScript
+  檢查再建置；`npm run preview` 預覽產物。Three.js 固定為 npm 套件 `0.128.0`，
+  不要改回 CDN，也不要使用高版本才有的 API。
 
 ## 座標系統 — 先讀這段再動任何座標
 
@@ -86,16 +106,17 @@
   前後方向是本地 X 軸，所以腿要繞 **Z 軸**擺（不是 X 軸，那是人形的慣例，
   兩者相反）。
 
-## 除錯工具：`map-debug.js`
+## 除錯工具：`scripts/map-debug.ts`
 
 在**改任何座標之前跟之後**都跑一次：
 
 ```bash
-node map-debug.js 你的檔案.html --legend
+npm run map-debug -- --map=port --legend
 ```
 
-這支工具會抽出 HTML 裡「純資料」那一段（`MAPS` 定義到 `const TILE = 1;`
-之前，完全不碰 Three.js，可以直接在 Node 裡跑），印出一張文字版地圖網格。
+這支工具會直接 import `src/layout-maps.ts` 的 `MAPS`。因此 `layout-maps.ts` 必須
+保持無 DOM／WebGL 副作用，不能 import 最終會建立 renderer 或讀取 document 的模組。
+工具會印出文字版地圖網格。
 用來在改動前後快速確認：
 
 - 新舊區域有沒有重疊
@@ -117,7 +138,7 @@ node map-debug.js 你的檔案.html --legend
 
 ## NPC 招募流程 —— 已有第一個實作範例（木匠）
 
-不再是「設計中」，`meadowtide.html` 裡的「木匠抵達」是第一個真正的劇情
+不再是「設計中」，`src/carpenter-quest.ts` 裡的「木匠抵達」是第一個真正的劇情
 事件，跑在 `livingArea`／`oldVillage`／`port` 三張地圖骨架之上，之後其他
 角色的招募流程可以直接複製這套框架：
 
@@ -148,12 +169,13 @@ node map-debug.js 你的檔案.html --legend
 
 ## 建議的工作方式
 
-- 每次調整佈局：先跑一次 `map-debug.js` 看現況 → 改 `LAYOUT` → 再跑一次
+- 每次調整佈局：先跑一次 `npm run map-debug -- --map=<地圖名> --legend` 看現況 →
+  改 `src/layout-maps.ts` 的 `LAYOUT`／`MAPS` → 再跑一次
   確認沒有重疊/沒有留死資料 → 改完再檢查一次視覺渲染座標有沒有跟著动。
 - 用 git 版本控制取代之前那種「每次存一個新檔名」的做法（`v47`、`v48`…），
   這樣可以直接 diff 看每次改了什麼。
-- **改 `meadowtide.html` 之前，先確認使用者的編輯器（VSCode 等）裡沒有開著
-  這個檔案的分頁，或至少確認該分頁內容跟磁碟上的最新版本一致。** 這個專案
+- **改任何 `src/` 正式程式前，先確認使用者的編輯器（VSCode 等）裡沒有未儲存
+  的同檔變更，或至少確認分頁內容跟磁碟上的最新版本一致。** 這個專案
   已經發生過兩次「編輯器分頁存檔覆蓋掉 agent 剛做的改動」：一次是西側地形
   的渲染修正、一次是整個三地圖骨架（連同 oldVillage／port／buildMap 相關
   改動）消失了，而且好幾次提交都沒被發現。開工前務必先跟使用者確認目前
@@ -185,9 +207,9 @@ node map-debug.js 你的檔案.html --legend
 
 ### 音樂系統技術說明
 
-- 音檔放在 `src/assets/audio/bgm/`，檔名遵循
+- 音檔放在 `public/assets/audio/bgm/`，檔名遵循
   `StockTune-<曲名>_<數字>.mp3`。實際檔名與用途的對照集中在
-  `meadowtide.html` 的 `BGM_TRACKS`；加入新曲時先把 MP3 放進該資料夾，再在
+  `src/music.ts` 的 `BGM_TRACKS`；加入新曲時先把 MP3 放進該資料夾，再在
   `BGM_TRACKS` 加一筆。若是季節日夜曲，還要把 key 放進
   `SEASON_MUSIC_KEYS`；若是天氣曲，key 要與天氣狀態名稱一致。載入失敗只會
   在 console 警告，不會中止其他音樂。
