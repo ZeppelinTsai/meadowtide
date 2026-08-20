@@ -70,6 +70,15 @@ import { hash2 } from "./utils";
           mountainRoad: { x: 3, z: 29, width: 3 },
           artVillageGate: { x: 0, z: 18 },
           plaza: { x: 22, z: 4, width: 11, height: 22 },
+          terraces: {
+            upper: { maxZ: 9, elevation: 2 },
+            middle: { minZ: 10, maxZ: 17, elevation: 1 },
+            westEdge: 21.5,
+          },
+          plazaStairs: [
+            { z: 7, width: 3, fromX: 19, toX: 22, elevation: 2, steps: 6 },
+            { z: 14, width: 3, fromX: 19, toX: 22, elevation: 1, steps: 6 },
+          ],
           carpenterHouse: { x: 6, z: 20 },
           // w/d/doorX/wallColor/roofColor/style：這輪把原本純色佔位方塊
           // (makeTownPlaceholder)升級成完整建築(makeBuilding/makeBarn，有窗
@@ -165,6 +174,36 @@ import { hash2 } from "./utils";
           );
         }
         return z >= port.beachDepth + 0.5 ? port.elevation : 0;
+      }
+
+      export function oldVillageGroundY(x: number, z: number) {
+        const village = LAYOUT.oldVillage;
+        const stair = village.plazaStairs.find(
+          (entry) =>
+            z >= entry.z - 0.5 &&
+            z <= entry.z + entry.width - 0.5 &&
+            x >= entry.fromX - 0.5 &&
+            x <= entry.toX + 0.5,
+        );
+        if (stair) {
+          const progress = Math.max(
+            0,
+            Math.min(1, (stair.toX - x) / (stair.toX - stair.fromX)),
+          );
+          return (
+            Math.round(progress * stair.steps) *
+            (stair.elevation / stair.steps)
+          );
+        }
+        if (x > village.terraces.westEdge) return 0;
+        if (z <= village.terraces.upper.maxZ)
+          return village.terraces.upper.elevation;
+        if (
+          z >= village.terraces.middle.minZ &&
+          z <= village.terraces.middle.maxZ
+        )
+          return village.terraces.middle.elevation;
+        return 0;
       }
 
       function makePortTiles() {

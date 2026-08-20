@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import { gameState, TIME_CONFIG, CAST_ANIM_DURATION, getNightFactor, isUnsafeAnimalWeather, nearWater } from "./game-state";
 import { isGameTimePaused, updateGameClock } from "./game-clock";
-import { LAYOUT, SOUTHERNMOST_AVENUE_TREE_Z, aStar, portGroundY } from "./layout-maps";
+import { LAYOUT, SOUTHERNMOST_AVENUE_TREE_Z, aStar, portGroundY, oldVillageGroundY } from "./layout-maps";
 import { npcs, animals, BARN_DOOR, outsideCols, outsideRows } from "./npc-runtime";
 import { getScheduleTarget } from "./npc-defs";
 import { animateWalk, animateAnimalWalk } from "./humanoid";
@@ -140,6 +140,11 @@ gameState.lastFrame = performance.now();
           gameState.player.position.y += groundY(gameState.player.position.x, gameState.player.position.z);
         else if (gameState.currentMapName === "port")
           gameState.player.position.y += portGroundY(
+            gameState.player.position.x,
+            gameState.player.position.z,
+          );
+        else if (gameState.currentMapName === "oldVillage")
+          gameState.player.position.y += oldVillageGroundY(
             gameState.player.position.x,
             gameState.player.position.z,
           );
@@ -648,6 +653,12 @@ gameState.lastFrame = performance.now();
           const halfViewDepth = gameState.zoom / Math.cos(TILT_RAD);
           cameraFocusX = Math.max(gameState.player.position.x, halfViewWidth);
           cameraFocusZ = Math.max(gameState.player.position.z, halfViewDepth);
+        }
+        if (gameState.currentMapName === "oldVillage") {
+          groundOffset = oldVillageGroundY(
+            gameState.player.position.x,
+            gameState.player.position.z,
+          );
         }
         camera.position.set(
           cameraFocusX,

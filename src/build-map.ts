@@ -2,7 +2,7 @@ import * as THREE from "three";
 import { hash2 } from "./utils";
 import { gameState } from "./game-state";
 import { scene, TILE, PLATEAU_Y, NORTH_CLIFF_Z, SOUTH_TERRAIN_EXTENSION, NORTH_TERRAIN_EXTENSION, northCliffEdgeZ, groundY, updateCameraFrustum, makeWaterSparklePoints } from "./scene-sky";
-import { LAYOUT, MAPS, carpenterQuest, CARPENTER_HOUSE, isInsideLakeShape, AVENUE_TREE_KEYS, TOWN_Z_START, RAMP_CORRIDOR_MIN_Z, RAMP_CORRIDOR_MAX_Z, COAST_ROAD_CENTER_Z, COAST_ROAD_HALF_WIDTH, lakeEdgeFactor, POUCH_POS, CARPENTER_DOORSTEP, SHRINE_PATH_START_X, SHRINE_PATH_LENGTH, SHRINE_PATH_ELEVATION, portGroundY } from "./layout-maps";
+import { LAYOUT, MAPS, carpenterQuest, CARPENTER_HOUSE, isInsideLakeShape, AVENUE_TREE_KEYS, TOWN_Z_START, RAMP_CORRIDOR_MIN_Z, RAMP_CORRIDOR_MAX_Z, COAST_ROAD_CENTER_Z, COAST_ROAD_HALF_WIDTH, lakeEdgeFactor, POUCH_POS, CARPENTER_DOORSTEP, SHRINE_PATH_START_X, SHRINE_PATH_LENGTH, SHRINE_PATH_ELEVATION, portGroundY, oldVillageGroundY } from "./layout-maps";
 import { handleCarpenterDockTouch, handleCarpenterDoorstepTouch } from "./carpenter-quest";
 import { windowMats, waterSurfaceMaterials, waterSkyUnderlayMaterials, waterSparkleMaterials, outdoorLampLights, foamMeshes, windmillRotors, lakeShoreColliders, fishSchool, pastureGrassBlades, avenueLeafMaterials, seasonalTreeLeafMaterials, seasonalGroundMaterials, SEA_FISH_SCALE, LAKE_FISH_SCALE, EAST_SEA_WAVE_DIRECTION, NORTHEAST_SEA_WAVE_DIRECTION, thresholdMarkerMeshes, thresholdMarkersVisible } from "./scene-registries";
 import { npcGroup, animalGroup, PASTURE, hasPastureGrassAt } from "./npc-runtime";
@@ -445,6 +445,46 @@ import { OYSTER_RACK_VISUAL } from "./game-state";
           );
           ground.receiveShadow = true;
           gameState.mapGroup.add(ground);
+          if (mapName === "oldVillage") {
+            const terraceMat = new THREE.MeshStandardMaterial({
+              color: 0x8f8779,
+              roughness: 0.98,
+            });
+            const addTerrace = (z, depth, elevation) => {
+              const terrace = new THREE.Mesh(
+                new THREE.BoxGeometry(22, elevation, depth),
+                terraceMat,
+              );
+              terrace.position.set(10.5, elevation / 2, z + (depth - 1) / 2);
+              terrace.receiveShadow = true;
+              terrace.castShadow = true;
+              gameState.mapGroup.add(terrace);
+            };
+            addTerrace(0, 10, LAYOUT.oldVillage.terraces.upper.elevation);
+            addTerrace(10, 8, LAYOUT.oldVillage.terraces.middle.elevation);
+
+            const stairMat = new THREE.MeshStandardMaterial({
+              color: 0xb7ad9d,
+              roughness: 0.96,
+            });
+            LAYOUT.oldVillage.plazaStairs.forEach((stair) => {
+              const stepDepth = (stair.toX - stair.fromX) / stair.steps;
+              for (let step = 0; step < stair.steps; step++) {
+                const height = ((step + 1) / stair.steps) * stair.elevation;
+                const mesh = new THREE.Mesh(
+                  new THREE.BoxGeometry(stepDepth, height, stair.width),
+                  stairMat,
+                );
+                mesh.position.set(
+                  stair.toX - (step + 0.5) * stepDepth,
+                  height / 2,
+                  stair.z + 1,
+                );
+                mesh.receiveShadow = true;
+                gameState.mapGroup.add(mesh);
+              }
+            });
+          }
         }
 
         (map.buildings || []).forEach((b) =>
@@ -454,15 +494,15 @@ import { OYSTER_RACK_VISUAL } from "./game-state";
           // p.wallColor 存在代表這輪升級過的完整建築(makeBuilding/makeBarn，
           // 有窗/門/煙囪)；沒有的話(目前只剩木匠事件那間空屋)維持原本的
           // 純色佔位方塊，佔地格子(tiles 裡的 1)完全不受影響。
-          if (p.wallColor !== undefined) {
-            plateauGroup.add(
-              p.style === "barn"
+          const townHouse =
+            p.wallColor !== undefined
+              ? p.style === "barn"
                 ? makeBarn(p)
-                : makeBuilding(p),
-            );
-          } else {
-            plateauGroup.add(makeTownPlaceholder(p.x, p.z, p.seed));
-          }
+                : makeBuilding(p)
+              : makeTownPlaceholder(p.x, p.z, p.seed);
+          townHouse.position.y +=
+            mapName === "oldVillage" ? oldVillageGroundY(p.x, p.z) : 0;
+          plateauGroup.add(townHouse);
           // 木匠事件的空屋：不是新蓋一棟，是拿 oldVillage 既有佔位空屋之一
           // 疊視覺狀態——施工中立牌，或入住後補一顆跟其他房子同一套
           // windowMats 系統驅動的發光窗戶，晚上自動跟著 nightFactor 亮。
@@ -475,7 +515,9 @@ import { OYSTER_RACK_VISUAL } from "./game-state";
               carpenterQuest.stage === "construction" ||
               carpenterQuest.stage === "ready_for_move_in"
             ) {
-              plateauGroup.add(makeConstructionSign(p.x + 0.6, p.z + 0.1));
+              const sign = makeConstructionSign(p.x + 0.6, p.z + 0.1);
+              sign.position.y += oldVillageGroundY(p.x, p.z);
+              plateauGroup.add(sign);
             } else if (carpenterQuest.stage === "moved_in") {
               const winMat = new THREE.MeshStandardMaterial({
                 color: 0x2b3a55,
@@ -486,7 +528,11 @@ import { OYSTER_RACK_VISUAL } from "./game-state";
                 new THREE.BoxGeometry(0.22, 0.22, 0.05),
                 winMat,
               );
-              win.position.set(p.x, 0.55, p.z + 0.44);
+              win.position.set(
+                p.x,
+                0.55 + oldVillageGroundY(p.x, p.z),
+                p.z + 0.44,
+              );
               plateauGroup.add(win);
               windowMats.push(winMat);
             }
@@ -552,7 +598,12 @@ import { OYSTER_RACK_VISUAL } from "./game-state";
               );
               threshold.position.set(
                 x,
-                0.03 + (mapName === "livingArea" ? groundY(x, z) : 0),
+                0.03 +
+                  (mapName === "livingArea"
+                    ? groundY(x, z)
+                    : mapName === "oldVillage"
+                      ? oldVillageGroundY(x, z)
+                      : 0),
                 z,
               );
               threshold.visible = thresholdMarkersVisible;
@@ -560,7 +611,12 @@ import { OYSTER_RACK_VISUAL } from "./game-state";
               gameState.mapGroup.add(threshold);
             } else if (tile === 5) {
               const m = makePath(x, z);
-              m.position.y += mapName === "livingArea" ? groundY(x, z) : 0;
+              m.position.y +=
+                mapName === "livingArea"
+                  ? groundY(x, z)
+                  : mapName === "oldVillage"
+                    ? oldVillageGroundY(x, z)
+                    : 0;
               gameState.mapGroup.add(m);
             }
             // tile === 6（湖）不逐格建置，改成迴圈結束後蓋成一整片有波紋的水面
@@ -1239,7 +1295,12 @@ import { OYSTER_RACK_VISUAL } from "./game-state";
               ? groundY(gameState.playerGridPos.x, gameState.playerGridPos.z)
               : mapName === "port"
                 ? portGroundY(gameState.playerGridPos.x, gameState.playerGridPos.z)
-                : 0;
+                : mapName === "oldVillage"
+                  ? oldVillageGroundY(
+                      gameState.playerGridPos.x,
+                      gameState.playerGridPos.z,
+                    )
+                  : 0;
           fadeIn();
         });
       }
