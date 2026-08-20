@@ -379,7 +379,7 @@ export function addDefaultHumanoidSmile(
           const kneePatch = new THREE.Mesh(new THREE.BoxGeometry(0.115, 0.13, 0.025), patchMat);
           kneePatch.position.set(0, -0.19, -0.072); pivot.add(kneePatch);
           const boot = new THREE.Mesh(new THREE.BoxGeometry(0.145, 0.13, 0.22), bootMat);
-          boot.position.set(0, -0.42, -0.04); pivot.add(boot); group.add(pivot); return pivot;
+          boot.position.set(0, -0.395, -0.04); pivot.add(boot); group.add(pivot); return pivot;
         }
         parts.legL = makeLeg(-1); parts.legR = makeLeg(1);
 

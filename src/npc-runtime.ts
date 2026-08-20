@@ -38,7 +38,9 @@ import { makeAnimal } from "./props";
         const carpenterNpc = npcs.find((n) => n.id === "carpenter");
         if (carpenterNpc)
           carpenterNpc.mesh.visible =
-            carpenterQuest.stage === "escorting" || carpenterQuest.stage === "moved_in";
+            carpenterQuest.stage === "escorting" ||
+            carpenterQuest.stage === "village_scene_done" ||
+            carpenterQuest.stage === "moved_in";
       })();
 
       // ==============================================================

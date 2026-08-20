@@ -134,7 +134,8 @@ let carpenterEscortTrailMap = "";
 
 function updateCarpenterEscortTrail() {
   if (
-    carpenterQuest.stage !== "escorting" ||
+    (carpenterQuest.stage !== "escorting" &&
+      carpenterQuest.stage !== "village_scene_done") ||
     (gameState.currentMapName !== "port" &&
       gameState.currentMapName !== "oldVillage") ||
     !gameState.player
@@ -190,7 +191,7 @@ function carpenterEscortGroundY(x: number, z: number) {
   if (gameState.currentMapName === "port") return portGroundY(x, z);
   if (gameState.currentMapName === "oldVillage")
     return (
-      oldVillageGroundY(x, z) + (isOnOldVillageStair(x, z) ? 0.18 : 0.03)
+      oldVillageGroundY(x, z)
     );
   return 0;
 }
@@ -539,7 +540,8 @@ export function animate(now) {
   updateCarpenterEscortTrail();
   npcs.forEach((n) => {
     if (
-      carpenterQuest.stage === "escorting" &&
+      (carpenterQuest.stage === "escorting" ||
+        carpenterQuest.stage === "village_scene_done") &&
       (gameState.currentMapName === "port" || gameState.currentMapName === "oldVillage") &&
       (n.id === "aunt" || n.id === "carpenter")
     ) {

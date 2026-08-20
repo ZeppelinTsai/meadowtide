@@ -1727,7 +1727,8 @@ export function buildMap(mapName) {
   gameState.currentMapName = mapName;
   npcGroup.visible =
     mapName === "livingArea" ||
-    (carpenterQuest.stage === "escorting" &&
+    ((carpenterQuest.stage === "escorting" ||
+      carpenterQuest.stage === "village_scene_done") &&
       (mapName === "port" || mapName === "oldVillage"));
   animalGroup.visible = mapName === "livingArea";
   syncFarmVisuals();
@@ -1833,7 +1834,8 @@ export function loadMap(mapName, startPos) {
                   : 0.08)
               : 0;
     if (
-      carpenterQuest.stage === "escorting" &&
+      (carpenterQuest.stage === "escorting" ||
+        carpenterQuest.stage === "village_scene_done") &&
       (mapName === "port" || mapName === "oldVillage")
     ) {
       npcGroup.position.y = 0;

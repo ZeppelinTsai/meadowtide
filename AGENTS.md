@@ -216,6 +216,10 @@ carpenterQuest.constructionStartDay >= CARPENTER_CONSTRUCTION_DAYS`
   不切進水面或扶手。跨到 `oldVillage` 時會清空並重建軌跡，抵達
   `CARPENTER_DOORSTEP` 才進入看房與材料檢查。舊存檔的 `en_route_village`
   讀取時會遷移成 `escorting`。
+- 看房對話開始後 stage 雖已是 `village_scene_done`，村長與木匠仍必須留在
+  尾巴／定點更新分支，禁止恢復 `livingArea` 的日常排程；直到材料檢查轉為
+  `construction` 才隱藏演出模型。NPC 的 Y 直接使用地面函式結果，不套玩家
+  樓梯用的額外 `+0.18` 視覺補正。
 - **視覺**：沿用 `oldVillage.placeholders` 裡既有的一間空屋（座標見
   `CARPENTER_HOUSE`），入住後補一顆跟其他建築同一套 `windowMats` 系統
   驅動的窗戶，晚上自動隨 `nightFactor` 亮燈，不用另外寫特效。

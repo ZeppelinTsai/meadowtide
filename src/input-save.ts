@@ -61,12 +61,19 @@ export const SAVE_KEY_PREFIX = "meadowtide.save.";
           const carpenterNpc = npcs.find((n) => n.id === "carpenter");
           if (carpenterNpc)
             carpenterNpc.mesh.visible =
-              carpenterQuest.stage === "escorting" || carpenterQuest.stage === "moved_in";
+              carpenterQuest.stage === "escorting" ||
+              carpenterQuest.stage === "village_scene_done" ||
+              carpenterQuest.stage === "moved_in";
           const escortMap = data.currentMapName === "port" || data.currentMapName === "oldVillage";
           npcGroup.visible =
             data.currentMapName === "livingArea" ||
-            (carpenterQuest.stage === "escorting" && escortMap);
-          if (carpenterQuest.stage === "escorting" && escortMap) {
+            ((carpenterQuest.stage === "escorting" ||
+              carpenterQuest.stage === "village_scene_done") && escortMap);
+          if (
+            (carpenterQuest.stage === "escorting" ||
+              carpenterQuest.stage === "village_scene_done") &&
+            escortMap
+          ) {
             npcGroup.position.y = 0;
             const auntNpc = npcs.find((n) => n.id === "aunt");
             if (auntNpc) auntNpc.mesh.visible = true;
@@ -87,7 +94,10 @@ export const SAVE_KEY_PREFIX = "meadowtide.save.";
             };
           }
           gameState.facing = data.player.facing || gameState.facing;
-          if (carpenterQuest.stage === "escorting") {
+          if (
+            carpenterQuest.stage === "escorting" ||
+            carpenterQuest.stage === "village_scene_done"
+          ) {
             const auntNpc = npcs.find((n) => n.id === "aunt");
             const carpenterNpc = npcs.find((n) => n.id === "carpenter");
             if (auntNpc)
