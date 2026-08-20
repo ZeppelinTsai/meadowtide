@@ -20,7 +20,7 @@ import {
   updateMeteors, updateSkyDome, updateCameraFrustum,
 } from "./scene-sky";
 import {
-  windowMats, waterSurfaceMaterials, outdoorLampLights, foamMeshes, windmillRotors, fishSchool,
+  windowMats, waterSurfaceMaterials, waterSparkleMaterials, outdoorLampLights, foamMeshes, windmillRotors, fishSchool,
   pastureGrassBlades, GRASS_GROWTH_SECONDS, EAST_SEA_WAVE, NORTH_SEA_WAVE,
   EAST_SEA_WAVE_DIRECTION, NORTHEAST_SEA_WAVE_DIRECTION, sampleDirectedSeaWave,
 } from "./scene-registries";
@@ -482,6 +482,26 @@ gameState.lastFrame = performance.now();
           // Opaque water remains the base; emissive sky tint acts as the alpha reflection layer.
           material.emissive.copy(sky);
           material.emissiveIntensity = skyReflectionAlpha;
+        });
+        // 水面星光點點：PointsMaterial 不受場景光照影響，深夜環境光再暗都會
+        // 維持原本亮度，跟上面那層 emissive 天空色調(會被夜色蓋暗)是刻意分開
+        // 的兩個效果，互不干擾。可見度公式跟星空本身(updateSeasonalStars)
+        // 同一套，星星看得到的時候，水面倒影才會一起出現。
+        const starReflectionVisibility =
+          Math.max(0, Math.min(1, (nightFactor - 0.38) / 0.5)) *
+          ({
+            clear: 1,
+            cloudy: 0.38,
+            rain: 0.18,
+            typhoon: 0,
+            storm: 0,
+            snow: 0.45,
+            blizzard: 0.03,
+          }[gameState.currentWeather] ?? 1);
+        waterSparkleMaterials.forEach((material, i) => {
+          const pulse =
+            0.65 + 0.35 * Math.sin(gameState.effectElapsed * 1.4 + i * 12.7);
+          material.opacity = starReflectionVisibility * 0.85 * pulse;
         });
         if (isOutdoorMap()) {
           scene.background = sky;

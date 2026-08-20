@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import { hash2 } from "./utils";
 import { gameState } from "./game-state";
-import { TILE, PLATEAU_Y, NORTH_CLIFF_Z, SOUTH_TERRAIN_EXTENSION } from "./scene-sky";
+import { TILE, PLATEAU_Y, NORTH_CLIFF_Z, SOUTH_TERRAIN_EXTENSION, makeWaterSparklePoints } from "./scene-sky";
 import {
   LAYOUT,
   SHRINE_PATH_START_X,
@@ -1060,6 +1060,23 @@ import { randomPasturePoint } from "./npc-runtime";
           );
           gameState.portWaterMeshes.push(water);
           group.add(water);
+
+          // 每塊水面自己撒一批星光點，數量跟面積成比例，小水塘不會跟大船塢
+          // 一樣密。
+          const sparkleCount = Math.max(
+            6,
+            Math.min(40, Math.round((width * depth) / 15)),
+          );
+          group.add(
+            makeWaterSparklePoints(
+              x,
+              x + width,
+              z,
+              z + depth,
+              sparkleCount,
+              0.12,
+            ),
+          );
         };
         addWater(
           port.basin.x,
@@ -1349,20 +1366,61 @@ import { randomPasturePoint } from "./npc-runtime";
 
       // 城區佔位建築——純色平面方塊，沒有窗戶屋頂細節，先卡出聚落的輪廓
       export function makeTownPlaceholder(x, z, seed) {
-        const colors = [0xd9c9a3, 0xc9a876, 0xb89b7a, 0xcbb994, 0xa88f6a];
+        const group = new THREE.Group();
+        const colors = [0xc9bda3, 0xbba17d, 0xa98e79, 0xd0c2a2, 0x9f9582];
+        const roofColors = [0x884d39, 0x6f493c, 0x536f68, 0x795747];
         const w = 0.85 + seed * 0.4,
-          h = 0.5 + hash2(seed, x) * 0.35,
+          h = 0.72 + hash2(seed, x) * 0.48,
           d = 0.85;
         const box = new THREE.Mesh(
           new THREE.BoxGeometry(w, h, d),
           new THREE.MeshStandardMaterial({
             color: colors[Math.floor(seed * 100) % colors.length],
+            roughness: 0.98,
           }),
         );
-        box.position.set(x, h / 2, z);
+        box.position.y = h / 2;
         box.castShadow = true;
         box.receiveShadow = true;
-        return box;
+        group.add(box);
+
+        const roof = new THREE.Mesh(
+          new THREE.ConeGeometry(w * 0.78, 0.34, 4),
+          new THREE.MeshStandardMaterial({
+            color: roofColors[Math.floor(seed * 17) % roofColors.length],
+            roughness: 1,
+          }),
+        );
+        roof.position.y = h + 0.13;
+        roof.rotation.y = Math.PI / 4;
+        roof.scale.z = d / w;
+        roof.castShadow = true;
+        group.add(roof);
+
+        const woodMat = new THREE.MeshStandardMaterial({ color: 0x59483a, roughness: 1 });
+        const door = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.42, 0.035), woodMat);
+        door.position.set(0, 0.21, d / 2 + 0.02);
+        const beam = new THREE.Mesh(new THREE.BoxGeometry(w * 0.9, 0.055, 0.055), woodMat);
+        beam.position.set(0, h * 0.58, d / 2 + 0.025);
+        group.add(door, beam);
+
+        const windowMat = new THREE.MeshStandardMaterial({
+          color: 0x78929a,
+          emissive: new THREE.Color(0xffc875),
+          emissiveIntensity: 0,
+        });
+        [-0.27, 0.27].forEach((wx) => {
+          const window = new THREE.Mesh(
+            new THREE.BoxGeometry(0.18, 0.2, 0.025),
+            windowMat,
+          );
+          window.position.set(wx * w, h * 0.68, d / 2 + 0.025);
+          group.add(window);
+        });
+        windowMats.push(windowMat);
+        group.position.set(x, 0, z);
+        group.rotation.y = (hash2(seed * 9, z) - 0.5) * 0.08;
+        return group;
       }
 
       // 施工中標記——先用一根柱子+一塊告示牌卡位，不做真的施工動畫。

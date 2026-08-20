@@ -1,10 +1,10 @@
 import * as THREE from "three";
 import { hash2 } from "./utils";
 import { gameState } from "./game-state";
-import { scene, TILE, PLATEAU_Y, NORTH_CLIFF_Z, SOUTH_TERRAIN_EXTENSION, NORTH_TERRAIN_EXTENSION, northCliffEdgeZ, groundY, updateCameraFrustum } from "./scene-sky";
+import { scene, TILE, PLATEAU_Y, NORTH_CLIFF_Z, SOUTH_TERRAIN_EXTENSION, NORTH_TERRAIN_EXTENSION, northCliffEdgeZ, groundY, updateCameraFrustum, makeWaterSparklePoints } from "./scene-sky";
 import { LAYOUT, MAPS, carpenterQuest, CARPENTER_HOUSE, isInsideLakeShape, AVENUE_TREE_KEYS, TOWN_Z_START, RAMP_CORRIDOR_MIN_Z, RAMP_CORRIDOR_MAX_Z, COAST_ROAD_CENTER_Z, COAST_ROAD_HALF_WIDTH, lakeEdgeFactor, POUCH_POS, CARPENTER_DOORSTEP, SHRINE_PATH_START_X, SHRINE_PATH_LENGTH, SHRINE_PATH_ELEVATION, portGroundY } from "./layout-maps";
 import { handleCarpenterDockTouch, handleCarpenterDoorstepTouch } from "./carpenter-quest";
-import { windowMats, waterSurfaceMaterials, outdoorLampLights, foamMeshes, windmillRotors, lakeShoreColliders, fishSchool, pastureGrassBlades, avenueLeafMaterials, seasonalTreeLeafMaterials, seasonalGroundMaterials, SEA_FISH_SCALE, LAKE_FISH_SCALE, EAST_SEA_WAVE_DIRECTION, NORTHEAST_SEA_WAVE_DIRECTION, thresholdMarkerMeshes, thresholdMarkersVisible } from "./scene-registries";
+import { windowMats, waterSurfaceMaterials, waterSparkleMaterials, outdoorLampLights, foamMeshes, windmillRotors, lakeShoreColliders, fishSchool, pastureGrassBlades, avenueLeafMaterials, seasonalTreeLeafMaterials, seasonalGroundMaterials, SEA_FISH_SCALE, LAKE_FISH_SCALE, EAST_SEA_WAVE_DIRECTION, NORTHEAST_SEA_WAVE_DIRECTION, thresholdMarkerMeshes, thresholdMarkersVisible } from "./scene-registries";
 import { npcGroup, animalGroup, PASTURE, hasPastureGrassAt } from "./npc-runtime";
 import { makeGirlPlayer } from "./humanoid";
 import { makeTree, makeAvenueTree, makeBuilding, makeBarn, makePath, makeLakeShoreRock, makeGrassTuft, makeWindGrass, makeFlower, makeFruitTree, makeWaterfallPlaceholder, makeOysterRack, makeRestArea, makeSmallGarden, makePortScene, makeToriiGate, makeShrinePathCauseway, makeTownPlaceholder, makeConstructionSign, makeStone, makeBasaltHeadland, makeSand, makeFoam, makeRedWindmill, makeMountain, makeWesternMountainTerrain, makeMountainGateway, makeFishProp, makeLamp, makeStreetLamp, makeInteriorWall, makeFurniture, updateSeasonalGroundColors, FLOWER_COLORS } from "./props";
@@ -19,6 +19,7 @@ import { OYSTER_RACK_VISUAL } from "./game-state";
         gameState.mapGroup = new THREE.Group();
         windowMats.length = 0;
         waterSurfaceMaterials.length = 0;
+        waterSparkleMaterials.length = 0;
         outdoorLampLights.length = 0;
         seasonalTreeLeafMaterials.length = 0;
         seasonalGroundMaterials.length = 0;
@@ -755,6 +756,19 @@ import { OYSTER_RACK_VISUAL } from "./game-state";
             gameState.oceanMesh.receiveShadow = true;
             gameState.mapGroup.add(gameState.oceanMesh);
 
+            // 星光倒影散布在真實資料涵蓋的海域(dataMinZ~dataMaxZ)，不撒到
+            // 純視覺延伸的南側/遠海——那邊玩家平常看不到，撒了也是浪費。
+            gameState.mapGroup.add(
+              makeWaterSparklePoints(
+                minX,
+                minX + 32,
+                dataMinZ,
+                dataMaxZ,
+                70,
+                0.16,
+              ),
+            );
+
             // 沙灘跟海交界處放幾組會捲上岸、碎開、又退回去的浪花——原本每一
             // 排(z)都放一組，太密集、疊起來一片白，改成每兩排放一組
             map.tiles.forEach((row, z) => {
@@ -1004,6 +1018,20 @@ import { OYSTER_RACK_VISUAL } from "./game-state";
             gameState.lakeMesh.position.set(centerX, 0.1, centerZ);
             gameState.lakeMesh.receiveShadow = true; // 房子跟樹的影子可以真的落在水面上
             plateauGroup.add(gameState.lakeMesh);
+
+            // 湖是橢圓形，用 isInsideLakeShape 篩掉外接矩形四個角落，星光點
+            // 才不會漂在湖岸旁的草地上。
+            plateauGroup.add(
+              makeWaterSparklePoints(
+                centerX - radiusX,
+                centerX + radiusX,
+                centerZ - radiusZ,
+                centerZ + radiusZ,
+                26,
+                0.13,
+                (x, z) => isInsideLakeShape(x, z, 0.3),
+              ),
+            );
 
             // 大石完整圍住湖岸，間距小於石頭直徑，讓相鄰石塊自然重疊、沒有缺口。
             const SHORE_ROCK_COUNT = 72;
@@ -1301,22 +1329,26 @@ import { OYSTER_RACK_VISUAL } from "./game-state";
           x,
           z: 42,
           trigger: "touch",
-          action: () => loadMap("oldVillage", { x: 7, z: 0 }),
+          action: () =>
+            loadMap("oldVillage", {
+              x: LAYOUT.oldVillage.livingGate.x + (x - 20),
+              z: 1,
+            }),
         })),
-        {
+        ...Array.from({ length: LAYOUT.oldVillage.livingGate.width }, (_, i) => ({
           map: "oldVillage",
-          x: 7,
-          z: 0,
+          x: LAYOUT.oldVillage.livingGate.x + i,
+          z: LAYOUT.oldVillage.livingGate.z,
           trigger: "touch",
           // 跟女神祠堂那組同樣的道理：loadMap() 直接設 playerGridPos，落在
           // 觸發格本身不會立刻反彈，所以往返可以共用同一個(7,0)。
-          action: () => loadMap("livingArea", { x: 21, z: 41 }),
-        },
+          action: () => loadMap("livingArea", { x: 20 + i, z: 41 }),
+        })),
         // 美術村 <-> 舊城鎮（南側新門檻）／港口（南側新門檻），兩邊都通
         {
           map: "oldVillage",
-          x: 3,
-          z: 11,
+          x: LAYOUT.oldVillage.artVillageGate.x,
+          z: LAYOUT.oldVillage.artVillageGate.z,
           trigger: "touch",
           action: () => loadMap("artVillage", { x: 3, z: 1 }),
         },
@@ -1325,7 +1357,11 @@ import { OYSTER_RACK_VISUAL } from "./game-state";
           x: 3,
           z: 0,
           trigger: "touch",
-          action: () => loadMap("oldVillage", { x: 3, z: 10 }),
+          action: () =>
+            loadMap("oldVillage", {
+              x: LAYOUT.oldVillage.artVillageGate.x + 1,
+              z: LAYOUT.oldVillage.artVillageGate.z,
+            }),
         },
         {
           map: "port",
@@ -1349,18 +1385,26 @@ import { OYSTER_RACK_VISUAL } from "./game-state";
         // 傳送點——沿邊每一排各自登記一組雙向觸發，逐格對應同一個 z。
         // 舊城鎮擴高到 15 排(z=0~14)才跟港口(16 排)的西側邊界對得起來，
         // 港口多出來的最後一排(z=15)沒有對應的舊城鎮列，不參與這組。
-        ...Array.from({ length: 15 }, (_, z) => ({
+        ...Array.from({ length: LAYOUT.oldVillage.portGate.height }, (_, i) => ({
           map: "oldVillage",
-          x: 13,
-          z,
+          x: LAYOUT.oldVillage.portGate.x,
+          z: LAYOUT.oldVillage.portGate.z + i,
           trigger: "touch",
-          action: () => loadMap("port", { x: 1, z }),
+          action: () =>
+            loadMap("port", {
+              x: 1,
+              z: LAYOUT.oldVillage.portGate.portZ + i,
+            }),
         })),
-        ...Array.from({ length: 15 }, (_, z) => ({
+        ...Array.from({ length: LAYOUT.oldVillage.portGate.height }, (_, i) => ({
           map: "port",
           x: 0,
-          z,
+          z: LAYOUT.oldVillage.portGate.portZ + i,
           trigger: "touch",
-          action: () => loadMap("oldVillage", { x: 12, z }),
+          action: () =>
+            loadMap("oldVillage", {
+              x: LAYOUT.oldVillage.portGate.x - 1,
+              z: LAYOUT.oldVillage.portGate.z + i,
+            }),
         })),
       ];

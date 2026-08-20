@@ -8,6 +8,7 @@ import {
   SHRINE_PATH_ELEVATION,
 } from "./layout-maps";
 import { gameState } from "./game-state";
+import { waterSparkleMaterials } from "./scene-registries";
 import {
   getNightFactor,
   getDaylightForSeason,
@@ -222,6 +223,72 @@ import {
         0xffffff, 0xc9e8ff, 0x9fe8ff, 0xaef4dc, 0xffef9f, 0xffc98f, 0xffb3c8,
         0xe6c4ff, 0xb8c8ff, 0xd8ffd0,
       ];
+      // 水面星光倒影——直接沿用天上那批星星同一張十字星芒貼圖跟色盤，散布
+      // 在水面上方一點點的高度。故意不是真的鏡射(不用 CubeCamera/Reflector
+      // 算實際反射)，只是用同一套視覺語言在水面上疊一批小亮點，opacity
+      // 由呼叫端(game-loop.ts)跟著 nightFactor/天氣同步，晴朗深夜最清楚。
+      export function makeWaterSparklePoints(
+        minX,
+        maxX,
+        minZ,
+        maxZ,
+        count,
+        baseY,
+        insideShapeFn = null,
+      ) {
+        const positions = [];
+        const colors = [];
+        // insideShapeFn 選填：像湖是橢圓形，光用外接矩形亂數撒點，四個角落
+        // 會冒出漂在草地上的星光點，看起來很怪。傳這個 function 進來就能
+        // 濾掉矩形內、但不在真正水域形狀裡的點；每個點最多重試幾次找不到
+        // 就跳過，不會卡住迴圈。
+        for (let i = 0; i < count; i++) {
+          let px = 0,
+            pz = 0,
+            found = false;
+          for (let attempt = 0; attempt < 6 && !found; attempt++) {
+            const nx = hash2(i * 7.3 + minX * 1.3 + attempt * 11, minZ + 1.7);
+            const nz = hash2(i * 4.1 + maxX * 0.7 + attempt * 17, maxZ + 2.9);
+            px = minX + nx * (maxX - minX);
+            pz = minZ + nz * (maxZ - minZ);
+            found = !insideShapeFn || insideShapeFn(px, pz);
+          }
+          if (!found) continue;
+          positions.push(px, baseY, pz);
+          const color = new THREE.Color(
+            STAR_SPARKLE_COLORS[
+              Math.floor(hash2(i, minX + maxZ) * STAR_SPARKLE_COLORS.length) %
+                STAR_SPARKLE_COLORS.length
+            ],
+          );
+          colors.push(color.r, color.g, color.b);
+        }
+        const geometry = new THREE.BufferGeometry();
+        geometry.setAttribute(
+          "position",
+          new THREE.Float32BufferAttribute(positions, 3),
+        );
+        geometry.setAttribute(
+          "color",
+          new THREE.Float32BufferAttribute(colors, 3),
+        );
+        const material = new THREE.PointsMaterial({
+          color: 0xffffff,
+          vertexColors: true,
+          map: STAR_SPARKLE_TEXTURE,
+          size: 5,
+          sizeAttenuation: false,
+          transparent: true,
+          opacity: 0,
+          depthWrite: false,
+          blending: THREE.AdditiveBlending,
+        });
+        const points = new THREE.Points(geometry, material);
+        points.renderOrder = 4; // 蓋在水面(含波浪頂點色)上面，不被水面遮住
+        points.frustumCulled = false;
+        waterSparkleMaterials.push(material);
+        return points;
+      }
       export function makeMilkyWayTexture() {
         const canvas = document.createElement("canvas");
         canvas.width = 1024;

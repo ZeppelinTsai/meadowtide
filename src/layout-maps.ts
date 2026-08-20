@@ -62,6 +62,23 @@ import { hash2 } from "./utils";
           risePerStep: 0.2,
           width: 1.65,
         },
+        oldVillage: {
+          width: 34,
+          height: 30,
+          livingGate: { x: 27, z: 0, width: 3 },
+          portGate: { x: 33, z: 9, height: 15, portZ: 20 },
+          mountainRoad: { x: 3, z: 29, width: 3 },
+          artVillageGate: { x: 0, z: 18 },
+          plaza: { x: 22, z: 4, width: 11, height: 22 },
+          carpenterHouse: { x: 6, z: 20 },
+          houses: [
+            { x: 4, z: 5, seed: 0.18 }, { x: 9, z: 5, seed: 0.34 },
+            { x: 14, z: 5, seed: 0.52 }, { x: 18, z: 5, seed: 0.68 },
+            { x: 5, z: 12, seed: 0.27 }, { x: 11, z: 12, seed: 0.46 },
+            { x: 17, z: 12, seed: 0.73 }, { x: 6, z: 20, seed: 0.22 },
+            { x: 12, z: 20, seed: 0.57 }, { x: 18, z: 20, seed: 0.81 },
+          ],
+        },
         port: {
           width: 34,
           height: 60,
@@ -159,6 +176,36 @@ import { hash2 } from "./utils";
         for (let i = 0; i < p.livingGate.width; i++)
           tiles[p.livingGate.z][p.livingGate.x + i] = 3;
         tiles[p.artVillageGate.z][p.artVillageGate.x] = 3;
+        return tiles;
+      }
+
+      function makeOldVillageTiles() {
+        const village = LAYOUT.oldVillage;
+        const tiles = Array.from({ length: village.height }, () =>
+          new Array(village.width).fill(0),
+        );
+        const paint = (x, z, width, height, tile = 5) => {
+          for (let dz = z; dz < z + height; dz++)
+            for (let dx = x; dx < x + width; dx++) tiles[dz][dx] = tile;
+        };
+
+        // Cinque Terre-inspired hillside circulation: three terraces, narrow climbs,
+        // and a broad civic space opening toward the old fishing port.
+        paint(2, 7, 21, 3);
+        paint(2, 14, 21, 3);
+        paint(2, 22, 21, 3);
+        paint(19, 3, 4, 24);
+        paint(village.plaza.x, village.plaza.z, village.plaza.width, village.plaza.height);
+        paint(village.livingGate.x, 0, village.livingGate.width, 5);
+        paint(3, 24, village.mountainRoad.width, 6);
+
+        for (let x = 0; x < village.livingGate.width; x++)
+          tiles[0][village.livingGate.x + x] = 3;
+        for (let z = 0; z < village.portGate.height; z++)
+          tiles[village.portGate.z + z][village.portGate.x] = 3;
+        paint(0, village.artVillageGate.z, 4, 2);
+        tiles[village.artVillageGate.z][village.artVillageGate.x] = 3;
+        village.houses.forEach((house) => (tiles[house.z][house.x] = 1));
         return tiles;
       }
 
@@ -283,27 +330,9 @@ import { hash2 } from "./utils";
         // 路還沒動到——這一格只佔最後一排的 x=3，其餘南側空地依然沒畫、
         // 不佔座標。
         oldVillage: {
-          tiles: [
-            [0, 0, 0, 0, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-          ],
-          placeholders: [
-            { x: 3, z: 4, seed: 0.4 },
-            { x: 10, z: 4, seed: 0.6 },
-            { x: 3, z: 8, seed: 0.25 },
-            { x: 10, z: 8, seed: 0.75 },
-          ],
-          playerStart: { x: 7, z: 2 },
+          tiles: makeOldVillageTiles(),
+          placeholders: LAYOUT.oldVillage.houses,
+          playerStart: { x: 28, z: 2 },
         },
         // 港口——左側石板廣場接舊城鎮；中央是三面石造碼頭包圍的內港與渡輪；
         // 北側商店背後的沙灘延續生活區；右側木棧橋停小艇。保留原本西界換圖、
@@ -356,15 +385,11 @@ import { hash2 } from "./utils";
       // 傳送點，是連續多格都能互通。新加的三排目前只是空地，之後有內容
       // 再回頭補；用 push(往陣列尾端加)不是 unshift，既有的 z 座標(北側
       // 門檻、木匠空屋、美術村門檻)完全不用動。
-      for (let i = 0; i < 3; i++) {
-        MAPS.oldVillage.tiles.push(new Array(14).fill(0));
-      }
       // 舊城鎮東側(x=13)跟港口西側(x=0)整條邊界都標成門檻(3)，冒出黃色
       // 標記；只對到 z=0~14(舊城鎮的範圍)，港口多出來的最後一排(z=15)
       // 沒有對應的舊城鎮列，不畫。
-      for (let z = 0; z <= 14; z++) {
-        MAPS.oldVillage.tiles[z][13] = 3;
-        MAPS.port.tiles[z][0] = 3;
+      for (let z = 0; z < LAYOUT.oldVillage.portGate.height; z++) {
+        MAPS.port.tiles[LAYOUT.oldVillage.portGate.portZ + z][0] = 3;
       }
 
       // ==============================================================
@@ -727,8 +752,11 @@ import { hash2 } from "./utils";
       // 宣告要放在 events 陣列前面：events 是一般陣列常值，裡面的座標會立刻
       // 求值（不像函式內容那樣延後執行），晚宣告會直接撞到 TDZ 錯誤。
       // ==============================================================
-      export const CARPENTER_HOUSE = { x: 3, z: 4 }; // oldVillage.placeholders 裡指定給木匠的那一間
-      export const CARPENTER_DOORSTEP = { x: 3, z: 5 }; // 空屋正前方，兩段劇情共用同一個觸碰點
+      export const CARPENTER_HOUSE = { ...LAYOUT.oldVillage.carpenterHouse };
+      export const CARPENTER_DOORSTEP = {
+        x: LAYOUT.oldVillage.carpenterHouse.x,
+        z: LAYOUT.oldVillage.carpenterHouse.z + 1,
+      };
       export const CARPENTER_MATERIALS = { wood: 10, stone: 5 };
       export const CARPENTER_CONSTRUCTION_DAYS = 2;
       export const carpenterQuest = {
