@@ -96,53 +96,71 @@ import { hash2 } from "./utils";
             { x: 0, width: 3, fromZ: 19, toZ: 26, baseElevation: 0, elevation: 1, steps: 7 },
           ],
           carpenterHouse: { x: 6, z: 24 },
-          // w/d/doorX/wallColor/roofColor/style：這輪把原本純色佔位方塊
-          // (makeTownPlaceholder)升級成完整建築(makeBuilding/makeBarn，有窗
-          // /門/煙囪)，參考圖片裡那種每棟顏色/屋頂都不一樣的聚落感。座標
-          // 完全不動——w/d 只是視覺上略微加大(佔地仍是單格 tile=1，見
-          // makeOldVillageTiles)，不影響碰撞跟既有的城鎮<->生活區/港口/
-          // 美術村事件。carpenterHouse(6,20) 沒有 wallColor/roofColor，維持
-          // 原本的 makeTownPlaceholder 佔位——那間是木匠事件用的「還沒整修
-          // 好」空屋，施工告示牌/入住後的發光窗戶都是靠劇情 stage 另外疊上
-          // 去的(見 build-map.ts)，太早把它做漂亮會跟「這間需要修」的敘事
-          // 衝突，等木匠劇情真的做到那一步再回頭一起處理。
+          // w/d/doorX/wallColor/roofColor/role：10 棟對應使用者定案的城鎮
+          // 角色設定(4/3/3 三排)。role 純粹是資料標籤，給 build-map.ts 挑
+          // 對應的門口裝飾用，也方便之後其他系統(NPC 排程等)用名字找到
+          // 特定房子，不影響 makeBuilding/makeBarn 的渲染。w 加倍的三棟
+          // (學校/雜貨店兼行政中心/民宿)是使用者指定的「雙倍寬度」門面
+          // 建築；doorX 因此改成新的置中值(x+(w-1)/2)，其餘座標不動——
+          // 佔地仍是單格 tile=1(見 makeOldVillageTiles)，不影響碰撞跟既有
+          // 的城鎮<->生活區/港口/美術村事件。原本 3 棟的 style:"barn"(穀倉
+          // 雙開門+閣樓圓窗)拿掉了：新角色沒有一棟適合穀倉造型，統一用
+          // makeBuilding，靠顏色+門口裝飾物做區分。carpenterHouse(6,24)
+          // 沒有 wallColor/roofColor，維持原本的 makeTownPlaceholder 佔位
+          // ——那間是木匠事件用的「還沒整修好」空屋，施工告示牌/入住後的
+          // 發光窗戶都是靠劇情 stage 另外疊上去的(見 build-map.ts)，太早
+          // 把它做漂亮會跟「這間需要修」的敘事衝突，等木匠劇情真的做到
+          // 那一步再回頭一起處理。
           houses: [
+            // 學校——雙倍寬度，磚紅屋頂+暖色牆面，屋頂鐘塔+旗桿是最醒目
+            // 的地標。
             {
-              x: 4, z: 5, seed: 0.18, w: 2, d: 2, doorX: 4.5,
-              wallColor: 0xe8d9a8, roofColor: 0xc46a3a,
+              x: 4, z: 5, seed: 0.18, w: 4, d: 2, doorX: 5.5, role: "school",
+              wallColor: 0xe4c9a0, roofColor: 0x7a2e2e,
             },
+            // 醫院——白牆+藍灰屋頂的醫療配色，門口上方掛紅十字招牌。
             {
-              x: 9, z: 5, seed: 0.34, w: 2, d: 2, doorX: 9.5,
-              wallColor: 0xeceae0, roofColor: 0x3a6b6b,
+              x: 9, z: 5, seed: 0.34, w: 2, d: 2, doorX: 9.5, role: "hospital",
+              wallColor: 0xf2f0ea, roofColor: 0x3a5a72,
             },
+            // 醫生家——跟醫院同一套藍調但降一階彩度，門口掛小十字牌。
             {
-              x: 14, z: 5, seed: 0.52, w: 2, d: 2, doorX: 14.5,
-              wallColor: 0x8a6a4a, roofColor: 0x3a5a3a, style: "barn",
+              x: 14, z: 5, seed: 0.52, w: 2, d: 2, doorX: 14.5, role: "doctor",
+              wallColor: 0xd7e3e6, roofColor: 0x4a5a5e,
             },
+            // 護士家——淺薄荷綠牆+暖陶土屋頂，跟醫生家同組但用色區分開來。
             {
-              x: 18, z: 5, seed: 0.68, w: 2, d: 2, doorX: 18.5,
-              wallColor: 0xd8cdb8, roofColor: 0x5a4a42,
+              x: 18, z: 5, seed: 0.68, w: 2, d: 2, doorX: 18.5, role: "nurse",
+              wallColor: 0xdce8dc, roofColor: 0x8a5a42,
             },
+            // 老師家——暖芥末黃牆面，門口一疊書本裝飾。
             {
-              x: 5, z: 14, seed: 0.27, w: 2, d: 2, doorX: 5.5,
-              wallColor: 0xf0e6c8, roofColor: 0xa8402f,
+              x: 5, z: 14, seed: 0.27, w: 2, d: 2, doorX: 5.5, role: "teacher",
+              wallColor: 0xd8c078, roofColor: 0x5a4530,
             },
+            // 海洋學家家——藍綠牆面+風化灰藍屋頂，門口掛一個簡化船舵裝飾。
             {
               x: 11, z: 14, seed: 0.46, w: 2, d: 2, doorX: 11.5,
-              wallColor: 0x9c6b4a, roofColor: 0x4a3428, style: "barn",
+              role: "oceanographer", wallColor: 0x9fc4c9, roofColor: 0x33525c,
             },
+            // 雜貨店兼行政中心——雙倍寬度，整個城鎮視覺上的商業/行政門面：
+            // 遮陽棚+吊招牌。
             {
-              x: 17, z: 14, seed: 0.73, w: 2, d: 2, doorX: 17.5,
-              wallColor: 0xdde3e0, roofColor: 0x2f4a5a,
+              x: 17, z: 14, seed: 0.73, w: 4, d: 2, doorX: 18.5,
+              role: "generalStore", wallColor: 0xd9a94a, roofColor: 0x2f6b63,
             },
-            { x: 6, z: 24, seed: 0.22 },
+            // 木匠家——木匠事件用的「還沒整修好」空屋，見上方說明。
+            { x: 6, z: 24, seed: 0.22, role: "carpenter" },
+            // 藝術家家——粉調牆面+梅紫屋頂，門口擺一個簡化畫架。
             {
               x: 12, z: 24, seed: 0.57, w: 2, d: 2, doorX: 12.5,
-              wallColor: 0xe0d0b0, roofColor: 0x6a7a4a,
+              role: "artist", wallColor: 0xd6a0c4, roofColor: 0x5a3a6a,
             },
+            // 民宿——雙倍寬度，門口一支吊招牌+一盞燈籠，比住宅群更有「迎賓」
+            // 的存在感。
             {
-              x: 18, z: 24, seed: 0.81, w: 2, d: 2, doorX: 18.5,
-              wallColor: 0x7a6048, roofColor: 0x384a38, style: "barn",
+              x: 18, z: 24, seed: 0.81, w: 4, d: 2, doorX: 19.5,
+              role: "guesthouse", wallColor: 0xdcb894, roofColor: 0x4a3428,
             },
           ],
         },

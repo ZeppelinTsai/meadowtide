@@ -7,7 +7,7 @@ import { handleCarpenterDockTouch, handleCarpenterDoorstepTouch } from "./carpen
 import { windowMats, waterSurfaceMaterials, waterSkyUnderlayMaterials, waterSparkleMaterials, outdoorLampLights, foamMeshes, windmillRotors, lakeShoreColliders, fishSchool, pastureGrassBlades, avenueLeafMaterials, seasonalTreeLeafMaterials, seasonalGroundMaterials, SEA_FISH_SCALE, LAKE_FISH_SCALE, EAST_SEA_WAVE_DIRECTION, NORTHEAST_SEA_WAVE_DIRECTION, thresholdMarkerMeshes, thresholdMarkersVisible } from "./scene-registries";
 import { npcGroup, animalGroup, PASTURE, hasPastureGrassAt } from "./npc-runtime";
 import { makeGirlPlayer } from "./humanoid";
-import { makeTree, makeAvenueTree, makeBuilding, makeBarn, makePath, makeLakeShoreRock, makeGrassTuft, makeWindGrass, makeFlower, makeFruitTree, makeWaterfallPlaceholder, makeOysterRack, makeRestArea, makeSmallGarden, makePortScene, makeToriiGate, makeShrinePathCauseway, makeTownPlaceholder, makeConstructionSign, makeStone, makeBasaltHeadland, makeSand, makeFoam, makeRedWindmill, makeMountain, makeWesternMountainTerrain, makeMountainGateway, makeFishProp, makeLamp, makeStreetLamp, makeBench, makeFence, makeCampfireRing, makeInteriorWall, makeFurniture, updateSeasonalGroundColors, FLOWER_COLORS } from "./props";
+import { makeTree, makeAvenueTree, makeBuilding, makeBarn, makePath, makeLakeShoreRock, makeGrassTuft, makeWindGrass, makeFlower, makeFruitTree, makeWaterfallPlaceholder, makeOysterRack, makeRestArea, makeSmallGarden, makePortScene, makeToriiGate, makeShrinePathCauseway, makeTownPlaceholder, makeConstructionSign, makeStone, makeBasaltHeadland, makeSand, makeFoam, makeRedWindmill, makeMountain, makeWesternMountainTerrain, makeMountainGateway, makeFishProp, makeLamp, makeStreetLamp, makeBench, makeFence, makeCampfireRing, makeInteriorWall, makeFurniture, updateSeasonalGroundColors, FLOWER_COLORS, makeFlagpole, makeBellCupola, makeMedicalSign, makeBookStack, makeEasel, makeShipWheelEmblem, makeHangingSignboard } from "./props";
 import { syncFarmVisuals } from "./farm-visuals";
 import { OYSTER_RACK_VISUAL } from "./game-state";
 
@@ -760,6 +760,124 @@ import { OYSTER_RACK_VISUAL } from "./game-state";
             }),
           );
           plateauGroup.add(bench1, bench2);
+
+          // 城鎮 10 棟房子的門口/屋頂裝飾——每個對應 LAYOUT.oldVillage.houses
+          // 裡的一個 role，讓房子從外觀就看得出用途(學校/醫院/醫生/護士/
+          // 老師/海洋學家/雜貨店兼行政中心/藝術家/民宿)，木匠家(role:
+          // "carpenter")不在這裡處理，維持劇情自己的施工牌/發光窗戶邏輯。
+          const villageHouseByRole = (role) =>
+            LAYOUT.oldVillage.houses.find((h) => h.role === role);
+          const villageHouseFront = (h) => ({
+            centerX: h.x + (h.w - 1) / 2,
+            centerZ: h.z + (h.d - 1) / 2,
+            frontZ: h.z + (h.d - 1) / 2 + (h.d / 2) * 0.98,
+          });
+
+          const school = villageHouseByRole("school");
+          if (school) {
+            const { centerX, centerZ, frontZ } = villageHouseFront(school);
+            const cupola = makeBellCupola(centerX, centerZ);
+            cupola.position.y = 1.3 + 0.85 + oldVillageGroundY(centerX, centerZ);
+            plateauGroup.add(cupola);
+            const flagX = centerX - school.w / 2 + 0.3;
+            const flagZ = frontZ + 0.35;
+            const flagpole = makeFlagpole(flagX, flagZ, 1.8, 0x7a2e2e);
+            flagpole.position.y += oldVillageGroundY(flagX, flagZ);
+            plateauGroup.add(flagpole);
+          }
+
+          const hospital = villageHouseByRole("hospital");
+          if (hospital) {
+            const { frontZ } = villageHouseFront(hospital);
+            const sign = makeMedicalSign(hospital.doorX, frontZ + 0.03, 0, 1.5);
+            sign.position.y = 1.55 + oldVillageGroundY(hospital.doorX, frontZ);
+            plateauGroup.add(sign);
+          }
+
+          [villageHouseByRole("doctor"), villageHouseByRole("nurse")].forEach(
+            (house) => {
+              if (!house) return;
+              const { frontZ } = villageHouseFront(house);
+              const signX = house.doorX + 0.45;
+              const sign = makeMedicalSign(signX, frontZ + 0.02, 0, 0.7);
+              sign.position.y = 0.9 + oldVillageGroundY(signX, frontZ);
+              plateauGroup.add(sign);
+            },
+          );
+
+          const teacher = villageHouseByRole("teacher");
+          if (teacher) {
+            const { frontZ } = villageHouseFront(teacher);
+            const booksX = teacher.doorX + 0.5,
+              booksZ = frontZ + 0.25;
+            const books = makeBookStack(booksX, booksZ);
+            books.position.y += oldVillageGroundY(booksX, booksZ);
+            plateauGroup.add(books);
+          }
+
+          const oceanographer = villageHouseByRole("oceanographer");
+          if (oceanographer) {
+            const { frontZ } = villageHouseFront(oceanographer);
+            const wheelX = oceanographer.doorX - 0.5;
+            const wheel = makeShipWheelEmblem(wheelX, frontZ + 0.02);
+            wheel.position.y = 0.85 + oldVillageGroundY(wheelX, frontZ);
+            plateauGroup.add(wheel);
+          }
+
+          const generalStore = villageHouseByRole("generalStore");
+          if (generalStore) {
+            const { centerX, frontZ } = villageHouseFront(generalStore);
+            const sign = makeHangingSignboard(
+              generalStore.doorX - 0.18,
+              frontZ + 0.05,
+              0,
+              0xd9a94a,
+            );
+            sign.position.y =
+              1.55 + oldVillageGroundY(generalStore.doorX, frontZ);
+            plateauGroup.add(sign);
+            const awning = new THREE.Mesh(
+              new THREE.BoxGeometry(generalStore.w * TILE - 0.3, 0.06, 0.6),
+              new THREE.MeshStandardMaterial({ color: 0x2f6b63 }),
+            );
+            awning.rotation.x = -0.18;
+            awning.position.set(
+              centerX,
+              1.0 + oldVillageGroundY(centerX, frontZ),
+              frontZ + 0.35,
+            );
+            plateauGroup.add(awning);
+          }
+
+          const artist = villageHouseByRole("artist");
+          if (artist) {
+            const { frontZ } = villageHouseFront(artist);
+            const easelX = artist.doorX - 0.55,
+              easelZ = frontZ + 0.3;
+            const easel = makeEasel(easelX, easelZ, 0.3);
+            easel.position.y += oldVillageGroundY(easelX, easelZ);
+            plateauGroup.add(easel);
+          }
+
+          const guesthouse = villageHouseByRole("guesthouse");
+          if (guesthouse) {
+            const { centerX, frontZ } = villageHouseFront(guesthouse);
+            const sign = makeHangingSignboard(
+              guesthouse.doorX - 0.18,
+              frontZ + 0.05,
+              0,
+              0x4a3428,
+            );
+            sign.position.y =
+              1.55 + oldVillageGroundY(guesthouse.doorX, frontZ);
+            plateauGroup.add(sign);
+            const lanternX = centerX - guesthouse.w / 2 + 0.3;
+            const lanternZ = frontZ + 0.4;
+            const lantern = makeStreetLamp(lanternX, lanternZ, 1);
+            lantern.scale.setScalar(0.6);
+            lantern.position.y += oldVillageGroundY(lanternX, lanternZ);
+            plateauGroup.add(lantern);
+          }
         }
         (map.furniture || []).forEach((item) => {
           const w = item.w || 1,
@@ -981,7 +1099,7 @@ import { OYSTER_RACK_VISUAL } from "./game-state";
           if (validZ.length) {
             const dataMinZ = validZ[0],
               dataMaxZ = validZ[validZ.length - 1],
-              minZ = -NORTH_TERRAIN_EXTENSION;
+              minZ = -NORTH_TERRAIN_EXTENSION - 84;
             const maxZ = rows - 1 + SOUTH_TERRAIN_EXTENSION;
             const minX = Math.min(...westXByZ.filter((v) => v !== null));
             // 海的可玩／碰撞範圍仍由 tile 決定；網格向東額外延伸，最大拉遠也看不到盡頭。
@@ -1013,8 +1131,8 @@ import { OYSTER_RACK_VISUAL } from "./game-state";
             };
 
             const ZSUB = 2; // 每個 tile 排再細分幾段，波浪動畫才夠滑順
-            const rowsZ = [];
-            for (let z = minZ; z < dataMaxZ; z++) {
+            const rowsZ = [minZ];
+            for (let z = -NORTH_TERRAIN_EXTENSION; z < dataMaxZ; z++) {
               for (let s = 0; s < ZSUB; s++) rowsZ.push(z + s / ZSUB);
             }
             // 南側延伸使用較疏的列，降低每幀海浪頂點更新成本。

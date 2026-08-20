@@ -38,7 +38,7 @@ import {
       export const SOUTH_TERRAIN_EXTENSION = 90;
       export const NORTH_CLIFF_Z = -5.7;
       export const CAMERA_WORLD_BOUNDS = Object.freeze({
-        west: -5,
+        west: -3,
         east: LAYOUT.coast.rampX + LAYOUT.coast.rampWidth - 0.85 + 26.7,
       });
       export function northCliffEdgeZ(x) {

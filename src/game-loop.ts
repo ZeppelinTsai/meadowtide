@@ -715,8 +715,12 @@ gameState.lastFrame = performance.now();
           const maxFocusX = CAMERA_WORLD_BOUNDS.east - halfViewWidth;
           cameraFocusX =
             minFocusX <= maxFocusX
-              ? THREE.MathUtils.clamp(gameState.player.position.x, minFocusX, maxFocusX)
-              : (CAMERA_WORLD_BOUNDS.west + CAMERA_WORLD_BOUNDS.east) / 2;
+              ? THREE.MathUtils.clamp(
+                  gameState.player.position.x,
+                  minFocusX,
+                  maxFocusX,
+                )
+              : minFocusX;
 
           // 正交斜視下，畫面下半部在地面上的 z 跨度約為 gameState.zoom / cos(傾角)。
           // 南端把最南排行道樹保留在畫面底緣後停止追蹤。

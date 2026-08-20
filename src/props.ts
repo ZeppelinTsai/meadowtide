@@ -334,6 +334,221 @@ import { randomPasturePoint } from "./npc-runtime";
         group.position.set(centerX, 0, centerZ);
         return group;
       }
+
+      // 以下幾個是城鎮建築的門口/屋頂裝飾，跟 makeBench/makeStreetLamp 同一套
+      // 慣例——各自吃 (x,z,...) 直接定位，呼叫端(build-map.ts 的
+      // oldVillage 區塊)只需要再疊上 oldVillageGroundY() 的高度差。每個都
+      // 對應 LAYOUT.oldVillage.houses 裡一個 role，讓城鎮的每棟房子從外觀
+      // 就看得出用途，不用進去才知道是誰住的。
+
+      // 旗桿——一支木桿+一面小三角旗，學校前庭用。
+      export function makeFlagpole(x, z, height, flagColor) {
+        const group = new THREE.Group();
+        const poleMat = new THREE.MeshStandardMaterial({ color: 0x5a4632 });
+        const pole = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.025, 0.03, height, 6),
+          poleMat,
+        );
+        pole.position.y = height / 2;
+        pole.castShadow = true;
+        group.add(pole);
+        const flag = new THREE.Mesh(
+          new THREE.PlaneGeometry(0.32, 0.2),
+          new THREE.MeshStandardMaterial({
+            color: flagColor,
+            side: THREE.DoubleSide,
+            flatShading: true,
+          }),
+        );
+        flag.position.set(0.17, height - 0.16, 0);
+        group.add(flag);
+        group.position.set(x, 0, z);
+        return group;
+      }
+
+      // 鐘塔——學校屋頂正中央的小尖塔+一顆鐘，最快跟其他住宅屋頂區分開來
+      // 的地標細節。呼叫端負責把 y 疊到屋頂高度上面。
+      export function makeBellCupola(x, z) {
+        const group = new THREE.Group();
+        const base = new THREE.Mesh(
+          new THREE.BoxGeometry(0.4, 0.32, 0.4),
+          new THREE.MeshStandardMaterial({ color: 0xe4c9a0 }),
+        );
+        base.position.y = 0.16;
+        base.castShadow = true;
+        group.add(base);
+        const roofGeo = new THREE.ConeGeometry(0.32, 0.3, 4);
+        roofGeo.rotateY(Math.PI / 4);
+        const roof = new THREE.Mesh(
+          roofGeo,
+          new THREE.MeshStandardMaterial({ color: 0x7a2e2e, flatShading: true }),
+        );
+        roof.position.y = 0.32 + 0.15;
+        roof.castShadow = true;
+        group.add(roof);
+        const bell = new THREE.Mesh(
+          new THREE.ConeGeometry(0.08, 0.13, 8),
+          new THREE.MeshStandardMaterial({
+            color: 0xb8974a,
+            metalness: 0.4,
+            roughness: 0.5,
+          }),
+        );
+        bell.position.y = 0.14;
+        bell.rotation.x = Math.PI;
+        group.add(bell);
+        group.position.set(x, 0, z);
+        return group;
+      }
+
+      // 醫療十字招牌——白底紅十字，醫院門口用大尺寸掛在門楣上方，醫生/
+      // 護士家門口用小尺寸當門牌，三個地方共用同一個組件、只差 scale。
+      export function makeMedicalSign(x, z, rotY = 0, scale = 1) {
+        const group = new THREE.Group();
+        const plaque = new THREE.Mesh(
+          new THREE.BoxGeometry(0.42 * scale, 0.3 * scale, 0.04),
+          new THREE.MeshStandardMaterial({ color: 0xf5f2ea }),
+        );
+        group.add(plaque);
+        const crossMat = new THREE.MeshStandardMaterial({ color: 0xc23b3b });
+        const vertical = new THREE.Mesh(
+          new THREE.BoxGeometry(0.08 * scale, 0.22 * scale, 0.03),
+          crossMat,
+        );
+        vertical.position.z = 0.02;
+        const horizontal = new THREE.Mesh(
+          new THREE.BoxGeometry(0.22 * scale, 0.08 * scale, 0.03),
+          crossMat,
+        );
+        horizontal.position.z = 0.02;
+        group.add(vertical, horizontal);
+        group.position.set(x, 0, z);
+        group.rotation.y = rotY;
+        return group;
+      }
+
+      // 書本疊——老師家門口的一疊書，薄方塊交錯堆疊，顏色/角度各自錯開
+      // 避免看起來像複製貼上。
+      export function makeBookStack(x, z, rotY = 0) {
+        const group = new THREE.Group();
+        const colors = [0x6a3a2f, 0x2f4a5a, 0x5a6a3a, 0x7a5a2f];
+        let y = 0;
+        colors.forEach((color, i) => {
+          const h = 0.05 + hash2(i, x) * 0.02;
+          const book = new THREE.Mesh(
+            new THREE.BoxGeometry(0.34 - i * 0.02, h, 0.24),
+            new THREE.MeshStandardMaterial({ color, flatShading: true }),
+          );
+          book.position.y = y + h / 2;
+          book.rotation.y = (hash2(i, z) - 0.5) * 0.3;
+          book.castShadow = true;
+          group.add(book);
+          y += h;
+        });
+        group.position.set(x, 0, z);
+        group.rotation.y = rotY;
+        return group;
+      }
+
+      // 畫架——三支斜腳撐起一塊畫布，藝術家家門口的裝飾。
+      export function makeEasel(x, z, rotY = 0) {
+        const group = new THREE.Group();
+        const woodMat = new THREE.MeshStandardMaterial({ color: 0x6b5138 });
+        [
+          [-0.14, 0],
+          [0.14, 0],
+          [0, -0.14],
+        ].forEach(([lx, lz]) => {
+          const leg = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.015, 0.015, 0.5, 5),
+            woodMat,
+          );
+          leg.position.set(lx, 0.25, lz);
+          leg.rotation.x = lz !== 0 ? 0.35 : 0;
+          leg.rotation.z = lz === 0 ? (lx > 0 ? -0.25 : 0.25) : 0;
+          leg.castShadow = true;
+          group.add(leg);
+        });
+        const canvas = new THREE.Mesh(
+          new THREE.BoxGeometry(0.34, 0.44, 0.03),
+          new THREE.MeshStandardMaterial({ color: 0xf2ede0 }),
+        );
+        canvas.position.set(0, 0.5, -0.06);
+        canvas.rotation.x = -0.12;
+        canvas.castShadow = true;
+        group.add(canvas);
+        const dab = new THREE.Mesh(
+          new THREE.CircleGeometry(0.06, 8),
+          new THREE.MeshStandardMaterial({ color: 0xd6483a, flatShading: true }),
+        );
+        dab.position.set(0.05, 0.52, -0.045);
+        dab.rotation.x = -0.12;
+        group.add(dab);
+        group.position.set(x, 0, z);
+        group.rotation.y = rotY;
+        return group;
+      }
+
+      // 船舵造型的牆飾——TorusGeometry 當輪圈，幾支細圓柱當輻條，海洋學家
+      // 家專屬裝飾，貼平在牆面上。
+      export function makeShipWheelEmblem(x, z, rotY = 0) {
+        const group = new THREE.Group();
+        const woodMat = new THREE.MeshStandardMaterial({ color: 0x6b5138 });
+        const rim = new THREE.Mesh(
+          new THREE.TorusGeometry(0.16, 0.025, 6, 12),
+          woodMat,
+        );
+        group.add(rim);
+        for (let i = 0; i < 6; i++) {
+          const spoke = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.012, 0.012, 0.32, 4),
+            woodMat,
+          );
+          spoke.rotation.z = (i / 6) * Math.PI * 2;
+          group.add(spoke);
+        }
+        const hub = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.04, 0.04, 0.05, 8),
+          new THREE.MeshStandardMaterial({ color: 0x3a4a52 }),
+        );
+        hub.rotation.x = Math.PI / 2;
+        group.add(hub);
+        group.position.set(x, 0, z);
+        group.rotation.y = rotY;
+        return group;
+      }
+
+      // 吊招牌——一支伸出的橫桿+鏈條+吊掛的木牌，雜貨店跟民宿共用同一個
+      // 組件，只是板子顏色不同，掛在門口正上方。
+      export function makeHangingSignboard(x, z, rotY = 0, boardColor = 0x5a3a2a) {
+        const group = new THREE.Group();
+        const metal = new THREE.MeshStandardMaterial({ color: 0x2f2b28 });
+        const bracket = new THREE.Mesh(
+          new THREE.BoxGeometry(0.32, 0.03, 0.03),
+          metal,
+        );
+        bracket.position.set(0.15, 0, 0.05);
+        group.add(bracket);
+        const chainL = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.008, 0.008, 0.16, 4),
+          metal,
+        );
+        chainL.position.set(0.05, -0.09, 0.05);
+        const chainR = chainL.clone();
+        chainR.position.x = 0.25;
+        group.add(chainL, chainR);
+        const board = new THREE.Mesh(
+          new THREE.BoxGeometry(0.36, 0.22, 0.03),
+          new THREE.MeshStandardMaterial({ color: boardColor }),
+        );
+        board.position.set(0.15, -0.28, 0.05);
+        board.castShadow = true;
+        group.add(board);
+        group.position.set(x, 0, z);
+        group.rotation.y = rotY;
+        return group;
+      }
+
       export function makePath(x, z) {
         // 稍微超出單格邊界，讓相鄰路塊無縫接合，看不出棋盤狀格線。
         const m = new THREE.Mesh(
@@ -2165,12 +2380,12 @@ import { randomPasturePoint } from "./npc-runtime";
 
       export function makeWesternMountainTerrain(rows) {
         const group = new THREE.Group();
-        const xSegments = 10;
-        const zSegments = 24;
+        const xSegments = 16;
+        const zSegments = 36;
         // 草地主地板的實際西緣是 x=-0.5；坡地多壓進去 0.25 格，避免兩片
         // 幾何之間露出天空細縫。這段重疊位於地圖外，不會吃掉可行走草地。
         const eastX = -0.25;
-        const westX = -42;
+        const westX = -34;
         // 山脈只略微越過北側懸崖，不再一路鋪到 z=-34、侵入北方海景。
         const northZ = NORTH_CLIFF_Z - 3.2;
         const southZ = rows + SOUTH_TERRAIN_EXTENSION + 24;
@@ -2185,11 +2400,23 @@ import { randomPasturePoint } from "./npc-runtime";
           const z = THREE.MathUtils.lerp(northZ, southZ, tz);
           for (let ix = 0; ix <= xSegments; ix++) {
             const tx = ix / xSegments;
-            const x = THREE.MathUtils.lerp(eastX, westX, tx);
+            const edgeNotch = ix === 0 ? hash2(iz * 3.7, 21.4) * 0.2 : 0;
+            const lateralRidge =
+              Math.sin(z * 0.19 + tx * 9.5) * 0.65 * tx * (1 - tx) +
+              (hash2(ix * 7.3, iz * 5.9) - 0.5) * 0.7 * tx;
+            const x =
+              THREE.MathUtils.lerp(eastX - edgeNotch, westX, tx) +
+              lateralRidge;
+            const broadRidge =
+              Math.sin(z * 0.13 + tx * 7.2) * (0.8 + tx * 3.8);
+            const brokenFace =
+              (hash2(ix * 5.7, iz * 8.3) - 0.5) * (0.5 + tx * 5.2);
+            const rockBands =
+              Math.sin(tx * 22 + z * 0.075) * (0.2 + tx * 1.15);
             const rugged =
-              (hash2(ix * 5.7, iz * 8.3) - 0.5) * (0.2 + tx * 0.9) +
-              Math.sin(z * 0.16 + ix * 0.8) * 0.16 * tx;
-            const y = PLATEAU_Y + 0.08 + Math.pow(tx, 0.72) * 9.2 + rugged;
+              (broadRidge + brokenFace + rockBands) * Math.pow(tx, 0.52);
+            const y =
+              PLATEAU_Y + 0.08 + Math.pow(tx, 0.28) * 42 + rugged;
             positions.push(x, y, z);
             const shade = low
               .clone()
@@ -2226,6 +2453,7 @@ import { randomPasturePoint } from "./npc-runtime";
             vertexColors: true,
             flatShading: true,
             roughness: 1,
+            side: THREE.DoubleSide,
             // 夜間環境光很低，保留極弱的反射底色，避免近山腳整片沉入黑色；
             // 仍使用受光材質，不改成 MeshBasicMaterial。
             emissive: 0x11150f,
