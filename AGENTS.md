@@ -110,6 +110,10 @@
   轉圓柱本身（轉軸會在圓柱中心，甩起來像斷肢漂浮，不是關節擺動）。動物的
   前後方向是本地 X 軸，所以腿要繞 **Z 軸**擺（不是 X 軸，那是人形的慣例，
   兩者相反）。
+- **人形角色預設嘴型固定使用主角的微笑**：呼叫 `src/humanoid.ts` 的
+  `addDefaultHumanoidSmile()`，維持兩條短斜線形成的淺笑弧。新增角色只可配合
+  臉部位置調整整體 Y/Z 與顏色，不要另做 Torus 半圓、大嘴或下垂苦瓜嘴；只有
+  劇情明確要求驚訝、難過等特殊表情時才另外製作。
 
 ## 除錯工具：`scripts/map-debug.ts`
 
@@ -206,9 +210,10 @@ carpenterQuest.constructionStartDay >= CARPENTER_CONSTRUCTION_DAYS`
   他的 mesh 是 `visible = false`（NPC 移動迴圈、E 鍵互動查詢都會跳過
   隱藏的 NPC），直到入住場景播完才真正出現、開始照排程走動。
 - **帶路演出**：港口事件先黑幕，再顯示村長與木匠的實際 3D 模型；`escorting`
-  階段兩人不是自行尋路追趕，而是重播玩家的歷史座標／地面高度／朝向，像
-  貪吃蛇尾巴一樣依序緊跟；這能確保他們走過同一段樓梯與通道，不切進水面或
-  扶手。跨到 `oldVillage` 時會清空並重建軌跡，抵達
+  階段兩人不是自行尋路追趕，而是重播玩家的歷史 X/Z 座標與朝向，像貪吃蛇
+  尾巴一樣依序緊跟。Y 高度不可從歷史點插值，必須用該點目前的 X/Z 重新呼叫
+  `portGroundY()`／`oldVillageGroundY()`，才能貼合每一階樓梯；這也能確保他們
+  不切進水面或扶手。跨到 `oldVillage` 時會清空並重建軌跡，抵達
   `CARPENTER_DOORSTEP` 才進入看房與材料檢查。舊存檔的 `en_route_village`
   讀取時會遷移成 `escorting`。
 - **視覺**：沿用 `oldVillage.placeholders` 裡既有的一間空屋（座標見

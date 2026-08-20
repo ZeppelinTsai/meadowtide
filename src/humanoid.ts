@@ -4,6 +4,29 @@ import * as THREE from "three";
 export const HUMANOID_WORLD_HEIGHT = 1;
 const humanoidScale = (unscaledHeight) => HUMANOID_WORLD_HEIGHT / unscaledHeight;
 
+// 人形角色的固定預設微笑：兩條短斜線形成淺弧，避免半圓 Torus 在俯視鏡頭下
+// 變成厚重的大嘴。角色只調整整張臉的 Y/Z 落點，不改線段比例與角度。
+export function addDefaultHumanoidSmile(
+  group: THREE.Group,
+  y: number,
+  z: number,
+  color = 0x854b3c,
+) {
+  const mouthMat = new THREE.MeshStandardMaterial({
+    color,
+    flatShading: true,
+  });
+  for (const side of [-1, 1]) {
+    const smileSide = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.005, 0.005, 0.045, 5),
+      mouthMat,
+    );
+    smileSide.position.set(side * 0.021, y, z);
+    smileSide.rotation.z = side * -1.2;
+    group.add(smileSide);
+  }
+}
+
 // 6) 低模人形
       // ==============================================================
       export function makeHumanoid({
@@ -334,8 +357,7 @@ const humanoidScale = (unscaledHeight) => HUMANOID_WORLD_HEIGHT / unscaledHeight
           const brow = new THREE.Mesh(new THREE.BoxGeometry(0.066, 0.014, 0.012), hairMat);
           brow.position.set(side * 0.072, 1.18, -0.193); brow.rotation.z = side * -0.1; group.add(brow);
         }
-        const smile = new THREE.Mesh(new THREE.TorusGeometry(0.043, 0.007, 5, 10, Math.PI), mat(0x63382e));
-        smile.rotation.z = Math.PI; smile.position.set(0, 1.045, -0.2); group.add(smile);
+        addDefaultHumanoidSmile(group, 1.045, -0.2, 0x63382e);
         const pencil = new THREE.Mesh(new THREE.CylinderGeometry(0.009, 0.009, 0.17, 6), mat(0xd78a31));
         pencil.position.set(-0.205, 1.18, -0.015); pencil.rotation.z = -0.32; group.add(pencil);
 
@@ -672,16 +694,7 @@ const humanoidScale = (unscaledHeight) => HUMANOID_WORLD_HEIGHT / unscaledHeight
           group.add(brow);
         }
         // 與村長相同的兩段式輕微笑，避免水平嘴線看起來像苦瓜臉。
-        const mouthMat = mat(0x854b3c);
-        for (const side of [-1, 1]) {
-          const smileSide = new THREE.Mesh(
-            new THREE.CylinderGeometry(0.005, 0.005, 0.045, 5),
-            mouthMat,
-          );
-          smileSide.position.set(side * 0.021, 0.945, -0.201);
-          smileSide.rotation.z = side * -1.2;
-          group.add(smileSide);
-        }
+        addDefaultHumanoidSmile(group, 0.945, -0.201);
 
         // 貝殼墜飾與斜背帶。
         const necklace = new THREE.Mesh(new THREE.TorusGeometry(0.065, 0.008, 4, 10, Math.PI), brassMat);

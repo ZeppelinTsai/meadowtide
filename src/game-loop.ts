@@ -128,7 +128,7 @@ function sampleStarlightReflection(
   );
 }
 
-type EscortTrailPoint = { x: number; y: number; z: number; rotation: number };
+type EscortTrailPoint = { x: number; z: number; rotation: number };
 let carpenterEscortTrail: EscortTrailPoint[] = [];
 let carpenterEscortTrailMap = "";
 
@@ -151,7 +151,6 @@ function updateCarpenterEscortTrail() {
       .filter(Boolean)
       .map((mesh: any) => ({
         x: mesh.position.x,
-        y: mesh.position.y,
         z: mesh.position.z,
         rotation: mesh.rotation.y,
       }));
@@ -159,7 +158,6 @@ function updateCarpenterEscortTrail() {
   const newest = carpenterEscortTrail[carpenterEscortTrail.length - 1];
   const playerPoint = {
     x: gameState.player.position.x,
-    y: gameState.player.position.y,
     z: gameState.player.position.z,
     rotation: gameState.player.rotation.y,
   };
@@ -179,7 +177,6 @@ function sampleCarpenterEscortTrail(distanceBehind: number) {
       const t = segment > 0 ? remaining / segment : 0;
       return {
         x: THREE.MathUtils.lerp(newer.x, older.x, t),
-        y: THREE.MathUtils.lerp(newer.y, older.y, t),
         z: THREE.MathUtils.lerp(newer.z, older.z, t),
         rotation: newer.rotation,
       };
@@ -187,6 +184,15 @@ function sampleCarpenterEscortTrail(distanceBehind: number) {
     remaining -= segment;
   }
   return carpenterEscortTrail[0];
+}
+
+function carpenterEscortGroundY(x: number, z: number) {
+  if (gameState.currentMapName === "port") return portGroundY(x, z);
+  if (gameState.currentMapName === "oldVillage")
+    return (
+      oldVillageGroundY(x, z) + (isOnOldVillageStair(x, z) ? 0.18 : 0.03)
+    );
+  return 0;
 }
 
 function setSeaVertexColor(
@@ -545,7 +551,11 @@ export function animate(now) {
         trailPoint.x - n.mesh.position.x,
         trailPoint.z - n.mesh.position.z,
       );
-      n.mesh.position.set(trailPoint.x, trailPoint.y, trailPoint.z);
+      n.mesh.position.set(
+        trailPoint.x,
+        carpenterEscortGroundY(trailPoint.x, trailPoint.z),
+        trailPoint.z,
+      );
       n.mesh.rotation.y = trailPoint.rotation;
       const moving = moved > 0.008;
       animateWalk(n.mesh, moving, gameState.elapsed);
