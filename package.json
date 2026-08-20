@@ -5,6 +5,7 @@
   "type": "module",
   "main": "main.js",
   "description": "海風牧歌 Meadowtide — Three.js 農場模擬遊戲",
+  "author": "ZeppelinTsai",
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
