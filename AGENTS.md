@@ -187,7 +187,7 @@ npm run building-debug
 角色的招募流程可以直接複製這套框架：
 
 - **狀態機**：單一個 `carpenterQuest.stage` 字串，只往前推、不回頭：
-  `not_started → en_route_village → village_scene_done → construction →
+  `not_started → escorting → village_scene_done → construction →
 ready_for_move_in → moved_in`。每個觸碰事件的 `action()` 自己檢查目前
   stage 該不該反應，不需要另外的「已觸發過」旗標——stage 一旦前進，原本
   的觸發條件自然就不再成立。
@@ -205,6 +205,12 @@ carpenterQuest.constructionStartDay >= CARPENTER_CONSTRUCTION_DAYS`
 - **NPC 現身**：`npcDefs` 裡的木匠本來就有 home/schedule，但事件完成前
   他的 mesh 是 `visible = false`（NPC 移動迴圈、E 鍵互動查詢都會跳過
   隱藏的 NPC），直到入住場景播完才真正出現、開始照排程走動。
+- **帶路演出**：港口事件先黑幕，再顯示村長與木匠的實際 3D 模型；`escorting`
+  階段兩人不是自行尋路追趕，而是重播玩家的歷史座標／地面高度／朝向，像
+  貪吃蛇尾巴一樣依序緊跟；這能確保他們走過同一段樓梯與通道，不切進水面或
+  扶手。跨到 `oldVillage` 時會清空並重建軌跡，抵達
+  `CARPENTER_DOORSTEP` 才進入看房與材料檢查。舊存檔的 `en_route_village`
+  讀取時會遷移成 `escorting`。
 - **視覺**：沿用 `oldVillage.placeholders` 裡既有的一間空屋（座標見
   `CARPENTER_HOUSE`），入住後補一顆跟其他建築同一套 `windowMats` 系統
   驅動的窗戶，晚上自動隨 `nightFactor` 亮燈，不用另外寫特效。

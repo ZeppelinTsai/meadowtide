@@ -8,7 +8,7 @@ import {
   showDialogSequence,
   dialogQueue,
 } from "./dialogue";
-import { npcs } from "./npc-runtime";
+import { npcGroup, npcs } from "./npc-runtime";
 
 export function carpenterHasMaterials() {
         return (
@@ -17,8 +17,32 @@ export function carpenterHasMaterials() {
         );
       }
       export function startCarpenterDockScene() {
-        carpenterQuest.stage = "en_route_village"; // 立刻推進，防止原地重複觸發
-        showDialogSequence([
+        carpenterQuest.stage = "escorting";
+        const fade = document.getElementById("fade") as HTMLElement;
+        fade.style.opacity = "1";
+        setTimeout(() => {
+          const aunt = npcs.find((n) => n.id === "aunt");
+          const carpenter = npcs.find((n) => n.id === "carpenter");
+          npcGroup.visible = true;
+          npcGroup.position.y = 0;
+          if (aunt) {
+            aunt.mesh.visible = true;
+            aunt.mesh.position.set(
+              gameState.player.position.x - 1.1,
+              1,
+              gameState.player.position.z + 1.2,
+            );
+          }
+          if (carpenter) {
+            carpenter.mesh.visible = true;
+            carpenter.mesh.position.set(
+              gameState.player.position.x + 1.1,
+              1,
+              gameState.player.position.z + 1.8,
+            );
+          }
+          fade.style.opacity = "0";
+          showDialogSequence([
           {
             text: "「船差不多要到了。這位是……木工出身，說是想找個能重新蓋東西的地方。」",
             speaker: "aunt",
@@ -36,7 +60,8 @@ export function carpenterHasMaterials() {
             speaker: "aunt",
             name: "村長",
           },
-        ]);
+          ]);
+        }, 400);
       }
       export function handleCarpenterDockTouch() {
         if (dialogQueue.length) return; // 對話播放中不要被重新觸發打斷
@@ -44,7 +69,7 @@ export function carpenterHasMaterials() {
       }
       export function tryStartCarpenterConstruction() {
         if (!carpenterHasMaterials()) {
-          carpenterQuest.stage = "en_route_village"; // 材料不夠，退回可以再次觸發這段的狀態
+          carpenterQuest.stage = "escorting";
           showDialog({
             text: "「這樣還不夠，等你準備齊了再來找我。」",
             speaker: "carpenter",
@@ -55,6 +80,9 @@ export function carpenterHasMaterials() {
         inventory.stone -= CARPENTER_MATERIALS.stone;
         carpenterQuest.stage = "construction";
         carpenterQuest.constructionStartDay = gameState.currentDay;
+        const carpenterNpc = npcs.find((n) => n.id === "carpenter");
+        if (carpenterNpc) carpenterNpc.mesh.visible = false;
+        npcGroup.visible = false;
         showDialogSequence([
           {
             text: "「夠了。剩下的我自己來——不是不信任你，是這種事我習慣自己看著。」",
@@ -109,7 +137,7 @@ export function carpenterHasMaterials() {
       }
       export function handleCarpenterDoorstepTouch() {
         if (dialogQueue.length) return;
-        if (carpenterQuest.stage === "en_route_village") {
+        if (carpenterQuest.stage === "escorting") {
           startCarpenterVillageScene();
         } else if (
           carpenterQuest.stage === "ready_for_move_in" &&

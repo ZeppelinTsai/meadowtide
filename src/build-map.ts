@@ -66,6 +66,7 @@ import {
 } from "./scene-registries";
 import {
   npcGroup,
+  npcs,
   animalGroup,
   PASTURE,
   hasPastureGrassAt,
@@ -1724,7 +1725,10 @@ export function buildMap(mapName) {
 
   scene.add(gameState.mapGroup);
   gameState.currentMapName = mapName;
-  npcGroup.visible = mapName === "livingArea";
+  npcGroup.visible =
+    mapName === "livingArea" ||
+    (carpenterQuest.stage === "escorting" &&
+      (mapName === "port" || mapName === "oldVillage"));
   animalGroup.visible = mapName === "livingArea";
   syncFarmVisuals();
 }
@@ -1828,6 +1832,23 @@ export function loadMap(mapName, startPos) {
                   ? 0.3
                   : 0.08)
               : 0;
+    if (
+      carpenterQuest.stage === "escorting" &&
+      (mapName === "port" || mapName === "oldVillage")
+    ) {
+      npcGroup.position.y = 0;
+      const aunt = npcs.find((n) => n.id === "aunt");
+      const carpenter = npcs.find((n) => n.id === "carpenter");
+      [aunt, carpenter].forEach((npc, index) => {
+        if (!npc) return;
+        npc.mesh.visible = true;
+        npc.mesh.position.set(pos.x + (index ? 1 : -1), gameState.player.position.y, pos.z + 1.4 + index * 0.7);
+        npc.path = null;
+        npc.lastTargetKey = null;
+      });
+    } else {
+      npcGroup.position.y = PLATEAU_Y;
+    }
     fadeIn();
   });
 }

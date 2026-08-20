@@ -11,6 +11,7 @@ import {
 import { isGameTimePaused, updateGameClock } from "./game-clock";
 import {
   LAYOUT,
+  carpenterQuest,
   SOUTHERNMOST_AVENUE_TREE_Z,
   aStar,
   portGroundY,
@@ -125,6 +126,67 @@ function sampleStarlightReflection(
     (0.28 + 0.72 * twinkle) *
     ripple
   );
+}
+
+type EscortTrailPoint = { x: number; y: number; z: number; rotation: number };
+let carpenterEscortTrail: EscortTrailPoint[] = [];
+let carpenterEscortTrailMap = "";
+
+function updateCarpenterEscortTrail() {
+  if (
+    carpenterQuest.stage !== "escorting" ||
+    (gameState.currentMapName !== "port" &&
+      gameState.currentMapName !== "oldVillage") ||
+    !gameState.player
+  ) {
+    carpenterEscortTrail.length = 0;
+    carpenterEscortTrailMap = "";
+    return;
+  }
+  if (carpenterEscortTrailMap !== gameState.currentMapName) {
+    carpenterEscortTrailMap = gameState.currentMapName;
+    const aunt = npcs.find((npc) => npc.id === "aunt");
+    const carpenter = npcs.find((npc) => npc.id === "carpenter");
+    carpenterEscortTrail = [carpenter?.mesh, aunt?.mesh, gameState.player]
+      .filter(Boolean)
+      .map((mesh: any) => ({
+        x: mesh.position.x,
+        y: mesh.position.y,
+        z: mesh.position.z,
+        rotation: mesh.rotation.y,
+      }));
+  }
+  const newest = carpenterEscortTrail[carpenterEscortTrail.length - 1];
+  const playerPoint = {
+    x: gameState.player.position.x,
+    y: gameState.player.position.y,
+    z: gameState.player.position.z,
+    rotation: gameState.player.rotation.y,
+  };
+  if (!newest || Math.hypot(playerPoint.x - newest.x, playerPoint.z - newest.z) >= 0.045)
+    carpenterEscortTrail.push(playerPoint);
+  if (carpenterEscortTrail.length > 260) carpenterEscortTrail.shift();
+}
+
+function sampleCarpenterEscortTrail(distanceBehind: number) {
+  if (!carpenterEscortTrail.length) return null;
+  let remaining = distanceBehind;
+  for (let i = carpenterEscortTrail.length - 1; i > 0; i--) {
+    const newer = carpenterEscortTrail[i];
+    const older = carpenterEscortTrail[i - 1];
+    const segment = Math.hypot(newer.x - older.x, newer.z - older.z);
+    if (segment >= remaining) {
+      const t = segment > 0 ? remaining / segment : 0;
+      return {
+        x: THREE.MathUtils.lerp(newer.x, older.x, t),
+        y: THREE.MathUtils.lerp(newer.y, older.y, t),
+        z: THREE.MathUtils.lerp(newer.z, older.z, t),
+        rotation: newer.rotation,
+      };
+    }
+    remaining -= segment;
+  }
+  return carpenterEscortTrail[0];
 }
 
 function setSeaVertexColor(
@@ -468,7 +530,27 @@ export function animate(now) {
 
   // --- NPC：先看行程表要去哪，再用 A* 決定「怎麼走」 ---
   const npcSpeed = 1.6;
+  updateCarpenterEscortTrail();
   npcs.forEach((n) => {
+    if (
+      carpenterQuest.stage === "escorting" &&
+      (gameState.currentMapName === "port" || gameState.currentMapName === "oldVillage") &&
+      (n.id === "aunt" || n.id === "carpenter")
+    ) {
+      const trailPoint = sampleCarpenterEscortTrail(
+        n.id === "aunt" ? 0.72 : 1.42,
+      );
+      if (!trailPoint) return;
+      const moved = Math.hypot(
+        trailPoint.x - n.mesh.position.x,
+        trailPoint.z - n.mesh.position.z,
+      );
+      n.mesh.position.set(trailPoint.x, trailPoint.y, trailPoint.z);
+      n.mesh.rotation.y = trailPoint.rotation;
+      const moving = moved > 0.008;
+      animateWalk(n.mesh, moving, gameState.elapsed);
+      return;
+    }
     if (!n.mesh.visible) return; // 木匠抵達前先不跑排程/路徑，省得算假人的路
     const target = getScheduleTarget(n.schedule, phase);
     const targetKey = `${target.x},${target.z}`;

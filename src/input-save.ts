@@ -2,7 +2,7 @@ import { gameState, inventory, cropState, TIME_CONFIG, SEASON_NAMES, WEATHER_NAM
 import { updateSeasonAndDate } from "./game-clock";
 import { carpenterQuest, POUCH_POS, FARMLAND_TILES, chefQuest, REST_CHAIR } from "./layout-maps";
 import { tryShareChefMeal, mergeChefMealIntoChatLine } from "./chef-quest";
-import { npcs } from "./npc-runtime";
+import { npcGroup, npcs } from "./npc-runtime";
 import { npcLine } from "./npc-defs";
 import { dialogQueue, advanceDialogSequence, showDialog, showDialogSequence, dialogEl } from "./dialogue";
 import { loadMap, isBlocked, events } from "./build-map";
@@ -56,9 +56,21 @@ export const SAVE_KEY_PREFIX = "meadowtide.save.";
         });
         if (data.carpenterQuest) {
           Object.assign(carpenterQuest, data.carpenterQuest);
+          if (carpenterQuest.stage === "en_route_village")
+            carpenterQuest.stage = "escorting";
           const carpenterNpc = npcs.find((n) => n.id === "carpenter");
           if (carpenterNpc)
-            carpenterNpc.mesh.visible = carpenterQuest.stage === "moved_in";
+            carpenterNpc.mesh.visible =
+              carpenterQuest.stage === "escorting" || carpenterQuest.stage === "moved_in";
+          const escortMap = data.currentMapName === "port" || data.currentMapName === "oldVillage";
+          npcGroup.visible =
+            data.currentMapName === "livingArea" ||
+            (carpenterQuest.stage === "escorting" && escortMap);
+          if (carpenterQuest.stage === "escorting" && escortMap) {
+            npcGroup.position.y = 0;
+            const auntNpc = npcs.find((n) => n.id === "aunt");
+            if (auntNpc) auntNpc.mesh.visible = true;
+          }
         }
         Object.keys(oysterRackState).forEach((key) => delete oysterRackState[key]);
         Object.assign(oysterRackState, data.oysterRackState || {});
@@ -75,6 +87,14 @@ export const SAVE_KEY_PREFIX = "meadowtide.save.";
             };
           }
           gameState.facing = data.player.facing || gameState.facing;
+          if (carpenterQuest.stage === "escorting") {
+            const auntNpc = npcs.find((n) => n.id === "aunt");
+            const carpenterNpc = npcs.find((n) => n.id === "carpenter");
+            if (auntNpc)
+              auntNpc.mesh.position.set(data.player.x - 1, 0, data.player.z + 1.3);
+            if (carpenterNpc)
+              carpenterNpc.mesh.position.set(data.player.x + 1, 0, data.player.z + 2.1);
+          }
         }
         updateAvenueTreeColors();
         updateSeasonalTreeColors();

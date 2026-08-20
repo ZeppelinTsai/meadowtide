@@ -104,7 +104,7 @@ import { hash2 } from "./utils";
             { x: 0, width: 3, fromZ: 9, toZ: 16, baseElevation: 1, elevation: 1, steps: 7 },
             { x: 0, width: 3, fromZ: 19, toZ: 26, baseElevation: 0, elevation: 1, steps: 7 },
           ],
-          carpenterHouse: { x: 6, z: 23, d: 3 },
+          carpenterHouse: { x: 6, z: 13, d: 3, doorX: 7 },
           // w/d/doorX/wallColor/roofColor/role：10 棟對應使用者定案的城鎮
           // 角色設定(4/3/3 三排)。role 純粹是資料標籤，給 build-map.ts 挑
           // 對應的門口裝飾用，也方便之後其他系統(NPC 排程等)用名字找到
@@ -144,7 +144,7 @@ import { hash2 } from "./utils";
             },
             // 老師家——暖芥末黃牆面，門口一疊書本裝飾。
             {
-              x: 6, z: 13, seed: 0.27, w: 3, d: 3, doorX: 7, role: "teacher",
+              x: 6, z: 13, seed: 0.27, w: 3, d: 3, doorX: 7, role: "carpenter",
               wallColor: 0xd8c078, roofColor: 0x5a4530,
             },
             // 海洋學家家——藍綠牆面+風化灰藍屋頂，門口掛一個簡化船舵裝飾。
@@ -161,7 +161,7 @@ import { hash2 } from "./utils";
             // 木匠家——木匠事件用的「還沒整修好」空屋，見上方說明。
             {
               x: 6, z: 23, seed: 0.22, w: 3, d: 3, doorX: 7,
-              role: "carpenter", wallColor: 0xb8aa91, roofColor: 0x51443f,
+              role: "teacher", wallColor: 0xb8aa91, roofColor: 0x51443f,
             },
             // 藝術家家——粉調牆面+梅紫屋頂，門口擺一個簡化畫架。
             {
@@ -1177,11 +1177,8 @@ import { hash2 } from "./utils";
       // ==============================================================
       export const CARPENTER_HOUSE = { ...LAYOUT.oldVillage.carpenterHouse };
       export const CARPENTER_DOORSTEP = {
-        x: LAYOUT.oldVillage.carpenterHouse.x,
-        z:
-          LAYOUT.oldVillage.carpenterHouse.z +
-          LAYOUT.oldVillage.carpenterHouse.d -
-          1,
+        x: LAYOUT.oldVillage.carpenterHouse.doorX,
+        z: LAYOUT.oldVillage.carpenterHouse.z + LAYOUT.oldVillage.carpenterHouse.d,
       };
       export const CARPENTER_MATERIALS = { wood: 10, stone: 5 };
       export const CARPENTER_CONSTRUCTION_DAYS = 2;
