@@ -95,7 +95,7 @@ import { hash2 } from "./utils";
             { x: 0, width: 3, fromZ: 9, toZ: 16, baseElevation: 1, elevation: 1, steps: 7 },
             { x: 0, width: 3, fromZ: 19, toZ: 26, baseElevation: 0, elevation: 1, steps: 7 },
           ],
-          carpenterHouse: { x: 6, z: 24 },
+          carpenterHouse: { x: 6, z: 23, d: 3 },
           // w/d/doorX/wallColor/roofColor/role：10 棟對應使用者定案的城鎮
           // 角色設定(4/3/3 三排)。role 純粹是資料標籤，給 build-map.ts 挑
           // 對應的門口裝飾用，也方便之後其他系統(NPC 排程等)用名字找到
@@ -115,54 +115,54 @@ import { hash2 } from "./utils";
             // 學校——雙倍寬度，磚紅屋頂+暖色牆面，屋頂鐘塔+旗桿是最醒目
             // 的地標。
             {
-              x: 4, z: 5, seed: 0.18, w: 4, d: 2, doorX: 5.5, role: "school",
+              x: 4, z: 4, seed: 0.18, w: 4, d: 3, doorX: 5.5, role: "school",
               wallColor: 0xe4c9a0, roofColor: 0x7a2e2e,
             },
             // 醫院——白牆+藍灰屋頂的醫療配色，門口上方掛紅十字招牌。
             {
-              x: 9, z: 5, seed: 0.34, w: 2, d: 2, doorX: 9.5, role: "hospital",
+              x: 9, z: 4, seed: 0.34, w: 3, d: 3, doorX: 10, role: "hospital",
               wallColor: 0xf2f0ea, roofColor: 0x3a5a72,
             },
             // 醫生家——跟醫院同一套藍調但降一階彩度，門口掛小十字牌。
             {
-              x: 13, z: 5, seed: 0.52, w: 2, d: 2, doorX: 13.5, role: "doctor",
+              x: 13, z: 4, seed: 0.52, w: 3, d: 3, doorX: 14, role: "doctor",
               wallColor: 0xd7e3e6, roofColor: 0x4a5a5e,
             },
             // 護士家——淺薄荷綠牆+暖陶土屋頂，跟醫生家同組但用色區分開來。
             {
-              x: 17, z: 5, seed: 0.68, w: 2, d: 2, doorX: 17.5, role: "nurse",
+              x: 17, z: 4, seed: 0.68, w: 3, d: 3, doorX: 18, role: "nurse",
               wallColor: 0xdce8dc, roofColor: 0x8a5a42,
             },
             // 老師家——暖芥末黃牆面，門口一疊書本裝飾。
             {
-              x: 5, z: 14, seed: 0.27, w: 2, d: 2, doorX: 5.5, role: "teacher",
+              x: 5, z: 13, seed: 0.27, w: 3, d: 3, doorX: 6, role: "teacher",
               wallColor: 0xd8c078, roofColor: 0x5a4530,
             },
             // 海洋學家家——藍綠牆面+風化灰藍屋頂，門口掛一個簡化船舵裝飾。
             {
-              x: 9, z: 14, seed: 0.46, w: 2, d: 2, doorX: 9.5,
+              x: 9, z: 13, seed: 0.46, w: 3, d: 3, doorX: 10,
               role: "oceanographer", wallColor: 0x9fc4c9, roofColor: 0x33525c,
             },
             // 雜貨店兼行政中心——雙倍寬度，整個城鎮視覺上的商業/行政門面：
             // 遮陽棚+吊招牌。
             {
-              x: 13, z: 14, seed: 0.73, w: 4, d: 2, doorX: 14.5,
+              x: 13, z: 13, seed: 0.73, w: 4, d: 3, doorX: 14.5,
               role: "generalStore", wallColor: 0xd9a94a, roofColor: 0x2f6b63,
             },
             // 木匠家——木匠事件用的「還沒整修好」空屋，見上方說明。
             {
-              x: 6, z: 24, seed: 0.22, w: 2, d: 2, doorX: 6.5,
+              x: 6, z: 23, seed: 0.22, w: 3, d: 3, doorX: 7,
               role: "carpenter", wallColor: 0xb8aa91, roofColor: 0x51443f,
             },
             // 藝術家家——粉調牆面+梅紫屋頂，門口擺一個簡化畫架。
             {
-              x: 10, z: 24, seed: 0.57, w: 2, d: 2, doorX: 10.5,
+              x: 10, z: 23, seed: 0.57, w: 3, d: 3, doorX: 11,
               role: "artist", wallColor: 0xd6a0c4, roofColor: 0x5a3a6a,
             },
             // 民宿——雙倍寬度，門口一支吊招牌+一盞燈籠，比住宅群更有「迎賓」
             // 的存在感。
             {
-              x: 14, z: 24, seed: 0.81, w: 4, d: 2, doorX: 15.5,
+              x: 14, z: 23, seed: 0.81, w: 4, d: 3, doorX: 15.5,
               role: "guesthouse", wallColor: 0xdcb894, roofColor: 0x4a3428,
             },
           ],
@@ -1099,7 +1099,10 @@ import { hash2 } from "./utils";
       export const CARPENTER_HOUSE = { ...LAYOUT.oldVillage.carpenterHouse };
       export const CARPENTER_DOORSTEP = {
         x: LAYOUT.oldVillage.carpenterHouse.x,
-        z: LAYOUT.oldVillage.carpenterHouse.z + 1,
+        z:
+          LAYOUT.oldVillage.carpenterHouse.z +
+          LAYOUT.oldVillage.carpenterHouse.d -
+          1,
       };
       export const CARPENTER_MATERIALS = { wood: 10, stone: 5 };
       export const CARPENTER_CONSTRUCTION_DAYS = 2;

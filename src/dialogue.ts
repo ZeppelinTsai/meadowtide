@@ -27,7 +27,9 @@ export const dialogEl = document.getElementById("dialog");
       // 就會自動生效，不用改程式碼。
       // ==============================================================
       export let currentCgId = null;
+      let currentPortraitId = null;
       export function setDialogPortrait(speakerId) {
+        currentPortraitId = speakerId;
         if (currentCgId || !speakerId) {
           dialogPortraitEl.style.display = "none";
           dialogPortraitPlaceholderEl.style.display = "none";
@@ -36,16 +38,17 @@ export const dialogEl = document.getElementById("dialog");
         // 圖檔還沒生成好之前，先顯示一個佔位框(虛線邊框+角色代號)，讓版位/
         // 比例現在就看得出來；真的立繪載入成功後蓋掉佔位框，失敗就留著佔位框。
         dialogPortraitEl.style.display = "none";
-        dialogPortraitPlaceholderEl.textContent = `〔立繪佔位〕\n${speakerId}`;
-        dialogPortraitPlaceholderEl.style.display = "flex";
+        dialogPortraitPlaceholderEl.style.display = "none";
         const img = new Image();
         img.onload = () => {
+          if (currentPortraitId !== speakerId || currentCgId) return;
           dialogPortraitEl.src = img.src;
           dialogPortraitEl.style.display = "block";
           dialogPortraitPlaceholderEl.style.display = "none";
         };
         img.onerror = () => {
-          dialogPortraitEl.style.display = "none"; // 還沒有這個角色的立繪，佔位框留著
+          if (currentPortraitId !== speakerId) return;
+          dialogPortraitEl.style.display = "none"; // 圖檔不存在時維持空白，不打斷對話
         };
         img.src = `/assets/portraits/${speakerId}.png`;
       }
