@@ -7,7 +7,7 @@ import { handleCarpenterDockTouch, handleCarpenterDoorstepTouch } from "./carpen
 import { windowMats, waterSurfaceMaterials, waterSkyUnderlayMaterials, waterSparkleMaterials, outdoorLampLights, foamMeshes, windmillRotors, lakeShoreColliders, fishSchool, pastureGrassBlades, avenueLeafMaterials, seasonalTreeLeafMaterials, seasonalGroundMaterials, SEA_FISH_SCALE, LAKE_FISH_SCALE, EAST_SEA_WAVE_DIRECTION, NORTHEAST_SEA_WAVE_DIRECTION, thresholdMarkerMeshes, thresholdMarkersVisible } from "./scene-registries";
 import { npcGroup, animalGroup, PASTURE, hasPastureGrassAt } from "./npc-runtime";
 import { makeGirlPlayer } from "./humanoid";
-import { makeTree, makeAvenueTree, makeBuilding, makeBarn, makePath, makeLakeShoreRock, makeGrassTuft, makeWindGrass, makeFlower, makeFruitTree, makeWaterfallPlaceholder, makeOysterRack, makeRestArea, makeSmallGarden, makePortScene, makeToriiGate, makeShrinePathCauseway, makeTownPlaceholder, makeConstructionSign, makeStone, makeBasaltHeadland, makeSand, makeFoam, makeRedWindmill, makeMountain, makeWesternMountainTerrain, makeMountainGateway, makeFishProp, makeLamp, makeStreetLamp, makeBench, makeInteriorWall, makeFurniture, updateSeasonalGroundColors, FLOWER_COLORS } from "./props";
+import { makeTree, makeAvenueTree, makeBuilding, makeBarn, makePath, makeLakeShoreRock, makeGrassTuft, makeWindGrass, makeFlower, makeFruitTree, makeWaterfallPlaceholder, makeOysterRack, makeRestArea, makeSmallGarden, makePortScene, makeToriiGate, makeShrinePathCauseway, makeTownPlaceholder, makeConstructionSign, makeStone, makeBasaltHeadland, makeSand, makeFoam, makeRedWindmill, makeMountain, makeWesternMountainTerrain, makeMountainGateway, makeFishProp, makeLamp, makeStreetLamp, makeBench, makeFence, makeCampfireRing, makeInteriorWall, makeFurniture, updateSeasonalGroundColors, FLOWER_COLORS } from "./props";
 import { syncFarmVisuals } from "./farm-visuals";
 import { OYSTER_RACK_VISUAL } from "./game-state";
 
@@ -648,6 +648,31 @@ import { OYSTER_RACK_VISUAL } from "./game-state";
             post.position.set(16.5, mountain.summit.elevation + 0.55, 6.5);
             summitMarker.add(post);
             gameState.mapGroup.add(summitMarker);
+
+            // 山頂石標旁補一座小鳥居，呼應概念圖山頂那座小神社的意象；跟
+            // 女神祠堂共用同一個 makeToriiGate()，不用另外做新造型。
+            const summitTorii = makeToriiGate();
+            summitTorii.scale.setScalar(0.75);
+            summitTorii.position.set(15, mountain.summit.elevation, 8.2);
+            gameState.mapGroup.add(summitTorii);
+
+            // 山腳平台補概念圖裡的長椅+營火+木欄杆+告示牌，這輪先只放在
+            // 山腳一處，不是每個平台都鋪滿——山腰/山頂已經有樹/石標/長椅
+            // 撐場面，山腳這批是唯一還缺裝飾的地方。
+            // 座標刻意選在步道(=)東側的草地上(x=11~17)，避開(18,36)那棵既有
+            // 的樹，也不蓋在主要動線上，看起來像特地圍起來的休息角落。
+            const footBench = makeBench(14, 38, Math.PI / 2);
+            footBench.position.y += mountainGroundY(14, 38);
+            gameState.mapGroup.add(footBench);
+            const campfire = makeCampfireRing(14, 36);
+            campfire.position.y += mountainGroundY(14, 36);
+            gameState.mapGroup.add(campfire);
+            const foothillFence = makeFence(11, 17, 34, 39);
+            foothillFence.position.y += mountainGroundY(14, 36);
+            gameState.mapGroup.add(foothillFence);
+            const signpost = makeConstructionSign(6, 41);
+            signpost.position.y += mountainGroundY(6, 41);
+            gameState.mapGroup.add(signpost);
           }
         }
 
@@ -765,8 +790,17 @@ import { OYSTER_RACK_VISUAL } from "./game-state";
                 makeInteriorWall(x, z, winEntry ? winEntry.side : null),
               );
             } else if (tile === 2) {
+              // 山腰平台(waist)這幾棵改用行道樹(makeAvenueTree)——那個模型
+              // 本來就跟著季節變色(春粉紅/夏綠/秋橙紅/冬白)，剛好對應概念圖
+              // 「賞櫻賞楓區域」：不用另外做櫻花/楓葉專用樹種，同一批樹春天
+              // 看起來是賞櫻、秋天自然變成賞楓，比寫死單一顏色更合理。
+              const inMountainWaist =
+                mapName === "mountain" &&
+                z >= LAYOUT.mountain.waist.z &&
+                z < LAYOUT.mountain.waist.z + LAYOUT.mountain.waist.depth;
               const m =
-                mapName === "livingArea" && AVENUE_TREE_KEYS.has(`${x},${z}`)
+                (mapName === "livingArea" && AVENUE_TREE_KEYS.has(`${x},${z}`)) ||
+                inMountainWaist
                   ? makeAvenueTree(x, z)
                   : makeTree(x, z);
               m.position.y +=
@@ -776,6 +810,10 @@ import { OYSTER_RACK_VISUAL } from "./game-state";
                     ? mountainGroundY(x, z)
                     : 0;
               if (mapName === "mountain" && z <= 5) m.scale.setScalar(1.45);
+              // 山頂中央那棵(12,5)是概念圖裡「山頂巨木」的位置，額外放大、
+              // 蓋過其他山頂樹，一眼就能認出是地標。
+              if (mapName === "mountain" && x === 12 && z === 5)
+                m.scale.setScalar(2.3);
               gameState.mapGroup.add(m);
             } else if (tile === 3) {
               const threshold = new THREE.Mesh(

@@ -198,9 +198,31 @@ gameState.lastFrame = performance.now();
             )
               ? 0.3
               : 0.08);
+        const mountainStairVisibilityZone =
+          gameState.currentMapName === "mountain" &&
+          [LAYOUT.mountain.lowerStair, LAYOUT.mountain.upperStair].some(
+            (stair) =>
+              gameState.player.position.x >= stair.x - 0.5 &&
+              gameState.player.position.x <= stair.x + stair.width - 0.5 &&
+              gameState.player.position.z >= stair.fromZ - 0.85 &&
+              gameState.player.position.z <= stair.toZ + 0.5,
+          );
         gameState.player.traverse((child: any) => {
-          if (child.isMesh)
-            child.renderOrder = gameState.currentMapName === "oldVillage" ? 3 : 0;
+          if (!child.isMesh) return;
+          child.renderOrder =
+            gameState.currentMapName === "oldVillage"
+              ? 3
+              : mountainStairVisibilityZone
+                ? 10
+                : 0;
+          const materials = Array.isArray(child.material)
+            ? child.material
+            : [child.material];
+          materials.forEach((material) => {
+            if (!material) return;
+            material.depthTest = !mountainStairVisibilityZone;
+            material.depthWrite = !mountainStairVisibilityZone;
+          });
         });
 
         // 拋竿/持竿動畫：雙手一起蓋過 animateWalk 剛設好的角度。左手往內、往前

@@ -2496,6 +2496,49 @@ import { randomPasturePoint } from "./npc-runtime";
         return group;
       }
 
+      // 簡單的營火——一圈石頭圍住一塊燒黑的地面，概念圖山腳平台那個小
+      // 篝火造型。純裝飾，沒有真的火焰粒子效果。
+      export function makeCampfireRing(x, z) {
+        const group = new THREE.Group();
+        const ash = new THREE.Mesh(
+          new THREE.CircleGeometry(0.34, 12),
+          new THREE.MeshStandardMaterial({ color: 0x2a2622, roughness: 1 }),
+        );
+        ash.rotation.x = -Math.PI / 2;
+        ash.position.y = 0.01;
+        group.add(ash);
+        const stoneMat = new THREE.MeshStandardMaterial({
+          color: 0x8a8a86,
+          flatShading: true,
+        });
+        const STONE_COUNT = 10;
+        for (let i = 0; i < STONE_COUNT; i++) {
+          const angle = (i / STONE_COUNT) * Math.PI * 2;
+          const stone = new THREE.Mesh(
+            new THREE.IcosahedronGeometry(0.09 + hash2(i, 3.1) * 0.03, 0),
+            stoneMat,
+          );
+          stone.position.set(Math.cos(angle) * 0.4, 0.06, Math.sin(angle) * 0.4);
+          stone.rotation.set(hash2(i, 1) * 6, hash2(i, 2) * 6, hash2(i, 3) * 6);
+          stone.castShadow = true;
+          group.add(stone);
+        }
+        // 燒焦的木柴堆在中央
+        const logMat = new THREE.MeshStandardMaterial({ color: 0x3a2e24 });
+        [0, 1, 2].forEach((i) => {
+          const log = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.045, 0.045, 0.4, 6),
+            logMat,
+          );
+          log.rotation.z = Math.PI / 2;
+          log.rotation.y = (i / 3) * Math.PI;
+          log.position.y = 0.05;
+          group.add(log);
+        });
+        group.position.set(x, 0, z);
+        return group;
+      }
+
       export function makeInteriorWall(x, z, windowSide) {
         const g = new THREE.Group();
         const wall = new THREE.Mesh(
