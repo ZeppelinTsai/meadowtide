@@ -2,12 +2,12 @@ import * as THREE from "three";
 import { hash2 } from "./utils";
 import { gameState } from "./game-state";
 import { scene, TILE, PLATEAU_Y, NORTH_CLIFF_Z, SOUTH_TERRAIN_EXTENSION, NORTH_TERRAIN_EXTENSION, northCliffEdgeZ, groundY } from "./scene-sky";
-import { LAYOUT, MAPS, carpenterQuest, CARPENTER_HOUSE, isInsideLakeShape, AVENUE_TREE_KEYS, TOWN_Z_START, RAMP_CORRIDOR_MIN_Z, RAMP_CORRIDOR_MAX_Z, COAST_ROAD_CENTER_Z, COAST_ROAD_HALF_WIDTH, lakeEdgeFactor, POUCH_POS, CARPENTER_DOORSTEP } from "./layout-maps";
+import { LAYOUT, MAPS, carpenterQuest, CARPENTER_HOUSE, isInsideLakeShape, AVENUE_TREE_KEYS, TOWN_Z_START, RAMP_CORRIDOR_MIN_Z, RAMP_CORRIDOR_MAX_Z, COAST_ROAD_CENTER_Z, COAST_ROAD_HALF_WIDTH, lakeEdgeFactor, POUCH_POS, CARPENTER_DOORSTEP, SHRINE_PATH_START_X, SHRINE_PATH_LENGTH, SHRINE_PATH_ELEVATION } from "./layout-maps";
 import { handleCarpenterDockTouch, handleCarpenterDoorstepTouch } from "./carpenter-quest";
 import { windowMats, outdoorLampLights, foamMeshes, windmillRotors, lakeShoreColliders, fishSchool, pastureGrassBlades, avenueLeafMaterials, seasonalTreeLeafMaterials, seasonalGroundMaterials, SEA_FISH_SCALE, LAKE_FISH_SCALE, EAST_SEA_WAVE_DIRECTION, NORTHEAST_SEA_WAVE_DIRECTION } from "./scene-registries";
 import { npcGroup, animalGroup, PASTURE, hasPastureGrassAt } from "./npc-runtime";
 import { makeGirlPlayer } from "./humanoid";
-import { makeTree, makeAvenueTree, makeBuilding, makeBarn, makePath, makeLakeShoreRock, makeGrassTuft, makeWindGrass, makeFlower, makeFruitTree, makeWaterfallPlaceholder, makeOysterRack, makeRestArea, makeSmallGarden, makeDock, makeCargoShip, makeTownPlaceholder, makeConstructionSign, makeStone, makeBasaltHeadland, makeSand, makeFoam, makeRedWindmill, makeMountain, makeWesternMountainTerrain, makeMountainGateway, makeFishProp, makeLamp, makeStreetLamp, makeInteriorWall, makeFurniture, updateSeasonalGroundColors, FLOWER_COLORS } from "./props";
+import { makeTree, makeAvenueTree, makeBuilding, makeBarn, makePath, makeLakeShoreRock, makeGrassTuft, makeWindGrass, makeFlower, makeFruitTree, makeWaterfallPlaceholder, makeOysterRack, makeRestArea, makeSmallGarden, makeDock, makeCargoShip, makeToriiGate, makeShrinePathCauseway, makeTownPlaceholder, makeConstructionSign, makeStone, makeBasaltHeadland, makeSand, makeFoam, makeRedWindmill, makeMountain, makeWesternMountainTerrain, makeMountainGateway, makeFishProp, makeLamp, makeStreetLamp, makeInteriorWall, makeFurniture, updateSeasonalGroundColors, FLOWER_COLORS } from "./props";
 import { syncFarmVisuals } from "./farm-visuals";
 import { OYSTER_RACK_VISUAL } from "./game-state";
 
@@ -394,6 +394,10 @@ import { OYSTER_RACK_VISUAL } from "./game-state";
           );
           gameState.mapGroup.add(oysterRaft);
 
+          // 女神祠堂步道——墊高浮出海面的沙洲，不是逐格貼平的沙灘(那段已在
+          // 上面的 tile===8 迴圈裡跳過)，這裡一次蓋掉整段。
+          gameState.mapGroup.add(makeShrinePathCauseway());
+
           // 固定在高台上的東西(建築、農地、湖、牧草、遠山)統一掛在這個群組下面，
           // 整組往上抬 PLATEAU_Y，不用逐一調整每個物件的座標
           plateauGroup = new THREE.Group();
@@ -462,6 +466,14 @@ import { OYSTER_RACK_VISUAL } from "./game-state";
           cargoShip.rotation.y = 0.15;
           plateauGroup.add(cargoShip);
         }
+        if (mapName === "shrine") {
+          // 佔位地標：鳥居立在入口門檻(4,5)正北邊，玩家從南側走進來會直接
+          // 穿過鳥居。退潮限定的判定邏輯之後再接，這輪只確保走得到、有
+          // 地方站。
+          const torii = makeToriiGate();
+          torii.position.set(4, 0, 3);
+          plateauGroup.add(torii);
+        }
         (map.furniture || []).forEach((item) => {
           const w = item.w || 1,
             d = item.d || 1;
@@ -515,6 +527,14 @@ import { OYSTER_RACK_VISUAL } from "./game-state";
             }
             // tile === 6（湖）不逐格建置，改成迴圈結束後蓋成一整片有波紋的水面
             else if (tile === 8) {
+              // 女神祠堂步道那一段不用逐格貼平沙灘——它墊高浮出海面，用迴圈
+              // 外那塊 makeShrinePathCauseway() 一次蓋掉整段，這裡跳過即可。
+              const inShrinePath =
+                mapName === "livingArea" &&
+                z <= 2 &&
+                x >= SHRINE_PATH_START_X &&
+                x < SHRINE_PATH_START_X + SHRINE_PATH_LENGTH;
+              if (inShrinePath) return;
               gameState.mapGroup.add(makeSand(x, z));
               const r = hash2(x * 4.3, z * 2.1);
               if (r < 0.12)
@@ -1168,20 +1188,22 @@ import { OYSTER_RACK_VISUAL } from "./game-state";
               z: LAYOUT.house.z + LAYOUT.house.d + 1,
             }),
         },
-        // 生活區東側海岸 <-> 港口北端(碼頭附近)
-        {
+        // 生活區南側海岸(x=37~46 整排) <-> 港口北端(碼頭附近)——關係圖把
+        // 港口改畫在生活區南側，原本東側海岸(40,20)單點觸碰改成南側整排
+        // 都能觸發，落點座標刻意跟這排同一個範圍，回來時才會自然接回去。
+        ...Array.from({ length: 10 }, (_, i) => ({
           map: "livingArea",
-          x: 40,
-          z: 20,
+          x: 37 + i,
+          z: 42,
           trigger: "touch",
           action: () => loadMap("port", { x: 7, z: 4 }),
-        },
+        })),
         {
           map: "port",
           x: 7,
           z: 2,
           trigger: "touch",
-          action: () => loadMap("livingArea", { x: 35, z: 20 }),
+          action: () => loadMap("livingArea", { x: 41, z: 41 }),
         },
         // 港口南端(市場/倉庫) <-> 舊城鎮
         {
@@ -1212,5 +1234,82 @@ import { OYSTER_RACK_VISUAL } from "./game-state";
           z: CARPENTER_DOORSTEP.z,
           trigger: "touch",
           action: () => handleCarpenterDoorstepTouch(),
+        },
+        // 生活區私人海岸北端 <-> 女神祠堂（骨架先接通，退潮限定判斷之後再加）
+        {
+          map: "livingArea",
+          x: SHRINE_PATH_START_X + SHRINE_PATH_LENGTH - 1,
+          z: 1,
+          trigger: "touch",
+          action: () => loadMap("shrine", { x: 4, z: 4 }),
+        },
+        {
+          map: "shrine",
+          x: 4,
+          z: 5,
+          trigger: "touch",
+          action: () =>
+            loadMap("livingArea", {
+              x: SHRINE_PATH_START_X + SHRINE_PATH_LENGTH - 1,
+              z: 2,
+            }),
+        },
+        // 生活區南側路(x=20~22，既有的死路，這次接上)<-> 舊城鎮東北角
+        {
+          map: "livingArea",
+          x: 20,
+          z: 42,
+          trigger: "touch",
+          action: () => loadMap("oldVillage", { x: 11, z: 1 }),
+        },
+        {
+          map: "livingArea",
+          x: 21,
+          z: 42,
+          trigger: "touch",
+          action: () => loadMap("oldVillage", { x: 11, z: 1 }),
+        },
+        {
+          map: "livingArea",
+          x: 22,
+          z: 42,
+          trigger: "touch",
+          action: () => loadMap("oldVillage", { x: 11, z: 1 }),
+        },
+        {
+          map: "oldVillage",
+          x: 11,
+          z: 2,
+          trigger: "touch",
+          action: () => loadMap("livingArea", { x: 21, z: 41 }),
+        },
+        // 美術村 <-> 舊城鎮（南側新門檻）／港口（南側新門檻），兩邊都通
+        {
+          map: "oldVillage",
+          x: 3,
+          z: 11,
+          trigger: "touch",
+          action: () => loadMap("artVillage", { x: 3, z: 1 }),
+        },
+        {
+          map: "artVillage",
+          x: 3,
+          z: 0,
+          trigger: "touch",
+          action: () => loadMap("oldVillage", { x: 3, z: 10 }),
+        },
+        {
+          map: "port",
+          x: 3,
+          z: 15,
+          trigger: "touch",
+          action: () => loadMap("artVillage", { x: 9, z: 1 }),
+        },
+        {
+          map: "artVillage",
+          x: 9,
+          z: 0,
+          trigger: "touch",
+          action: () => loadMap("port", { x: 3, z: 14 }),
         },
       ];

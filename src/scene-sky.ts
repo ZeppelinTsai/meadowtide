@@ -1,6 +1,11 @@
 import * as THREE from "three";
 import { hash2 } from "./utils";
-import { LAYOUT } from "./layout-maps";
+import {
+  LAYOUT,
+  SHRINE_PATH_START_X,
+  SHRINE_PATH_LENGTH,
+  SHRINE_PATH_ELEVATION,
+} from "./layout-maps";
 import { gameState } from "./game-state";
 import {
   getNightFactor,
@@ -49,6 +54,16 @@ import {
           const stepZ = gateway.startZ - i;
           if (Math.abs(x - stepX) <= 0.72 && Math.abs(z - stepZ) <= 0.72)
             return PLATEAU_Y + i * gateway.risePerStep;
+        }
+        // 女神祠堂步道墊高浮出海面，玩家站上去要跟著抬高，不然會看起來
+        // 陷進沙洲裡；範圍跟 build-map.ts 的 makeShrinePathCauseway()、
+        // layout-maps.ts 鑿沙灘那段用同一組常數，三處保持一致。
+        if (
+          z <= 2 &&
+          x >= SHRINE_PATH_START_X - 0.5 &&
+          x < SHRINE_PATH_START_X + SHRINE_PATH_LENGTH - 0.5
+        ) {
+          return SHRINE_PATH_ELEVATION;
         }
         const xi = Math.round(x);
         const rampX = LAYOUT.coast.rampX;

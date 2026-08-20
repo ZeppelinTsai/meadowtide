@@ -205,6 +205,14 @@ gameState.lastFrame = performance.now();
             roundedZ = Math.round(gameState.player.position.z);
           if (roundedX !== gameState.playerGridPos.x || roundedZ !== gameState.playerGridPos.z) {
             gameState.playerGridPos = { x: roundedX, z: roundedZ };
+            // 開發模式限定：每移動一格印一次目前地圖+座標，方便對照地圖切換
+            // 門檻座標清單，用肉眼確認有沒有真的走到門檻附近。跟其他開發用
+            // console 訊息一樣，production build 這個 if 整塊會被靜態消掉。
+            if (import.meta.env.DEV) {
+              console.log(
+                `[${gameState.currentMapName}] (${roundedX},${roundedZ})`,
+              );
+            }
             events
               .filter(
                 (ev) => ev.map === gameState.currentMapName && ev.trigger === "touch",

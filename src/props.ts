@@ -2,7 +2,12 @@ import * as THREE from "three";
 import { hash2 } from "./utils";
 import { gameState } from "./game-state";
 import { TILE, PLATEAU_Y, NORTH_CLIFF_Z, SOUTH_TERRAIN_EXTENSION } from "./scene-sky";
-import { LAYOUT } from "./layout-maps";
+import {
+  LAYOUT,
+  SHRINE_PATH_START_X,
+  SHRINE_PATH_LENGTH,
+  SHRINE_PATH_ELEVATION,
+} from "./layout-maps";
 import { windowMats, outdoorLampLights, windmillRotors, pastureGrassBlades, avenueLeafMaterials, seasonalTreeLeafMaterials, seasonalGroundMaterials, GRASS_STAGE_HEIGHTS, EAST_SEA_WAVE_DIRECTION } from "./scene-registries";
 import { randomPasturePoint } from "./npc-runtime";
 
@@ -992,6 +997,52 @@ import { randomPasturePoint } from "./npc-runtime";
         return group;
       }
 
+      // 女神祠堂的鳥居——這輪只求「一眼認得出是鳥居」的簡單造型：兩根柱子
+      // +兩道橫樑(上樑較寬、下樑較窄，鳥居的招牌比例)，朱紅色。退潮步道跟
+      // 祠堂本身的機制之後再接，這裡純粹是佔位地標。
+      export function makeToriiGate() {
+        const group = new THREE.Group();
+        const mat = new THREE.MeshStandardMaterial({
+          color: 0xb33b2a,
+          flatShading: true,
+        });
+        const pillarHeight = 1.4,
+          pillarSpacing = 1.3;
+        [-1, 1].forEach((side) => {
+          const pillar = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.09, 0.11, pillarHeight, 8),
+            mat,
+          );
+          pillar.position.set((side * pillarSpacing) / 2, pillarHeight / 2, 0);
+          pillar.castShadow = true;
+          group.add(pillar);
+        });
+        // 上樑(笠木)：比柱距寬一截、兩端微微翹起，鳥居最有辨識度的部分
+        const topBeam = new THREE.Mesh(
+          new THREE.BoxGeometry(pillarSpacing + 0.7, 0.18, 0.32),
+          mat,
+        );
+        topBeam.position.set(0, pillarHeight + 0.05, 0);
+        topBeam.castShadow = true;
+        group.add(topBeam);
+        const underBeam = new THREE.Mesh(
+          new THREE.BoxGeometry(pillarSpacing + 0.34, 0.1, 0.16),
+          mat,
+        );
+        underBeam.position.set(0, pillarHeight - 0.18, 0);
+        underBeam.castShadow = true;
+        group.add(underBeam);
+        // 下樑(貫)：連接兩柱中段，鳥居結構的第二道橫樑
+        const midBeam = new THREE.Mesh(
+          new THREE.BoxGeometry(pillarSpacing + 0.06, 0.09, 0.09),
+          mat,
+        );
+        midBeam.position.set(0, pillarHeight * 0.55, 0);
+        midBeam.castShadow = true;
+        group.add(midBeam);
+        return group;
+      }
+
       // 城區佔位建築——純色平面方塊，沒有窗戶屋頂細節，先卡出聚落的輪廓
       export function makeTownPlaceholder(x, z, seed) {
         const colors = [0xd9c9a3, 0xc9a876, 0xb89b7a, 0xcbb994, 0xa88f6a];
@@ -1235,6 +1286,34 @@ import { randomPasturePoint } from "./npc-runtime";
         sand.position.set(x, 0.01, z);
         sand.receiveShadow = true;
         return sand;
+      }
+      // 女神祠堂步道——一整條墊高浮出海面的沙洲，不是逐格貼平的沙灘。
+      // 側面刻意用比頂面深一點的沙色，讀起來像從海裡「長」出來的一塊
+      // 平台，不是懸空的方塊。範圍/高度都讀 layout-maps.ts 同一組常數，
+      // 跟 groundY() 的碰撞高度保持一致。
+      export function makeShrinePathCauseway() {
+        const width = SHRINE_PATH_LENGTH * TILE,
+          depth = 3 * TILE,
+          centerX = SHRINE_PATH_START_X + (SHRINE_PATH_LENGTH - 1) / 2,
+          centerZ = 1;
+        const group = new THREE.Group();
+        const top = new THREE.Mesh(
+          new THREE.BoxGeometry(width, 0.08, depth),
+          new THREE.MeshStandardMaterial({ color: 0xe6d29c }),
+        );
+        top.position.y = SHRINE_PATH_ELEVATION;
+        top.receiveShadow = true;
+        top.castShadow = true;
+        group.add(top);
+        const flank = new THREE.Mesh(
+          new THREE.BoxGeometry(width * 0.985, SHRINE_PATH_ELEVATION, depth * 0.985),
+          new THREE.MeshStandardMaterial({ color: 0xb89b6a, flatShading: true }),
+        );
+        flank.position.y = SHRINE_PATH_ELEVATION / 2;
+        flank.castShadow = true;
+        group.add(flank);
+        group.position.set(centerX, 0, centerZ);
+        return group;
       }
       export function makeFoam(x, z, seed) {
         // 拍岸浪花做成一個小群組：浪頭捲上岸的前緣、退潮水漬、還有幾顆會滾動碎裂
