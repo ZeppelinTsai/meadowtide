@@ -67,6 +67,7 @@ export const SAVE_KEY_PREFIX = "meadowtide.save.";
           const escortMap = data.currentMapName === "port" || data.currentMapName === "oldVillage";
           npcGroup.visible =
             data.currentMapName === "livingArea" ||
+            data.currentMapName === "oldVillage" ||
             ((carpenterQuest.stage === "escorting" ||
               carpenterQuest.stage === "village_scene_done") && escortMap);
           if (
@@ -74,7 +75,6 @@ export const SAVE_KEY_PREFIX = "meadowtide.save.";
               carpenterQuest.stage === "village_scene_done") &&
             escortMap
           ) {
-            npcGroup.position.y = 0;
             const auntNpc = npcs.find((n) => n.id === "aunt");
             if (auntNpc) auntNpc.mesh.visible = true;
           }
@@ -98,12 +98,23 @@ export const SAVE_KEY_PREFIX = "meadowtide.save.";
             carpenterQuest.stage === "escorting" ||
             carpenterQuest.stage === "village_scene_done"
           ) {
+            // 跟 build-map.ts loadMap() 的 escort 重置邏輯一致：疊在主角腳下、
+            // 用主角當下算好的世界座標 Y，不要用側邊固定偏移 + 寫死 y=0
+            // （那組數字跟地形無關，讀檔一進 oldVillage/port 就會穿模）。
             const auntNpc = npcs.find((n) => n.id === "aunt");
             const carpenterNpc = npcs.find((n) => n.id === "carpenter");
             if (auntNpc)
-              auntNpc.mesh.position.set(data.player.x - 1, 0, data.player.z + 1.3);
+              auntNpc.mesh.position.set(
+                data.player.x,
+                gameState.player.position.y,
+                data.player.z,
+              );
             if (carpenterNpc)
-              carpenterNpc.mesh.position.set(data.player.x + 1, 0, data.player.z + 2.1);
+              carpenterNpc.mesh.position.set(
+                data.player.x,
+                gameState.player.position.y,
+                data.player.z,
+              );
           }
         }
         updateAvenueTreeColors();
@@ -196,9 +207,13 @@ export const SAVE_KEY_PREFIX = "meadowtide.save.";
           return;
         }
 
-        if (gameState.currentMapName === "livingArea") {
+        if (
+          gameState.currentMapName === "livingArea" ||
+          gameState.currentMapName === "oldVillage"
+        ) {
           const nearby = npcs.find((n) => {
             if (!n.mesh.visible) return false; // 木匠抵達前不算「在場」，不能對話
+            if (n.map !== gameState.currentMapName) return false;
             const dx = gameState.player.position.x - n.mesh.position.x,
               dz = gameState.player.position.z - n.mesh.position.z;
             return Math.sqrt(dx * dx + dz * dz) <= 1.3;

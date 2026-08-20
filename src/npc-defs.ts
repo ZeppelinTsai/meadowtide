@@ -1,4 +1,4 @@
-import { carpenterQuest, NORTH_EXPANSION } from "./layout-maps";
+import { carpenterQuest, LAYOUT, NORTH_EXPANSION } from "./layout-maps";
 
 // 3) NPC 行程表（跟 v11 相同，schedule 完全不需要知道怎麼走）
       // ==============================================================
@@ -8,20 +8,22 @@ import { carpenterQuest, NORTH_EXPANSION } from "./layout-maps";
       export const npcDefs = [
         {
           id: "aunt",
+          map: "oldVillage",
           name: "阿姨",
           shirt: 0xd9822b,
           hair: 0x241a12,
-          home: { x: 21, z: 12 + NORTH_EXPANSION },
+          home: { x: LAYOUT.oldVillage.plaza.x + 9, z: LAYOUT.oldVillage.plaza.z + 11 },
           schedule: [
-            { t: 0.25, ...pos(21, 12 + NORTH_EXPANSION) },
-            { t: 0.33, ...pos(18, 13 + NORTH_EXPANSION) },
-            { t: 0.5, ...pos(24, 13 + NORTH_EXPANSION) },
-            { t: 0.75, ...pos(23, 15 + NORTH_EXPANSION) },
-            { t: 0.92, ...pos(21, 12 + NORTH_EXPANSION) },
+            { t: 0.25, ...pos(LAYOUT.oldVillage.plaza.x + 9, LAYOUT.oldVillage.plaza.z + 11) },
+            { t: 0.33, ...pos(LAYOUT.oldVillage.plaza.x + 5, LAYOUT.oldVillage.plaza.z + 8) },
+            { t: 0.5, ...pos(LAYOUT.oldVillage.plaza.x + 10, LAYOUT.oldVillage.plaza.z + 14) },
+            { t: 0.75, ...pos(LAYOUT.oldVillage.plaza.x + 6, LAYOUT.oldVillage.plaza.z + 17) },
+            { t: 0.92, ...pos(LAYOUT.oldVillage.plaza.x + 9, LAYOUT.oldVillage.plaza.z + 11) },
           ],
         },
         {
           id: "carpenter",
+          map: "livingArea",
           name: "木匠",
           shirt: 0x6b5b4a,
           hair: 0x1a1a1a,

@@ -1725,8 +1725,17 @@ export function buildMap(mapName) {
 
   scene.add(gameState.mapGroup);
   gameState.currentMapName = mapName;
+  npcGroup.position.y = mapName === "livingArea" ? PLATEAU_Y : 0;
+  npcs.forEach((npc) => {
+    if (npc.id === "carpenter") {
+      npc.mesh.visible =
+        carpenterQuest.stage === "moved_in" && npc.map === mapName;
+    } else {
+      npc.mesh.visible = npc.map === mapName;
+    }
+  });
   npcGroup.visible =
-    mapName === "livingArea" ||
+    mapName === "livingArea" || mapName === "oldVillage" ||
     ((carpenterQuest.stage === "escorting" ||
       carpenterQuest.stage === "village_scene_done") &&
       (mapName === "port" || mapName === "oldVillage"));
@@ -1838,18 +1847,19 @@ export function loadMap(mapName, startPos) {
         carpenterQuest.stage === "village_scene_done") &&
       (mapName === "port" || mapName === "oldVillage")
     ) {
-      npcGroup.position.y = 0;
       const aunt = npcs.find((n) => n.id === "aunt");
       const carpenter = npcs.find((n) => n.id === "carpenter");
-      [aunt, carpenter].forEach((npc, index) => {
+      // 換地圖會讓 escort 的軌跡（carpenterEscortTrail）整條重置，重新從
+      // 兩人「當下位置」開始記錄；如果這裡把兩人擺在側邊/前方的偏移座標，
+      // 重置後的軌跡起點就不在主角實際走過的路徑上，直到主角走出取樣距離
+      // 之前，兩人都會照著這個離題的假起點穿模。所以跟主角疊在同一點最保險。
+      [aunt, carpenter].forEach((npc) => {
         if (!npc) return;
         npc.mesh.visible = true;
-        npc.mesh.position.set(pos.x + (index ? 1 : -1), gameState.player.position.y, pos.z + 1.4 + index * 0.7);
+        npc.mesh.position.set(pos.x, gameState.player.position.y, pos.z);
         npc.path = null;
         npc.lastTargetKey = null;
       });
-    } else {
-      npcGroup.position.y = PLATEAU_Y;
     }
     fadeIn();
   });

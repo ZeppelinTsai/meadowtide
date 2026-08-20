@@ -10,7 +10,11 @@ import { makeAnimal } from "./props";
       //    跟 pathIndex（走到第幾格了），取代 v11 的「直線衝過去」
       // ==============================================================
       export const npcGroup = new THREE.Group();
-      npcGroup.position.y = PLATEAU_Y; // 所有 NPC 行程表的座標都在高台範圍內
+      // 不像 farmGroup/plateauGroup 用固定的群組 Y 位移代表高台，NPC 的
+      // 世界高度改成跟主角同一套算法：game-loop.ts 逐幀呼叫
+      // characterGroundY(currentMapName, x, z) 直接寫回 mesh.position.y，
+      // 所以這裡的群組本身不要再疊加額外的 Y 偏移，不然會跟算出來的高度
+      // 疊加兩次。
       scene.add(npcGroup);
       export const outsideCols = MAPS.livingArea.tiles[0].length;
       export const outsideRows = MAPS.livingArea.tiles.length;

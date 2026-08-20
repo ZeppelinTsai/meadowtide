@@ -198,10 +198,6 @@ export function isInRestArea(x: number, z: number) {
 // 上足夠了。故意不比座標距離：省掉一整類「座標系統/門檻抓多少才對」可能
 // 出錯的地方，呼叫端本來就只在 currentMapName==="livingArea" 時才會問這
 // 個問題，不需要另外比對地圖名稱。
-function isAnyNpcPresent() {
-  return npcs.some((n) => n.mesh.visible);
-}
-
 function formatGameHour(hour: number) {
   const wrapped =
     ((hour % TIME_CONFIG.gameHoursPerDay) + TIME_CONFIG.gameHoursPerDay) %
@@ -232,22 +228,19 @@ function evaluateChefMealConditions() {
   const inWindow =
     hour >= CHEF_MEAL_WINDOW_START && hour < CHEF_MEAL_WINDOW_END;
   const hasFood = inventory.harvested > 0 || inventory.fish > 0;
-  const npcPresent = isAnyNpcPresent();
   return {
     ok:
       stageOk &&
       !alreadyToday &&
       !alreadyProven &&
       inWindow &&
-      hasFood &&
-      npcPresent,
+      hasFood,
     inRestArea,
     alreadyToday,
     alreadyProven,
     hour,
     inWindow,
     hasFood,
-    npcPresent,
   };
 }
 
@@ -267,7 +260,7 @@ function logChefMealFailure(
     `[廚師共餐] 失敗 — quest階段: ${chefQuest.stage}(需要proving) / ` +
       `今天已用過: ${conditions.alreadyToday} / 在休息區: ${conditions.inRestArea} / ` +
       `時間: ${formatGameHour(conditions.hour)}(需要${String(CHEF_MEAL_WINDOW_START).padStart(2, "0")}:00-${String(CHEF_MEAL_WINDOW_END).padStart(2, "0")}:00內) / ` +
-      `有收成或漁獲: ${conditions.hasFood} / 同地圖有NPC在場: ${conditions.npcPresent}`,
+      `有收成或漁獲: ${conditions.hasFood}`,
   );
 }
 

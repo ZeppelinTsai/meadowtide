@@ -29,7 +29,17 @@ export const dialogEl = document.getElementById("dialog");
       export let currentCgId = null;
       let currentPortraitId = null;
       export function setDialogPortrait(speakerId) {
+        if (speakerId === currentPortraitId) {
+          if (currentCgId || !speakerId) {
+            dialogPortraitEl.style.display = "none";
+            dialogPortraitPlaceholderEl.style.display = "none";
+          } else if (dialogPortraitEl.dataset.portraitId === speakerId) {
+            dialogPortraitEl.style.display = "block";
+          }
+          return;
+        }
         currentPortraitId = speakerId;
+        delete dialogPortraitEl.dataset.portraitId;
         if (currentCgId || !speakerId) {
           dialogPortraitEl.style.display = "none";
           dialogPortraitPlaceholderEl.style.display = "none";
@@ -41,8 +51,10 @@ export const dialogEl = document.getElementById("dialog");
         dialogPortraitPlaceholderEl.style.display = "none";
         const img = new Image();
         img.onload = () => {
-          if (currentPortraitId !== speakerId || currentCgId) return;
+          if (currentPortraitId !== speakerId) return;
           dialogPortraitEl.src = img.src;
+          dialogPortraitEl.dataset.portraitId = speakerId;
+          if (currentCgId) return;
           dialogPortraitEl.style.display = "block";
           dialogPortraitPlaceholderEl.style.display = "none";
         };

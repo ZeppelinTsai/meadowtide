@@ -24,21 +24,25 @@ export function carpenterHasMaterials() {
           const aunt = npcs.find((n) => n.id === "aunt");
           const carpenter = npcs.find((n) => n.id === "carpenter");
           npcGroup.visible = true;
-          npcGroup.position.y = 0;
+          // 兩人一開始就疊在主角腳下（不是左右錯開的固定偏移），高度也直接
+          // 抄主角當下算好的世界座標 Y。escort 的「跟走」邏輯（game-loop.ts
+          // 的 sampleCarpenterEscortTrail）只認主角走過的軌跡點，起點偏到
+          // 側邊/用假高度會讓兩人一開始就落在軌跡以外，直到主角走出足夠
+          // 距離把這個假起點推出取樣窗口前，都會穿到台子/樓梯下面。
           if (aunt) {
             aunt.mesh.visible = true;
             aunt.mesh.position.set(
-              gameState.player.position.x - 1.1,
-              1,
-              gameState.player.position.z + 1.2,
+              gameState.player.position.x,
+              gameState.player.position.y,
+              gameState.player.position.z,
             );
           }
           if (carpenter) {
             carpenter.mesh.visible = true;
             carpenter.mesh.position.set(
-              gameState.player.position.x + 1.1,
-              1,
-              gameState.player.position.z + 1.8,
+              gameState.player.position.x,
+              gameState.player.position.y,
+              gameState.player.position.z,
             );
           }
           fade.style.opacity = "0";

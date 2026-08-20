@@ -11,6 +11,7 @@ import {
 import { isGameTimePaused, updateGameClock } from "./game-clock";
 import {
   LAYOUT,
+  MAPS,
   carpenterQuest,
   SOUTHERNMOST_AVENUE_TREE_Z,
   aStar,
@@ -525,21 +526,24 @@ export function animate(now) {
         trailPoint.x - n.mesh.position.x,
         trailPoint.z - n.mesh.position.z,
       );
-      n.mesh.position.set(
-        trailPoint.x,
-        characterGroundY(
-          gameState.currentMapName,
-          trailPoint.x,
-          trailPoint.z,
-        ),
-        trailPoint.z,
-      );
+      n.mesh.position.x = trailPoint.x;
+      n.mesh.position.z = trailPoint.z;
       n.mesh.rotation.y = trailPoint.rotation;
       const moving = moved > 0.008;
+      // animateWalk 會把 position.y 整個蓋成「原地踏步」的小幅彈跳量
+      // （不是疊加），所以地形高度一定要在呼叫它之後再加回去——跟主角
+      // 那邊 animateRun() 先跑、才 += characterGroundY() 的順序完全一樣；
+      // 順序顛倒的話這裡剛算好的地形高度下一行就會被彈跳量整個蓋掉。
       animateWalk(n.mesh, moving, gameState.elapsed);
+      n.mesh.position.y += characterGroundY(
+        gameState.currentMapName,
+        trailPoint.x,
+        trailPoint.z,
+      );
       return;
     }
     if (!n.mesh.visible) return; // 木匠抵達前先不跑排程/路徑，省得算假人的路
+    if (n.map !== gameState.currentMapName) return;
     const target = getScheduleTarget(n.schedule, phase);
     const targetKey = `${target.x},${target.z}`;
 
@@ -549,8 +553,9 @@ export function animate(now) {
         x: Math.round(n.mesh.position.x),
         z: Math.round(n.mesh.position.z),
       };
-      const path = aStar(startGrid, target, outsideCols, outsideRows, (x, z) =>
-        isBlocked("livingArea", x, z),
+      const activeMap = MAPS[gameState.currentMapName];
+      const path = aStar(startGrid, target, activeMap.tiles[0].length, activeMap.tiles.length, (x, z) =>
+        isBlocked(gameState.currentMapName, x, z),
       );
       n.path = path && path.length ? path : [target]; // 找不到路就退回直線，至少不會卡死
       n.pathIndex =
@@ -587,7 +592,14 @@ export function animate(now) {
           0.05;
       }
     }
+    // 跟上面 escort 分支同理：animateWalk 會蓋掉 position.y，地形高度要在
+    // 呼叫它之後再疊加回去，不能先設好高度再讓 animateWalk 蓋掉。
     animateWalk(n.mesh, moving, gameState.elapsed);
+    n.mesh.position.y += characterGroundY(
+      gameState.currentMapName,
+      n.mesh.position.x,
+      n.mesh.position.z,
+    );
   });
 
   // 日照、天空、燈光與星象共用同一個依季節日出日落計算的夜色權重。
