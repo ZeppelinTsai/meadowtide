@@ -4,10 +4,6 @@
 `index.html` → `src/main.ts`。`meadowtide.html` 是模組化前的舊版遷移來源，
 不是正式執行入口，除非使用者明確要求維護舊版，否則不要再修改它。
 
-目前磁碟版本**尚未使用 Vue**：`package.json` 沒有 `vue` 或
-`@vitejs/plugin-vue`，專案也沒有 `.vue` 元件。不要只因使用 Vite 就把架構描述成
-Vue；若之後真的遷移到 Vue，應在依賴、入口與元件檔落地後再更新本段。
-
 主要模組分工：
 
 - `src/layout-maps.ts`：`LAYOUT`、`MAPS` 與純座標／地圖資料。
@@ -144,18 +140,18 @@ npm run map-debug -- --map=port --legend
 
 - **狀態機**：單一個 `carpenterQuest.stage` 字串，只往前推、不回頭：
   `not_started → en_route_village → village_scene_done → construction →
-  ready_for_move_in → moved_in`。每個觸碰事件的 `action()` 自己檢查目前
+ready_for_move_in → moved_in`。每個觸碰事件的 `action()` 自己檢查目前
   stage 該不該反應，不需要另外的「已觸發過」旗標——stage 一旦前進，原本
   的觸發條件自然就不再成立。
 - **三段對話**：碼頭見面（port）、往舊城鎮路上抵達空屋（oldVillage）、
   入住當晚（oldVillage），全部用既有的 `showDialogSequence(lines,
-  onComplete)`（這次新加了 `onComplete` 參數，跑完最後一句才呼叫）。目前
+onComplete)`（這次新加了 `onComplete` 參數，跑完最後一句才呼叫）。目前
   台詞都是佔位文字，等最終版本確認再填。
 - **材料檢查**：`inventory.wood`/`inventory.stone`（這次新加的通用資源
   欄位，開局各給 10/5）在第二段對話結束時檢查，足夠就自動從背包扣除、
   進入 `construction`；不夠則退回 `en_route_village`，可以再次觸發。
 - **天數延遲**：`beginNewDay()` 裡比對 `currentDay -
-  carpenterQuest.constructionStartDay >= CARPENTER_CONSTRUCTION_DAYS`
+carpenterQuest.constructionStartDay >= CARPENTER_CONSTRUCTION_DAYS`
   （目前 2 天），到了就轉成 `ready_for_move_in`；空屋在這兩個 stage 期間
   會多立一個 `makeConstructionSign()` 施工告示牌。
 - **NPC 現身**：`npcDefs` 裡的木匠本來就有 home/schedule，但事件完成前
