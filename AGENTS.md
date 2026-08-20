@@ -14,6 +14,7 @@
 - `src/scene-sky.ts`、`src/weather-particles.ts`、`src/music.ts`：天空、天氣與音樂。
 - `src/*-quest.ts`：各角色劇情狀態機。
 - `scripts/map-debug.ts`：可直接 import 地圖資料的 Node 除錯工具。
+- `scripts/building-debug.ts`：检查缩放建筑的世界边界、门廊碰撞与最终门高。
 - `public/assets/`：Vite 靜態素材；程式內以 `/assets/...` 或相容打包的相對 URL 引用。
 
 所有 3D 視覺仍以程式生成的幾何圖形為主。這份筆記是接手專案前應先讀的規則與
@@ -131,10 +132,44 @@ npm run map-debug -- --map=port --legend
 工具目前只印地圖網格跟 `buildings`/`playerStart`，`--landmarks` 是預留的
 空殼（疊印 NPC/裝飾物位置），還沒實作。
 
+## 建筑缩放除错：`scripts/building-debug.ts`
+
 建筑外观使用 `visualScale` 放大时，视觉边界、门廊通道与运行时碰撞统一由
-`src/building-scale.ts` 计算，不要在 `isBlocked()` 另写一套缩放公式。修改建筑
-尺寸、缩放或门位置后运行 `npm run building-debug`，检查各建筑的世界边界、
-门廊半宽与最终门高；主屋、动物小屋及旧城镇房屋都必须出现在报告中。
+`src/building-scale.ts` 计算，不要在 `isBlocked()` 另写一套缩放公式。
+
+修改建筑尺寸、缩放、门位置、门高或建筑排列前后都运行：
+
+```bash
+npm run building-debug
+```
+
+输出中每栋建筑会列出：
+
+- `scale`：最终视觉缩放倍率。
+- `bounds=(minX,minZ)..(maxX,maxZ)`：放大后的世界坐标边界，用来检查房屋重叠、
+  穿模及平台是否够宽。
+- `doorX` / `corridorHalf`：门中心与门廊碰撞通道半宽；主角四角碰撞必须能通过。
+- `doorHeight`：缩放完成后的最终世界门高，不是缩放前的局部几何高度。
+
+主屋、动物小屋及旧城镇每栋房屋都必须出现在报告中。改动完成后还要跑
+`npm run build`；涉及地图位置时，另按上节要求在前后跑 `map-debug`。
+
+## 辅助程序与新规则
+
+- 遇到需要反复人工计算或容易产生两套答案的问题（坐标平移、视觉缩放与碰撞、
+  门廊、资源清单、存档结构、NPC 排程、数据引用完整性等），**可以并建议新增
+  辅助程序**，不必继续靠目测或一次性的手算。
+- 可复用计算优先放在无 DOM／WebGL 副作用的 `src/` 纯数据模块；运行时与辅助程序
+  必须 import 同一个计算来源，禁止复制公式到两个文件。
+- 可执行检查放在 `scripts/`，并在 `package.json` 增加语义清楚的 npm script；不要
+  留下只能由作者记得如何执行的临时脚本。
+- 新辅助程序必须在本文件记录用途、完整命令、何时必须运行，以及关键输出如何
+  判读。若检查到越界、重叠或资料不一致，程序应尽量用非零退出码失败，而不是
+  只打印一条容易忽略的警告。
+- 新规则可以直接补进 `AGENTS.md`，但必须说明规则保护的单一资料源、已发生或容易
+  发生的失败模式，以及对应验证命令；不要只写没有可执行判准的口号。
+- 辅助程序必须维持可在 Node 环境直接 import 的边界，不得为了检查数据而启动
+  renderer、读取 `document` 或依赖浏览器全局。
 
 ## 已知還沒做 / 刻意簡化的部分
 
