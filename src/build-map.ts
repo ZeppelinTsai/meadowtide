@@ -7,7 +7,7 @@ import { handleCarpenterDockTouch, handleCarpenterDoorstepTouch } from "./carpen
 import { windowMats, outdoorLampLights, foamMeshes, windmillRotors, lakeShoreColliders, fishSchool, pastureGrassBlades, avenueLeafMaterials, seasonalTreeLeafMaterials, seasonalGroundMaterials, SEA_FISH_SCALE, LAKE_FISH_SCALE, EAST_SEA_WAVE_DIRECTION, NORTHEAST_SEA_WAVE_DIRECTION } from "./scene-registries";
 import { npcGroup, animalGroup, PASTURE, hasPastureGrassAt } from "./npc-runtime";
 import { makeGirlPlayer } from "./humanoid";
-import { makeTree, makeAvenueTree, makeBuilding, makeBarn, makePath, makeLakeShoreRock, makeGrassTuft, makeWindGrass, makeFlower, makeFruitTree, makeWaterfallPlaceholder, makeOysterRack, makeRestArea, makeSmallGarden, makeDock, makeTownPlaceholder, makeConstructionSign, makeStone, makeBasaltHeadland, makeSand, makeFoam, makeRedWindmill, makeMountain, makeWesternMountainTerrain, makeMountainGateway, makeFishProp, makeLamp, makeStreetLamp, makeInteriorWall, makeFurniture, updateSeasonalGroundColors, FLOWER_COLORS } from "./props";
+import { makeTree, makeAvenueTree, makeBuilding, makeBarn, makePath, makeLakeShoreRock, makeGrassTuft, makeWindGrass, makeFlower, makeFruitTree, makeWaterfallPlaceholder, makeOysterRack, makeRestArea, makeSmallGarden, makeDock, makeCargoShip, makeTownPlaceholder, makeConstructionSign, makeStone, makeBasaltHeadland, makeSand, makeFoam, makeRedWindmill, makeMountain, makeWesternMountainTerrain, makeMountainGateway, makeFishProp, makeLamp, makeStreetLamp, makeInteriorWall, makeFurniture, updateSeasonalGroundColors, FLOWER_COLORS } from "./props";
 import { syncFarmVisuals } from "./farm-visuals";
 import { OYSTER_RACK_VISUAL } from "./game-state";
 
@@ -454,6 +454,13 @@ import { OYSTER_RACK_VISUAL } from "./game-state";
           dock.position.set(7, 0, 1);
           dock.rotation.y = Math.PI / 2;
           plateauGroup.add(dock);
+          // 外海商船——刻意跟木棧板/木匠那艘小船的位置(x 約 6.5~8.2)錯開，
+          // 停在東側外海，不佔用任何 tiles 格子，也不會擋到木匠碼頭見面
+          // 用的觸碰點(7,3)。
+          const cargoShip = makeCargoShip();
+          cargoShip.position.set(11, 0, -4);
+          cargoShip.rotation.y = 0.15;
+          plateauGroup.add(cargoShip);
         }
         (map.furniture || []).forEach((item) => {
           const w = item.w || 1,

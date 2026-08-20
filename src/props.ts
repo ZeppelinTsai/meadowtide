@@ -921,6 +921,77 @@ import { randomPasturePoint } from "./npc-runtime";
         return group;
       }
 
+      // 城鎮港口的商船——刻意比木匠抵達那艘小船大上一圈、外形也更「商用」：
+      // 加高船艏、甲板堆貨箱、船艙旁一支吊臂，這幾個細節組合起來最快讓人
+      // 看懂「這是載貨進出的商船」而不是漁船。純視覺裝飾，停在木棧板延伸
+      // 出去的海面上，不佔用任何 tiles 格子，不影響碰撞判定。
+      export function makeCargoShip() {
+        const group = new THREE.Group();
+        const hullMat = new THREE.MeshStandardMaterial({
+          color: 0x3a4a52,
+          flatShading: true,
+        });
+        const hull = new THREE.Mesh(new THREE.BoxGeometry(3.6, 0.5, 1.15), hullMat);
+        hull.position.y = 0.25;
+        hull.castShadow = true;
+        hull.receiveShadow = true;
+        group.add(hull);
+        // 船艏比船身高一截，商船常見的弧形艏樓輪廓（用方塊簡化表示）
+        const bow = new THREE.Mesh(
+          new THREE.BoxGeometry(0.55, 0.68, 1.05),
+          hullMat,
+        );
+        bow.position.set(1.7, 0.44, 0);
+        bow.castShadow = true;
+        group.add(bow);
+        // 船艙／駕駛室，偏向船尾一側
+        const cabin = new THREE.Mesh(
+          new THREE.BoxGeometry(0.75, 0.55, 0.9),
+          new THREE.MeshStandardMaterial({ color: 0xd8d4c8 }),
+        );
+        cabin.position.set(-1.35, 0.5 + 0.275, 0);
+        cabin.castShadow = true;
+        group.add(cabin);
+        // 吊臂——普通漁船不會有這個，是「貨運商船」最直接的視覺標記
+        const craneMat = new THREE.MeshStandardMaterial({ color: 0x4a4a4a });
+        const craneBase = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.06, 0.08, 0.5, 6),
+          craneMat,
+        );
+        craneBase.position.set(-1.35, 0.5 + 0.55 + 0.25, 0);
+        craneBase.castShadow = true;
+        group.add(craneBase);
+        const craneArm = new THREE.Mesh(
+          new THREE.BoxGeometry(1.1, 0.07, 0.07),
+          craneMat,
+        );
+        craneArm.position.set(-1.35 + 0.55, 0.5 + 0.55 + 0.48, 0);
+        craneArm.rotation.z = -0.15;
+        craneArm.castShadow = true;
+        group.add(craneArm);
+        // 甲板上堆疊的貨箱，尺寸/角度各自錯開，看起來才不會像複製貼上
+        const crateMat = new THREE.MeshStandardMaterial({
+          color: 0x9c6b3a,
+          flatShading: true,
+        });
+        [
+          [-0.5, 0.15],
+          [-0.1, -0.2],
+          [0.35, 0.1],
+        ].forEach(([cx, cz], i) => {
+          const size = 0.34 + hash2(i, cx) * 0.1;
+          const crate = new THREE.Mesh(
+            new THREE.BoxGeometry(size, size, size),
+            crateMat,
+          );
+          crate.position.set(cx, 0.5 + size / 2, cz);
+          crate.rotation.y = i * 0.5 + hash2(cx, cz);
+          crate.castShadow = true;
+          group.add(crate);
+        });
+        return group;
+      }
+
       // 城區佔位建築——純色平面方塊，沒有窗戶屋頂細節，先卡出聚落的輪廓
       export function makeTownPlaceholder(x, z, seed) {
         const colors = [0xd9c9a3, 0xc9a876, 0xb89b7a, 0xcbb994, 0xa88f6a];
