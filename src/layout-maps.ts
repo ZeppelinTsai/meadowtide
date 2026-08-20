@@ -1159,6 +1159,14 @@ import { hash2 } from "./utils";
           LAYOUT.oldVillage.livingAreaGate.x + i
         ] = 3;
       }
+
+      // 主角家放大後，原本位於正門左前方的舊樹會擋住門面與進出視線。
+      // 座標從房屋資料推導，清除 tile 同時移除視覺與碰撞。
+      export const HOUSE_FRONT_TREE = {
+        x: LAYOUT.house.doorX - 2,
+        z: LAYOUT.house.z + LAYOUT.house.d + 1,
+      };
+      MAPS.livingArea.tiles[HOUSE_FRONT_TREE.z][HOUSE_FRONT_TREE.x] = 0;
       // 港口連通點(x=37~46, z=42) 的門檻標記本身放在檔案後段，跟「南側
       // 延伸地形補沙灘/海資料」那段一起處理——要先把 z=37~42 補上真的
       // 沙灘/海，門檻才不會蓋在假資料上面。
