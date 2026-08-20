@@ -1,7 +1,7 @@
 import * as THREE from "three";
 
 // 人形角色從鞋底到最高髮梢的統一世界高度；以村長專用模型為基準。
-export const HUMANOID_WORLD_HEIGHT = 1.43;
+export const HUMANOID_WORLD_HEIGHT = 1;
 const humanoidScale = (unscaledHeight) => HUMANOID_WORLD_HEIGHT / unscaledHeight;
 
 // 6) 低模人形
@@ -712,6 +712,36 @@ const humanoidScale = (unscaledHeight) => HUMANOID_WORLD_HEIGHT / unscaledHeight
           p.armR.rotation.x *= 0.8;
           humanoid.position.y = Math.sin(t * 2) * 0.01;
         }
+      }
+      export function animateRun(humanoid: any, moving, t) {
+        const p = humanoid.parts;
+        if (moving) {
+          const stride = Math.sin(t * 15) * 0.88;
+          p.legL.rotation.x = stride;
+          p.legR.rotation.x = -stride;
+          p.armL.rotation.x = -stride * 0.82;
+          p.armR.rotation.x = stride * 0.82;
+          humanoid.rotation.x += (-0.1 - humanoid.rotation.x) * 0.22;
+          humanoid.position.y = Math.abs(Math.sin(t * 15)) * 0.055;
+        } else {
+          p.legL.rotation.x *= 0.75;
+          p.legR.rotation.x *= 0.75;
+          p.armL.rotation.x *= 0.75;
+          p.armR.rotation.x *= 0.75;
+          humanoid.rotation.x *= 0.78;
+          humanoid.position.y = Math.sin(t * 2) * 0.01;
+        }
+      }
+      export function animateSit(humanoid: any) {
+        const p = humanoid.parts;
+        p.legL.rotation.x += (1.28 - p.legL.rotation.x) * 0.28;
+        p.legR.rotation.x += (1.28 - p.legR.rotation.x) * 0.28;
+        p.armL.rotation.x *= 0.75;
+        p.armR.rotation.x *= 0.75;
+        p.armL.rotation.z += (-0.12 - p.armL.rotation.z) * 0.2;
+        p.armR.rotation.z += (0.12 - p.armR.rotation.z) * 0.2;
+        humanoid.rotation.x *= 0.78;
+        humanoid.position.y = -0.03;
       }
       export const FACING_ANGLE = {
         up: 0,

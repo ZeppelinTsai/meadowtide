@@ -1768,6 +1768,7 @@ export function isBlocked(mapName, x, z) {
 }
 
 export function loadMap(mapName, startPos) {
+  gameState.isSitting = false;
   fadeOut(() => {
     gameState.zoom = Math.min(
       gameState.zoom,

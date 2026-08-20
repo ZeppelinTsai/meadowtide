@@ -54,6 +54,7 @@ export const gameState = {
   playerGridPos: { x: 0, z: 0 },
   facing: "down",
   isMoving: false,
+  isSitting: false,
   houseLampLight: null as THREE.PointLight | null,
   houseLampBulbMat: null as THREE.MeshStandardMaterial | null,
   ePressed: false,

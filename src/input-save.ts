@@ -1,6 +1,6 @@
 import { gameState, inventory, cropState, TIME_CONFIG, SEASON_NAMES, WEATHER_NAMES, getSeasonDay, getSeasonPeriod, rollWeatherForSeason, growCropsForNewDay, nearWater, plantSeed, harvestCrop, pickupSeeds, CAST_ANIM_DURATION, OYSTER_RACK_TILES, oysterRackState, harvestOysterRack } from "./game-state";
 import { updateSeasonAndDate } from "./game-clock";
-import { carpenterQuest, POUCH_POS, FARMLAND_TILES, chefQuest } from "./layout-maps";
+import { carpenterQuest, POUCH_POS, FARMLAND_TILES, chefQuest, REST_CHAIR } from "./layout-maps";
 import { tryShareChefMeal, mergeChefMealIntoChatLine } from "./chef-quest";
 import { npcs } from "./npc-runtime";
 import { npcLine } from "./npc-defs";
@@ -8,7 +8,7 @@ import { dialogQueue, advanceDialogSequence, showDialog, showDialogSequence, dia
 import { loadMap, isBlocked, events } from "./build-map";
 import { updateAvenueTreeColors, updateSeasonalTreeColors, updateSeasonalGroundColors, makeBobber, makeFishProp } from "./props";
 import { syncFarmVisuals } from "./farm-visuals";
-import { scene, clearMeteors, scheduleNextMeteor, updateCameraFrustum, meteorPool, getMeteorShowerHudLabel } from "./scene-sky";
+import { scene, clearMeteors, scheduleNextMeteor, updateCameraFrustum, meteorPool, getMeteorShowerHudLabel, groundY } from "./scene-sky";
 import { setThresholdMarkersVisible } from "./scene-registries";
 
 export const SAVE_KEY_PREFIX = "meadowtide.save.";
@@ -120,6 +120,34 @@ export const SAVE_KEY_PREFIX = "meadowtide.save.";
         // 對話正在進行中：E 只用來往下推句子，不觸發任何其他動作
         if (dialogQueue.length) {
           advanceDialogSequence();
+          return;
+        }
+
+        if (gameState.isSitting) {
+          gameState.isSitting = false;
+          return;
+        }
+
+        if (
+          gameState.currentMapName === "livingArea" &&
+          gameState.fishingState === "idle" &&
+          Math.hypot(
+            gameState.player.position.x - REST_CHAIR.x,
+            gameState.player.position.z - REST_CHAIR.z,
+          ) <= 1.25
+        ) {
+          gameState.isSitting = true;
+          gameState.isMoving = false;
+          gameState.player.position.set(
+            REST_CHAIR.x,
+            groundY(REST_CHAIR.x, REST_CHAIR.z) - 0.03,
+            REST_CHAIR.z,
+          );
+          gameState.player.rotation.y = REST_CHAIR.playerRotation;
+          gameState.playerGridPos = {
+            x: Math.round(REST_CHAIR.x),
+            z: Math.round(REST_CHAIR.z),
+          };
           return;
         }
 

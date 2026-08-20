@@ -200,6 +200,7 @@ import { randomPasturePoint } from "./npc-runtime";
         wallColor = 0xe8ddc7,
         roofColor = 0xa8402f,
         skipWindowGlow = false,
+        visualScale = 1,
       }) {
         const group = new THREE.Group();
         const centerX = x + (w - 1) / 2,
@@ -268,6 +269,7 @@ import { randomPasturePoint } from "./npc-runtime";
         makeWindow(doorX - centerX + width * 0.32, (depth / 2) * 0.98, 0);
         makeWindow((-width / 2) * 0.98, 0, Math.PI / 2);
         group.position.set(centerX, 0, centerZ);
+        group.scale.setScalar(visualScale);
         return group;
       }
 
@@ -281,6 +283,7 @@ import { randomPasturePoint } from "./npc-runtime";
         doorX,
         wallColor = 0x9c4a3a,
         roofColor = 0x4a3428,
+        visualScale = 1,
       }) {
         const group = new THREE.Group();
         const centerX = x + (w - 1) / 2,
@@ -332,6 +335,7 @@ import { randomPasturePoint } from "./npc-runtime";
         );
         group.add(loft);
         group.position.set(centerX, 0, centerZ);
+        group.scale.setScalar(visualScale);
         return group;
       }
 
@@ -1078,6 +1082,15 @@ import { randomPasturePoint } from "./npc-runtime";
         }
         makeLounger(5.7, 1.55, -0.18);
         makeLounger(5.85, 3.45, 0.18);
+
+        // 可交互座椅；位置只由 LAYOUT.restArea.chair 提供。
+        g.add(
+          makeBench(
+            area.chair.offsetX,
+            area.chair.offsetZ,
+            area.chair.rotation,
+          ),
+        );
 
         // 靠海側留一棵遮蔭樹，讓個人休息區讀起來更舒適。
         const shade = makeTree(6.65, 4.5);

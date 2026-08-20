@@ -9,8 +9,8 @@ import { hash2 } from "./utils";
       export const NORTH_EXPANSION = 5;
       export const LAYOUT = {
         // 北側新增 5 排：動物區留在新空間，其餘舊區域整體往南順延。
-        house: { x: 20, z: 9 + NORTH_EXPANSION, w: 3, d: 2, doorX: 21 },
-        barn: { x: 23, z: -2, w: 3, d: 2, doorX: 24 }, // 整座動物小屋向北移 3 格
+        house: { x: 20, z: 9 + NORTH_EXPANSION, w: 3, d: 2, doorX: 21, visualScale: 2 },
+        barn: { x: 23, z: -2, w: 3, d: 2, doorX: 24, visualScale: 2 }, // 整座動物小屋向北移 3 格
         pasture: { x: 17, z: -2, width: 15, height: 16 }, // 延伸到小屋左右，外緣由渲染做不規則化
         orchard: {
           x: 28,
@@ -32,7 +32,13 @@ import { hash2 } from "./utils";
         houseRoad: { width: 3 },
         farmAccessRoad: { width: 3 },
         coastRoad: { width: 3 },
-        restArea: { x: 25, z: 24, width: 8, height: 6 },
+        restArea: {
+          x: 25,
+          z: 24,
+          width: 8,
+          height: 6,
+          chair: { offsetX: 2, offsetZ: 4, rotation: 0, playerRotation: Math.PI },
+        },
         garden: { x: 25, z: 31, width: 8, height: 7 },
         farm: {
           x: 5,
@@ -206,6 +212,12 @@ import { hash2 } from "./utils";
             { x: 18, z: 12, w: 3, d: 2, seed: 0.73 },
           ],
         },
+      };
+      export const REST_CHAIR = {
+        x: LAYOUT.restArea.x + LAYOUT.restArea.chair.offsetX,
+        z: LAYOUT.restArea.z + LAYOUT.restArea.chair.offsetZ,
+        rotation: LAYOUT.restArea.chair.rotation,
+        playerRotation: LAYOUT.restArea.chair.playerRotation,
       };
 
       function makeMountainMapTiles() {
@@ -601,6 +613,7 @@ import { hash2 } from "./utils";
               w: LAYOUT.house.w,
               d: LAYOUT.house.d,
               doorX: LAYOUT.house.doorX,
+              visualScale: LAYOUT.house.visualScale,
             },
             {
               x: LAYOUT.barn.x,
@@ -608,6 +621,7 @@ import { hash2 } from "./utils";
               w: LAYOUT.barn.w,
               d: LAYOUT.barn.d,
               doorX: LAYOUT.barn.doorX,
+              visualScale: LAYOUT.barn.visualScale,
               style: "barn",
             },
           ],

@@ -4,7 +4,7 @@ import { isGameTimePaused, updateGameClock } from "./game-clock";
 import { LAYOUT, SOUTHERNMOST_AVENUE_TREE_Z, aStar, portGroundY, oldVillageGroundY, isOnOldVillageStair, mountainGroundY, isOnMountainStair } from "./layout-maps";
 import { npcs, animals, BARN_DOOR, outsideCols, outsideRows } from "./npc-runtime";
 import { getScheduleTarget } from "./npc-defs";
-import { animateWalk, animateAnimalWalk } from "./humanoid";
+import { animateWalk, animateRun, animateSit, animateAnimalWalk } from "./humanoid";
 import { chooseAnimalPastureTarget, setPastureGrassStage, startFishRoute, tryEatPastureGrass } from "./props";
 import { dialogQueue } from "./dialogue";
 import { isBlocked, events } from "./build-map";
@@ -99,6 +99,10 @@ gameState.lastFrame = performance.now();
         if (keys["s"] || keys["arrowdown"]) dz += 1;
         if (keys["a"] || keys["arrowleft"]) dx -= 1;
         if (keys["d"] || keys["arrowright"]) dx += 1;
+        if (gameState.isSitting) {
+          dx = 0;
+          dz = 0;
+        }
         const inputLen = Math.hypot(dx, dz);
         // dt===0 代表對話開著／遊戲暫停：主角完全鎖住，不只是不移動位置，
         // 也不能轉向、不能播走路動畫——不然按方向鍵角色會原地轉圈或踏步。
@@ -172,7 +176,8 @@ gameState.lastFrame = performance.now();
                 ? "down"
                 : "up";
         }
-        animateWalk(gameState.player, gameState.isMoving, gameState.elapsed);
+        if (gameState.isSitting) animateSit(gameState.player);
+        else animateRun(gameState.player, gameState.isMoving, gameState.elapsed);
         if (gameState.currentMapName === "livingArea")
           gameState.player.position.y += groundY(gameState.player.position.x, gameState.player.position.z);
         else if (gameState.currentMapName === "port")
@@ -710,6 +715,7 @@ gameState.lastFrame = performance.now();
             gameState.player.position.z,
           );
         }
+        if (gameState.isSitting) groundOffset -= 0.03;
         // 玩家模型與相機共用地形高度，走上西北階梯或海岸緩坡時不會穿進台階。
         gameState.player.position.y +=
           (groundOffset - gameState.player.position.y) * Math.min(1, dt * 10);

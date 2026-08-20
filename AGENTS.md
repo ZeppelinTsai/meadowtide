@@ -91,7 +91,8 @@
 
 ## 朝向/旋轉的慣例 — 這裡出過至少兩次 bug
 
-- **人形角色統一高度為 `1.43` 世界單位**（鞋底到頭頂／頭髮主體頂端），以村長阿姨的
+- **人形角色統一高度為 `1.0` 世界單位**（鞋底到頭頂／頭髮主體頂端），接近專案
+  原始低模角色比例，並以村長阿姨的
   `makeMayor()` 模型為基準。唯一常數是 `src/humanoid.ts` 的
   `HUMANOID_WORLD_HEIGHT`；新增或修改 `makeHumanoid()`、`makeMayor()`、
   `makeHeroPlayer()` 等模型時，先量未縮放高度，再用 `humanoidScale()` 換算，
