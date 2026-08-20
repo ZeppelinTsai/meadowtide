@@ -564,11 +564,12 @@ export function buildMap(mapName) {
       // 讀起來像一塊脫離地面、穿模飄浮的灰色方塊。實心方塊從地面
       // 蓋到頂，側面本身就是懸崖面，不會露出下面的空洞。
       const addTerrace = (z, depth, elevation) => {
+        const width = LAYOUT.oldVillage.terraces.westEdge + 0.5;
         const terrace = new THREE.Mesh(
-          new THREE.BoxGeometry(22, elevation, depth),
+          new THREE.BoxGeometry(width, elevation, depth),
           terraceMat,
         );
-        terrace.position.set(10.5, elevation / 2, z + (depth - 1) / 2);
+        terrace.position.set((width - 1) / 2, elevation / 2, z + (depth - 1) / 2);
         terrace.receiveShadow = true;
         terrace.castShadow = true;
         terrace.renderOrder = 1;
@@ -845,7 +846,13 @@ export function buildMap(mapName) {
       p.wallColor !== undefined
         ? p.style === "barn"
           ? makeBarn(p)
-          : makeBuilding(p)
+          : makeBuilding({
+              ...p,
+              visualScale:
+                mapName === "oldVillage"
+                  ? LAYOUT.oldVillage.houseVisualScale
+                  : p.visualScale,
+            })
         : makeTownPlaceholder(p.x, p.z, p.seed);
     townHouse.position.y +=
       mapName === "oldVillage" ? oldVillageGroundY(p.x, p.z) : 0;
@@ -898,16 +905,17 @@ export function buildMap(mapName) {
     // 廣場(LAYOUT.oldVillage.plaza：x=22~32,z=4~25)裡放兩盞路燈、兩張
     // 長椅，位置刻意離廣場邊界(x=22/33、跟港口門的垂直通道)有一段
     // 緩衝，不會卡到既有的門檻/道路。
-    const lamp1 = makeStreetLamp(25, 8, 1);
-    const lamp2 = makeStreetLamp(29, 18, -1);
+    const plazaShiftX = LAYOUT.oldVillage.plaza.x - 22;
+    const lamp1 = makeStreetLamp(25 + plazaShiftX, 8, 1);
+    const lamp2 = makeStreetLamp(29 + plazaShiftX, 18, -1);
     [lamp1, lamp2].forEach((prop) =>
       prop.traverse((child: any) => {
         if (child.isMesh) child.renderOrder = 2;
       }),
     );
     plateauGroup.add(lamp1, lamp2);
-    const bench1 = makeBench(26, 12, 0);
-    const bench2 = makeBench(30, 14, Math.PI);
+    const bench1 = makeBench(26 + plazaShiftX, 12, 0);
+    const bench2 = makeBench(30 + plazaShiftX, 14, Math.PI);
     [bench1, bench2].forEach((prop) =>
       prop.traverse((child: any) => {
         if (child.isMesh) child.renderOrder = 2;
@@ -1721,14 +1729,39 @@ export function isBlocked(mapName, x, z) {
   const tx = Math.round(x),
     tz = Math.round(z);
   // 北側延伸高台允許負 z；先檢查位於該區的小屋，避免提前返回漏掉碰撞。
+  // 建筑视觉缩放不改变地图格，但碰撞必须覆盖放大后的墙体；正面门廊保留
+  // 一条通往原门槛的通道，否则放大的主屋/动物小屋会把入口包进墙内。
+  const visualBuildings = [
+    ...(map.buildings || []),
+    ...(map.placeholders || []),
+  ];
   if (
-    (map.buildings || []).some(
-      (building) =>
+    visualBuildings.some((building) => {
+      const width = building.w || 1;
+      const depth = building.d || 1;
+      const scale =
+        building.visualScale ||
+        (mapName === "oldVillage"
+          ? LAYOUT.oldVillage.houseVisualScale
+          : 1);
+      const centerX = building.x + (width - 1) / 2;
+      const centerZ = building.z + (depth - 1) / 2;
+      const insideOriginal =
         tx >= building.x &&
-        tx < building.x + building.w &&
+        tx < building.x + width &&
         tz >= building.z &&
-        tz < building.z + building.d,
-    )
+        tz < building.z + depth;
+      const insideVisual =
+        Math.abs(x - centerX) <= (width * 0.96 * scale) / 2 &&
+        Math.abs(z - centerZ) <= (depth * 0.96 * scale) / 2;
+      if (!insideOriginal && !insideVisual) return false;
+      const inDoorCorridor =
+        scale > 1 &&
+        building.doorX !== undefined &&
+        Math.abs(x - building.doorX) <= 0.48 &&
+        z >= building.z + depth - 0.5;
+      return !inDoorCorridor;
+    })
   )
     return true;
   if (mapName === "livingArea" && z < 0) {
