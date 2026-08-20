@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { gameState, TIME_CONFIG, CAST_ANIM_DURATION, getNightFactor, isUnsafeAnimalWeather, nearWater } from "./game-state";
+import { gameState, TIME_CONFIG, CAST_ANIM_DURATION, getNightFactor, isNightTime, isUnsafeAnimalWeather, nearWater } from "./game-state";
 import { isGameTimePaused, updateGameClock } from "./game-clock";
 import { LAYOUT, SOUTHERNMOST_AVENUE_TREE_Z, aStar, portGroundY, oldVillageGroundY, isOnOldVillageStair, mountainGroundY, isOnMountainStair } from "./layout-maps";
 import { npcs, animals, BARN_DOOR, outsideCols, outsideRows } from "./npc-runtime";
@@ -23,6 +23,7 @@ import {
   windowMats, waterSurfaceMaterials, waterSkyUnderlayMaterials, waterSparkleMaterials, outdoorLampLights, foamMeshes, windmillRotors, fishSchool,
   pastureGrassBlades, GRASS_GROWTH_SECONDS, EAST_SEA_WAVE, NORTH_SEA_WAVE,
   EAST_SEA_WAVE_DIRECTION, NORTHEAST_SEA_WAVE_DIRECTION, sampleDirectedSeaWave,
+  gangplankMeshes,
 } from "./scene-registries";
 
 function sampleStarlightReflection(
@@ -122,6 +123,11 @@ gameState.lastFrame = performance.now();
               Math.abs(
                 mountainGroundY(toX, toZ) - mountainGroundY(fromX, fromZ),
               ) <= 0.7
+            );
+          if (gameState.currentMapName === "port")
+            return (
+              Math.abs(portGroundY(toX, toZ) - portGroundY(fromX, fromZ)) <=
+              0.45
             );
           return true;
         };
@@ -599,6 +605,12 @@ gameState.lastFrame = performance.now();
           );
           material.opacity =
             starReflectionVisibility * (0.05 + Math.pow(pulse, 4) * 0.95);
+        });
+        // 渡輪跳板：白天靠港放下，夜間視為已啟航/行駛中，收起跳板。渡輪
+        // 本身固定不動，只切換跳板可見度，不需要真的動畫船身進出港。
+        const ferryDocked = !isNightTime();
+        gangplankMeshes.forEach((mesh) => {
+          mesh.visible = ferryDocked;
         });
         if (isOutdoorMap()) {
           scene.background = sky;

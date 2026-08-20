@@ -8,7 +8,7 @@ import {
   SHRINE_PATH_LENGTH,
   SHRINE_PATH_ELEVATION,
 } from "./layout-maps";
-import { windowMats, waterSurfaceMaterials, waterSkyUnderlayMaterials, outdoorLampLights, foamMeshes, windmillRotors, pastureGrassBlades, avenueLeafMaterials, seasonalTreeLeafMaterials, seasonalGroundMaterials, GRASS_STAGE_HEIGHTS, EAST_SEA_WAVE_DIRECTION } from "./scene-registries";
+import { windowMats, waterSurfaceMaterials, waterSkyUnderlayMaterials, outdoorLampLights, foamMeshes, windmillRotors, pastureGrassBlades, avenueLeafMaterials, seasonalTreeLeafMaterials, seasonalGroundMaterials, GRASS_STAGE_HEIGHTS, EAST_SEA_WAVE_DIRECTION, gangplankMeshes } from "./scene-registries";
 import { randomPasturePoint } from "./npc-runtime";
 
 // 7) 樹 / 建築 / 地形（沿用 v11）
@@ -947,9 +947,10 @@ import { randomPasturePoint } from "./npc-runtime";
       }
 
       // 城鎮港口的商船——刻意比木匠抵達那艘小船大上一圈、外形也更「商用」：
-      // 加高船艏、甲板堆貨箱、船艙旁一支吊臂，這幾個細節組合起來最快讓人
-      // 看懂「這是載貨進出的商船」而不是漁船。純視覺裝飾，停在木棧板延伸
-      // 出去的海面上，不佔用任何 tiles 格子，不影響碰撞判定。
+      // 斜切艏尖＋艏斜桅、加高船艏、煙囪、舷緣扶手、舷窗、甲板堆貨箱、船艙
+      // 旁一支吊臂、船尾旗桿，這些細節組合起來最快讓人看懂「這是載貨進出
+      // 的商船」而不是一塊長方形箱子。純視覺裝飾，停在木棧板延伸出去的
+      // 海面上，不佔用任何 tiles 格子，不影響碰撞判定。
       export function makeCargoShip() {
         const group = new THREE.Group();
         const hullMat = new THREE.MeshStandardMaterial({
@@ -961,7 +962,7 @@ import { randomPasturePoint } from "./npc-runtime";
         hull.castShadow = true;
         hull.receiveShadow = true;
         group.add(hull);
-        // 船艏比船身高一截，商船常見的弧形艏樓輪廓（用方塊簡化表示）
+        // 船艏比船身高一截的甲板室，商船常見的弧形艏樓輪廓（用方塊簡化表示）
         const bow = new THREE.Mesh(
           new THREE.BoxGeometry(0.55, 0.68, 1.05),
           hullMat,
@@ -969,6 +970,24 @@ import { randomPasturePoint } from "./npc-runtime";
         bow.position.set(1.7, 0.44, 0);
         bow.castShadow = true;
         group.add(bow);
+        // 船艏尖端——斜切的方塊代替直上直下的平頭船首，側面看才有破浪船艏
+        // 該有的斜角輪廓。
+        const stem = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.3, 0.85), hullMat);
+        stem.position.set(2.15, 0.12, 0);
+        stem.rotation.z = -0.5;
+        stem.castShadow = true;
+        group.add(stem);
+        // 艏斜桅——斜斜地從船艏往前伸出，最快讓人一眼認出「這是一艘船」
+        // 而不是一個長方形箱子的細節之一。
+        const bowspritMat = new THREE.MeshStandardMaterial({ color: 0x6b5138 });
+        const bowsprit = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.03, 0.05, 0.9, 6),
+          bowspritMat,
+        );
+        bowsprit.rotation.z = Math.PI / 2.5;
+        bowsprit.position.set(2.55, 0.5, 0);
+        bowsprit.castShadow = true;
+        group.add(bowsprit);
         // 船艙／駕駛室，偏向船尾一側
         const cabin = new THREE.Mesh(
           new THREE.BoxGeometry(0.75, 0.55, 0.9),
@@ -977,20 +996,39 @@ import { randomPasturePoint } from "./npc-runtime";
         cabin.position.set(-1.35, 0.5 + 0.275, 0);
         cabin.castShadow = true;
         group.add(cabin);
+        // 煙囪——商船/貨輪最有辨識度的剪影之一，加一道淺色環帶避免看起來
+        // 像單色水管。
+        const funnelMat = new THREE.MeshStandardMaterial({
+          color: 0x8a2f2a,
+          flatShading: true,
+        });
+        const funnel = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.17, 0.19, 0.5, 10),
+          funnelMat,
+        );
+        funnel.position.set(-1.55, 0.5 + 0.55 + 0.25, 0);
+        funnel.castShadow = true;
+        group.add(funnel);
+        const funnelBand = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.185, 0.185, 0.1, 10),
+          new THREE.MeshStandardMaterial({ color: 0xe8e4da }),
+        );
+        funnelBand.position.set(-1.55, 0.5 + 0.55 + 0.42, 0);
+        group.add(funnelBand);
         // 吊臂——普通漁船不會有這個，是「貨運商船」最直接的視覺標記
         const craneMat = new THREE.MeshStandardMaterial({ color: 0x4a4a4a });
         const craneBase = new THREE.Mesh(
           new THREE.CylinderGeometry(0.06, 0.08, 0.5, 6),
           craneMat,
         );
-        craneBase.position.set(-1.35, 0.5 + 0.55 + 0.25, 0);
+        craneBase.position.set(-0.75, 0.5 + 0.55 + 0.25, 0);
         craneBase.castShadow = true;
         group.add(craneBase);
         const craneArm = new THREE.Mesh(
           new THREE.BoxGeometry(1.1, 0.07, 0.07),
           craneMat,
         );
-        craneArm.position.set(-1.35 + 0.55, 0.5 + 0.55 + 0.48, 0);
+        craneArm.position.set(-0.75 + 0.55, 0.5 + 0.55 + 0.48, 0);
         craneArm.rotation.z = -0.15;
         craneArm.castShadow = true;
         group.add(craneArm);
@@ -1014,6 +1052,97 @@ import { randomPasturePoint } from "./npc-runtime";
           crate.castShadow = true;
           group.add(crate);
         });
+        // 舷緣扶手——沿船身兩側各一條細長橫桿，補上甲板邊界的輪廓線，避免
+        // 船身看起來像一塊光禿禿的箱子。
+        const railMat = new THREE.MeshStandardMaterial({ color: 0x2c3a40 });
+        [-1, 1].forEach((side) => {
+          const rail = new THREE.Mesh(
+            new THREE.BoxGeometry(3.3, 0.05, 0.04),
+            railMat,
+          );
+          rail.position.set(-0.05, 0.53, side * 0.55);
+          group.add(rail);
+        });
+        // 船身兩側的舷窗——小圓孔，暗色，暗示「這裡面是船艙」，不需要真的
+        // 打光就看得出深淺差異。
+        const portholeMat = new THREE.MeshStandardMaterial({ color: 0x14181a });
+        for (let i = 0; i < 5; i++) {
+          [-1, 1].forEach((side) => {
+            const porthole = new THREE.Mesh(
+              new THREE.CircleGeometry(0.08, 8),
+              portholeMat,
+            );
+            porthole.rotation.y = side > 0 ? 0 : Math.PI;
+            porthole.position.set(-1 + i * 0.5, 0.25, side * 0.576);
+            group.add(porthole);
+          });
+        }
+        // 船尾旗桿＋小三角旗，補上船身輪廓最頂端的一點細節與動態感。
+        const flagpoleMat = new THREE.MeshStandardMaterial({ color: 0x5a4632 });
+        const flagpole = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.02, 0.02, 0.55, 6),
+          flagpoleMat,
+        );
+        flagpole.position.set(-1.75, 0.5 + 0.55 + 0.4, 0);
+        flagpole.castShadow = true;
+        group.add(flagpole);
+        const flag = new THREE.Mesh(
+          new THREE.PlaneGeometry(0.26, 0.16),
+          new THREE.MeshStandardMaterial({
+            color: 0xd6483a,
+            side: THREE.DoubleSide,
+            flatShading: true,
+          }),
+        );
+        flag.position.set(-1.61, 0.5 + 0.55 + 0.6, 0);
+        group.add(flag);
+        return group;
+      }
+
+      // 跳板——連接碼頭跟渡輪甲板，靠港時放下、啟航/行駛中收起。本地 +X
+      // 為由碼頭朝渡輪的方向，長度由呼叫端算好傳入(見 makePortScene)；呼叫
+      // 端另外決定實際擺放位置與坡度，這裡只管「一段木板棧橋」本身的造型。
+      export function makeGangplank(length) {
+        const group = new THREE.Group();
+        const plankMat = new THREE.MeshStandardMaterial({
+          color: 0x8a6a45,
+          roughness: 0.92,
+        });
+        const plankCount = Math.max(3, Math.round(length / 0.5));
+        const plankLength = length / plankCount;
+        for (let i = 0; i < plankCount; i++) {
+          const plank = new THREE.Mesh(
+            new THREE.BoxGeometry(plankLength + 0.02, 0.06, 0.62),
+            plankMat,
+          );
+          plank.position.set((i + 0.5) * plankLength, 0.03, 0);
+          plank.castShadow = true;
+          plank.receiveShadow = true;
+          group.add(plank);
+        }
+        // 兩側扶手：一條橫向欄杆＋等距欄杆柱，只用簡單圓柱堆出來，跟其他
+        // 道具(如 makeBench 的椅腳)同一套低多邊形風格。
+        const railMat = new THREE.MeshStandardMaterial({ color: 0x5a4632 });
+        [-0.31, 0.31].forEach((zOffset) => {
+          const rail = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.025, 0.025, length, 6),
+            railMat,
+          );
+          rail.rotation.z = Math.PI / 2;
+          rail.position.set(length / 2, 0.34, zOffset);
+          rail.castShadow = true;
+          group.add(rail);
+          const postCount = Math.max(2, Math.round(length));
+          for (let i = 0; i <= postCount; i++) {
+            const post = new THREE.Mesh(
+              new THREE.CylinderGeometry(0.02, 0.02, 0.34, 5),
+              railMat,
+            );
+            post.position.set((i / postCount) * length, 0.17, zOffset);
+            post.castShadow = true;
+            group.add(post);
+          }
+        });
         return group;
       }
 
@@ -1035,8 +1164,8 @@ import { randomPasturePoint } from "./npc-runtime";
           roughness: 0.2,
           metalness: 0.1,
           flatShading: true,
-          transparent: true,
-          opacity: 0.92,
+          transparent: false,
+          opacity: 1,
           side: THREE.DoubleSide,
         });
         const waterDepthMat = new THREE.MeshStandardMaterial({
@@ -1119,7 +1248,7 @@ import { randomPasturePoint } from "./npc-runtime";
           port.width - port.oceanExpansion,
           port.beachDepth + 1,
           port.oceanExpansion,
-          port.basin.z - port.beachDepth - 1,
+          port.basin.z - port.beachDepth - 2,
         );
         addWater(
           0,
@@ -1154,6 +1283,13 @@ import { randomPasturePoint } from "./npc-runtime";
           slab.receiveShadow = true;
           group.add(slab);
         };
+        // z=0 的生活區入口（x=3 起）維持沙灘高度；只有左側 x=0~2
+        // 延續抬高的港面，避免入口門檻被平台墊高。
+        addPlatform(0, 0, 3, 1);
+        addPlatform(0, 1, 3, 7);
+        addPlatform(0, 8, 3, 1);
+        addPlatform(0, 9, 3, 1);
+        addPlatform(0, 10, 3, 1);
         addPlatform(
           0,
           port.beachDepth + 1,
@@ -1175,12 +1311,15 @@ import { randomPasturePoint } from "./npc-runtime";
         );
         for (let i = 0; i < port.stairs.depth; i++) {
           const stepHeight = (port.elevation * (i + 1)) / port.stairs.depth;
+          const extendsLeft = true;
+          const stepX = port.stairs.x - (extendsLeft ? 1 : 0);
+          const stepWidth = port.stairs.width + (extendsLeft ? 1 : 0);
           const step = new THREE.Mesh(
-            new THREE.BoxGeometry(port.stairs.width, stepHeight, 1),
+            new THREE.BoxGeometry(stepWidth, stepHeight, 1),
             stairMats[i],
           );
           step.position.set(
-            port.stairs.x + (port.stairs.width - 1) / 2,
+            stepX + (stepWidth - 1) / 2,
             stepHeight / 2,
             port.stairs.z + i,
           );
@@ -1190,6 +1329,56 @@ import { randomPasturePoint } from "./npc-runtime";
         }
 
         // 三面碼頭牆把水面讀成內凹船塢；高度略高於水面，避免共平面閃爍。
+        // 北西角高台的 L 形扶手。放在格子外緣，保留傳送格與走道空間。
+        const safetyRailMat = new THREE.MeshStandardMaterial({
+          color: 0x4f5554,
+          roughness: 0.82,
+          metalness: 0.18,
+        });
+        const addSafetyRail = (
+          x1: number,
+          z1: number,
+          x2: number,
+          z2: number,
+        ) => {
+          const dx = x2 - x1;
+          const dz = z2 - z1;
+          const length = Math.hypot(dx, dz);
+          const rail = new THREE.Mesh(
+            new THREE.BoxGeometry(
+              Math.abs(dx) > 0 ? length : 0.1,
+              0.1,
+              Math.abs(dz) > 0 ? length : 0.1,
+            ),
+            safetyRailMat,
+          );
+          rail.position.set(
+            (x1 + x2) / 2,
+            port.elevation + 0.72,
+            (z1 + z2) / 2,
+          );
+          rail.castShadow = true;
+          group.add(rail);
+
+          const postCount = Math.max(1, Math.ceil(length / 2));
+          for (let i = 0; i <= postCount; i++) {
+            const t = i / postCount;
+            const post = new THREE.Mesh(
+              new THREE.BoxGeometry(0.11, 0.82, 0.11),
+              safetyRailMat,
+            );
+            post.position.set(
+              THREE.MathUtils.lerp(x1, x2, t),
+              port.elevation + 0.4,
+              THREE.MathUtils.lerp(z1, z2, t),
+            );
+            post.castShadow = true;
+            group.add(post);
+          }
+        };
+        addSafetyRail(2.5, -0.5, 2.5, 10.5);
+        addSafetyRail(-0.5, -0.5, 2.5, -0.5);
+
         const basinCenterX =
           port.basin.x + (port.basin.width - 1) / 2;
         const basinCenterZ =
@@ -1311,6 +1500,28 @@ import { randomPasturePoint } from "./npc-runtime";
         ferry.position.set(port.ferry.x, 0.15, port.ferry.z);
         ferry.rotation.y = 0.03;
         group.add(ferry);
+
+        // 木棧板跳板——把渡輪跟碼頭實際連起來，不再是各自獨立的兩組裝飾。
+        // 長度/坡度依碼頭牆頂(port.elevation)跟渡輪甲板高度現場算出來，
+        // LAYOUT 數字之後微調也不用跟著手動改這裡。ferryHullHalfWidth 抓的
+        // 是渡輪 hull 局部半寬(見 makeCargoShip 的 3.6 寬 hull)乘上這裡的
+        // scale.x，換算出離碼頭最近那一側船殼的世界座標。靠港時顯示、
+        // 啟航/行駛中收起，由 game-loop.ts 依日夜切換 gangplankMeshes 的
+        // .visible，不用重蓋地圖。
+        const ferryHullHalfWidth = (3.6 / 2) * ferry.scale.x;
+        const gangplankStartX = port.basin.x - 0.3;
+        const gangplankEndX = port.ferry.x - ferryHullHalfWidth;
+        const gangplankLength = gangplankEndX - gangplankStartX;
+        const gangplankStartY = port.elevation;
+        const gangplankEndY = ferry.position.y + 0.5 * ferry.scale.y;
+        const gangplank = makeGangplank(gangplankLength);
+        gangplank.rotation.z = Math.atan2(
+          gangplankEndY - gangplankStartY,
+          gangplankLength,
+        );
+        gangplank.position.set(gangplankStartX, gangplankStartY, port.ferry.z);
+        gangplankMeshes.push(gangplank);
+        group.add(gangplank);
 
         const dock = makeDock();
         dock.position.set(port.smallBoatDock.x, 0.13, port.smallBoatDock.z);

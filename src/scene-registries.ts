@@ -41,6 +41,10 @@ export const waterSkyUnderlayMaterials: import("three").MeshStandardMaterial[] =
           }
         }
       }
+      // 港口渡輪的跳板——靠港時放下讓人上下船，啟航/行駛中收起。跟其他
+      // 「buildMap() 清空重建」的登記表同一套，game-loop.ts 只需要逐幀切換
+      // .visible，不用重新蓋地圖。
+      export const gangplankMeshes = [];
       export const outdoorLampLights = [];
       export const foamMeshes = []; // 沙灘跟海交界的拍岸泡沫，animate() 裡逐幀讓它忽明忽暗
       export const windmillRotors = [];

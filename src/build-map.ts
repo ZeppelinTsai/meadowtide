@@ -827,6 +827,8 @@ import { OYSTER_RACK_VISUAL } from "./game-state";
                     ? groundY(x, z)
                     : mapName === "oldVillage"
                       ? oldVillageGroundY(x, z)
+                      : mapName === "port"
+                        ? portGroundY(x, z)
                       : mapName === "mountain"
                         ? mountainGroundY(x, z)
                       : 0),
@@ -1511,7 +1513,8 @@ import { OYSTER_RACK_VISUAL } from "./game-state";
           const stairs = LAYOUT.port.stairs;
           const insideStairs =
             tx >= stairs.x && tx < stairs.x + stairs.width;
-          if (!insideStairs) return true;
+          const onRaisedNorthApron = tx >= 0 && tx < stairs.x;
+          if (!insideStairs && !onRaisedNorthApron) return true;
         }
         if (
           mapName === "livingArea" &&
@@ -1775,21 +1778,14 @@ import { OYSTER_RACK_VISUAL } from "./game-state";
             }),
         },
         {
-          map: "port",
-          x: LAYOUT.port.artVillageGate.x,
-          z: LAYOUT.port.artVillageGate.z,
-          trigger: "touch",
-          action: () => loadMap("artVillage", { x: 9, z: 1 }),
-        },
-        {
-          map: "artVillage",
-          x: 9,
-          z: 0,
+          map: "oldVillage",
+          x: LAYOUT.oldVillage.portSouthGate.x,
+          z: LAYOUT.oldVillage.portSouthGate.z,
           trigger: "touch",
           action: () =>
             loadMap("port", {
-              x: LAYOUT.port.artVillageGate.x,
-              z: LAYOUT.port.artVillageGate.z - 1,
+              x: LAYOUT.port.townGate.x,
+              z: LAYOUT.port.townGate.z - 1,
             }),
         },
         // 舊城鎮(東側 x=13)<-> 港口(西側 x=0)：整條邊界都能走過去，不是單一
@@ -1803,13 +1799,13 @@ import { OYSTER_RACK_VISUAL } from "./game-state";
           trigger: "touch",
           action: () =>
             loadMap("port", {
-              x: 1,
+              x: LAYOUT.oldVillage.portGate.portX + 1,
               z: LAYOUT.oldVillage.portGate.portZ + i,
             }),
         })),
-        ...Array.from({ length: LAYOUT.oldVillage.portGate.height }, (_, i) => ({
+        ...Array.from({ length: LAYOUT.oldVillage.portGate.portHeight }, (_, i) => ({
           map: "port",
-          x: 0,
+          x: LAYOUT.oldVillage.portGate.portX,
           z: LAYOUT.oldVillage.portGate.portZ + i,
           trigger: "touch",
           action: () =>

@@ -67,10 +67,18 @@ import { hash2 } from "./utils";
           height: 30,
           livingGate: { x: 27, z: 0, width: 3 },
           livingAreaGate: { x: 20, z: 42, width: 3 },
-          portGate: { x: 40, z: 9, height: 10, portZ: 19 },
+          portGate: {
+            x: 40,
+            z: 0,
+            height: 30,
+            portX: 0,
+            portZ: 0,
+            portHeight: 30,
+          },
           mountainRoad: { x: 3, z: 29, width: 3 },
           mountainGate: { x: 1, z: 0 },
           artVillageGate: { x: 3, z: 29 },
+          portSouthGate: { x: 30, z: 29 },
           plaza: { x: 22, z: 4, width: 18, height: 22 },
           terraces: {
             upper: { maxZ: 9, elevation: 2 },
@@ -160,12 +168,12 @@ import { hash2 } from "./utils";
           oceanViewPadding: 50,
           beachDepth: 10,
           elevation: 1,
-          stairs: { x: 0, z: 9, width: 9, depth: 3 },
+          stairs: { x: 4, z: 8, width: 9, depth: 3 },
           livingGate: { x: 3, z: 0, width: 11 },
           livingAreaGate: { x: 37, z: 42, width: 11 },
           playerArrival: { x: 7, z: 11 },
           carpenterMeet: { x: 13, z: 28 },
-          artVillageGate: { x: 3, z: 29 },
+          townGate: { x: 3, z: 29 },
           shopRoad: { z: 14, height: 5 },
           basin: { x: 6, z: 18, width: 15, height: 9 },
           ferry: { x: 13, z: 22 },
@@ -263,8 +271,14 @@ import { hash2 } from "./utils";
       export function portGroundY(x: number, z: number) {
         const port = LAYOUT.port;
         const stairs = port.stairs;
+        if (x >= -0.5 && x <= 2.5 && z >= -0.5 && z <= 0.5)
+          return port.elevation;
+        if (z > 0.5 && z < 8 && x < 2.5) return port.elevation;
+        if (z >= 8 && z <= 11.5 && x < 2.5) return port.elevation;
+        const stairRow = Math.floor(z - stairs.z + 0.5);
+        const extendsLeft = stairRow >= 0 && stairRow < stairs.depth;
         const onStairs =
-          x >= stairs.x - 0.5 &&
+          x >= stairs.x - (extendsLeft ? 1.5 : 0.5) &&
           x <= stairs.x + stairs.width - 0.5 &&
           z >= stairs.z - 0.5 &&
           z <= stairs.z + stairs.depth - 0.5;
@@ -411,7 +425,6 @@ import { hash2 } from "./utils";
         });
         for (let i = 0; i < p.livingGate.width; i++)
           tiles[p.livingGate.z][p.livingGate.x + i] = 3;
-        tiles[p.artVillageGate.z][p.artVillageGate.x] = 3;
         return tiles;
       }
 
@@ -446,6 +459,7 @@ import { hash2 } from "./utils";
         for (let z = 0; z < village.portGate.height; z++)
           tiles[village.portGate.z + z][village.portGate.x] = 3;
         tiles[village.artVillageGate.z][village.artVillageGate.x] = 3;
+        tiles[village.portSouthGate.z][village.portSouthGate.x] = 3;
         tiles[village.mountainGate.z][village.mountainGate.x] = 3;
         village.houses.forEach((house) => (tiles[house.z][house.x] = 1));
         return tiles;
@@ -594,7 +608,7 @@ import { hash2 } from "./utils";
         // 玩法上「往南都會走到這個共用的美術村」。
         artVillage: {
           tiles: [
-            [0, 0, 0, 3, 0, 0, 0, 0, 0, 3, 0, 0],
+            [0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0],
             [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
             [0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0],
             [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
@@ -634,8 +648,10 @@ import { hash2 } from "./utils";
       // 舊城鎮東側(x=13)跟港口西側(x=0)整條邊界都標成門檻(3)，冒出黃色
       // 標記；只對到 z=0~14(舊城鎮的範圍)，港口多出來的最後一排(z=15)
       // 沒有對應的舊城鎮列，不畫。
-      for (let z = 0; z < LAYOUT.oldVillage.portGate.height; z++) {
-        MAPS.port.tiles[LAYOUT.oldVillage.portGate.portZ + z][0] = 3;
+      for (let z = 0; z < LAYOUT.oldVillage.portGate.portHeight; z++) {
+        MAPS.port.tiles[LAYOUT.oldVillage.portGate.portZ + z][
+          LAYOUT.oldVillage.portGate.portX
+        ] = 3;
       }
 
       // ==============================================================
