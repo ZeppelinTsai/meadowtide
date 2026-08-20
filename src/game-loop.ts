@@ -11,6 +11,7 @@ import { isBlocked, events } from "./build-map";
 import { collidesAt, keys, updateHud } from "./input-save";
 import { updateMusic } from "./music";
 import { updateWeatherEffects } from "./weather-particles";
+import { isOutdoorMap } from "./environment";
 import {
   scene, camera, renderer, sun, ambient, seasonalBounceLight,
   DAY, NIGHT, TILT_RAD, CAMERA_WORLD_BOUNDS, groundY,
@@ -413,7 +414,7 @@ gameState.lastFrame = performance.now();
             ? new THREE.Color(0xcbd4dc)
             : new THREE.Color(0x697685);
         sky.lerp(weatherFogColor, weatherDim);
-        if (gameState.currentMapName === "livingArea") {
+        if (isOutdoorMap()) {
           scene.background = sky;
           if (gameState.currentWeather === "clear") {
             // 晴天保持高能見度；拉遠時距離霧會讓整座島被天空色洗成白霧。
@@ -617,22 +618,37 @@ gameState.lastFrame = performance.now();
         if (gameState.portWaterMeshes.length && updateWaterSurface) {
           gameState.portWaterMeshes.forEach((water) => {
             const pos = water.geometry.attributes.position;
+            const colors = water.geometry.attributes.color;
             const base = water.geometry.userData.basePositions;
+            const waveSample: any = {};
             for (let i = 0; i < pos.count; i++) {
               const localX = base[i * 3];
               const localY = base[i * 3 + 1];
-              const ripple =
-                Math.sin(
-                  (localX + water.position.x) * 1.15 +
-                    gameState.effectElapsed * 0.9,
-                ) * 0.035 +
-                Math.cos(
-                  (localY - water.position.z) * 0.9 +
-                    gameState.effectElapsed * 0.65,
-                ) * 0.022;
-              pos.setZ(i, ripple);
+              sampleDirectedSeaWave(
+                localX + water.position.x,
+                water.position.z - localY,
+                gameState.effectElapsed,
+                EAST_SEA_WAVE_DIRECTION,
+                EAST_SEA_WAVE,
+                waveSample,
+              );
+              pos.setX(i, localX + waveSample.displacementX);
+              pos.setY(i, localY - waveSample.displacementZ);
+              pos.setZ(i, waveSample.height);
+              const crestFactor = Math.max(
+                0,
+                (waveSample.crest - 0.4) / 0.6,
+              );
+              const t = Math.pow(crestFactor, 1.8);
+              colors.setXYZ(
+                i,
+                0.18 + 0.82 * t,
+                0.43 + 0.57 * t,
+                0.68 + 0.32 * t,
+              );
             }
             pos.needsUpdate = true;
+            colors.needsUpdate = true;
             if (gameState.animationFrameCount % 8 === 0)
               water.geometry.computeVertexNormals();
           });

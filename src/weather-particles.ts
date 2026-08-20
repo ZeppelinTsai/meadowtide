@@ -2,6 +2,7 @@ import * as THREE from "three";
 import { hash2 } from "./utils";
 import { scene } from "./scene-sky";
 import { gameState, weatherTransitionRamp } from "./game-state";
+import { isOutdoorMap } from "./environment";
 
 // 5.4) 低成本天氣粒子：雨線、雪片、春季櫻花，以及暴風雨閃電
       // ==============================================================
@@ -82,12 +83,12 @@ import { gameState, weatherTransitionRamp } from "./game-state";
         return texture;
       }
       export const WEATHER_BOUNDS = {
-        minX: -2,
-        maxX: 59,
+        minX: -10,
+        maxX: 85,
         minY: 0.4,
         maxY: 14,
-        minZ: -7,
-        maxZ: 41,
+        minZ: -10,
+        maxZ: 110,
       };
       export const weatherEffectGroup = new THREE.Group();
       scene.add(weatherEffectGroup);
@@ -118,8 +119,10 @@ import { gameState, weatherTransitionRamp } from "./game-state";
         transparent: true,
         opacity: 0,
         depthTest: true,
+        depthWrite: false,
       });
       export const rainEffect = new THREE.LineSegments(rainGeometry, rainMaterial);
+      rainEffect.renderOrder = 10;
       rainEffect.frustumCulled = false;
       weatherEffectGroup.add(rainEffect);
 
@@ -154,6 +157,7 @@ import { gameState, weatherTransitionRamp } from "./game-state";
           sizeAttenuation: false,
         });
         const points = new THREE.Points(geometry, material);
+        points.renderOrder = 10;
         points.frustumCulled = false;
         weatherEffectGroup.add(points);
         return { points, geometry, material, positions, seeds, count };
@@ -226,6 +230,7 @@ import { gameState, weatherTransitionRamp } from "./game-state";
           depthTest: true,
         });
         const points = new THREE.Points(geometry, material);
+        points.renderOrder = 10;
         points.frustumCulled = false;
         weatherEffectGroup.add(points);
         return { points, geometry, material, positions, seeds, count };
@@ -274,7 +279,7 @@ import { gameState, weatherTransitionRamp } from "./game-state";
         return value;
       }
       export function updateWeatherEffects(dt, nightFactor) {
-        const outside = gameState.currentMapName === "livingArea";
+        const outside = isOutdoorMap();
         weatherEffectGroup.visible = outside;
         if (!outside) {
           weatherFlashLight.intensity = 0;

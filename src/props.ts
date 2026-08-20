@@ -1011,11 +1011,12 @@ import { randomPasturePoint } from "./npc-runtime";
             new THREE.MeshStandardMaterial({ color, roughness: 0.98 }),
         );
         const waterMat = new THREE.MeshStandardMaterial({
-          color: 0x197e9a,
-          roughness: 0.3,
-          metalness: 0.08,
+          vertexColors: true,
+          roughness: 0.2,
+          metalness: 0.1,
+          flatShading: true,
           transparent: true,
-          opacity: 0.94,
+          opacity: 0.92,
           side: THREE.DoubleSide,
         });
         const addWater = (x, z, width, depth) => {
@@ -1029,6 +1030,12 @@ import { randomPasturePoint } from "./npc-runtime";
             geometry,
             waterMat,
           );
+          const colors = new Float32Array(
+            geometry.attributes.position.count * 3,
+          );
+          for (let i = 0; i < geometry.attributes.position.count; i++)
+            colors.set([0.18, 0.43, 0.68], i * 3);
+          geometry.setAttribute("color", new THREE.BufferAttribute(colors, 3));
           water.rotation.x = -Math.PI / 2;
           water.position.set(x + (width - 1) / 2, 0.09, z + (depth - 1) / 2);
           water.receiveShadow = true;

@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { isOutdoorMap } from "./environment";
 import { hash2 } from "./utils";
 import {
   LAYOUT,
@@ -436,7 +437,7 @@ import {
       }
 
       export function getMeteorActivity() {
-        if (gameState.currentMapName !== "livingArea" || !isNightTime()) return null;
+        if (!isOutdoorMap() || !isNightTime()) return null;
         const weatherFactor =
           {
             clear: 1,
@@ -599,8 +600,8 @@ import {
       }
 
       export function updateMeteors(delta) {
-        meteorLayer.visible = gameState.currentMapName === "livingArea";
-        if (gameState.currentMapName !== "livingArea") {
+        meteorLayer.visible = isOutdoorMap();
+        if (!isOutdoorMap()) {
           clearMeteors();
           return;
         }
@@ -795,7 +796,7 @@ import {
       moonSkyGroup.position.z = -74;
       camera.add(moonSkyGroup);
       export function updateMoon() {
-        if (gameState.currentMapName !== "livingArea") {
+        if (!isOutdoorMap()) {
           moonSkyGroup.visible = false;
           return;
         }
@@ -843,11 +844,14 @@ import {
           northCliffEdgeZ(moonWorldX),
         ).project(camera);
         const terrainSkylineY = SUN_MASK_PROJECTED_POINT.y * gameState.zoom;
-        const skyOnlyVisibility = THREE.MathUtils.smoothstep(
-          moonSkyGroup.position.y - terrainSkylineY,
-          0.15,
-          1.15,
-        );
+        const skyOnlyVisibility =
+          gameState.currentMapName === "livingArea"
+            ? THREE.MathUtils.smoothstep(
+                moonSkyGroup.position.y - terrainSkylineY,
+                0.15,
+                1.15,
+              )
+            : 1;
         const finalOpacity = moonOpacity * skyOnlyVisibility;
         const horizonWarmth = Math.pow(1 - arc, 2.4);
         moonCoreMat.opacity = Math.min(1, finalOpacity * 1.3);
@@ -915,7 +919,7 @@ import {
       }
 
       export function updateSunAndClouds(nightFactor) {
-        if (gameState.currentMapName !== "livingArea") {
+        if (!isOutdoorMap()) {
           sunSkyGroup.visible = false;
           skyClouds.forEach((cloud) => (cloud.visible = false));
           return;
@@ -957,11 +961,14 @@ import {
             northCliffEdgeZ(sunWorldX),
           ).project(camera);
           const terrainSkylineY = SUN_MASK_PROJECTED_POINT.y * gameState.zoom;
-          const skyOnlyVisibility = THREE.MathUtils.smoothstep(
-            sunSkyGroup.position.y - terrainSkylineY,
-            0.15,
-            1.15,
-          );
+          const skyOnlyVisibility =
+            gameState.currentMapName === "livingArea"
+              ? THREE.MathUtils.smoothstep(
+                  sunSkyGroup.position.y - terrainSkylineY,
+                  0.15,
+                  1.15,
+                )
+              : 1;
           if (skyOnlyVisibility <= 0.001) {
             sunSkyGroup.visible = false;
           }
@@ -1045,7 +1052,7 @@ import {
       }
 
       export function updateSeasonalStars(nightFactor) {
-        const outside = gameState.currentMapName === "livingArea";
+        const outside = isOutdoorMap();
         const weatherVisibility =
           {
             clear: 1,
@@ -1095,7 +1102,7 @@ import {
         });
       }
       export function updateSkyDome(nightFactor) {
-        const outside = gameState.currentMapName === "livingArea";
+        const outside = isOutdoorMap();
         skyDome.visible = outside;
         if (!outside) {
           updateSeasonalStars(nightFactor);
