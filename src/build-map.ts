@@ -7,7 +7,7 @@ import { handleCarpenterDockTouch, handleCarpenterDoorstepTouch } from "./carpen
 import { windowMats, outdoorLampLights, foamMeshes, windmillRotors, lakeShoreColliders, fishSchool, pastureGrassBlades, avenueLeafMaterials, seasonalTreeLeafMaterials, seasonalGroundMaterials, SEA_FISH_SCALE, LAKE_FISH_SCALE, EAST_SEA_WAVE_DIRECTION, NORTHEAST_SEA_WAVE_DIRECTION, thresholdMarkerMeshes, thresholdMarkersVisible } from "./scene-registries";
 import { npcGroup, animalGroup, PASTURE, hasPastureGrassAt } from "./npc-runtime";
 import { makeGirlPlayer } from "./humanoid";
-import { makeTree, makeAvenueTree, makeBuilding, makeBarn, makePath, makeLakeShoreRock, makeGrassTuft, makeWindGrass, makeFlower, makeFruitTree, makeWaterfallPlaceholder, makeOysterRack, makeRestArea, makeSmallGarden, makeDock, makeCargoShip, makeToriiGate, makeShrinePathCauseway, makeTownPlaceholder, makeConstructionSign, makeStone, makeBasaltHeadland, makeSand, makeFoam, makeRedWindmill, makeMountain, makeWesternMountainTerrain, makeMountainGateway, makeFishProp, makeLamp, makeStreetLamp, makeInteriorWall, makeFurniture, updateSeasonalGroundColors, FLOWER_COLORS } from "./props";
+import { makeTree, makeAvenueTree, makeBuilding, makeBarn, makePath, makeLakeShoreRock, makeGrassTuft, makeWindGrass, makeFlower, makeFruitTree, makeWaterfallPlaceholder, makeOysterRack, makeRestArea, makeSmallGarden, makePortScene, makeToriiGate, makeShrinePathCauseway, makeTownPlaceholder, makeConstructionSign, makeStone, makeBasaltHeadland, makeSand, makeFoam, makeRedWindmill, makeMountain, makeWesternMountainTerrain, makeMountainGateway, makeFishProp, makeLamp, makeStreetLamp, makeInteriorWall, makeFurniture, updateSeasonalGroundColors, FLOWER_COLORS } from "./props";
 import { syncFarmVisuals } from "./farm-visuals";
 import { OYSTER_RACK_VISUAL } from "./game-state";
 
@@ -404,8 +404,26 @@ import { OYSTER_RACK_VISUAL } from "./game-state";
           plateauGroup = new THREE.Group();
           plateauGroup.position.y = PLATEAU_Y;
           gameState.mapGroup.add(plateauGroup);
+        } else if (mapName === "port") {
+          // 港區使用石板廣場底板；北緣 tile 8 仍在下方逐格呼叫共用 makeSand()，
+          // 因此與生活區沙灘保持同一套顏色與低模表面。
+          const ground = new THREE.Mesh(
+            new THREE.BoxGeometry(cols * TILE, 0.2, rows * TILE),
+            new THREE.MeshStandardMaterial({
+              color: 0xb8aa91,
+              roughness: 0.96,
+            }),
+          );
+          ground.position.set(
+            (cols * TILE) / 2 - TILE / 2,
+            -0.1,
+            (rows * TILE) / 2 - TILE / 2,
+          );
+          ground.receiveShadow = true;
+          gameState.mapGroup.add(ground);
+          plateauGroup.add(makePortScene());
         } else {
-          // oldVillage、port 這類獨立小地圖：跟 house 一樣是純平地，沒有懸崖/
+          // oldVillage 這類獨立小地圖：跟 house 一樣是純平地，沒有懸崖/
           // 沙灘的高低差，plateauGroup 維持等於 gameState.mapGroup，不用另外墊高。
           const ground = new THREE.Mesh(
             new THREE.BoxGeometry(cols * TILE, 0.2, rows * TILE),
@@ -454,19 +472,6 @@ import { OYSTER_RACK_VISUAL } from "./game-state";
             }
           }
         });
-        if (mapName === "port") {
-          const dock = makeDock();
-          dock.position.set(7, 0, 1);
-          dock.rotation.y = Math.PI / 2;
-          plateauGroup.add(dock);
-          // 外海商船——刻意跟木棧板/木匠那艘小船的位置(x 約 6.5~8.2)錯開，
-          // 停在東側外海，不佔用任何 tiles 格子，也不會擋到木匠碼頭見面
-          // 用的觸碰點(7,3)。
-          const cargoShip = makeCargoShip();
-          cargoShip.position.set(11, 0, -4);
-          cargoShip.rotation.y = 0.15;
-          plateauGroup.add(cargoShip);
-        }
         if (mapName === "shrine") {
           // 佔位地標：鳥居立在入口門檻(4,5)正北邊，玩家從南側走進來會直接
           // 穿過鳥居。退潮限定的判定邏輯之後再接，這輪只確保走得到、有

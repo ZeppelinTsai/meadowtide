@@ -62,7 +62,63 @@ import { hash2 } from "./utils";
           risePerStep: 0.2,
           width: 1.65,
         },
+        port: {
+          width: 24,
+          height: 18,
+          livingGate: { x: 7, z: 2 },
+          carpenterMeet: { x: 7, z: 3 },
+          artVillageGate: { x: 3, z: 15 },
+          basin: { x: 6, z: 6, width: 15, height: 7 },
+          ferry: { x: 13, z: 9 },
+          smallBoatDock: { x: 21, z: 13, length: 4 },
+          shops: [
+            { x: 9, z: 3, w: 3, d: 2, seed: 0.22 },
+            { x: 13, z: 3, w: 4, d: 2, seed: 0.47 },
+            { x: 18, z: 3, w: 3, d: 2, seed: 0.73 },
+          ],
+        },
       };
+
+      function makePortTiles() {
+        const p = LAYOUT.port;
+        const tiles = Array.from({ length: p.height }, () =>
+          new Array(p.width).fill(0),
+        );
+
+        // 北緣是生活區沙灘的延續，直接使用相同的 tile 8 / makeSand() 管線。
+        for (let z = 0; z <= 2; z++) {
+          const startX = z < 2 ? 5 : 6;
+          for (let x = startX; x < p.width; x++) tiles[z][x] = 8;
+        }
+        for (let x = 20; x < p.width; x++) tiles[3][x] = 8;
+
+        // 中央內港、右側航道與南側外海；石造碼頭保留在四周的 0 格。
+        for (let z = p.basin.z; z < p.basin.z + p.basin.height; z++) {
+          for (let x = p.basin.x; x < p.basin.x + p.basin.width; x++)
+            tiles[z][x] = 9;
+        }
+        for (let z = 5; z < p.height; z++) {
+          for (let x = 21; x < p.width; x++) tiles[z][x] = 9;
+        }
+        for (let x = 4; x < p.width; x++) tiles[p.height - 1][x] = 9;
+
+        // 右側木棧橋伸入航道；終端附近停靠小艇。
+        for (
+          let z = p.smallBoatDock.z;
+          z < p.smallBoatDock.z + p.smallBoatDock.length;
+          z++
+        )
+          tiles[z][p.smallBoatDock.x] = 5;
+
+        p.shops.forEach((shop) => {
+          for (let z = shop.z; z < shop.z + shop.d; z++) {
+            for (let x = shop.x; x < shop.x + shop.w; x++) tiles[z][x] = 1;
+          }
+        });
+        tiles[p.livingGate.z][p.livingGate.x] = 3;
+        tiles[p.artVillageGate.z][p.artVillageGate.x] = 3;
+        return tiles;
+      }
 
       export function lakeEdgeFactor(theta) {
         const centerX = LAYOUT.lake.x + (LAYOUT.lake.width - 1) / 2;
@@ -207,44 +263,11 @@ import { hash2 } from "./utils";
           ],
           playerStart: { x: 7, z: 2 },
         },
-        // 港口——北端候船碼頭(makeDock)＋外海商船(makeCargoShip)，南端市場/
-        // 倉庫佔位方塊＋一棟真正的倉庫建築，中間一條路連到南端的舊城鎮商業
-        // 街入口。playerStart 在北端碼頭附近。
-        // 倉庫佔在 x=1~2、z=6~7(比原本的 x=0~2 窄一格、往東挪一格)——這輪
-        // 加了舊城鎮<->港口整條西側邊界都能走過去，x=0 這一整欄要淨空，
-        // 不能被建築物擋住；跟 x=4 那個既有的裝飾用佔位方塊之間仍留一格
-        // (x=3)當緩衝。海洋學者之後會在這裡上班，這輪先不加他的座標。
+        // 港口——左側石板廣場接舊城鎮；中央是三面石造碼頭包圍的內港與渡輪；
+        // 北側商店背後的沙灘延續生活區；右側木棧橋停小艇。保留原本西界換圖、
+        // 木匠事件(7,3)與美術村入口(3,15)。
         port: {
-          tiles: [
-            [0, 0, 0, 0, 0, 8, 8, 8, 8, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0],
-            [0, 1, 1, 0, 1, 0, 0, 5, 0, 0, 1, 0, 0, 0],
-            [0, 1, 1, 0, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0],
-            // x=7 這條南北向通道原本接舊城鎮，直接連通的門檻已經拆掉(舊城鎮
-            // 改從生活區南側直接進去)，這裡改回路面(5)，通道本身留著、只是
-            // 走到底不再換地圖；x=3 是美術村入口門檻，維持不動。
-            [0, 0, 0, 3, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0],
-          ],
-          placeholders: [
-            { x: 4, z: 6, seed: 0.3 },
-            { x: 10, z: 6, seed: 0.55 },
-            { x: 4, z: 12, seed: 0.7 },
-            { x: 10, z: 12, seed: 0.42 },
-            { x: 4, z: 14, seed: 0.85 },
-            { x: 10, z: 14, seed: 0.15 },
-          ],
-          buildings: [{ x: 1, z: 6, w: 2, d: 2, doorX: 2, style: "barn" }],
+          tiles: makePortTiles(),
           playerStart: { x: 7, z: 4 },
         },
         // 美術村——這輪只求骨架能走通，不做藝術裝置的細節，內容先放幾個空屋

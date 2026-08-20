@@ -997,6 +997,151 @@ import { randomPasturePoint } from "./npc-runtime";
         return group;
       }
 
+      // 參考港灣圖的完整港區組件：石造內港、北側商店、中央渡輪與東側小艇棧橋。
+      // 沙灘不在這裡重做，仍由 port tiles 的 8 走共用 makeSand() 管線。
+      export function makePortScene() {
+        const group = new THREE.Group();
+        const port = LAYOUT.port;
+        const concreteMat = new THREE.MeshStandardMaterial({
+          color: 0xa39b8c,
+          roughness: 0.96,
+        });
+        const waterMat = new THREE.MeshStandardMaterial({
+          color: 0x197e9a,
+          roughness: 0.3,
+          metalness: 0.08,
+          transparent: true,
+          opacity: 0.94,
+          side: THREE.DoubleSide,
+        });
+        const addWater = (x, z, width, depth) => {
+          const water = new THREE.Mesh(
+            new THREE.PlaneGeometry(width, depth, 8, 8),
+            waterMat,
+          );
+          water.rotation.x = -Math.PI / 2;
+          water.position.set(x + (width - 1) / 2, 0.09, z + (depth - 1) / 2);
+          water.receiveShadow = true;
+          group.add(water);
+        };
+        addWater(
+          port.basin.x,
+          port.basin.z,
+          port.basin.width,
+          port.basin.height,
+        );
+        addWater(21, 5, 3, 13);
+        addWater(4, 17, 20, 1);
+
+        // 三面碼頭牆把水面讀成內凹船塢；高度略高於水面，避免共平面閃爍。
+        [
+          [5.45, 9, 0.48, 8],
+          [13, 5.45, 16, 0.48],
+          [13, 13.45, 16, 0.48],
+        ].forEach(([x, z, width, depth]) => {
+          const wall = new THREE.Mesh(
+            new THREE.BoxGeometry(width, 0.48, depth),
+            concreteMat,
+          );
+          wall.position.set(x, 0.03, z);
+          wall.castShadow = true;
+          wall.receiveShadow = true;
+          group.add(wall);
+        });
+
+        const bollardMat = new THREE.MeshStandardMaterial({
+          color: 0x5a5e59,
+          roughness: 0.82,
+        });
+        [
+          [6, 5.2], [10, 5.2], [14, 5.2], [18, 5.2],
+          [6, 13.7], [10, 13.7], [14, 13.7], [18, 13.7],
+          [5.15, 7], [5.15, 10], [5.15, 12],
+        ].forEach(([x, z]) => {
+          const bollard = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.11, 0.15, 0.38, 8),
+            bollardMat,
+          );
+          bollard.position.set(x, 0.25, z);
+          bollard.castShadow = true;
+          group.add(bollard);
+        });
+
+        port.shops.forEach((shop, index) => {
+          const shopGroup = new THREE.Group();
+          const body = new THREE.Mesh(
+            new THREE.BoxGeometry(shop.w - 0.18, 1.28, shop.d - 0.18),
+            new THREE.MeshStandardMaterial({
+              color: [0xc79b69, 0xb97f52, 0xd2ae79][index],
+              roughness: 0.9,
+            }),
+          );
+          const centerX = shop.x + (shop.w - 1) / 2;
+          const frontZ = shop.z + shop.d / 2;
+          body.position.set(centerX, 0.64, shop.z + 0.1);
+          body.castShadow = true;
+          body.receiveShadow = true;
+          shopGroup.add(body);
+
+          const roof = new THREE.Mesh(
+            new THREE.CylinderGeometry(1, 1, shop.w + 0.24, 3),
+            new THREE.MeshStandardMaterial({ color: 0x277d83, roughness: 0.86 }),
+          );
+          roof.rotation.z = Math.PI / 2;
+          roof.scale.z = shop.d * 0.68;
+          roof.position.set(centerX, 1.49, shop.z + 0.05);
+          roof.castShadow = true;
+          shopGroup.add(roof);
+
+          const awning = new THREE.Mesh(
+            new THREE.BoxGeometry(shop.w - 0.3, 0.06, 0.68),
+            new THREE.MeshStandardMaterial({
+              color: index === 1 ? 0x226f78 : 0x319098,
+            }),
+          );
+          awning.rotation.x = -0.18;
+          awning.position.set(centerX, 0.94, frontZ + 0.15);
+          awning.castShadow = true;
+          shopGroup.add(awning);
+
+          const door = new THREE.Mesh(
+            new THREE.BoxGeometry(0.52, 0.78, 0.06),
+            new THREE.MeshStandardMaterial({ color: 0x573d2d }),
+          );
+          door.position.set(centerX, 0.39, frontZ + 0.02);
+          shopGroup.add(door);
+          [-0.78, 0.78].forEach((offset) => {
+            if (Math.abs(offset) > shop.w / 2 - 0.5) return;
+            const winMat = new THREE.MeshStandardMaterial({
+              color: 0x8bc8d0,
+              emissive: new THREE.Color(0xffcf7a),
+              emissiveIntensity: 0,
+            });
+            const win = new THREE.Mesh(
+              new THREE.BoxGeometry(0.62, 0.42, 0.05),
+              winMat,
+            );
+            win.position.set(centerX + offset, 0.63, frontZ + 0.025);
+            shopGroup.add(win);
+            windowMats.push(winMat);
+          });
+          group.add(shopGroup);
+        });
+
+        // 既有商船幾何放大為港灣主渡輪；保持頭朝本地 +X 的船體慣例。
+        const ferry = makeCargoShip();
+        ferry.scale.set(2.05, 1.7, 1.7);
+        ferry.position.set(port.ferry.x, 0.15, port.ferry.z);
+        ferry.rotation.y = 0.03;
+        group.add(ferry);
+
+        const dock = makeDock();
+        dock.position.set(port.smallBoatDock.x, 0.13, port.smallBoatDock.z);
+        dock.rotation.y = Math.PI / 2;
+        group.add(dock);
+        return group;
+      }
+
       // 女神祠堂的鳥居——這輪只求「一眼認得出是鳥居」的簡單造型：兩根柱子
       // +兩道橫樑(上樑較寬、下樑較窄，鳥居的招牌比例)，朱紅色。退潮步道跟
       // 祠堂本身的機制之後再接，這裡純粹是佔位地標。
