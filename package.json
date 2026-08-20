@@ -28,7 +28,7 @@
     "appId": "com.meadowtide.game",
     "productName": "Meadowtide",
     "directories": {
-      "output": "C:/temp/meadowtide-release"
+      "output": "./release"
     },
     "files": [
       "dist/**/*",

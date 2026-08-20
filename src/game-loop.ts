@@ -335,6 +335,21 @@ gameState.lastFrame = performance.now();
                 a.grazeAt = Infinity;
               }
             } else {
+              // 每次換新目標(a.target 是全新物件)都重新記錄起點跟總距離，
+              // 側向弧度用這隻動物自己的 pathSeed 決定方向、隨距離縮放但封頂，
+              // 這樣同一隻動物走去同一叢草，路線也不會每次都是同一條直線。
+              if (a.routeTarget !== a.target) {
+                a.routeTarget = a.target;
+                a.routeFromX = a.mesh.position.x;
+                a.routeFromZ = a.mesh.position.z;
+                a.routeTotalDist = Math.hypot(
+                  a.target.x - a.mesh.position.x,
+                  a.target.z - a.mesh.position.z,
+                );
+                a.routeCurve =
+                  (a.pathSeed - 0.5) * Math.min(1.2, a.routeTotalDist) * 0.6;
+                a.prevBend = 0;
+              }
               const dx = a.target.x - a.mesh.position.x,
                 dz = a.target.z - a.mesh.position.z;
               const dist = Math.hypot(dx, dz);
@@ -345,10 +360,25 @@ gameState.lastFrame = performance.now();
                 a.grazeAt = gameState.elapsed + 0.8;
               } else {
                 moving = true;
+                const progress =
+                  a.routeTotalDist > 0
+                    ? Math.min(1, Math.max(0, 1 - dist / a.routeTotalDist))
+                    : 1;
+                const bend = Math.sin(progress * Math.PI) * a.routeCurve;
+                const dirX = (a.target.x - a.routeFromX) / (a.routeTotalDist || 1),
+                  dirZ = (a.target.z - a.routeFromZ) / (a.routeTotalDist || 1);
                 const step = Math.min(dist, a.speed * dt);
-                a.mesh.position.x += (dx / dist) * step;
-                a.mesh.position.z += (dz / dist) * step;
-                a.mesh.rotation.y = Math.atan2(dx, dz) - Math.PI / 2;
+                const nx =
+                  a.mesh.position.x + dirX * step - dirZ * (bend - (a.prevBend || 0));
+                const nz =
+                  a.mesh.position.z + dirZ * step + dirX * (bend - (a.prevBend || 0));
+                a.prevBend = bend;
+                const rdx = nx - a.mesh.position.x,
+                  rdz = nz - a.mesh.position.z;
+                if (Math.abs(rdx) > 1e-6 || Math.abs(rdz) > 1e-6)
+                  a.mesh.rotation.y = Math.atan2(rdx, rdz) - Math.PI / 2;
+                a.mesh.position.x = nx;
+                a.mesh.position.z = nz;
               }
             }
           }

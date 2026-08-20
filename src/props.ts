@@ -486,13 +486,23 @@ import { randomPasturePoint } from "./npc-runtime";
         return best;
       }
       export function chooseAnimalPastureTarget(animal) {
+        // 每次挑目標都重擲路徑亂數種子：就算兩次都選到同一叢長草，走去的
+        // 路線(彎曲方向、幅度)跟停在草叢周圍的落點也不會一樣。
+        animal.pathSeed = Math.random();
         if (animal.type !== "chicken") {
           const grass = findLongGrassNear(
             animal.mesh.position.x,
             animal.mesh.position.z,
             4,
           );
-          if (grass) return { x: grass.position.x, z: grass.position.z };
+          if (grass) {
+            const jitterAngle = Math.random() * Math.PI * 2;
+            const jitterRadius = Math.random() * 0.3;
+            return {
+              x: grass.position.x + Math.cos(jitterAngle) * jitterRadius,
+              z: grass.position.z + Math.sin(jitterAngle) * jitterRadius,
+            };
+          }
         }
         return randomPasturePoint();
       }
@@ -1600,9 +1610,18 @@ import { randomPasturePoint } from "./npc-runtime";
 
       // 動物——牛、羊、雞，都用最少的幾何圖形拼出可辨識的外形，
       // 沒有走路動畫（跟低模人形不同層級），純粹靠位置平移 + 面向旋轉
-      export function makeAnimal(type) {
+      export function makeAnimal(type, seed = 0) {
         const g: any = new THREE.Group();
         const parts: any = {};
+        // 同一物種的每隻動物用 seed 對主色調做小幅 HSL 偏移，讓牛/羊/雞彼此能
+        // 一眼分辨出不同個體，深色的斑點/雞冠/喙不跟著變——那些是「該物種的
+        // 標記」，變了反而認不出是同一種動物。
+        const hueShift = (hash2(seed, 4.1) - 0.5) * 0.05;
+        const satShift = (hash2(seed, 2.6) - 0.5) * 0.12;
+        const lightShift = (hash2(seed, 9.7) - 0.5) * 0.2;
+        function tint(hex) {
+          return new THREE.Color(hex).offsetHSL(hueShift, satShift, lightShift);
+        }
         // 跟人形角色同一招：腿是「髖部支點群組 + 往下掛的圓柱」，不是直接轉圓柱
         // 本身，這樣轉軸才會在髖部，甩起來才是「抬腿」而不是圓柱繞自己中心轉
         function makeLeg(mat, x, z, hipY, legLen, radius) {
@@ -1619,7 +1638,7 @@ import { randomPasturePoint } from "./npc-runtime";
           return pivot;
         }
         if (type === "cow") {
-          const hide = new THREE.MeshStandardMaterial({ color: 0xf2ede0 });
+          const hide = new THREE.MeshStandardMaterial({ color: tint(0xf2ede0) });
           const spotMat = new THREE.MeshStandardMaterial({ color: 0x3a2a22 });
           const body = new THREE.Mesh(
             new THREE.BoxGeometry(0.42, 0.24, 0.24),
@@ -1649,7 +1668,7 @@ import { randomPasturePoint } from "./npc-runtime";
           parts.legBR = makeLeg(legMat, -0.15, -0.08, 0.18, 0.18, 0.025);
         } else if (type === "sheep") {
           const wool = new THREE.MeshStandardMaterial({
-            color: 0xf5f0e6,
+            color: tint(0xf5f0e6),
             flatShading: true,
           });
           const dark = new THREE.MeshStandardMaterial({ color: 0x2a2420 });
@@ -1674,7 +1693,7 @@ import { randomPasturePoint } from "./npc-runtime";
         } else {
           // chicken
           const feather = new THREE.MeshStandardMaterial({
-            color: 0xf2f0e8,
+            color: tint(0xf2f0e8),
             flatShading: true,
           });
           const body = new THREE.Mesh(

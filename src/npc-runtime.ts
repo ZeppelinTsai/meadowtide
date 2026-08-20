@@ -109,8 +109,8 @@ import { makeAnimal } from "./props";
         { id: "chicken1", type: "chicken", speed: 0.5, restMin: 1, restMax: 3 },
         { id: "chicken2", type: "chicken", speed: 0.5, restMin: 1, restMax: 3 },
       ];
-      export const animals = animalDefs.map((def) => {
-        const mesh = makeAnimal(def.type);
+      export const animals = animalDefs.map((def, i) => {
+        const mesh = makeAnimal(def.type, i);
         // 原始低模動物相對人物太小；以群組原點（腳底高度 y=0）統一放大，
         // 因此尺寸變成兩倍但仍會貼著地面，不影響移動與回家邏輯。
         mesh.scale.setScalar(2);
@@ -125,5 +125,14 @@ import { makeAnimal } from "./props";
           wanderState: "walking",
           restUntil: 0,
           grazeAt: Infinity,
+          // 每隻動物自己的路徑亂數種子：走位的側向弧度跟目標點的小幅偏移都
+          // 靠它決定，避免同一隻動物每次都走出一模一樣的直線。
+          pathSeed: hash2(i * 3.7 + 1.3, i * 5.1 + 8.2),
+          routeTarget: null as any,
+          routeFromX: 0,
+          routeFromZ: 0,
+          routeTotalDist: 0,
+          routeCurve: 0,
+          prevBend: 0,
         };
       });

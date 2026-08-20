@@ -765,7 +765,13 @@ import { OYSTER_RACK_VISUAL } from "./game-state";
                   maxZ: maxZ - 0.7,
                 },
                 route: null,
-                pauseUntil: gameState.elapsed + s2 * 1.5,
+                // 一定要用 effectElapsed(不受暫停/快轉影響的真實時間)，跟
+                // game-loop.ts 巡游迴圈裡判斷「該起步了嗎」用的是同一個時鐘。
+                // 之前誤用 gameState.elapsed(遊戲時鐘，快轉 N 天會一次跳很多)
+                // ——只要在魚第一次巡游前用過快轉，pauseUntil 就會被推到遠超過
+                // effectElapsed 的天文數字，魚从此再也不會觸發新路線，只剩
+                // 原地輕微的深度浮動，看起來像「魚不會動」。
+                pauseUntil: gameState.effectElapsed + s2 * 1.5,
               };
               fishSchool.push(fish);
             }
@@ -1033,7 +1039,8 @@ import { OYSTER_RACK_VISUAL } from "./game-state";
                   maxZ: centerZ + radiusZ * 0.45,
                 },
                 route: null,
-                pauseUntil: gameState.elapsed + s1 * 2,
+                // 同上：跟 game-loop.ts 的巡游判斷用同一個不受暫停/快轉影響的時鐘。
+                pauseUntil: gameState.effectElapsed + s1 * 2,
               };
               fishSchool.push(fish);
             }

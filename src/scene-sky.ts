@@ -13,6 +13,7 @@ import {
   METEOR_SHOWER_SCHEDULE,
   METEOR_SHOWER_PHASE_NAMES,
   SEASON_NAMES,
+  dayLength,
 } from "./game-state";
 
 // 5) 場景 / 相機 / 渲染器
@@ -168,47 +169,10 @@ import {
 
       // 架空北緯 8°海島的四季星空：四季合計涵蓋大部分南北天代表星群。
       export const SEASON_STAR_CONFIGS = [
-        { count: 1440, color: 0xe8f4ff, bright: 0xfff2cf }, // 春：柔和、北斗與春季大三角意象
-        { count: 2100, color: 0xddeaff, bright: 0xffffff }, // 夏：銀河最密、夏季大三角
-        { count: 1620, color: 0xffedcf, bright: 0xffdca8 }, // 秋：清澈、飛馬四邊形
-        { count: 1860, color: 0xd7e9ff, bright: 0xbfdcff }, // 冬：冷藍、獵戶與冬季大三角
-      ];
-      export const CONSTELLATION_PATTERNS = [
-        [
-          [-0.62, 0.3],
-          [-0.4, 0.42],
-          [-0.18, 0.37],
-          [0.02, 0.48],
-          [0.2, 0.39],
-          [0.37, 0.53],
-          [0.56, 0.47],
-        ],
-        [
-          [-0.58, 0.28],
-          [0, 0.72],
-          [0.55, 0.25],
-          [-0.58, 0.28],
-          [0.55, 0.25],
-        ],
-        [
-          [-0.48, 0.32],
-          [-0.45, 0.66],
-          [0.06, 0.7],
-          [0.1, 0.31],
-          [-0.48, 0.32],
-          [0.1, 0.31],
-          [0.5, 0.5],
-        ],
-        [
-          [-0.42, 0.67],
-          [-0.18, 0.43],
-          [0.06, 0.49],
-          [0.32, 0.7],
-          [-0.18, 0.43],
-          [-0.12, 0.18],
-          [0.15, 0.2],
-          [0.06, 0.49],
-        ],
+        { count: 1440, color: 0xe8f4ff }, // 春：柔和
+        { count: 2100, color: 0xddeaff }, // 夏：銀河最密
+        { count: 1620, color: 0xffedcf }, // 秋：清澈
+        { count: 1860, color: 0xd7e9ff }, // 冬：冷藍
       ];
       export const seasonalStarGroups = [];
       export function makeSparkleTexture() {
@@ -403,40 +367,7 @@ import {
           },
         );
 
-        const nodes = CONSTELLATION_PATTERNS[seasonIndex].map(([x, y]) =>
-          starSkyPoint(x, y, seasonIndex),
-        );
-        const linePositions = [];
-        for (let i = 0; i < nodes.length - 1; i++) {
-          linePositions.push(
-            nodes[i].x,
-            nodes[i].y,
-            nodes[i].z,
-            nodes[i + 1].x,
-            nodes[i + 1].y,
-            nodes[i + 1].z,
-          );
-        }
-        const lineGeometry = new THREE.BufferGeometry();
-        lineGeometry.setAttribute(
-          "position",
-          new THREE.Float32BufferAttribute(linePositions, 3),
-        );
-        const lineMaterial = new THREE.LineBasicMaterial({
-          color: config.bright,
-          transparent: true,
-          opacity: 0,
-          depthWrite: false,
-          depthTest: true,
-          fog: false,
-        });
-        const constellationLines = new THREE.LineSegments(
-          lineGeometry,
-          lineMaterial,
-        );
-        constellationLines.renderOrder = -0.5;
-        group.add(constellationLines);
-        group.userData.materials = [starMaterial, lineMaterial];
+        group.userData.materials = [starMaterial];
         group.userData.sparkleMaterials = sparkleMaterials;
         group.userData.milkyWayMaterial = milkyWayMaterial;
         camera.add(group);
@@ -1114,13 +1045,20 @@ import {
           0,
           Math.min(1, (nightFactor - 0.38) / 0.5),
         );
+        // 星空繞天頂的旋轉不能直接讀 currentPhase：那是每天 0 點準時從 0.999
+        // 摔回 0 的鋸齒波，星星正掛在夜空中間時(0 點通常還在夜裡)會看到整片
+        // 星空瞬間彈回去。改成以正午為分界的鋸齒波——正午太陽最亮、星空
+        // opacity 本來就是 0，摔回去的瞬間沒人看得到。
+        const noonWrappedElapsed =
+          (((gameState.elapsed - dayLength / 2) % dayLength) + dayLength) %
+          dayLength;
+        const starPhase = noonWrappedElapsed / dayLength;
         seasonalStarGroups.forEach((group, seasonIndex) => {
           const visibility =
             outside && seasonIndex === gameState.currentSeason
               ? nightVisibility * weatherVisibility
               : 0;
           group.userData.materials[0].opacity = visibility * 0.92;
-          group.userData.materials[1].opacity = visibility * 0.11;
           if (group.userData.milkyWayMaterial) {
             group.userData.milkyWayMaterial.opacity = visibility * 0.88;
           }
@@ -1138,7 +1076,7 @@ import {
               visibility * (0.045 + Math.pow(pulse, 4) * 0.955);
           });
           group.visible = visibility > 0.008;
-          group.rotation.z = gameState.currentPhase * 0.08 + seasonIndex * 0.012;
+          group.rotation.z = starPhase * 0.08 + seasonIndex * 0.012;
         });
       }
       export function updateSkyDome(nightFactor) {

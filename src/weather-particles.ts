@@ -34,10 +34,33 @@ import { gameState, weatherTransitionRamp } from "./game-state";
           gradient.addColorStop(0.5, "rgba(220,72,42,0.98)");
           gradient.addColorStop(1, "rgba(133,35,35,0.94)");
           ctx.fillStyle = gradient;
+          // 楓葉輪廓：頂尖 + 左右各三片尖裂葉，裂片間用凹角連接，
+          // 不是原本那種光滑橢圓——遠看才會像楓葉而不是隨便一片葉子。
           ctx.beginPath();
-          ctx.moveTo(0, -27);
-          ctx.bezierCurveTo(19, -17, 21, 10, 0, 27);
-          ctx.bezierCurveTo(-21, 10, -19, -17, 0, -27);
+          const mapleOutline: [number, number][] = [
+            [0, -27],
+            [5, -16],
+            [15, -20],
+            [11, -8],
+            [23, -6],
+            [12, 2],
+            [17, 15],
+            [5, 10],
+            [3, 26],
+            [0, 22],
+            [-3, 26],
+            [-5, 10],
+            [-17, 15],
+            [-12, 2],
+            [-23, -6],
+            [-11, -8],
+            [-15, -20],
+            [-5, -16],
+          ];
+          mapleOutline.forEach(([x, y], i) => {
+            if (i === 0) ctx.moveTo(x, y);
+            else ctx.lineTo(x, y);
+          });
           ctx.closePath();
           ctx.fill();
         } else {
@@ -135,7 +158,7 @@ import { gameState, weatherTransitionRamp } from "./game-state";
         weatherEffectGroup.add(points);
         return { points, geometry, material, positions, seeds, count };
       }
-      export function makePetalLayer(count, color, size, texture) {
+      export function makePetalLayer(count, color, size, texture, color2 = color) {
         const positions = new Float32Array(count * 3);
         const seeds = new Float32Array(count);
         for (let i = 0; i < count; i++) {
@@ -157,10 +180,12 @@ import { gameState, weatherTransitionRamp } from "./game-state";
         );
         geometry.setAttribute("petalSeed", new THREE.BufferAttribute(seeds, 1));
         const tint = new THREE.Color(color);
+        const tint2 = new THREE.Color(color2);
         const material = new THREE.ShaderMaterial({
           uniforms: {
             petalMap: { value: texture },
             tint: { value: tint },
+            tint2: { value: tint2 },
             opacity: { value: 0 },
             time: { value: 0 },
             pointSize: { value: size },
@@ -168,17 +193,18 @@ import { gameState, weatherTransitionRamp } from "./game-state";
           vertexShader: `
       attribute float petalSeed;
       uniform float time; uniform float pointSize;
-      varying float vAngle; varying float vFlip;
+      varying float vAngle; varying float vFlip; varying float vSeed;
       void main(){
         float phase=time*(0.65+petalSeed*1.55)+petalSeed*24.0;
         vAngle=phase*0.72+sin(phase*0.47)*1.15;
         vFlip=cos(phase*1.36);
+        vSeed=petalSeed;
         gl_PointSize=pointSize*(0.84+0.16*sin(phase*0.81));
         gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);
       }`,
           fragmentShader: `
-      uniform sampler2D petalMap; uniform vec3 tint; uniform float opacity;
-      varying float vAngle; varying float vFlip;
+      uniform sampler2D petalMap; uniform vec3 tint; uniform vec3 tint2; uniform float opacity;
+      varying float vAngle; varying float vFlip; varying float vSeed;
       void main(){
         vec2 p=gl_PointCoord-0.5;
         float c=cos(vAngle), s=sin(vAngle);
@@ -190,7 +216,10 @@ import { gameState, weatherTransitionRamp } from "./game-state";
         if(uv.x<0.0||uv.x>1.0||uv.y<0.0||uv.y>1.0) discard;
         vec4 tex=texture2D(petalMap,uv);
         if(tex.a<0.055) discard;
-        gl_FragColor=vec4(tex.rgb*tint,tex.a*opacity);
+        // 每片葉子/花瓣用自己的亂數種子在兩個色號之間取值，同一層裡的顆粒
+        // 才不會全部長得一模一樣的顏色。
+        vec3 particleTint=mix(tint,tint2,vSeed);
+        gl_FragColor=vec4(tex.rgb*particleTint,tex.a*opacity);
       }`,
           transparent: true,
           depthWrite: false,
@@ -216,17 +245,21 @@ import { gameState, weatherTransitionRamp } from "./game-state";
         petalTexture,
       );
       export const autumnLeafTexture = makeSoftParticleTexture("leaf");
+      // 每片楓葉在這兩個色號之間隨機取色(靠 petalSeed)，同一批飄落的葉子
+      // 才會有金黃到棕紅的深淺差異，不是全部同一個顏色。
       export const autumnLeafEffect = makePetalLayer(
         210,
-        0xffd0a0,
+        0xffd27a,
         12.5,
         autumnLeafTexture,
+        0xb8452e,
       );
       export const autumnLeafForegroundEffect = makePetalLayer(
         75,
-        0xffa06f,
+        0xffab5c,
         18,
         autumnLeafTexture,
+        0x8f3323,
       );
       export const weatherFlashLight = new THREE.HemisphereLight(
         0xeaf3ff,
