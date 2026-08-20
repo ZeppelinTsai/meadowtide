@@ -144,10 +144,11 @@ gameState.lastFrame = performance.now();
             gameState.player.position.z,
           );
         else if (gameState.currentMapName === "oldVillage")
-          gameState.player.position.y += oldVillageGroundY(
-            gameState.player.position.x,
-            gameState.player.position.z,
-          );
+          gameState.player.position.y +=
+            oldVillageGroundY(
+              gameState.player.position.x,
+              gameState.player.position.z,
+            ) + 0.03;
 
         // 拋竿/持竿動畫：雙手一起蓋過 animateWalk 剛設好的角度。左手往內、往前
         // 擺，靠到跟右手（拿竿那手）差不多的位置跟角度，用兩隻手臂同一個朝向

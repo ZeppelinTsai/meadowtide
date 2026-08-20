@@ -63,13 +63,14 @@ import { hash2 } from "./utils";
           width: 1.65,
         },
         oldVillage: {
-          width: 34,
+          width: 41,
           height: 30,
           livingGate: { x: 27, z: 0, width: 3 },
-          portGate: { x: 33, z: 9, height: 15, portZ: 20 },
+          livingAreaGate: { x: 20, z: 42, width: 3 },
+          portGate: { x: 40, z: 9, height: 15, portZ: 20 },
           mountainRoad: { x: 3, z: 29, width: 3 },
           artVillageGate: { x: 0, z: 18 },
-          plaza: { x: 22, z: 4, width: 11, height: 22 },
+          plaza: { x: 22, z: 4, width: 18, height: 22 },
           terraces: {
             upper: { maxZ: 9, elevation: 2 },
             middle: { minZ: 10, maxZ: 17, elevation: 1 },
@@ -815,8 +816,22 @@ import { hash2 } from "./utils";
 
       // 舊城鎮連通點(x=20~22, z=42)——生活區最南端。
       [20, 21, 22].forEach((x) => {
-        MAPS.livingArea.tiles[42][x] = 3;
+        MAPS.livingArea.tiles[42][x] = 5;
       });
+      // 清掉上一版誤往左鋪到 x=13~15 的南向支路；z=37 是既有橫路，保留。
+      for (let z = 38; z <= 42; z++) {
+        for (let x = 13; x <= 15; x++) MAPS.livingArea.tiles[z][x] = 0;
+      }
+      for (let z = 37; z < LAYOUT.oldVillage.livingAreaGate.z; z++) {
+        for (let i = 0; i < LAYOUT.oldVillage.livingAreaGate.width; i++) {
+          MAPS.livingArea.tiles[z][LAYOUT.oldVillage.livingAreaGate.x + i] = 5;
+        }
+      }
+      for (let i = 0; i < LAYOUT.oldVillage.livingAreaGate.width; i++) {
+        MAPS.livingArea.tiles[LAYOUT.oldVillage.livingAreaGate.z][
+          LAYOUT.oldVillage.livingAreaGate.x + i
+        ] = 3;
+      }
       // 港口連通點(x=37~46, z=42) 的門檻標記本身放在檔案後段，跟「南側
       // 延伸地形補沙灘/海資料」那段一起處理——要先把 z=37~42 補上真的
       // 沙灘/海，門檻才不會蓋在假資料上面。

@@ -450,6 +450,11 @@ import { OYSTER_RACK_VISUAL } from "./game-state";
               color: 0x8f8779,
               roughness: 0.98,
             });
+            // 從地面(y=0)一路實心蓋到 elevation，不是只有一片薄薄的頂面——
+            // 之前只做 0.18 厚的浮板，頂面高度沒錯，但浮板底下到地面之間
+            // 完全沒有東西填滿，鏡頭有角度時會直接看穿那個空隙看到背景，
+            // 讀起來像一塊脫離地面、穿模飄浮的灰色方塊。實心方塊從地面
+            // 蓋到頂，側面本身就是懸崖面，不會露出下面的空洞。
             const addTerrace = (z, depth, elevation) => {
               const terrace = new THREE.Mesh(
                 new THREE.BoxGeometry(22, elevation, depth),
@@ -1299,7 +1304,7 @@ import { OYSTER_RACK_VISUAL } from "./game-state";
                   ? oldVillageGroundY(
                       gameState.playerGridPos.x,
                       gameState.playerGridPos.z,
-                    )
+                    ) + 0.03
                   : 0;
           fadeIn();
         });
@@ -1420,17 +1425,20 @@ import { OYSTER_RACK_VISUAL } from "./game-state";
         // 不再通往港口。門檻放回 z=42(生活區最南端)：這個 x 範圍離海很遠，
         // 沒有港口那組「海面網格視覺延伸蓋住草地」的問題，不用像港口那組
         // 挪到 z=36。
-        ...[20, 21, 22].map((x) => ({
+        ...Array.from(
+          { length: LAYOUT.oldVillage.livingAreaGate.width },
+          (_, i) => ({
           map: "livingArea",
-          x,
-          z: 42,
+          x: LAYOUT.oldVillage.livingAreaGate.x + i,
+          z: LAYOUT.oldVillage.livingAreaGate.z,
           trigger: "touch",
           action: () =>
             loadMap("oldVillage", {
-              x: LAYOUT.oldVillage.livingGate.x + (x - 20),
+              x: LAYOUT.oldVillage.livingGate.x + i,
               z: 1,
             }),
-        })),
+          }),
+        ),
         ...Array.from({ length: LAYOUT.oldVillage.livingGate.width }, (_, i) => ({
           map: "oldVillage",
           x: LAYOUT.oldVillage.livingGate.x + i,
@@ -1438,7 +1446,11 @@ import { OYSTER_RACK_VISUAL } from "./game-state";
           trigger: "touch",
           // 跟女神祠堂那組同樣的道理：loadMap() 直接設 playerGridPos，落在
           // 觸發格本身不會立刻反彈，所以往返可以共用同一個(7,0)。
-          action: () => loadMap("livingArea", { x: 20 + i, z: 41 }),
+          action: () =>
+            loadMap("livingArea", {
+              x: LAYOUT.oldVillage.livingAreaGate.x + i,
+              z: LAYOUT.oldVillage.livingAreaGate.z - 1,
+            }),
         })),
         // 美術村 <-> 舊城鎮（南側新門檻）／港口（南側新門檻），兩邊都通
         {
