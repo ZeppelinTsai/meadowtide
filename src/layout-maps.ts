@@ -69,6 +69,7 @@ import { hash2 } from "./utils";
           livingAreaGate: { x: 20, z: 42, width: 3 },
           portGate: { x: 40, z: 9, height: 15, portZ: 20 },
           mountainRoad: { x: 3, z: 29, width: 3 },
+          mountainGate: { x: 1, z: 0 },
           artVillageGate: { x: 3, z: 29 },
           plaza: { x: 22, z: 4, width: 18, height: 22 },
           terraces: {
@@ -137,6 +138,21 @@ import { hash2 } from "./utils";
             },
           ],
         },
+        mountain: {
+          width: 28,
+          height: 44,
+          townGate: { x: 4, z: 43 },
+          homeGate: { x: 23, z: 24 },
+          foot: { x: 3, z: 32, width: 19, depth: 11, elevation: 0 },
+          waist: { x: 4, z: 17, width: 20, depth: 13, elevation: 2 },
+          summit: { x: 7, z: 2, width: 14, depth: 11, elevation: 4 },
+          lowerStair: { x: 8, width: 3, fromZ: 29, toZ: 34, baseElevation: 0, elevation: 2, steps: 8 },
+          upperStair: { x: 13, width: 3, fromZ: 12, toZ: 19, baseElevation: 2, elevation: 2, steps: 10 },
+          trees: [
+            [18, 36], [5, 21], [8, 20], [20, 21], [7, 27], [20, 27],
+            [9, 7], [12, 5], [18, 7], [19, 10],
+          ],
+        },
         port: {
           width: 34,
           height: 60,
@@ -162,6 +178,87 @@ import { hash2 } from "./utils";
           ],
         },
       };
+
+      function makeMountainMapTiles() {
+        const mountain = LAYOUT.mountain;
+        const tiles = Array.from({ length: mountain.height }, () =>
+          Array(mountain.width).fill(1),
+        );
+        const paint = (x, z, width, depth, tile = 0) => {
+          for (let dz = z; dz < z + depth; dz++)
+            for (let dx = x; dx < x + width; dx++)
+              if (tiles[dz]?.[dx] !== undefined) tiles[dz][dx] = tile;
+        };
+        const path = (x, z, width, depth) => paint(x, z, width, depth, 5);
+        paint(mountain.foot.x, mountain.foot.z, mountain.foot.width, mountain.foot.depth);
+        paint(mountain.waist.x, mountain.waist.z, mountain.waist.width, mountain.waist.depth);
+        paint(mountain.summit.x, mountain.summit.z, mountain.summit.width, mountain.summit.depth);
+        path(3, 32, 8, 12);
+        path(8, 28, 3, 7);
+        path(8, 25, 8, 4);
+        path(13, 11, 3, 15);
+        path(15, 9, 4, 4);
+        path(21, 23, 3, 3);
+        tiles[mountain.townGate.z][mountain.townGate.x] = 3;
+        tiles[mountain.homeGate.z][mountain.homeGate.x] = 3;
+        mountain.trees.forEach(([x, z]) => (tiles[z][x] = 2));
+        return tiles;
+      }
+
+      export function mountainGroundY(x: number, z: number) {
+        const mountain = LAYOUT.mountain;
+        const stairHeight = (stair) => {
+          if (
+            x < stair.x - 0.5 ||
+            x > stair.x + stair.width - 0.5 ||
+            z < stair.fromZ ||
+            z > stair.toZ
+          )
+            return null;
+          const stepDepth = (stair.toZ - stair.fromZ) / stair.steps;
+          const stepIndex = Math.max(
+            0,
+            Math.min(
+              stair.steps,
+              Math.floor((stair.toZ - z) / stepDepth + 1e-6) + 1,
+            ),
+          );
+          return (
+            stair.baseElevation +
+            stepIndex * (stair.elevation / stair.steps)
+          );
+        };
+        for (const stair of [mountain.lowerStair, mountain.upperStair]) {
+          const height = stairHeight(stair);
+          if (height !== null) return height;
+        }
+        if (
+          x >= mountain.summit.x - 0.5 &&
+          x <= mountain.summit.x + mountain.summit.width - 0.5 &&
+          z >= mountain.summit.z - 0.5 &&
+          z <= mountain.summit.z + mountain.summit.depth - 0.5
+        )
+          return mountain.summit.elevation;
+        if (
+          x >= mountain.waist.x - 0.5 &&
+          x <= mountain.waist.x + mountain.waist.width - 0.5 &&
+          z >= mountain.waist.z - 0.5 &&
+          z <= mountain.waist.z + mountain.waist.depth - 0.5
+        )
+          return mountain.waist.elevation;
+        return 0;
+      }
+
+      export function isOnMountainStair(x: number, z: number) {
+        const mountain = LAYOUT.mountain;
+        return [mountain.lowerStair, mountain.upperStair].some(
+          (stair) =>
+            x >= stair.x - 0.5 &&
+            x <= stair.x + stair.width - 0.5 &&
+            z >= stair.fromZ &&
+            z <= stair.toZ,
+        );
+      }
 
       export function portGroundY(x: number, z: number) {
         const port = LAYOUT.port;
@@ -349,6 +446,7 @@ import { hash2 } from "./utils";
         for (let z = 0; z < village.portGate.height; z++)
           tiles[village.portGate.z + z][village.portGate.x] = 3;
         tiles[village.artVillageGate.z][village.artVillageGate.x] = 3;
+        tiles[village.mountainGate.z][village.mountainGate.x] = 3;
         village.houses.forEach((house) => (tiles[house.z][house.x] = 1));
         return tiles;
       }
@@ -477,6 +575,10 @@ import { hash2 } from "./utils";
           tiles: makeOldVillageTiles(),
           placeholders: LAYOUT.oldVillage.houses,
           playerStart: { x: 28, z: 2 },
+        },
+        mountain: {
+          tiles: makeMountainMapTiles(),
+          playerStart: { x: 4, z: 41 },
         },
         // 港口——左側石板廣場接舊城鎮；中央是三面石造碼頭包圍的內港與渡輪；
         // 北側商店背後的沙灘延續生活區；右側木棧橋停小艇。保留原本西界換圖、
@@ -630,7 +732,7 @@ import { hash2 } from "./utils";
       ) {
         MAPS.livingArea.tiles[MOUNTAIN_GATE_BLOCKER.z][
           MOUNTAIN_GATE_BLOCKER.x
-        ] = 1;
+        ] = 3;
       }
 
       // 女神祠堂步道：原本的沙灘只到 x=46 左右就變成海(9)；在最北側三排

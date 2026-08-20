@@ -2,7 +2,7 @@ import * as THREE from "three";
 import { hash2 } from "./utils";
 import { gameState } from "./game-state";
 import { scene, TILE, PLATEAU_Y, NORTH_CLIFF_Z, SOUTH_TERRAIN_EXTENSION, NORTH_TERRAIN_EXTENSION, northCliffEdgeZ, groundY, updateCameraFrustum, makeWaterSparklePoints } from "./scene-sky";
-import { LAYOUT, MAPS, carpenterQuest, CARPENTER_HOUSE, isInsideLakeShape, AVENUE_TREE_KEYS, TOWN_Z_START, RAMP_CORRIDOR_MIN_Z, RAMP_CORRIDOR_MAX_Z, COAST_ROAD_CENTER_Z, COAST_ROAD_HALF_WIDTH, lakeEdgeFactor, POUCH_POS, CARPENTER_DOORSTEP, SHRINE_PATH_START_X, SHRINE_PATH_LENGTH, SHRINE_PATH_ELEVATION, portGroundY, oldVillageGroundY } from "./layout-maps";
+import { LAYOUT, MAPS, carpenterQuest, CARPENTER_HOUSE, isInsideLakeShape, AVENUE_TREE_KEYS, TOWN_Z_START, RAMP_CORRIDOR_MIN_Z, RAMP_CORRIDOR_MAX_Z, COAST_ROAD_CENTER_Z, COAST_ROAD_HALF_WIDTH, lakeEdgeFactor, POUCH_POS, CARPENTER_DOORSTEP, SHRINE_PATH_START_X, SHRINE_PATH_LENGTH, SHRINE_PATH_ELEVATION, portGroundY, oldVillageGroundY, mountainGroundY, isOnMountainStair, MOUNTAIN_GATE_BLOCKER } from "./layout-maps";
 import { handleCarpenterDockTouch, handleCarpenterDoorstepTouch } from "./carpenter-quest";
 import { windowMats, waterSurfaceMaterials, waterSkyUnderlayMaterials, waterSparkleMaterials, outdoorLampLights, foamMeshes, windmillRotors, lakeShoreColliders, fishSchool, pastureGrassBlades, avenueLeafMaterials, seasonalTreeLeafMaterials, seasonalGroundMaterials, SEA_FISH_SCALE, LAKE_FISH_SCALE, EAST_SEA_WAVE_DIRECTION, NORTHEAST_SEA_WAVE_DIRECTION, thresholdMarkerMeshes, thresholdMarkersVisible } from "./scene-registries";
 import { npcGroup, animalGroup, PASTURE, hasPastureGrassAt } from "./npc-runtime";
@@ -436,7 +436,10 @@ import { OYSTER_RACK_VISUAL } from "./game-state";
           // 沙灘的高低差，plateauGroup 維持等於 gameState.mapGroup，不用另外墊高。
           const ground = new THREE.Mesh(
             new THREE.BoxGeometry(cols * TILE, 0.2, rows * TILE),
-            new THREE.MeshStandardMaterial({ color: 0x6ab04c }),
+            new THREE.MeshStandardMaterial({
+              color: mapName === "mountain" ? 0x596068 : 0x6ab04c,
+              roughness: 1,
+            }),
           );
           ground.position.set(
             (cols * TILE) / 2 - TILE / 2,
@@ -553,6 +556,98 @@ import { OYSTER_RACK_VISUAL } from "./game-state";
                 gameState.mapGroup.add(mesh);
               }
             });
+          } else if (mapName === "mountain") {
+            const mountain = LAYOUT.mountain;
+            const cliffMat = new THREE.MeshStandardMaterial({
+              color: 0x747875,
+              roughness: 1,
+              flatShading: true,
+            });
+            const grassMat = new THREE.MeshStandardMaterial({
+              color: 0x78945a,
+              roughness: 0.98,
+            });
+            const addPlatform = (platform) => {
+              const mesh = new THREE.Mesh(
+                new THREE.BoxGeometry(
+                  platform.width,
+                  platform.elevation + 0.24,
+                  platform.depth,
+                ),
+                [cliffMat, cliffMat, grassMat, cliffMat, cliffMat, cliffMat],
+              );
+              mesh.position.set(
+                platform.x + (platform.width - 1) / 2,
+                (platform.elevation - 0.24) / 2,
+                platform.z + (platform.depth - 1) / 2,
+              );
+              mesh.castShadow = true;
+              mesh.receiveShadow = true;
+              gameState.mapGroup.add(mesh);
+            };
+            addPlatform(mountain.foot);
+            addPlatform(mountain.waist);
+            addPlatform(mountain.summit);
+
+            const topMats = [0xd0b982, 0x9a835f].map(
+              (color) => new THREE.MeshStandardMaterial({ color, roughness: 1 }),
+            );
+            const sideMat = new THREE.MeshStandardMaterial({
+              color: 0x565755,
+              roughness: 1,
+            });
+            [mountain.lowerStair, mountain.upperStair].forEach(
+              (stair) => {
+                const depth = (stair.toZ - stair.fromZ) / stair.steps;
+                for (let step = 0; step < stair.steps; step++) {
+                  const height = ((step + 1) / stair.steps) * stair.elevation;
+                  const mesh = new THREE.Mesh(
+                    new THREE.BoxGeometry(stair.width, height, depth),
+                    [sideMat, sideMat, topMats[step % 2], sideMat, sideMat, sideMat],
+                  );
+                  mesh.position.set(
+                    stair.x + 1,
+                    stair.baseElevation + height / 2,
+                    stair.toZ - (step + 0.5) * depth,
+                  );
+                  mesh.castShadow = true;
+                  mesh.receiveShadow = true;
+                  gameState.mapGroup.add(mesh);
+                }
+              },
+            );
+
+            [
+              [3, 32], [21, 34], [4, 18], [23, 19], [7, 3], [20, 4],
+              [6, 29], [22, 29], [11, 13], [18, 13], [25, 31], [26, 36],
+            ].forEach(([x, z], index) => {
+              const rock = makeStone(x, z, hash2(index * 2.7, 8.4));
+              rock.position.y += mountainGroundY(x, z);
+              rock.scale.setScalar(1.1 + (index % 3) * 0.25);
+              gameState.mapGroup.add(rock);
+            });
+            const bench = makeBench(13, 7, Math.PI);
+            bench.position.y += mountain.summit.elevation;
+            gameState.mapGroup.add(bench);
+            const summitMarker = new THREE.Group();
+            const markerStone = new THREE.MeshStandardMaterial({
+              color: 0x8f8b80,
+              roughness: 1,
+            });
+            const ring = new THREE.Mesh(
+              new THREE.TorusGeometry(0.48, 0.11, 8, 18),
+              markerStone,
+            );
+            ring.rotation.x = Math.PI / 2;
+            ring.position.set(16.5, mountain.summit.elevation + 0.12, 6.5);
+            summitMarker.add(ring);
+            const post = new THREE.Mesh(
+              new THREE.CylinderGeometry(0.07, 0.09, 0.9, 6),
+              markerStone,
+            );
+            post.position.set(16.5, mountain.summit.elevation + 0.55, 6.5);
+            summitMarker.add(post);
+            gameState.mapGroup.add(summitMarker);
           }
         }
 
@@ -674,7 +769,13 @@ import { OYSTER_RACK_VISUAL } from "./game-state";
                 mapName === "livingArea" && AVENUE_TREE_KEYS.has(`${x},${z}`)
                   ? makeAvenueTree(x, z)
                   : makeTree(x, z);
-              m.position.y += mapName === "livingArea" ? groundY(x, z) : 0;
+              m.position.y +=
+                mapName === "livingArea"
+                  ? groundY(x, z)
+                  : mapName === "mountain"
+                    ? mountainGroundY(x, z)
+                    : 0;
+              if (mapName === "mountain" && z <= 5) m.scale.setScalar(1.45);
               gameState.mapGroup.add(m);
             } else if (tile === 3) {
               const threshold = new THREE.Mesh(
@@ -688,6 +789,8 @@ import { OYSTER_RACK_VISUAL } from "./game-state";
                     ? groundY(x, z)
                     : mapName === "oldVillage"
                       ? oldVillageGroundY(x, z)
+                      : mapName === "mountain"
+                        ? mountainGroundY(x, z)
                       : 0),
                 z,
               );
@@ -711,13 +814,27 @@ import { OYSTER_RACK_VISUAL } from "./game-state";
                       z >= stair.fromZ &&
                       z < stair.toZ,
                   ));
-              if (isOldVillageStair) return;
+              const isMountainStair =
+                mapName === "mountain" &&
+                [
+                  LAYOUT.mountain.lowerStair,
+                  LAYOUT.mountain.upperStair,
+                ].some(
+                  (stair) =>
+                    x >= stair.x &&
+                    x < stair.x + stair.width &&
+                    z >= stair.fromZ &&
+                    z < stair.toZ,
+                );
+              if (isOldVillageStair || isMountainStair) return;
               const m = makePath(x, z);
               m.position.y +=
                 mapName === "livingArea"
                   ? groundY(x, z)
                   : mapName === "oldVillage"
                     ? oldVillageGroundY(x, z)
+                    : mapName === "mountain"
+                      ? mountainGroundY(x, z)
                     : 0;
               if (mapName === "oldVillage") {
                 (m.material as THREE.Material).depthWrite = false;
@@ -1384,7 +1501,7 @@ import { OYSTER_RACK_VISUAL } from "./game-state";
         fadeOut(() => {
           gameState.zoom = Math.min(
             gameState.zoom,
-            mapName === "port" ? 20 : 18,
+            mapName === "port" ? 20 : mapName === "mountain" ? 22 : 18,
           );
           updateCameraFrustum();
           buildMap(mapName);
@@ -1406,6 +1523,17 @@ import { OYSTER_RACK_VISUAL } from "./game-state";
                       gameState.playerGridPos.x,
                       gameState.playerGridPos.z,
                     ) + 0.03
+                  : mapName === "mountain"
+                    ? mountainGroundY(
+                        gameState.playerGridPos.x,
+                        gameState.playerGridPos.z,
+                      ) +
+                      (isOnMountainStair(
+                        gameState.playerGridPos.x,
+                        gameState.playerGridPos.z,
+                      )
+                        ? 0.3
+                        : 0.08)
                   : 0;
           fadeIn();
         });
@@ -1553,6 +1681,42 @@ import { OYSTER_RACK_VISUAL } from "./game-state";
               z: LAYOUT.oldVillage.livingAreaGate.z - 1,
             }),
         })),
+        {
+          map: "oldVillage",
+          x: LAYOUT.oldVillage.mountainGate.x,
+          z: LAYOUT.oldVillage.mountainGate.z,
+          trigger: "touch",
+          action: () => loadMap("mountain", { x: 4, z: 41 }),
+        },
+        {
+          map: "mountain",
+          x: LAYOUT.mountain.townGate.x,
+          z: LAYOUT.mountain.townGate.z,
+          trigger: "touch",
+          action: () => loadMap("oldVillage", { x: 1, z: 1 }),
+        },
+        {
+          map: "livingArea",
+          x: MOUNTAIN_GATE_BLOCKER.x,
+          z: MOUNTAIN_GATE_BLOCKER.z,
+          trigger: "touch",
+          action: () =>
+            loadMap("mountain", {
+              x: LAYOUT.mountain.homeGate.x - 1,
+              z: LAYOUT.mountain.homeGate.z,
+            }),
+        },
+        {
+          map: "mountain",
+          x: LAYOUT.mountain.homeGate.x,
+          z: LAYOUT.mountain.homeGate.z,
+          trigger: "touch",
+          action: () =>
+            loadMap("livingArea", {
+              x: MOUNTAIN_GATE_BLOCKER.x + 1,
+              z: MOUNTAIN_GATE_BLOCKER.z + 1,
+            }),
+        },
         // 美術村 <-> 舊城鎮（南側新門檻）／港口（南側新門檻），兩邊都通
         {
           map: "oldVillage",

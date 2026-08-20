@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import { gameState, TIME_CONFIG, CAST_ANIM_DURATION, getNightFactor, isUnsafeAnimalWeather, nearWater } from "./game-state";
 import { isGameTimePaused, updateGameClock } from "./game-clock";
-import { LAYOUT, SOUTHERNMOST_AVENUE_TREE_Z, aStar, portGroundY, oldVillageGroundY, isOnOldVillageStair } from "./layout-maps";
+import { LAYOUT, SOUTHERNMOST_AVENUE_TREE_Z, aStar, portGroundY, oldVillageGroundY, isOnOldVillageStair, mountainGroundY, isOnMountainStair } from "./layout-maps";
 import { npcs, animals, BARN_DOOR, outsideCols, outsideRows } from "./npc-runtime";
 import { getScheduleTarget } from "./npc-defs";
 import { animateWalk, animateAnimalWalk } from "./humanoid";
@@ -110,11 +110,21 @@ gameState.lastFrame = performance.now();
         const moveSpeed = 10; // 格/秒
         const stepX = dx * moveSpeed * dt,
           stepZ = dz * moveSpeed * dt;
-        const canTraverseVillageHeight = (fromX, fromZ, toX, toZ) =>
-          gameState.currentMapName !== "oldVillage" ||
-          Math.abs(
-            oldVillageGroundY(toX, toZ) - oldVillageGroundY(fromX, fromZ),
-          ) <= 0.7;
+        const canTraverseVillageHeight = (fromX, fromZ, toX, toZ) => {
+          if (gameState.currentMapName === "oldVillage")
+            return (
+              Math.abs(
+                oldVillageGroundY(toX, toZ) - oldVillageGroundY(fromX, fromZ),
+              ) <= 0.7
+            );
+          if (gameState.currentMapName === "mountain")
+            return (
+              Math.abs(
+                mountainGroundY(toX, toZ) - mountainGroundY(fromX, fromZ),
+              ) <= 0.7
+            );
+          return true;
+        };
         // X / Z 分開檢查碰撞，撞到一個軸還能沿著另一個軸繼續滑，這是「平穩」的關鍵
         const tryX = gameState.player.position.x + stepX;
         if (
@@ -176,6 +186,18 @@ gameState.lastFrame = performance.now();
             )
               ? 0.18
               : 0.03);
+        else if (gameState.currentMapName === "mountain")
+          gameState.player.position.y +=
+            mountainGroundY(
+              gameState.player.position.x,
+              gameState.player.position.z,
+            ) +
+            (isOnMountainStair(
+              gameState.player.position.x,
+              gameState.player.position.z,
+            )
+              ? 0.3
+              : 0.08);
         gameState.player.traverse((child: any) => {
           if (child.isMesh)
             child.renderOrder = gameState.currentMapName === "oldVillage" ? 3 : 0;
@@ -688,6 +710,11 @@ gameState.lastFrame = performance.now();
         }
         if (gameState.currentMapName === "oldVillage") {
           groundOffset = oldVillageGroundY(
+            gameState.player.position.x,
+            gameState.player.position.z,
+          );
+        } else if (gameState.currentMapName === "mountain") {
+          groundOffset = mountainGroundY(
             gameState.player.position.x,
             gameState.player.position.z,
           );
