@@ -91,7 +91,14 @@
 
 ## 朝向/旋轉的慣例 — 這裡出過至少兩次 bug
 
-- 玩家、NPC（`makeHumanoid`/`makeGirlPlayer`）的模型**臉朝本地 -Z**（鼻子、
+- **人形角色統一高度為 `1.43` 世界單位**（鞋底到頭頂／頭髮主體頂端），以村長阿姨的
+  `makeMayor()` 模型為基準。唯一常數是 `src/humanoid.ts` 的
+  `HUMANOID_WORLD_HEIGHT`；新增或修改 `makeHumanoid()`、`makeMayor()`、
+  `makeHeroPlayer()` 等模型時，先量未縮放高度，再用 `humanoidScale()` 換算，
+  不要把呆毛、翹髮、帽飾等突出裝飾算進基準高度；這些要在統一身高之外額外
+  延伸。也不要另寫任意縮放倍率，避免
+  角色身體為了裝飾被整體縮小，造成視覺身高與腿長漂移。
+- 玩家、NPC（`makeHumanoid`/`makeMayor`/`makeHeroPlayer`）的模型**臉朝本地 -Z**（鼻子、
   腮紅都釘在 z 為負的那一側）。移動時的正確公式是：
   `rotation.y = Math.atan2(-dx, -dz)`（不是 `atan2(dx,dz)`，這個正負號
   反過來會導致角色臉一直對著剛走過來的方向，不是要走去的方向）。

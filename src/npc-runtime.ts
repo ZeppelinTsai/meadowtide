@@ -3,7 +3,7 @@ import { hash2 } from "./utils";
 import { scene, PLATEAU_Y } from "./scene-sky";
 import { MAPS, LAYOUT, carpenterQuest, isInsideLakeShape } from "./layout-maps";
 import { npcDefs } from "./npc-defs";
-import { makeHumanoid } from "./humanoid";
+import { makeHumanoid, makeMayor } from "./humanoid";
 import { makeAnimal } from "./props";
 
 // 9) NPC 群 — 現在每個 NPC 多帶兩個欄位：path（A* 算出的格子序列）
@@ -15,7 +15,10 @@ import { makeAnimal } from "./props";
       export const outsideCols = MAPS.livingArea.tiles[0].length;
       export const outsideRows = MAPS.livingArea.tiles.length;
       export const npcs = npcDefs.map((def) => {
-        const mesh = makeHumanoid({ shirt: def.shirt, hair: def.hair });
+        const mesh =
+          def.id === "aunt"
+            ? makeMayor()
+            : makeHumanoid({ shirt: def.shirt, hair: def.hair });
         mesh.position.set(def.home.x, 0, def.home.z);
         npcGroup.add(mesh);
         return {

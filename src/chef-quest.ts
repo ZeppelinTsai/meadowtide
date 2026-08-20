@@ -1,4 +1,10 @@
-import { gameState, inventory, isNightTime, nearAnyNpc, TIME_CONFIG } from "./game-state";
+import {
+  gameState,
+  inventory,
+  isNightTime,
+  nearAnyNpc,
+  TIME_CONFIG,
+} from "./game-state";
 import {
   chefQuest,
   CHEF_MEAL_THRESHOLD,
@@ -6,11 +12,7 @@ import {
   CHEF_MEAL_WINDOW_END,
   LAYOUT,
 } from "./layout-maps";
-import {
-  showDialog,
-  showDialogSequence,
-  dialogQueue,
-} from "./dialogue";
+import { showDialog, showDialogSequence, dialogQueue } from "./dialogue";
 import { npcs } from "./npc-runtime";
 
 // ==============================================================
@@ -69,7 +71,11 @@ export function startChefDockScene() {
     },
     "[船靠岸，一位揹著大背包的女性走下船，先没看阿姨，反而先抬頭聞了聞風的味道]",
     { text: "「……海風裡有煙燻味。有人在曬魚乾？」", speaker: "chef" },
-    { text: "「啊——對，是東邊那戶。你鼻子真靈。」", speaker: "aunt", name: "村長" },
+    {
+      text: "「啊——對，是東邊那戶。你鼻子真靈。」",
+      speaker: "aunt",
+      name: "村長",
+    },
     { text: "「（低頭看了看自己的背包）職業病。」", speaker: "chef" },
     { text: "「聽說村子裡有間空著的民宿？」", speaker: "chef" },
     {
@@ -92,7 +98,10 @@ export function startChefHouseScene() {
   chefQuest.lastMealDay = -1;
   showDialogSequence([
     "[她一路走一路打量，經過廚房位置時腳步停得最久]",
-    { text: "「（蹲下看爐台）這個灶台還能用，煙道大概堵了。」", speaker: "chef" },
+    {
+      text: "「（蹲下看爐台）這個灶台還能用，煙道大概堵了。」",
+      speaker: "chef",
+    },
     "玩家：「這裡怎麼樣？」",
     { text: "「地方是好地方。」", speaker: "chef" },
     { text: "「但我不是來評估房子的。房子我隨時能修。」", speaker: "chef" },
@@ -105,7 +114,10 @@ export function startChefHouseScene() {
       text: "「所以在我開火做第一頓飯之前，我想先看看：這裡的人，是不是真的會坐下來、一起吃一頓飯。」",
       speaker: "chef",
     },
-    { text: "「不是我端菜給你們吃那種。是你們自己，真的會聚在一起。」", speaker: "chef" },
+    {
+      text: "「不是我端菜給你們吃那種。是你們自己，真的會聚在一起。」",
+      speaker: "chef",
+    },
     { text: "「做給我看，我就留下來。」", speaker: "chef" },
   ]);
 }
@@ -142,7 +154,7 @@ export function startChefMoveInScene() {
   chefQuest.stage = "moved_in";
   showDialogSequence([
     "[窗戶第一次亮起燈，還飄著淡淡的油煙味，廚師站在門口，手上是剛擦乾的圍裙]",
-    { text: "「進來吧，剛好夠一個人份。」", speaker: "chef" },
+    { text: "「進來吧，剛好夠一個人份。」", speaker: "ˊㄕ" },
     {
       // 跟木匠入住場景同一招：CG 圖檔還沒生成時 setDialogCg() 會 warn 一聲
       // 然後留在原本的 3D 畫面，不會卡住。
@@ -174,7 +186,10 @@ export function handleChefDoorstepTouch() {
 export function isInRestArea(x: number, z: number) {
   const area = LAYOUT.restArea;
   return (
-    x >= area.x && x < area.x + area.width && z >= area.z && z < area.z + area.height
+    x >= area.x &&
+    x < area.x + area.width &&
+    z >= area.z &&
+    z < area.z + area.height
   );
 }
 
@@ -188,7 +203,8 @@ function isAnyNpcPresent() {
 }
 
 function formatGameHour(hour: number) {
-  const wrapped = ((hour % TIME_CONFIG.gameHoursPerDay) + TIME_CONFIG.gameHoursPerDay) %
+  const wrapped =
+    ((hour % TIME_CONFIG.gameHoursPerDay) + TIME_CONFIG.gameHoursPerDay) %
     TIME_CONFIG.gameHoursPerDay;
   const hh = Math.floor(wrapped);
   const mm = Math.floor((wrapped - hh) * 60);
@@ -213,11 +229,18 @@ function evaluateChefMealConditions() {
   // 6...）卻不知道自己到底卡在哪一步，容易誤以為又是新的 bug。
   const alreadyProven = hasEnoughSharedMeals();
   const hour = gameState.currentPhase * TIME_CONFIG.gameHoursPerDay;
-  const inWindow = hour >= CHEF_MEAL_WINDOW_START && hour < CHEF_MEAL_WINDOW_END;
+  const inWindow =
+    hour >= CHEF_MEAL_WINDOW_START && hour < CHEF_MEAL_WINDOW_END;
   const hasFood = inventory.harvested > 0 || inventory.fish > 0;
   const npcPresent = isAnyNpcPresent();
   return {
-    ok: stageOk && !alreadyToday && !alreadyProven && inWindow && hasFood && npcPresent,
+    ok:
+      stageOk &&
+      !alreadyToday &&
+      !alreadyProven &&
+      inWindow &&
+      hasFood &&
+      npcPresent,
     inRestArea,
     alreadyToday,
     alreadyProven,

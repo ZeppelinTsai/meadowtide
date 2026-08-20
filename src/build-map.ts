@@ -70,7 +70,7 @@ import {
   PASTURE,
   hasPastureGrassAt,
 } from "./npc-runtime";
-import { makeGirlPlayer } from "./humanoid";
+import { makeHeroPlayer } from "./humanoid";
 import {
   makeTree,
   makeAvenueTree,
@@ -1778,7 +1778,7 @@ export function loadMap(mapName, startPos) {
     const pos = startPos || MAPS[mapName].playerStart;
     gameState.playerGridPos = { x: pos.x, z: pos.z };
     if (!gameState.player) {
-      gameState.player = makeGirlPlayer();
+      gameState.player = makeHeroPlayer();
       scene.add(gameState.player);
     }
     gameState.player.position.x = gameState.playerGridPos.x;
