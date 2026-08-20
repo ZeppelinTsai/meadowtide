@@ -9,8 +9,8 @@ import { hash2 } from "./utils";
       export const NORTH_EXPANSION = 5;
       export const LAYOUT = {
         // 北側新增 5 排：動物區留在新空間，其餘舊區域整體往南順延。
-        house: { x: 20, z: 9 + NORTH_EXPANSION, w: 3, d: 2, doorX: 21, visualScale: 2 },
-        barn: { x: 23, z: -2, w: 3, d: 2, doorX: 24, visualScale: 2 }, // 整座動物小屋向北移 3 格
+        house: { x: 20, z: 9 + NORTH_EXPANSION, w: 3, d: 2, doorX: 21, visualScale: 2, doorWorldHeight: 1.05 },
+        barn: { x: 23, z: -2, w: 3, d: 2, doorX: 24, visualScale: 2, doorWorldHeight: 1.05 }, // 整座動物小屋向北移 3 格
         pasture: { x: 17, z: -2, width: 15, height: 16 }, // 延伸到小屋左右，外緣由渲染做不規則化
         orchard: {
           x: 28,
@@ -69,14 +69,15 @@ import { hash2 } from "./utils";
           width: 1.65,
         },
         oldVillage: {
-          width: 45,
+          width: 47,
           height: 30,
-          westExpansion: 4,
+          westExpansion: 6,
           houseVisualScale: 1.5,
-          livingGate: { x: 31, z: 0, width: 3 },
+          houseDoorWorldHeight: 1.05,
+          livingGate: { x: 33, z: 0, width: 3 },
           livingAreaGate: { x: 20, z: 42, width: 3 },
           portGate: {
-            x: 44,
+            x: 46,
             z: 4,
             height: 26,
             portX: 0,
@@ -86,24 +87,24 @@ import { hash2 } from "./utils";
           mountainRoad: { x: 3, z: 29, width: 3 },
           mountainGate: { x: 1, z: 0 },
           artVillageGate: { x: 3, z: 29 },
-          artVillageSouthGate: { x: 34, z: 29, artX: 9, artZ: 0 },
-          plaza: { x: 26, z: 4, width: 18, height: 22 },
+          artVillageSouthGate: { x: 36, z: 29, artX: 9, artZ: 0 },
+          plaza: { x: 28, z: 4, width: 18, height: 22 },
           terraces: {
             upper: { maxZ: 9, elevation: 2 },
             middle: { minZ: 10, maxZ: 19, elevation: 1 },
-            westEdge: 25.5,
+            westEdge: 27.5,
           },
           mountainLanding: { x: 0, z: 0, width: 3, depth: 2, elevation: 3 },
           plazaStairs: [
-            { z: 7, width: 3, fromX: 23, toX: 26, elevation: 2, steps: 6 },
-            { z: 16, width: 3, fromX: 23, toX: 26, elevation: 1, steps: 6 },
+            { z: 7, width: 3, fromX: 25, toX: 28, elevation: 2, steps: 6 },
+            { z: 16, width: 3, fromX: 25, toX: 28, elevation: 1, steps: 6 },
           ],
           westStairs: [
             { x: 0, width: 3, fromZ: 2, toZ: 7, baseElevation: 2, elevation: 1, steps: 6 },
             { x: 0, width: 3, fromZ: 9, toZ: 16, baseElevation: 1, elevation: 1, steps: 7 },
             { x: 0, width: 3, fromZ: 19, toZ: 26, baseElevation: 0, elevation: 1, steps: 7 },
           ],
-          carpenterHouse: { x: 4, z: 23, d: 3 },
+          carpenterHouse: { x: 6, z: 23, d: 3 },
           // w/d/doorX/wallColor/roofColor/role：10 棟對應使用者定案的城鎮
           // 角色設定(4/3/3 三排)。role 純粹是資料標籤，給 build-map.ts 挑
           // 對應的門口裝飾用，也方便之後其他系統(NPC 排程等)用名字找到
@@ -123,54 +124,54 @@ import { hash2 } from "./utils";
             // 學校——雙倍寬度，磚紅屋頂+暖色牆面，屋頂鐘塔+旗桿是最醒目
             // 的地標。
             {
-              x: 3, z: 4, seed: 0.18, w: 4, d: 3, doorX: 4.5, role: "school",
+              x: 5, z: 4, seed: 0.18, w: 4, d: 3, doorX: 6.5, role: "school",
               wallColor: 0xe4c9a0, roofColor: 0x7a2e2e,
             },
             // 醫院——白牆+藍灰屋頂的醫療配色，門口上方掛紅十字招牌。
             {
-              x: 9, z: 4, seed: 0.34, w: 3, d: 3, doorX: 10, role: "hospital",
+              x: 11, z: 4, seed: 0.34, w: 3, d: 3, doorX: 12, role: "hospital",
               wallColor: 0xf2f0ea, roofColor: 0x3a5a72,
             },
             // 醫生家——跟醫院同一套藍調但降一階彩度，門口掛小十字牌。
             {
-              x: 14, z: 4, seed: 0.52, w: 3, d: 3, doorX: 15, role: "doctor",
+              x: 16, z: 4, seed: 0.52, w: 3, d: 3, doorX: 17, role: "doctor",
               wallColor: 0xd7e3e6, roofColor: 0x4a5a5e,
             },
             // 護士家——淺薄荷綠牆+暖陶土屋頂，跟醫生家同組但用色區分開來。
             {
-              x: 19, z: 4, seed: 0.68, w: 3, d: 3, doorX: 20, role: "nurse",
+              x: 21, z: 4, seed: 0.68, w: 3, d: 3, doorX: 22, role: "nurse",
               wallColor: 0xdce8dc, roofColor: 0x8a5a42,
             },
             // 老師家——暖芥末黃牆面，門口一疊書本裝飾。
             {
-              x: 4, z: 13, seed: 0.27, w: 3, d: 3, doorX: 5, role: "teacher",
+              x: 6, z: 13, seed: 0.27, w: 3, d: 3, doorX: 7, role: "teacher",
               wallColor: 0xd8c078, roofColor: 0x5a4530,
             },
             // 海洋學家家——藍綠牆面+風化灰藍屋頂，門口掛一個簡化船舵裝飾。
             {
-              x: 10, z: 13, seed: 0.46, w: 3, d: 3, doorX: 11,
+              x: 12, z: 13, seed: 0.46, w: 3, d: 3, doorX: 13,
               role: "oceanographer", wallColor: 0x9fc4c9, roofColor: 0x33525c,
             },
             // 雜貨店兼行政中心——雙倍寬度，整個城鎮視覺上的商業/行政門面：
             // 遮陽棚+吊招牌。
             {
-              x: 16, z: 13, seed: 0.73, w: 4, d: 3, doorX: 17.5,
+              x: 18, z: 13, seed: 0.73, w: 4, d: 3, doorX: 19.5,
               role: "generalStore", wallColor: 0xd9a94a, roofColor: 0x2f6b63,
             },
             // 木匠家——木匠事件用的「還沒整修好」空屋，見上方說明。
             {
-              x: 4, z: 23, seed: 0.22, w: 3, d: 3, doorX: 5,
+              x: 6, z: 23, seed: 0.22, w: 3, d: 3, doorX: 7,
               role: "carpenter", wallColor: 0xb8aa91, roofColor: 0x51443f,
             },
             // 藝術家家——粉調牆面+梅紫屋頂，門口擺一個簡化畫架。
             {
-              x: 10, z: 23, seed: 0.57, w: 3, d: 3, doorX: 11,
+              x: 12, z: 23, seed: 0.57, w: 3, d: 3, doorX: 13,
               role: "artist", wallColor: 0xd6a0c4, roofColor: 0x5a3a6a,
             },
             // 民宿——雙倍寬度，門口一支吊招牌+一盞燈籠，比住宅群更有「迎賓」
             // 的存在感。
             {
-              x: 16, z: 23, seed: 0.81, w: 4, d: 3, doorX: 17.5,
+              x: 18, z: 23, seed: 0.81, w: 4, d: 3, doorX: 19.5,
               role: "guesthouse", wallColor: 0xdcb894, roofColor: 0x4a3428,
             },
           ],
@@ -414,11 +415,11 @@ import { hash2 } from "./utils";
       // 留空，只封住能直接跨越高低差的邊緣。
       export const OLD_VILLAGE_RAILS = [
         {
-          x1: 3, z1: 9.5, x2: 23, z2: 9.5,
+          x1: 3, z1: 9.5, x2: 25, z2: 9.5,
           elevation: LAYOUT.oldVillage.terraces.upper.elevation,
         },
         {
-          x1: 3, z1: 19.5, x2: 23, z2: 19.5,
+          x1: 3, z1: 19.5, x2: 25, z2: 19.5,
           elevation: LAYOUT.oldVillage.terraces.middle.elevation,
         },
         { x1: LAYOUT.oldVillage.terraces.westEdge, z1: 0, x2: LAYOUT.oldVillage.terraces.westEdge, z2: 6.5 },
@@ -617,6 +618,7 @@ import { hash2 } from "./utils";
               d: LAYOUT.house.d,
               doorX: LAYOUT.house.doorX,
               visualScale: LAYOUT.house.visualScale,
+              doorWorldHeight: LAYOUT.house.doorWorldHeight,
             },
             {
               x: LAYOUT.barn.x,
@@ -625,6 +627,7 @@ import { hash2 } from "./utils";
               d: LAYOUT.barn.d,
               doorX: LAYOUT.barn.doorX,
               visualScale: LAYOUT.barn.visualScale,
+              doorWorldHeight: LAYOUT.barn.doorWorldHeight,
               style: "barn",
             },
           ],

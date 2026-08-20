@@ -131,6 +131,11 @@ npm run map-debug -- --map=port --legend
 工具目前只印地圖網格跟 `buildings`/`playerStart`，`--landmarks` 是預留的
 空殼（疊印 NPC/裝飾物位置），還沒實作。
 
+建筑外观使用 `visualScale` 放大时，视觉边界、门廊通道与运行时碰撞统一由
+`src/building-scale.ts` 计算，不要在 `isBlocked()` 另写一套缩放公式。修改建筑
+尺寸、缩放或门位置后运行 `npm run building-debug`，检查各建筑的世界边界、
+门廊半宽与最终门高；主屋、动物小屋及旧城镇房屋都必须出现在报告中。
+
 ## 已知還沒做 / 刻意簡化的部分
 
 - **F2 俯視規劃模式**（格線、半透明分區、方向鍵搬動整塊區域、即時檢查

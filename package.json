@@ -11,7 +11,8 @@
     "build": "tsc --noEmit && vite build",
     "build:win": "npm run build && electron-builder --win nsis",
     "preview": "vite preview",
-    "map-debug": "tsx scripts/map-debug.ts"
+    "map-debug": "tsx scripts/map-debug.ts",
+    "building-debug": "tsx scripts/building-debug.ts"
   },
   "dependencies": {
     "three": "0.128.0"

@@ -201,6 +201,7 @@ import { randomPasturePoint } from "./npc-runtime";
         roofColor = 0xa8402f,
         skipWindowGlow = false,
         visualScale = 1,
+        doorWorldHeight = null,
       }) {
         const group = new THREE.Group();
         const centerX = x + (w - 1) / 2,
@@ -241,11 +242,12 @@ import { randomPasturePoint } from "./npc-runtime";
         chimney.position.set(width * 0.28, wallHeight + 0.35, -depth * 0.22);
         chimney.castShadow = true;
         group.add(chimney);
+        const doorHeight = doorWorldHeight ? doorWorldHeight / visualScale : 0.55;
         const door = new THREE.Mesh(
-          new THREE.BoxGeometry(0.32, 0.55, 0.06),
+          new THREE.BoxGeometry(0.32, doorHeight, 0.06),
           new THREE.MeshStandardMaterial({ color: 0x4a2f1f }),
         );
-        door.position.set(doorX - centerX, 0.3, (depth / 2) * 0.98);
+        door.position.set(doorX - centerX, doorHeight / 2, (depth / 2) * 0.98);
         group.add(door);
         // skipWindowGlow：某些空屋(例如木匠事件用的那間)有自己一套跟劇情
         // stage 綁定的發光邏輯，窗戶不該一蓋好就自動加入全域 windowMats、
@@ -284,6 +286,7 @@ import { randomPasturePoint } from "./npc-runtime";
         wallColor = 0x9c4a3a,
         roofColor = 0x4a3428,
         visualScale = 1,
+        doorWorldHeight = null,
       }) {
         const group = new THREE.Group();
         const centerX = x + (w - 1) / 2,
@@ -315,11 +318,12 @@ import { randomPasturePoint } from "./npc-runtime";
         group.add(roof);
         // 雙開穀倉門，比一般房子的門寬很多，中間留一條縫
         const doorMat = new THREE.MeshStandardMaterial({ color: 0x2f2018 });
+        const doorHeight = doorWorldHeight ? doorWorldHeight / visualScale : 0.62;
         const doorL = new THREE.Mesh(
-          new THREE.BoxGeometry(0.24, 0.62, 0.06),
+          new THREE.BoxGeometry(0.24, doorHeight, 0.06),
           doorMat,
         );
-        doorL.position.set(doorX - centerX - 0.13, 0.33, (depth / 2) * 0.98);
+        doorL.position.set(doorX - centerX - 0.13, doorHeight / 2, (depth / 2) * 0.98);
         const doorR = doorL.clone();
         doorR.position.x = doorX - centerX + 0.13;
         group.add(doorL, doorR);

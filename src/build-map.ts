@@ -71,6 +71,7 @@ import {
   hasPastureGrassAt,
 } from "./npc-runtime";
 import { makeHeroPlayer } from "./humanoid";
+import { isPointBlockedByScaledBuilding } from "./building-scale";
 import {
   makeTree,
   makeAvenueTree,
@@ -852,6 +853,10 @@ export function buildMap(mapName) {
                 mapName === "oldVillage"
                   ? LAYOUT.oldVillage.houseVisualScale
                   : p.visualScale,
+              doorWorldHeight:
+                mapName === "oldVillage"
+                  ? LAYOUT.oldVillage.houseDoorWorldHeight
+                  : p.doorWorldHeight,
             })
         : makeTownPlaceholder(p.x, p.z, p.seed);
     townHouse.position.y +=
@@ -1736,32 +1741,16 @@ export function isBlocked(mapName, x, z) {
     ...(map.placeholders || []),
   ];
   if (
-    visualBuildings.some((building) => {
-      const width = building.w || 1;
-      const depth = building.d || 1;
-      const scale =
-        building.visualScale ||
-        (mapName === "oldVillage"
+    visualBuildings.some((building) =>
+      isPointBlockedByScaledBuilding(
+        building,
+        x,
+        z,
+        mapName === "oldVillage"
           ? LAYOUT.oldVillage.houseVisualScale
-          : 1);
-      const centerX = building.x + (width - 1) / 2;
-      const centerZ = building.z + (depth - 1) / 2;
-      const insideOriginal =
-        tx >= building.x &&
-        tx < building.x + width &&
-        tz >= building.z &&
-        tz < building.z + depth;
-      const insideVisual =
-        Math.abs(x - centerX) <= (width * 0.96 * scale) / 2 &&
-        Math.abs(z - centerZ) <= (depth * 0.96 * scale) / 2;
-      if (!insideOriginal && !insideVisual) return false;
-      const inDoorCorridor =
-        scale > 1 &&
-        building.doorX !== undefined &&
-        Math.abs(x - building.doorX) <= 0.48 &&
-        z >= building.z + depth - 0.5;
-      return !inDoorCorridor;
-    })
+          : 1,
+      ),
+    )
   )
     return true;
   if (mapName === "livingArea" && z < 0) {
