@@ -36,6 +36,8 @@ import {
   mountainGroundY,
   isOnMountainStair,
   MOUNTAIN_GATE_BLOCKER,
+  OLD_VILLAGE_RAILS,
+  isBlockedByOldVillageRail,
 } from "./layout-maps";
 import {
   handleCarpenterDockTouch,
@@ -656,6 +658,52 @@ export function buildMap(mapName) {
           mesh.castShadow = true;
           mesh.renderOrder = 2;
           gameState.mapGroup.add(mesh);
+        }
+      });
+
+      const railPostMat = new THREE.MeshStandardMaterial({ color: 0x69503a });
+      const railBarMat = new THREE.MeshStandardMaterial({ color: 0x8b6846 });
+      // 扶手位於平台切面交界，略抬高並關閉深度測試，避免平台表面因視角
+      // 與浮點誤差把細欄杆吃掉。
+      railPostMat.depthTest = false;
+      railBarMat.depthTest = false;
+      OLD_VILLAGE_RAILS.forEach((rail) => {
+        const length = Math.hypot(rail.x2 - rail.x1, rail.z2 - rail.z1);
+        const segments = Math.max(1, Math.ceil(length / 0.8));
+        let previous: THREE.Vector3 | null = null;
+        for (let i = 0; i <= segments; i++) {
+          const t = i / segments;
+          const x = THREE.MathUtils.lerp(rail.x1, rail.x2, t);
+          const z = THREE.MathUtils.lerp(rail.z1, rail.z2, t);
+          // 平台外緣正好落在高度分區之外，不能用邊界座標反查高度；有指定
+          // elevation 的平台欄杆直接使用所屬平台高度。
+          const ground =
+            rail.elevation !== undefined
+              ? rail.elevation
+              : oldVillageGroundY(x, z);
+          const post = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.045, 0.055, 0.7, 6),
+            railPostMat,
+          );
+          post.position.set(x, ground + 0.43, z);
+          post.castShadow = true;
+          post.renderOrder = 5;
+          gameState.mapGroup.add(post);
+          const current = new THREE.Vector3(x, ground + 0.6, z);
+          if (previous) {
+            const delta = current.clone().sub(previous);
+            const bar = new THREE.Mesh(
+              new THREE.BoxGeometry(delta.length(), 0.055, 0.055),
+              railBarMat,
+            );
+            bar.position.copy(previous).add(current).multiplyScalar(0.5);
+            bar.rotation.y = -Math.atan2(delta.z, delta.x);
+            bar.rotation.z = Math.atan2(delta.y, Math.hypot(delta.x, delta.z));
+            bar.castShadow = true;
+            bar.renderOrder = 5;
+            gameState.mapGroup.add(bar);
+          }
+          previous = current;
         }
       });
     } else if (mapName === "mountain") {
@@ -1690,6 +1738,7 @@ export function isBlocked(mapName, x, z) {
   }
   if (tz < 0 || tz >= map.tiles.length || tx < 0 || tx >= map.tiles[0].length)
     return true;
+  if (mapName === "oldVillage" && isBlockedByOldVillageRail(x, z)) return true;
   if (mapName === "port" && tz === LAYOUT.port.beachDepth) {
     const stairs = LAYOUT.port.stairs;
     const insideStairs = tx >= stairs.x && tx < stairs.x + stairs.width;

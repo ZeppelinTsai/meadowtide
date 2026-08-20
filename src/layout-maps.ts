@@ -115,22 +115,22 @@ import { hash2 } from "./utils";
             // 學校——雙倍寬度，磚紅屋頂+暖色牆面，屋頂鐘塔+旗桿是最醒目
             // 的地標。
             {
-              x: 3, z: 5, seed: 0.18, w: 2, d: 2, doorX: 3.5, role: "school",
+              x: 4, z: 5, seed: 0.18, w: 4, d: 2, doorX: 5.5, role: "school",
               wallColor: 0xe4c9a0, roofColor: 0x7a2e2e,
             },
             // 醫院——白牆+藍灰屋頂的醫療配色，門口上方掛紅十字招牌。
             {
-              x: 7, z: 5, seed: 0.34, w: 2, d: 2, doorX: 7.5, role: "hospital",
+              x: 9, z: 5, seed: 0.34, w: 2, d: 2, doorX: 9.5, role: "hospital",
               wallColor: 0xf2f0ea, roofColor: 0x3a5a72,
             },
             // 醫生家——跟醫院同一套藍調但降一階彩度，門口掛小十字牌。
             {
-              x: 11, z: 5, seed: 0.52, w: 2, d: 2, doorX: 11.5, role: "doctor",
+              x: 13, z: 5, seed: 0.52, w: 2, d: 2, doorX: 13.5, role: "doctor",
               wallColor: 0xd7e3e6, roofColor: 0x4a5a5e,
             },
             // 護士家——淺薄荷綠牆+暖陶土屋頂，跟醫生家同組但用色區分開來。
             {
-              x: 15, z: 5, seed: 0.68, w: 2, d: 2, doorX: 15.5, role: "nurse",
+              x: 17, z: 5, seed: 0.68, w: 2, d: 2, doorX: 17.5, role: "nurse",
               wallColor: 0xdce8dc, roofColor: 0x8a5a42,
             },
             // 老師家——暖芥末黃牆面，門口一疊書本裝飾。
@@ -150,7 +150,10 @@ import { hash2 } from "./utils";
               role: "generalStore", wallColor: 0xd9a94a, roofColor: 0x2f6b63,
             },
             // 木匠家——木匠事件用的「還沒整修好」空屋，見上方說明。
-            { x: 6, z: 24, seed: 0.22, role: "carpenter" },
+            {
+              x: 6, z: 24, seed: 0.22, w: 2, d: 2, doorX: 6.5,
+              role: "carpenter", wallColor: 0xb8aa91, roofColor: 0x51443f,
+            },
             // 藝術家家——粉調牆面+梅紫屋頂，門口擺一個簡化畫架。
             {
               x: 10, z: 24, seed: 0.57, w: 2, d: 2, doorX: 10.5,
@@ -393,6 +396,42 @@ import { hash2 } from "./utils";
         );
       }
 
+      // 城鎮露台與樓梯的防墜扶手。線段同時供視覺與碰撞使用；樓梯口刻意
+      // 留空，只封住能直接跨越高低差的邊緣。
+      export const OLD_VILLAGE_RAILS = [
+        {
+          x1: 3, z1: 9.5, x2: 19, z2: 9.5,
+          elevation: LAYOUT.oldVillage.terraces.upper.elevation,
+        },
+        {
+          x1: 3, z1: 19.5, x2: 19, z2: 19.5,
+          elevation: LAYOUT.oldVillage.terraces.middle.elevation,
+        },
+        { x1: 21.5, z1: 0, x2: 21.5, z2: 6.5 },
+        { x1: 21.5, z1: 10, x2: 21.5, z2: 15.5 },
+        ...LAYOUT.oldVillage.plazaStairs.flatMap((stair) => [
+          { x1: stair.fromX, z1: stair.z - 0.5, x2: stair.toX, z2: stair.z - 0.5 },
+          { x1: stair.fromX, z1: stair.z + stair.width - 0.5, x2: stair.toX, z2: stair.z + stair.width - 0.5 },
+        ]),
+        ...LAYOUT.oldVillage.westStairs.flatMap((stair) => [
+          { x1: stair.x - 0.5, z1: stair.fromZ, x2: stair.x - 0.5, z2: stair.toZ },
+          { x1: stair.x + stair.width - 0.5, z1: stair.fromZ, x2: stair.x + stair.width - 0.5, z2: stair.toZ },
+        ]),
+      ];
+
+      export function isBlockedByOldVillageRail(x: number, z: number) {
+        const thickness = 0.18;
+        return OLD_VILLAGE_RAILS.some((rail) =>
+          rail.x1 === rail.x2
+            ? Math.abs(x - rail.x1) <= thickness &&
+              z >= Math.min(rail.z1, rail.z2) &&
+              z <= Math.max(rail.z1, rail.z2)
+            : Math.abs(z - rail.z1) <= thickness &&
+              x >= Math.min(rail.x1, rail.x2) &&
+              x <= Math.max(rail.x1, rail.x2),
+        );
+      }
+
       function makePortTiles() {
         const p = LAYOUT.port;
         const tiles = Array.from({ length: p.height }, () =>
@@ -461,7 +500,8 @@ import { hash2 } from "./utils";
         paint(2, 7, 21, 3);
         paint(2, 16, 21, 3);
         paint(2, 26, 21, 3);
-        paint(19, 3, 4, 24);
+        // 樓梯本身由橫向道路與廣場覆蓋；不再額外鋪一條直向土色平台，
+        // 避免樓梯兩旁露出突兀的方形路皮。
         paint(village.plaza.x, village.plaza.z, village.plaza.width, village.plaza.height);
         paint(village.livingGate.x, 0, village.livingGate.width, 5);
         paint(
@@ -479,7 +519,13 @@ import { hash2 } from "./utils";
         tiles[village.artVillageGate.z][village.artVillageGate.x] = 3;
         tiles[village.artVillageSouthGate.z][village.artVillageSouthGate.x] = 3;
         tiles[village.mountainGate.z][village.mountainGate.x] = 3;
-        village.houses.forEach((house) => (tiles[house.z][house.x] = 1));
+        village.houses.forEach((house) => {
+          const width = house.w ?? 1;
+          const depth = house.d ?? 1;
+          for (let z = house.z; z < house.z + depth; z++) {
+            for (let x = house.x; x < house.x + width; x++) tiles[z][x] = 1;
+          }
+        });
         return tiles;
       }
 
