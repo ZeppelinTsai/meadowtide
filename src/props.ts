@@ -1019,6 +1019,12 @@ import { randomPasturePoint } from "./npc-runtime";
           opacity: 0.92,
           side: THREE.DoubleSide,
         });
+        const waterDepthMat = new THREE.MeshStandardMaterial({
+          color: 0x174968,
+          roughness: 1,
+          metalness: 0,
+          side: THREE.DoubleSide,
+        });
         const addWater = (x, z, width, depth) => {
           const geometry = new THREE.PlaneGeometry(
             width,
@@ -1036,6 +1042,15 @@ import { randomPasturePoint } from "./npc-runtime";
           for (let i = 0; i < geometry.attributes.position.count; i++)
             colors.set([0.18, 0.43, 0.68], i * 3);
           geometry.setAttribute("color", new THREE.BufferAttribute(colors, 3));
+          const depthMask = new THREE.Mesh(geometry.clone(), waterDepthMat);
+          depthMask.rotation.x = -Math.PI / 2;
+          depthMask.position.set(
+            x + (width - 1) / 2,
+            0.025,
+            z + (depth - 1) / 2,
+          );
+          depthMask.receiveShadow = true;
+          group.add(depthMask);
           water.rotation.x = -Math.PI / 2;
           water.position.set(x + (width - 1) / 2, 0.09, z + (depth - 1) / 2);
           water.receiveShadow = true;
