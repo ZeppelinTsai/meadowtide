@@ -64,20 +64,47 @@ import { hash2 } from "./utils";
         },
         port: {
           width: 24,
-          height: 18,
-          livingGate: { x: 7, z: 2 },
-          carpenterMeet: { x: 7, z: 3 },
-          artVillageGate: { x: 3, z: 15 },
-          basin: { x: 6, z: 6, width: 15, height: 7 },
-          ferry: { x: 13, z: 9 },
-          smallBoatDock: { x: 21, z: 13, length: 4 },
+          height: 50,
+          beachDepth: 10,
+          elevation: 1,
+          stairs: { x: 0, z: 9, width: 9, depth: 3 },
+          livingGate: { x: 3, z: 0, width: 11 },
+          livingAreaGate: { x: 37, z: 42, width: 11 },
+          playerArrival: { x: 7, z: 11 },
+          carpenterMeet: { x: 13, z: 38 },
+          artVillageGate: { x: 3, z: 48 },
+          shopRoad: { z: 14, height: 5 },
+          basin: { x: 6, z: 19, width: 15, height: 17 },
+          ferry: { x: 13, z: 27 },
+          southQuay: { z: 36, height: 13 },
+          smallBoatDock: { x: 21, z: 37, length: 11 },
           shops: [
-            { x: 9, z: 3, w: 3, d: 2, seed: 0.22 },
-            { x: 13, z: 3, w: 4, d: 2, seed: 0.47 },
-            { x: 18, z: 3, w: 3, d: 2, seed: 0.73 },
+            { x: 9, z: 12, w: 3, d: 2, seed: 0.22 },
+            { x: 13, z: 12, w: 4, d: 2, seed: 0.47 },
+            { x: 18, z: 12, w: 3, d: 2, seed: 0.73 },
           ],
         },
       };
+
+      export function portGroundY(x: number, z: number) {
+        const port = LAYOUT.port;
+        const stairs = port.stairs;
+        const onStairs =
+          x >= stairs.x - 0.5 &&
+          x <= stairs.x + stairs.width - 0.5 &&
+          z >= stairs.z - 0.5 &&
+          z <= stairs.z + stairs.depth - 0.5;
+        if (onStairs) {
+          return Math.max(
+            0,
+            Math.min(
+              port.elevation,
+              ((z - stairs.z + 1) / stairs.depth) * port.elevation,
+            ),
+          );
+        }
+        return z >= port.beachDepth + 0.5 ? port.elevation : 0;
+      }
 
       function makePortTiles() {
         const p = LAYOUT.port;
@@ -86,18 +113,18 @@ import { hash2 } from "./utils";
         );
 
         // 北緣是生活區沙灘的延續，直接使用相同的 tile 8 / makeSand() 管線。
-        for (let z = 0; z <= 2; z++) {
-          const startX = z < 2 ? 5 : 6;
+        for (let z = 0; z < p.beachDepth; z++) {
+          const startX = z < p.beachDepth - 2 ? 3 : 4;
           for (let x = startX; x < p.width; x++) tiles[z][x] = 8;
         }
-        for (let x = 20; x < p.width; x++) tiles[3][x] = 8;
+        for (let x = 20; x < p.width; x++) tiles[p.beachDepth][x] = 8;
 
         // 中央內港、右側航道與南側外海；石造碼頭保留在四周的 0 格。
         for (let z = p.basin.z; z < p.basin.z + p.basin.height; z++) {
           for (let x = p.basin.x; x < p.basin.x + p.basin.width; x++)
             tiles[z][x] = 9;
         }
-        for (let z = 5; z < p.height; z++) {
+        for (let z = p.basin.z - 1; z < p.height; z++) {
           for (let x = 21; x < p.width; x++) tiles[z][x] = 9;
         }
         for (let x = 4; x < p.width; x++) tiles[p.height - 1][x] = 9;
@@ -115,7 +142,8 @@ import { hash2 } from "./utils";
             for (let x = shop.x; x < shop.x + shop.w; x++) tiles[z][x] = 1;
           }
         });
-        tiles[p.livingGate.z][p.livingGate.x] = 3;
+        for (let i = 0; i < p.livingGate.width; i++)
+          tiles[p.livingGate.z][p.livingGate.x + i] = 3;
         tiles[p.artVillageGate.z][p.artVillageGate.x] = 3;
         return tiles;
       }
@@ -268,7 +296,7 @@ import { hash2 } from "./utils";
         // 木匠事件(7,3)與美術村入口(3,15)。
         port: {
           tiles: makePortTiles(),
-          playerStart: { x: 7, z: 4 },
+          playerStart: { ...LAYOUT.port.playerArrival },
         },
         // 美術村——這輪只求骨架能走通，不做藝術裝置的細節，內容先放幾個空屋
         // 佔位方塊。北側兩個門檻分別接舊城鎮跟港口各自的南側新門檻，呼應
@@ -752,8 +780,12 @@ import { hash2 } from "./utils";
       }
       // 港口連通點(37~46,42)蓋在剛補上的沙灘資料上面，門檻(3)覆寫掉那幾格
       // 的沙灘值，其餘沙灘/海維持剛算出來的樣子。
-      for (let x = 37; x <= 46; x++) {
-        MAPS.livingArea.tiles[42][x] = 3;
+      for (
+        let x = LAYOUT.port.livingAreaGate.x;
+        x < LAYOUT.port.livingAreaGate.x + LAYOUT.port.livingAreaGate.width;
+        x++
+      ) {
+        MAPS.livingArea.tiles[LAYOUT.port.livingAreaGate.z][x] = 3;
       }
 
       // ==============================================================

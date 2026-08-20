@@ -1006,6 +1006,10 @@ import { randomPasturePoint } from "./npc-runtime";
           color: 0xa39b8c,
           roughness: 0.96,
         });
+        const stairMats = [0x786858, 0x695a4c, 0x594b40].map(
+          (color) =>
+            new THREE.MeshStandardMaterial({ color, roughness: 0.98 }),
+        );
         const waterMat = new THREE.MeshStandardMaterial({
           color: 0x197e9a,
           roughness: 0.3,
@@ -1015,13 +1019,23 @@ import { randomPasturePoint } from "./npc-runtime";
           side: THREE.DoubleSide,
         });
         const addWater = (x, z, width, depth) => {
+          const geometry = new THREE.PlaneGeometry(
+            width,
+            depth,
+            Math.max(2, Math.ceil(width)),
+            Math.max(2, Math.ceil(depth)),
+          );
           const water = new THREE.Mesh(
-            new THREE.PlaneGeometry(width, depth, 8, 8),
+            geometry,
             waterMat,
           );
           water.rotation.x = -Math.PI / 2;
           water.position.set(x + (width - 1) / 2, 0.09, z + (depth - 1) / 2);
           water.receiveShadow = true;
+          geometry.userData.basePositions = Float32Array.from(
+            geometry.attributes.position.array,
+          );
+          gameState.portWaterMeshes.push(water);
           group.add(water);
         };
         addWater(
@@ -1030,20 +1044,77 @@ import { randomPasturePoint } from "./npc-runtime";
           port.basin.width,
           port.basin.height,
         );
-        addWater(21, 5, 3, 13);
-        addWater(4, 17, 20, 1);
+        addWater(
+          port.smallBoatDock.x,
+          port.basin.z - 1,
+          port.width - port.smallBoatDock.x,
+          port.height - (port.basin.z - 1),
+        );
+        addWater(4, port.height - 1, port.width - 4, 1);
+
+        const addPlatform = (x, z, width, depth) => {
+          const slab = new THREE.Mesh(
+            new THREE.BoxGeometry(width, port.elevation, depth),
+            concreteMat,
+          );
+          slab.position.set(
+            x + (width - 1) / 2,
+            port.elevation / 2 - 0.01,
+            z + (depth - 1) / 2,
+          );
+          slab.castShadow = true;
+          slab.receiveShadow = true;
+          group.add(slab);
+        };
+        addPlatform(
+          0,
+          port.beachDepth + 1,
+          port.width,
+          port.basin.z - port.beachDepth - 2,
+        );
+        addPlatform(0, port.basin.z, port.basin.x, port.basin.height);
+        addPlatform(
+          0,
+          port.southQuay.z,
+          port.smallBoatDock.x,
+          port.southQuay.height,
+        );
+        for (let i = 0; i < port.stairs.depth; i++) {
+          const stepHeight = (port.elevation * (i + 1)) / port.stairs.depth;
+          const step = new THREE.Mesh(
+            new THREE.BoxGeometry(port.stairs.width, stepHeight, 1),
+            stairMats[i],
+          );
+          step.position.set(
+            port.stairs.x + (port.stairs.width - 1) / 2,
+            stepHeight / 2,
+            port.stairs.z + i,
+          );
+          step.castShadow = true;
+          step.receiveShadow = true;
+          group.add(step);
+        }
 
         // 三面碼頭牆把水面讀成內凹船塢；高度略高於水面，避免共平面閃爍。
+        const basinCenterX =
+          port.basin.x + (port.basin.width - 1) / 2;
+        const basinCenterZ =
+          port.basin.z + (port.basin.height - 1) / 2;
         [
-          [5.45, 9, 0.48, 8],
-          [13, 5.45, 16, 0.48],
-          [13, 13.45, 16, 0.48],
+          [port.basin.x - 0.55, basinCenterZ, 0.48, port.basin.height + 1],
+          [basinCenterX, port.basin.z - 0.55, port.basin.width + 1, 0.48],
+          [
+            basinCenterX,
+            port.basin.z + port.basin.height - 0.55,
+            port.basin.width + 1,
+            0.48,
+          ],
         ].forEach(([x, z, width, depth]) => {
           const wall = new THREE.Mesh(
             new THREE.BoxGeometry(width, 0.48, depth),
             concreteMat,
           );
-          wall.position.set(x, 0.03, z);
+          wall.position.set(x, port.elevation + 0.03, z);
           wall.castShadow = true;
           wall.receiveShadow = true;
           group.add(wall);
@@ -1053,22 +1124,34 @@ import { randomPasturePoint } from "./npc-runtime";
           color: 0x5a5e59,
           roughness: 0.82,
         });
-        [
-          [6, 5.2], [10, 5.2], [14, 5.2], [18, 5.2],
-          [6, 13.7], [10, 13.7], [14, 13.7], [18, 13.7],
-          [5.15, 7], [5.15, 10], [5.15, 12],
-        ].forEach(([x, z]) => {
+        const bollards = [];
+        for (
+          let x = port.basin.x;
+          x < port.basin.x + port.basin.width;
+          x += 4
+        ) {
+          bollards.push([x, port.basin.z - 0.8]);
+          bollards.push([x, port.basin.z + port.basin.height - 0.3]);
+        }
+        for (
+          let z = port.basin.z + 1;
+          z < port.basin.z + port.basin.height;
+          z += 4
+        )
+          bollards.push([port.basin.x - 0.85, z]);
+        bollards.forEach(([x, z]) => {
           const bollard = new THREE.Mesh(
             new THREE.CylinderGeometry(0.11, 0.15, 0.38, 8),
             bollardMat,
           );
-          bollard.position.set(x, 0.25, z);
+          bollard.position.set(x, port.elevation + 0.25, z);
           bollard.castShadow = true;
           group.add(bollard);
         });
 
         port.shops.forEach((shop, index) => {
           const shopGroup = new THREE.Group();
+          shopGroup.position.y = port.elevation;
           const body = new THREE.Mesh(
             new THREE.BoxGeometry(shop.w - 0.18, 1.28, shop.d - 0.18),
             new THREE.MeshStandardMaterial({
@@ -1139,6 +1222,22 @@ import { randomPasturePoint } from "./npc-runtime";
         dock.position.set(port.smallBoatDock.x, 0.13, port.smallBoatDock.z);
         dock.rotation.y = Math.PI / 2;
         group.add(dock);
+
+        const marker = new THREE.Mesh(
+          new THREE.OctahedronGeometry(0.28, 0),
+          new THREE.MeshStandardMaterial({
+            color: 0xe53935,
+            emissive: 0x5a0808,
+          }),
+        );
+        marker.position.set(
+          port.carpenterMeet.x,
+          port.elevation + 1.5,
+          port.carpenterMeet.z,
+        );
+        marker.rotation.z = Math.PI / 4;
+        marker.castShadow = true;
+        group.add(marker);
         return group;
       }
 

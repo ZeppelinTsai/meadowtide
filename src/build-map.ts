@@ -2,7 +2,7 @@ import * as THREE from "three";
 import { hash2 } from "./utils";
 import { gameState } from "./game-state";
 import { scene, TILE, PLATEAU_Y, NORTH_CLIFF_Z, SOUTH_TERRAIN_EXTENSION, NORTH_TERRAIN_EXTENSION, northCliffEdgeZ, groundY } from "./scene-sky";
-import { LAYOUT, MAPS, carpenterQuest, CARPENTER_HOUSE, isInsideLakeShape, AVENUE_TREE_KEYS, TOWN_Z_START, RAMP_CORRIDOR_MIN_Z, RAMP_CORRIDOR_MAX_Z, COAST_ROAD_CENTER_Z, COAST_ROAD_HALF_WIDTH, lakeEdgeFactor, POUCH_POS, CARPENTER_DOORSTEP, SHRINE_PATH_START_X, SHRINE_PATH_LENGTH, SHRINE_PATH_ELEVATION } from "./layout-maps";
+import { LAYOUT, MAPS, carpenterQuest, CARPENTER_HOUSE, isInsideLakeShape, AVENUE_TREE_KEYS, TOWN_Z_START, RAMP_CORRIDOR_MIN_Z, RAMP_CORRIDOR_MAX_Z, COAST_ROAD_CENTER_Z, COAST_ROAD_HALF_WIDTH, lakeEdgeFactor, POUCH_POS, CARPENTER_DOORSTEP, SHRINE_PATH_START_X, SHRINE_PATH_LENGTH, SHRINE_PATH_ELEVATION, portGroundY } from "./layout-maps";
 import { handleCarpenterDockTouch, handleCarpenterDoorstepTouch } from "./carpenter-quest";
 import { windowMats, outdoorLampLights, foamMeshes, windmillRotors, lakeShoreColliders, fishSchool, pastureGrassBlades, avenueLeafMaterials, seasonalTreeLeafMaterials, seasonalGroundMaterials, SEA_FISH_SCALE, LAKE_FISH_SCALE, EAST_SEA_WAVE_DIRECTION, NORTHEAST_SEA_WAVE_DIRECTION, thresholdMarkerMeshes, thresholdMarkersVisible } from "./scene-registries";
 import { npcGroup, animalGroup, PASTURE, hasPastureGrassAt } from "./npc-runtime";
@@ -597,6 +597,7 @@ import { OYSTER_RACK_VISUAL } from "./game-state";
         foamMeshes.length = 0;
         windmillRotors.length = 0;
         gameState.oceanMesh = null;
+        gameState.portWaterMeshes = [];
         gameState.lakeMesh = null;
         lakeShoreColliders.length = 0;
         gameState.seaGlimpseMesh = null;
@@ -1116,6 +1117,12 @@ import { OYSTER_RACK_VISUAL } from "./game-state";
           tx >= map.tiles[0].length
         )
           return true;
+        if (mapName === "port" && tz === LAYOUT.port.beachDepth) {
+          const stairs = LAYOUT.port.stairs;
+          const insideStairs =
+            tx >= stairs.x && tx < stairs.x + stairs.width;
+          if (!insideStairs) return true;
+        }
         if (
           mapName === "livingArea" &&
           lakeShoreColliders.some(
@@ -1149,6 +1156,12 @@ import { OYSTER_RACK_VISUAL } from "./game-state";
           }
           gameState.player.position.x = gameState.playerGridPos.x;
           gameState.player.position.z = gameState.playerGridPos.z;
+          gameState.player.position.y =
+            mapName === "livingArea"
+              ? groundY(gameState.playerGridPos.x, gameState.playerGridPos.z)
+              : mapName === "port"
+                ? portGroundY(gameState.playerGridPos.x, gameState.playerGridPos.z)
+                : 0;
           fadeIn();
         });
       }
@@ -1200,27 +1213,35 @@ import { OYSTER_RACK_VISUAL } from "./game-state";
         // (碼頭附近)——z=37~42 這段南側延伸地形已經在 layout-maps.ts 補上
         // 真的沙灘/海資料(coastShoreJitter 那段)，不再是純視覺蓋住的假
         // 草地，可以放回原本要求的最南端。
-        ...Array.from({ length: 10 }, (_, i) => ({
+        ...Array.from({ length: LAYOUT.port.livingAreaGate.width }, (_, i) => ({
           map: "livingArea",
-          x: 37 + i,
-          z: 42,
+          x: LAYOUT.port.livingAreaGate.x + i,
+          z: LAYOUT.port.livingAreaGate.z,
           trigger: "touch",
-          action: () => loadMap("port", { x: 7, z: 4 }),
+          action: () =>
+            loadMap("port", {
+              x: LAYOUT.port.livingGate.x + i,
+              z: LAYOUT.port.livingGate.z + 1,
+            }),
         })),
-        {
+        ...Array.from({ length: LAYOUT.port.livingGate.width }, (_, i) => ({
           map: "port",
-          x: 7,
-          z: 2,
+          x: LAYOUT.port.livingGate.x + i,
+          z: LAYOUT.port.livingGate.z,
           trigger: "touch",
-          action: () => loadMap("livingArea", { x: 41, z: 41 }),
-        },
+          action: () =>
+            loadMap("livingArea", {
+              x: LAYOUT.port.livingAreaGate.x + i,
+              z: LAYOUT.port.livingAreaGate.z - 1,
+            }),
+        })),
         // 港口<->舊城鎮的直接連通已經拆掉：舊城鎮現在改從生活區南側直接
         // 進入（見下面 oldVillage(7,0) 那組），不用再繞經港口。
         // 木匠抵達事件——港口碼頭見面 + 舊城鎮空屋門口(往返兩段劇情共用同一格)
         {
           map: "port",
-          x: 7,
-          z: 3,
+          x: LAYOUT.port.carpenterMeet.x,
+          z: LAYOUT.port.carpenterMeet.z,
           trigger: "touch",
           action: () => handleCarpenterDockTouch(),
         },
@@ -1293,8 +1314,8 @@ import { OYSTER_RACK_VISUAL } from "./game-state";
         },
         {
           map: "port",
-          x: 3,
-          z: 15,
+          x: LAYOUT.port.artVillageGate.x,
+          z: LAYOUT.port.artVillageGate.z,
           trigger: "touch",
           action: () => loadMap("artVillage", { x: 9, z: 1 }),
         },
@@ -1303,7 +1324,11 @@ import { OYSTER_RACK_VISUAL } from "./game-state";
           x: 9,
           z: 0,
           trigger: "touch",
-          action: () => loadMap("port", { x: 3, z: 14 }),
+          action: () =>
+            loadMap("port", {
+              x: LAYOUT.port.artVillageGate.x,
+              z: LAYOUT.port.artVillageGate.z - 1,
+            }),
         },
         // 舊城鎮(東側 x=13)<-> 港口(西側 x=0)：整條邊界都能走過去，不是單一
         // 傳送點——沿邊每一排各自登記一組雙向觸發，逐格對應同一個 z。

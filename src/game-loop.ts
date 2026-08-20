@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import { gameState, TIME_CONFIG, CAST_ANIM_DURATION, getNightFactor, isUnsafeAnimalWeather, nearWater } from "./game-state";
 import { isGameTimePaused, updateGameClock } from "./game-clock";
-import { SOUTHERNMOST_AVENUE_TREE_Z, aStar } from "./layout-maps";
+import { LAYOUT, SOUTHERNMOST_AVENUE_TREE_Z, aStar, portGroundY } from "./layout-maps";
 import { npcs, animals, BARN_DOOR, outsideCols, outsideRows } from "./npc-runtime";
 import { getScheduleTarget } from "./npc-defs";
 import { animateWalk, animateAnimalWalk } from "./humanoid";
@@ -84,6 +84,11 @@ gameState.lastFrame = performance.now();
         animateWalk(gameState.player, gameState.isMoving, gameState.elapsed);
         if (gameState.currentMapName === "livingArea")
           gameState.player.position.y += groundY(gameState.player.position.x, gameState.player.position.z);
+        else if (gameState.currentMapName === "port")
+          gameState.player.position.y += portGroundY(
+            gameState.player.position.x,
+            gameState.player.position.z,
+          );
 
         // 拋竿/持竿動畫：雙手一起蓋過 animateWalk 剛設好的角度。左手往內、往前
         // 擺，靠到跟右手（拿竿那手）差不多的位置跟角度，用兩隻手臂同一個朝向
@@ -499,10 +504,18 @@ gameState.lastFrame = performance.now();
         const camDist = Math.max(16, gameState.zoom * 1.55);
         const camHeight = camDist * Math.cos(TILT_RAD);
         const camZOffset = camDist * Math.sin(TILT_RAD);
-        const groundOffset =
-          gameState.currentMapName === "livingArea"
-            ? groundY(gameState.player.position.x, gameState.player.position.z)
-            : 0;
+        let groundOffset = 0;
+        if (gameState.currentMapName === "livingArea") {
+          groundOffset = groundY(
+            gameState.player.position.x,
+            gameState.player.position.z,
+          );
+        } else if (gameState.currentMapName === "port") {
+          groundOffset = portGroundY(
+            gameState.player.position.x,
+            gameState.player.position.z,
+          );
+        }
         // 玩家模型與相機共用地形高度，走上西北階梯或海岸緩坡時不會穿進台階。
         gameState.player.position.y +=
           (groundOffset - gameState.player.position.y) * Math.min(1, dt * 10);
@@ -595,6 +608,27 @@ gameState.lastFrame = performance.now();
             gameState.lakeMesh.geometry.computeVertexNormals();
         }
         // 東北海以短波呈現，整片波峰從東北往西南推進。
+        if (gameState.portWaterMeshes.length && updateWaterSurface) {
+          gameState.portWaterMeshes.forEach((water) => {
+            const pos = water.geometry.attributes.position;
+            const base = water.geometry.userData.basePositions;
+            for (let i = 0; i < pos.count; i++) {
+              const localX = base[i * 3];
+              const localY = base[i * 3 + 1];
+              const ripple =
+                Math.sin(
+                  (localX + water.position.x) * 1.15 +
+                    gameState.effectElapsed * 0.9,
+                ) * 0.035 +
+                Math.cos(
+                  (localY - water.position.z) * 0.9 +
+                    gameState.effectElapsed * 0.65,
+                ) * 0.022;
+              pos.setZ(i, ripple);
+            }
+            pos.needsUpdate = true;
+          });
+        }
         if (gameState.seaGlimpseMesh && updateWaterSurface) {
           const sgPosAttr = gameState.seaGlimpseMesh.geometry.attributes.position;
           const sgColorAttr = gameState.seaGlimpseMesh.geometry.attributes.color;
