@@ -533,6 +533,7 @@ export function animate(now) {
         gameState.currentMapName === "oldVillage" &&
         n.id === "carpenter"
       ) {
+        n.mesh.visible = true;
         n.mesh.position.set(
           CARPENTER_EVENT_WAIT_POS.x,
           characterGroundY(
