@@ -63,8 +63,10 @@ import { hash2 } from "./utils";
           width: 1.65,
         },
         port: {
-          width: 24,
-          height: 50,
+          width: 34,
+          height: 60,
+          oceanExpansion: 10,
+          oceanViewPadding: 50,
           beachDepth: 10,
           elevation: 1,
           stairs: { x: 0, z: 9, width: 9, depth: 3 },
@@ -118,6 +120,18 @@ import { hash2 } from "./utils";
           for (let x = startX; x < p.width; x++) tiles[z][x] = 8;
         }
         for (let x = 20; x < p.width; x++) tiles[p.beachDepth][x] = 8;
+
+        // 原北東側 x=14~23 的沙灘改為海；新增的右側十格也延續成外海。
+        for (let z = 0; z <= p.beachDepth; z++) {
+          for (let x = 14; x < p.width; x++) tiles[z][x] = 9;
+        }
+        for (let z = 0; z < p.height; z++) {
+          for (let x = p.width - p.oceanExpansion; x < p.width; x++)
+            tiles[z][x] = 9;
+        }
+        for (let z = p.height - p.oceanExpansion; z < p.height; z++) {
+          for (let x = 0; x < p.width; x++) tiles[z][x] = 9;
+        }
 
         // 中央內港、右側航道與南側外海；石造碼頭保留在四周的 0 格。
         for (let z = p.basin.z; z < p.basin.z + p.basin.height; z++) {

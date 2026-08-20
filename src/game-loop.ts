@@ -536,6 +536,12 @@ gameState.lastFrame = performance.now();
           const maxFocusZ =
             SOUTHERNMOST_AVENUE_TREE_Z + 1.4 - southGroundHalfView;
           cameraFocusZ = Math.min(gameState.player.position.z, maxFocusZ);
+        } else if (gameState.currentMapName === "port") {
+          // 港口鏡頭以左上 (0,0) 為硬邊界；縮遠時只向右、向南揭露外海。
+          const halfViewWidth = camera.right;
+          const halfViewDepth = gameState.zoom / Math.cos(TILT_RAD);
+          cameraFocusX = Math.max(gameState.player.position.x, halfViewWidth);
+          cameraFocusZ = Math.max(gameState.player.position.z, halfViewDepth);
         }
         camera.position.set(
           cameraFocusX,
@@ -627,6 +633,8 @@ gameState.lastFrame = performance.now();
               pos.setZ(i, ripple);
             }
             pos.needsUpdate = true;
+            if (gameState.animationFrameCount % 8 === 0)
+              water.geometry.computeVertexNormals();
           });
         }
         if (gameState.seaGlimpseMesh && updateWaterSurface) {

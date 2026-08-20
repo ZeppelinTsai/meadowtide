@@ -105,7 +105,11 @@ export const SAVE_KEY_PREFIX = "meadowtide.save.";
       addEventListener("keydown", (e) => (keys[e.key.toLowerCase()] = true));
       addEventListener("keyup", (e) => (keys[e.key.toLowerCase()] = false));
       addEventListener("wheel", (e) => {
-        gameState.zoom = Math.max(2, Math.min(18, gameState.zoom + e.deltaY * 0.01));
+        const maxZoom = gameState.currentMapName === "port" ? 20 : 18;
+        gameState.zoom = Math.max(
+          2,
+          Math.min(maxZoom, gameState.zoom + e.deltaY * 0.01),
+        );
         updateCameraFrustum();
       });
 

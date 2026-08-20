@@ -8,7 +8,7 @@ import {
   SHRINE_PATH_LENGTH,
   SHRINE_PATH_ELEVATION,
 } from "./layout-maps";
-import { windowMats, outdoorLampLights, windmillRotors, pastureGrassBlades, avenueLeafMaterials, seasonalTreeLeafMaterials, seasonalGroundMaterials, GRASS_STAGE_HEIGHTS, EAST_SEA_WAVE_DIRECTION } from "./scene-registries";
+import { windowMats, outdoorLampLights, foamMeshes, windmillRotors, pastureGrassBlades, avenueLeafMaterials, seasonalTreeLeafMaterials, seasonalGroundMaterials, GRASS_STAGE_HEIGHTS, EAST_SEA_WAVE_DIRECTION } from "./scene-registries";
 import { randomPasturePoint } from "./npc-runtime";
 
 // 7) 樹 / 建築 / 地形（沿用 v11）
@@ -1050,7 +1050,38 @@ import { randomPasturePoint } from "./npc-runtime";
           port.width - port.smallBoatDock.x,
           port.height - (port.basin.z - 1),
         );
-        addWater(4, port.height - 1, port.width - 4, 1);
+        const oceanViewEdge = port.width + port.oceanViewPadding;
+        addWater(14, 0, oceanViewEdge - 14, port.beachDepth + 1);
+        addWater(
+          port.width,
+          port.beachDepth + 1,
+          port.oceanViewPadding,
+          port.height - port.beachDepth - 1,
+        );
+        addWater(
+          port.width - port.oceanExpansion,
+          port.beachDepth + 1,
+          port.oceanExpansion,
+          port.basin.z - port.beachDepth - 1,
+        );
+        addWater(
+          0,
+          port.height - port.oceanExpansion,
+          port.smallBoatDock.x,
+          port.oceanExpansion,
+        );
+        addWater(
+          0,
+          port.height,
+          oceanViewEdge,
+          port.oceanViewPadding,
+        );
+
+        for (let z = 0; z <= port.beachDepth; z += 2) {
+          const foam = makeFoam(13.65, z, 700 + z * 1.37);
+          foamMeshes.push(foam);
+          group.add(foam);
+        }
 
         const addPlatform = (x, z, width, depth) => {
           const slab = new THREE.Mesh(
@@ -1069,8 +1100,14 @@ import { randomPasturePoint } from "./npc-runtime";
         addPlatform(
           0,
           port.beachDepth + 1,
-          port.width,
+          port.width - port.oceanExpansion,
           port.basin.z - port.beachDepth - 2,
+        );
+        addPlatform(
+          0,
+          port.basin.z - 1,
+          port.smallBoatDock.x,
+          1,
         );
         addPlatform(0, port.basin.z, port.basin.x, port.basin.height);
         addPlatform(

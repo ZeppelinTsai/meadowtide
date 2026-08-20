@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import { hash2 } from "./utils";
 import { gameState } from "./game-state";
-import { scene, TILE, PLATEAU_Y, NORTH_CLIFF_Z, SOUTH_TERRAIN_EXTENSION, NORTH_TERRAIN_EXTENSION, northCliffEdgeZ, groundY } from "./scene-sky";
+import { scene, TILE, PLATEAU_Y, NORTH_CLIFF_Z, SOUTH_TERRAIN_EXTENSION, NORTH_TERRAIN_EXTENSION, northCliffEdgeZ, groundY, updateCameraFrustum } from "./scene-sky";
 import { LAYOUT, MAPS, carpenterQuest, CARPENTER_HOUSE, isInsideLakeShape, AVENUE_TREE_KEYS, TOWN_Z_START, RAMP_CORRIDOR_MIN_Z, RAMP_CORRIDOR_MAX_Z, COAST_ROAD_CENTER_Z, COAST_ROAD_HALF_WIDTH, lakeEdgeFactor, POUCH_POS, CARPENTER_DOORSTEP, SHRINE_PATH_START_X, SHRINE_PATH_LENGTH, SHRINE_PATH_ELEVATION, portGroundY } from "./layout-maps";
 import { handleCarpenterDockTouch, handleCarpenterDoorstepTouch } from "./carpenter-quest";
 import { windowMats, outdoorLampLights, foamMeshes, windmillRotors, lakeShoreColliders, fishSchool, pastureGrassBlades, avenueLeafMaterials, seasonalTreeLeafMaterials, seasonalGroundMaterials, SEA_FISH_SCALE, LAKE_FISH_SCALE, EAST_SEA_WAVE_DIRECTION, NORTHEAST_SEA_WAVE_DIRECTION, thresholdMarkerMeshes, thresholdMarkersVisible } from "./scene-registries";
@@ -1147,6 +1147,11 @@ import { OYSTER_RACK_VISUAL } from "./game-state";
 
       export function loadMap(mapName, startPos) {
         fadeOut(() => {
+          gameState.zoom = Math.min(
+            gameState.zoom,
+            mapName === "port" ? 20 : 18,
+          );
+          updateCameraFrustum();
           buildMap(mapName);
           const pos = startPos || MAPS[mapName].playerStart;
           gameState.playerGridPos = { x: pos.x, z: pos.z };
