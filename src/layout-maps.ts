@@ -1188,6 +1188,10 @@ import { hash2 } from "./utils";
         x: LAYOUT.oldVillage.carpenterHouse.doorX,
         z: LAYOUT.oldVillage.carpenterHouse.z + LAYOUT.oldVillage.carpenterHouse.d,
       };
+      export const CARPENTER_EVENT_WAIT_POS = {
+        x: CARPENTER_DOORSTEP.x,
+        z: CARPENTER_DOORSTEP.z + 1,
+      };
       export const CARPENTER_MATERIALS = { wood: 10, stone: 5 };
       export const CARPENTER_CONSTRUCTION_DAYS = 2;
       export const carpenterQuest = {

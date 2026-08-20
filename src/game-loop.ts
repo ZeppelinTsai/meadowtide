@@ -13,6 +13,7 @@ import {
   LAYOUT,
   MAPS,
   carpenterQuest,
+  CARPENTER_EVENT_WAIT_POS,
   SOUTHERNMOST_AVENUE_TREE_Z,
   aStar,
   portGroundY,
@@ -518,6 +519,23 @@ export function animate(now) {
       (gameState.currentMapName === "port" || gameState.currentMapName === "oldVillage") &&
       (n.id === "aunt" || n.id === "carpenter")
     ) {
+      if (
+        carpenterQuest.stage === "village_scene_done" &&
+        gameState.currentMapName === "oldVillage" &&
+        n.id === "carpenter"
+      ) {
+        n.mesh.position.set(
+          CARPENTER_EVENT_WAIT_POS.x,
+          characterGroundY(
+            "oldVillage",
+            CARPENTER_EVENT_WAIT_POS.x,
+            CARPENTER_EVENT_WAIT_POS.z,
+          ),
+          CARPENTER_EVENT_WAIT_POS.z,
+        );
+        animateWalk(n.mesh, false, gameState.elapsed);
+        return;
+      }
       const trailPoint = sampleCarpenterEscortTrail(
         n.id === "aunt" ? 0.72 : 1.42,
       );

@@ -2,6 +2,7 @@ import { gameState, inventory, isNightTime } from "./game-state";
 import {
   carpenterQuest,
   CARPENTER_MATERIALS,
+  CARPENTER_EVENT_WAIT_POS,
 } from "./layout-maps";
 import {
   showDialog,
@@ -100,6 +101,11 @@ export function carpenterHasMaterials() {
       }
       export function startCarpenterVillageScene() {
         carpenterQuest.stage = "village_scene_done"; // 立刻推進，避免對話播放中重複觸發
+        const carpenterNpc = npcs.find((n) => n.id === "carpenter");
+        if (carpenterNpc) {
+          carpenterNpc.mesh.position.x = CARPENTER_EVENT_WAIT_POS.x;
+          carpenterNpc.mesh.position.z = CARPENTER_EVENT_WAIT_POS.z;
+        }
         showDialogSequence(
           [
             "[木匠一路經過每一戶空屋都會放慢腳步看兩眼]",
