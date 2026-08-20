@@ -237,10 +237,16 @@ gameState.lastFrame = performance.now();
         if (gameState.elapsed < gameState.castAnimEnd) {
           const progress = 1 - (gameState.castAnimEnd - gameState.elapsed) / CAST_ANIM_DURATION;
           // 先向後（+Z）短暫蓄力，再加速往角色正面（-Z）甩出，最後銜接持竿姿勢。
+          // 玩家面朝 -Z；正角度向前、负角度向后。甩竿依次为：
+          // 前上预备 → 后上蓄力 → 前方甩出，避免从下方绕圈像往地面挥竿。
+          const smooth = (t) => t * t * (3 - 2 * t);
+          const mix = (from, to, t) => from + (to - from) * smooth(t);
           const castPose =
-            progress < 0.32
-              ? -0.85 * Math.sin(((progress / 0.32) * Math.PI) / 2)
-              : -0.85 + 2.0 * (1 - Math.pow(1 - (progress - 0.32) / 0.68, 3));
+            progress < 0.25
+              ? mix(0.55, 0.95, progress / 0.25)
+              : progress < 0.55
+                ? mix(0.95, -1.05, (progress - 0.25) / 0.3)
+                : mix(-1.05, 1.15, (progress - 0.55) / 0.45);
           gameState.player.parts.armR.rotation.x = castPose;
           gameState.player.parts.armR.rotation.z = 0;
           gameState.player.parts.armL.rotation.x = castPose * 0.91;
