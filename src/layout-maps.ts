@@ -69,16 +69,16 @@ import { hash2 } from "./utils";
           livingAreaGate: { x: 20, z: 42, width: 3 },
           portGate: {
             x: 40,
-            z: 0,
-            height: 30,
+            z: 4,
+            height: 26,
             portX: 0,
-            portZ: 0,
-            portHeight: 30,
+            portZ: 4,
+            portHeight: 26,
           },
           mountainRoad: { x: 3, z: 29, width: 3 },
           mountainGate: { x: 1, z: 0 },
           artVillageGate: { x: 3, z: 29 },
-          portSouthGate: { x: 30, z: 29 },
+          artVillageSouthGate: { x: 30, z: 29, artX: 9, artZ: 0 },
           plaza: { x: 22, z: 4, width: 18, height: 22 },
           terraces: {
             upper: { maxZ: 9, elevation: 2 },
@@ -169,8 +169,8 @@ import { hash2 } from "./utils";
           beachDepth: 10,
           elevation: 1,
           stairs: { x: 4, z: 8, width: 9, depth: 3 },
-          livingGate: { x: 3, z: 0, width: 11 },
-          livingAreaGate: { x: 37, z: 42, width: 11 },
+          livingGate: { x: 0, z: 0, width: 14 },
+          livingAreaGate: { x: 34, z: 42, width: 14 },
           playerArrival: { x: 7, z: 11 },
           carpenterMeet: { x: 13, z: 28 },
           townGate: { x: 3, z: 29 },
@@ -459,7 +459,7 @@ import { hash2 } from "./utils";
         for (let z = 0; z < village.portGate.height; z++)
           tiles[village.portGate.z + z][village.portGate.x] = 3;
         tiles[village.artVillageGate.z][village.artVillageGate.x] = 3;
-        tiles[village.portSouthGate.z][village.portSouthGate.x] = 3;
+        tiles[village.artVillageSouthGate.z][village.artVillageSouthGate.x] = 3;
         tiles[village.mountainGate.z][village.mountainGate.x] = 3;
         village.houses.forEach((house) => (tiles[house.z][house.x] = 1));
         return tiles;
@@ -608,7 +608,7 @@ import { hash2 } from "./utils";
         // 玩法上「往南都會走到這個共用的美術村」。
         artVillage: {
           tiles: [
-            [0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 3, 0, 0, 0, 0, 0, 3, 0, 0],
             [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
             [0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0],
             [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],

@@ -1779,13 +1779,24 @@ import { OYSTER_RACK_VISUAL } from "./game-state";
         },
         {
           map: "oldVillage",
-          x: LAYOUT.oldVillage.portSouthGate.x,
-          z: LAYOUT.oldVillage.portSouthGate.z,
+          x: LAYOUT.oldVillage.artVillageSouthGate.x,
+          z: LAYOUT.oldVillage.artVillageSouthGate.z,
           trigger: "touch",
           action: () =>
-            loadMap("port", {
-              x: LAYOUT.port.townGate.x,
-              z: LAYOUT.port.townGate.z - 1,
+            loadMap("artVillage", {
+              x: LAYOUT.oldVillage.artVillageSouthGate.artX,
+              z: LAYOUT.oldVillage.artVillageSouthGate.artZ + 1,
+            }),
+        },
+        {
+          map: "artVillage",
+          x: LAYOUT.oldVillage.artVillageSouthGate.artX,
+          z: LAYOUT.oldVillage.artVillageSouthGate.artZ,
+          trigger: "touch",
+          action: () =>
+            loadMap("oldVillage", {
+              x: LAYOUT.oldVillage.artVillageSouthGate.x,
+              z: LAYOUT.oldVillage.artVillageSouthGate.z - 1,
             }),
         },
         // 舊城鎮(東側 x=13)<-> 港口(西側 x=0)：整條邊界都能走過去，不是單一
@@ -1803,15 +1814,27 @@ import { OYSTER_RACK_VISUAL } from "./game-state";
               z: LAYOUT.oldVillage.portGate.portZ + i,
             }),
         })),
-        ...Array.from({ length: LAYOUT.oldVillage.portGate.portHeight }, (_, i) => ({
-          map: "port",
-          x: LAYOUT.oldVillage.portGate.portX,
-          z: LAYOUT.oldVillage.portGate.portZ + i,
-          trigger: "touch",
-          action: () =>
-            loadMap("oldVillage", {
-              x: LAYOUT.oldVillage.portGate.x - 1,
-              z: LAYOUT.oldVillage.portGate.z + i,
-            }),
-        })),
+        ...Array.from(
+          { length: LAYOUT.oldVillage.portGate.portHeight },
+          (_, i) => i,
+        )
+          .filter(
+            (i) =>
+              !(
+                LAYOUT.oldVillage.portGate.portX === LAYOUT.port.livingGate.x &&
+                LAYOUT.oldVillage.portGate.portZ + i ===
+                  LAYOUT.port.livingGate.z
+              ),
+          )
+          .map((i) => ({
+            map: "port",
+            x: LAYOUT.oldVillage.portGate.portX,
+            z: LAYOUT.oldVillage.portGate.portZ + i,
+            trigger: "touch",
+            action: () =>
+              loadMap("oldVillage", {
+                x: LAYOUT.oldVillage.portGate.x - 1,
+                z: LAYOUT.oldVillage.portGate.z + i,
+              }),
+          })),
       ];
