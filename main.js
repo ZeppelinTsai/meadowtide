@@ -10,9 +10,13 @@ app.commandLine.appendSwitch("autoplay-policy", "no-user-gesture-required");
 app.commandLine.appendSwitch("disable-gesture-requirement-for-media-playback");
 
 function createWindow() {
+  const windowIcon = app.isPackaged
+    ? path.join(process.resourcesPath, "icon.ico")
+    : path.join(__dirname, "build", "icon.ico");
   const win = new BrowserWindow({
     width: 1280,
     height: 720,
+    icon: windowIcon,
     autoHideMenuBar: true,
     webPreferences: {
       nodeIntegration: false,

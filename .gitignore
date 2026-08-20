@@ -8,6 +8,9 @@ Thumbs.db
 node_modules/
 dist/
 build/
+!build/
+build/*
+!build/icon.ico
 .env
 .env.local
 
