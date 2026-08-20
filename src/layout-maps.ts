@@ -193,7 +193,7 @@ import { hash2 } from "./utils";
         },
         port: {
           width: 34,
-          height: 40,
+          height: 50,
           oceanExpansion: 10,
           oceanViewPadding: 50,
           beachDepth: 10,
@@ -208,6 +208,8 @@ import { hash2 } from "./utils";
           basin: { x: 6, z: 18, width: 15, height: 9 },
           ferry: { x: 13, z: 22 },
           southQuay: { z: 27, height: 3 },
+          southBeach: { x: 0, z: 30, width: 21, depth: 10 },
+          southBeachStairs: { x: 7, z: 29, width: 7, depth: 3 },
           smallBoatDock: { x: 21, z: 27, length: 9 },
           shops: [
             { x: 9, z: 12, w: 3, d: 2, seed: 0.22 },
@@ -307,6 +309,7 @@ import { hash2 } from "./utils";
       export function portGroundY(x: number, z: number) {
         const port = LAYOUT.port;
         const stairs = port.stairs;
+        const southStairs = port.southBeachStairs;
         if (x >= -0.5 && x <= 2.5 && z >= -0.5 && z <= 0.5)
           return port.elevation;
         if (z > 0.5 && z < 8 && x < 2.5) return port.elevation;
@@ -327,6 +330,29 @@ import { hash2 } from "./utils";
             ),
           );
         }
+        const onSouthStairs =
+          x >= southStairs.x - 0.5 &&
+          x <= southStairs.x + southStairs.width - 0.5 &&
+          z >= southStairs.z - 0.5 &&
+          z <= southStairs.z + southStairs.depth - 0.5;
+        if (onSouthStairs) {
+          return Math.max(
+            0,
+            Math.min(
+              port.elevation,
+              ((southStairs.z + southStairs.depth - z) / southStairs.depth) *
+                port.elevation,
+            ),
+          );
+        }
+        const southBeach = port.southBeach;
+        if (
+          x >= southBeach.x - 0.5 &&
+          x <= southBeach.x + southBeach.width - 0.5 &&
+          z >= southBeach.z - 0.5 &&
+          z <= southBeach.z + southBeach.depth - 0.5
+        )
+          return 0;
         return z >= port.beachDepth + 0.5 ? port.elevation : 0;
       }
 
@@ -470,6 +496,21 @@ import { hash2 } from "./utils";
         }
         for (let z = p.height - p.oceanExpansion; z < p.height; z++) {
           for (let x = 0; x < p.width; x++) tiles[z][x] = 9;
+        }
+
+        // 港口南側低地沙灘。先完成外海配置再覆寫沙地，確保擴建後的
+        // z=30~39 是可行走沙灘，而新增加的最南十列仍維持外海。
+        for (
+          let z = p.southBeach.z;
+          z < p.southBeach.z + p.southBeach.depth;
+          z++
+        ) {
+          for (
+            let x = p.southBeach.x;
+            x < p.southBeach.x + p.southBeach.width;
+            x++
+          )
+            tiles[z][x] = 8;
         }
 
         // 中央內港、右側航道與南側外海；石造碼頭保留在四周的 0 格。

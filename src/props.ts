@@ -1391,6 +1391,10 @@ import { randomPasturePoint } from "./npc-runtime";
           (color) =>
             new THREE.MeshStandardMaterial({ color, roughness: 0.98 }),
         );
+        const southStairMats = [0xd8c89f, 0xa99470].map(
+          (color) =>
+            new THREE.MeshStandardMaterial({ color, roughness: 0.98 }),
+        );
         const waterMat = new THREE.MeshStandardMaterial({
           vertexColors: true,
           roughness: 0.2,
@@ -1554,6 +1558,27 @@ import { randomPasturePoint } from "./npc-runtime";
             stepX + (stepWidth - 1) / 2,
             stepHeight / 2,
             port.stairs.z + i,
+          );
+          step.castShadow = true;
+          step.receiveShadow = true;
+          group.add(step);
+        }
+
+        // 南碼頭通往新沙灘的雙色階梯；高度與 portGroundY() 共用同一份
+        // LAYOUT 資料，讓角色腳底、視覺台階與碰撞坡度保持一致。
+        for (let i = 0; i < port.southBeachStairs.depth; i++) {
+          const stepHeight =
+            (port.elevation * (port.southBeachStairs.depth - i)) /
+            port.southBeachStairs.depth;
+          const step = new THREE.Mesh(
+            new THREE.BoxGeometry(port.southBeachStairs.width, stepHeight, 1),
+            southStairMats[i % southStairMats.length],
+          );
+          step.position.set(
+            port.southBeachStairs.x +
+              (port.southBeachStairs.width - 1) / 2,
+            stepHeight / 2,
+            port.southBeachStairs.z + i,
           );
           step.castShadow = true;
           step.receiveShadow = true;
