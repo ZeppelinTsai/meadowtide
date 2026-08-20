@@ -583,6 +583,37 @@ import { hash2 } from "./utils";
       // import LAYOUT/MAPS。因此改放進 build-map.ts，見該檔案尾端。
 
       // ==============================================================
+      // 廚師抵達——第二個角色，複製木匠那套「stage 字串 + 觸碰事件推進 +
+      // showDialogSequence(onComplete)」框架，這次刻意不抽成共用系統
+      // （只有兩個樣本，抽象容易抽錯方向，等第三個角色出現再回頭歸納）。
+      // stage 一路往前推：
+      //   not_started → 港口觸碰事件觸發碼頭見面
+      //   arrived     → 民宿觸碰事件觸發現場看屋 + 她說出招募條件，
+      //                 sharedMealCount 歸零開始累計
+      //   proving     → 沒有天數門檻，等玩家在休息區、白天到傍晚的時段內、
+      //                 帶著收成、旁邊有其他 NPC 在場時觸發「共餐」，累積到門檻次數
+      //                 為止；期間再去敲門只回一句簡短反應，不重播整段開場
+      //                 白——這是跟木匠事件唯一刻意不同的地方，木匠材料不夠
+      //                 時 stage 會退回 en_route_village，導致下次敲門重播
+      //                 整段對話，共餐要等好幾天，重播整段太煩。
+      //   renovating  → 條件達成，她說廚房自己整理，等 CHEF_RENOVATION_DAYS 天
+      //   ready_for_move_in → 天數到了，晚上回民宿觸發入住場景
+      //   moved_in    → 廚師正式出現在 livingArea，恢復排程走動
+      // CHEF_HOUSE/CHEF_DOORSTEP 故意還沒定義：她的家/行程座標要等這套流程
+      // 定案、真的需要擺放時才決定，這裡先只放跟座標無關的 quest 狀態。
+      // ==============================================================
+      export const CHEF_MEAL_THRESHOLD = 3; // 累積這麼多次「共餐」才算證明給她看
+      export const CHEF_MEAL_WINDOW_START = 6; // 只有這段時間內觸發的共餐才算數，
+      export const CHEF_MEAL_WINDOW_END = 20; // 不限定哪一餐，整個白天到傍晚都算
+      export const CHEF_RENOVATION_DAYS = 2; // 比木匠的 2 天蓋房子稍短：她只是整理廚房
+      export const chefQuest = {
+        stage: "not_started",
+        renovatingStartDay: -1,
+        sharedMealCount: 0,
+        lastMealDay: -1, // 同一天只能算一次共餐，避免站著狂按 E 洗數字
+      };
+
+      // ==============================================================
       // 2) A* 網格路徑規劃 — 只有上下左右四個方向，跟玩家移動同一套邏輯，
       //    這樣走出來的路徑「感覺」才會跟這個世界一致，不會忽然出現斜線
       // ==============================================================

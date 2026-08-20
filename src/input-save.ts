@@ -1,6 +1,7 @@
 import { gameState, inventory, cropState, TIME_CONFIG, SEASON_NAMES, WEATHER_NAMES, getSeasonDay, getSeasonPeriod, rollWeatherForSeason, growCropsForNewDay, nearWater, plantSeed, harvestCrop, pickupSeeds, CAST_ANIM_DURATION, OYSTER_RACK_TILES, oysterRackState, harvestOysterRack } from "./game-state";
 import { updateSeasonAndDate } from "./game-clock";
-import { carpenterQuest, POUCH_POS, FARMLAND_TILES } from "./layout-maps";
+import { carpenterQuest, POUCH_POS, FARMLAND_TILES, chefQuest } from "./layout-maps";
+import { tryShareChefMeal } from "./chef-quest";
 import { npcs } from "./npc-runtime";
 import { npcLine } from "./npc-defs";
 import { dialogQueue, advanceDialogSequence, showDialog, dialogEl } from "./dialogue";
@@ -145,6 +146,10 @@ export const SAVE_KEY_PREFIX = "meadowtide.save.";
           }
         }
 
+        if (gameState.currentMapName === "livingArea" && tryShareChefMeal()) {
+          return;
+        }
+
         if (gameState.currentMapName === "livingArea" && nearWater()) {
           if (gameState.fishingState === "idle") {
             gameState.fishingState = "casting";
@@ -219,6 +224,12 @@ export const SAVE_KEY_PREFIX = "meadowtide.save.";
         return corners.some(([cx, cz]) => isBlocked(mapName, cx, cz));
       }
 
+      // 廚師的碼頭/民宿觸碰點還沒有座標，proving/renovating 這段機制沒辦法
+      // 靠正常流程走到——先掛一個可直接改寫的除錯掛鉤，在主控台打
+      // __chefQuest.stage = "proving" 就能單獨測試共餐判定跟天數延遲，
+      // 不用等座標定案。這裡掛的是活物件本身（不是快照），改了會直接
+      // 影響遊戲狀態；座標接上、正式走過抵達事件之後留著也無妨。
+      (window as any).__chefQuest = chefQuest;
       (window as any).__gameState = () => ({
         playerGridPos: gameState.playerGridPos,
         currentMapName: gameState.currentMapName,

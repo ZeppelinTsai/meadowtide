@@ -1,5 +1,5 @@
 import { gameState, dayLength, getSeasonIndex, rollWeatherForSeason, SEASON_NAMES, WEATHER_NAMES, growCropsForNewDay } from "./game-state";
-import { carpenterQuest, CARPENTER_CONSTRUCTION_DAYS } from "./layout-maps";
+import { carpenterQuest, CARPENTER_CONSTRUCTION_DAYS, chefQuest, CHEF_RENOVATION_DAYS } from "./layout-maps";
 import { updateAvenueTreeColors, updateSeasonalTreeColors, updateSeasonalGroundColors } from "./props";
 import { syncFarmVisuals } from "./farm-visuals";
 import { scheduleNextMeteor } from "./scene-sky";
@@ -19,6 +19,12 @@ export function beginNewDay(day) {
             CARPENTER_CONSTRUCTION_DAYS
         ) {
           carpenterQuest.stage = "ready_for_move_in";
+        }
+        if (
+          chefQuest.stage === "renovating" &&
+          day - chefQuest.renovatingStartDay >= CHEF_RENOVATION_DAYS
+        ) {
+          chefQuest.stage = "ready_for_move_in";
         }
         console.info(
           `[天氣] 第 ${day + 1} 天：${SEASON_NAMES[gameState.currentSeason]}季／${WEATHER_NAMES[gameState.currentWeather]}`,
