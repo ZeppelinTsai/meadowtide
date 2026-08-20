@@ -540,20 +540,8 @@ gameState.lastFrame = performance.now();
         });
 
         const sky = DAY.sky.clone().lerp(NIGHT.sky, nightFactor);
-        const weatherDim =
-          {
-            cloudy: 0.28,
-            rain: 0.38,
-            typhoon: 0.55,
-            storm: 0.62,
-            snow: 0.16,
-            blizzard: 0.46,
-          }[gameState.currentWeather] || 0;
-        const weatherFogColor =
-          gameState.currentWeather === "snow" || gameState.currentWeather === "blizzard"
-            ? new THREE.Color(0xcbd4dc)
-            : new THREE.Color(0x697685);
-        sky.lerp(weatherFogColor, weatherDim);
+        // 保留天空、雲與降水的天氣辨識，但不再降低地圖可視度。
+        const weatherDim = 0;
         const skyReflectionAlpha =
           ({
             clear: 0.2,
@@ -614,7 +602,8 @@ gameState.lastFrame = performance.now();
         });
         if (isOutdoorMap()) {
           scene.background = sky;
-          if (gameState.currentWeather === "clear") {
+          // 天氣不再縮短戶外可視距離。
+          if (true) {
             // 晴天保持高能見度；拉遠時距離霧會讓整座島被天空色洗成白霧。
             scene.fog = null;
           } else {
@@ -741,6 +730,30 @@ gameState.lastFrame = performance.now();
           const halfViewDepth = gameState.zoom / Math.cos(TILT_RAD);
           cameraFocusX = Math.max(gameState.player.position.x, halfViewWidth);
           cameraFocusZ = Math.max(gameState.player.position.z, halfViewDepth);
+        } else if (gameState.currentMapName === "oldVillage") {
+          // 城鎮與港口鏡像：港口鎖左上，城鎮鎖右上。
+          const halfViewWidth = camera.right;
+          const halfViewDepth = gameState.zoom / Math.cos(TILT_RAD);
+          const rightEdge = LAYOUT.oldVillage.width - 1;
+          cameraFocusX = Math.min(
+            gameState.player.position.x,
+            rightEdge - halfViewWidth,
+          );
+          cameraFocusZ = Math.max(gameState.player.position.z, halfViewDepth);
+        } else if (gameState.currentMapName === "mountain") {
+          // 山區固定右下邊界；往左上超出固定視野後才跟隨玩家。
+          const halfViewWidth = camera.right;
+          const halfViewDepth = gameState.zoom / Math.cos(TILT_RAD);
+          const rightEdge = LAYOUT.mountain.width - 1;
+          const bottomEdge = LAYOUT.mountain.height - 1;
+          cameraFocusX = Math.min(
+            gameState.player.position.x,
+            rightEdge - halfViewWidth,
+          );
+          cameraFocusZ = Math.min(
+            gameState.player.position.z,
+            bottomEdge - halfViewDepth,
+          );
         }
         if (gameState.currentMapName === "oldVillage") {
           groundOffset = oldVillageGroundY(

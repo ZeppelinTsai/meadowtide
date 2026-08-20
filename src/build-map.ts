@@ -578,7 +578,7 @@ import { OYSTER_RACK_VISUAL } from "./game-state";
               );
               mesh.position.set(
                 platform.x + (platform.width - 1) / 2,
-                (platform.elevation - 0.24) / 2,
+                (platform.elevation - 0.24) / 2 + 0.025,
                 platform.z + (platform.depth - 1) / 2,
               );
               mesh.castShadow = true;

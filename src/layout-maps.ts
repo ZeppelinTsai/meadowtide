@@ -151,7 +151,7 @@ import { hash2 } from "./utils";
           height: 44,
           townGate: { x: 4, z: 43 },
           homeGate: { x: 23, z: 24 },
-          foot: { x: 3, z: 32, width: 19, depth: 11, elevation: 0 },
+          foot: { x: 3, z: 32, width: 19, depth: 12, elevation: 0 },
           waist: { x: 4, z: 17, width: 20, depth: 13, elevation: 2 },
           summit: { x: 7, z: 2, width: 14, depth: 11, elevation: 4 },
           lowerStair: { x: 8, width: 3, fromZ: 29, toZ: 34, baseElevation: 0, elevation: 2, steps: 8 },
