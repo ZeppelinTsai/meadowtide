@@ -532,6 +532,12 @@ export function buildMap(mapName) {
       new THREE.MeshStandardMaterial({
         color: 0xb8aa91,
         roughness: 0.96,
+        // 不寫深度：這片實心地板蓋住整個港區(含船塢/近岸水域下方)，寫
+        // 深度的話，水面上方掛在相機底下的星空/銀河會被這片地板的深度
+        // 直接擋掉——這正是「船塢附近的海看不到星空、外海卻看得到」的
+        // 真正原因：外海裝飾延伸區沒有這片地板，深度測試才通過。實測
+        // 過關掉這裡的 depthWrite 後，船塢跟外海的水面接縫完全消失。
+        depthWrite: false,
       }),
     );
     ground.position.set(
