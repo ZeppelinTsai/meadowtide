@@ -1410,6 +1410,7 @@ import { randomPasturePoint } from "./npc-runtime";
           metalness: 0.1,
           flatShading: true,
           transparent: true,
+          // 港區船塢是淺水，比北邊主海域(0.88)透明得多，星空才透得出來。
           opacity: 0.6,
           side: THREE.DoubleSide,
         });

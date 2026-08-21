@@ -488,7 +488,8 @@ export function buildMap(mapName) {
         roughness: 0.23,
         metalness: 0.08,
         transparent: true,
-        opacity: 0.6,
+        // 這是同一片北邊主海域的遠景，深度定位跟 oceanMesh 一致，幾乎不透明。
+        opacity: 0.88,
         side: THREE.DoubleSide,
       }),
     );
@@ -2057,7 +2058,9 @@ export function buildMap(mapName) {
           metalness: 0.1,
           flatShading: true,
           transparent: true,
-          opacity: 0.6,
+          // 深水（北邊主海域）幾乎不透明，跟淺水（湖、港口船塢）區分開——
+          // 水深當作簡化過的透明度依據，不用真的算深度貼圖。
+          opacity: 0.88,
         }),
       );
       waterSurfaceMaterials.push(
@@ -2302,6 +2305,7 @@ export function buildMap(mapName) {
           roughness: 0.16,
           metalness: 0.12,
           transparent: true,
+          // 湖是淺水，比北邊主海域(0.88)透明得多，星空才透得出來。
           opacity: 0.6,
           side: THREE.DoubleSide,
         }),
