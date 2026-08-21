@@ -1409,8 +1409,8 @@ import { randomPasturePoint } from "./npc-runtime";
           roughness: 0.2,
           metalness: 0.1,
           flatShading: true,
-          transparent: false,
-          opacity: 1,
+          transparent: true,
+          opacity: 0.6,
           side: THREE.DoubleSide,
         });
         const waterDepthMat = new THREE.MeshStandardMaterial({
@@ -1418,6 +1418,9 @@ import { randomPasturePoint } from "./npc-runtime";
           roughness: 1,
           metalness: 0,
           side: THREE.DoubleSide,
+          // 不寫深度：這片是貼在水面正下方的不透明底色，寫深度的話會擋住
+          // 掛在相機底下、固定在很遠處的星空/銀河，上面水面調透明也沒用。
+          depthWrite: false,
         });
         waterSurfaceMaterials.push(waterMat);
         waterSkyUnderlayMaterials.push(waterDepthMat);

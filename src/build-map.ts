@@ -463,6 +463,10 @@ export function buildMap(mapName) {
         roughness: 1,
         metalness: 0,
         side: THREE.DoubleSide,
+        // 不寫深度，理由同 oceanDepthMask：這片不透明底色貼在水面正下方，
+        // 寫深度的話會擋住掛在相機底下、距離固定很遠的星空/銀河，讓上面
+        // 調透明的海面永遠透不出星星。
+        depthWrite: false,
       }),
     );
     northSeaMask.rotation.x = -Math.PI / 2;
@@ -484,7 +488,7 @@ export function buildMap(mapName) {
         roughness: 0.23,
         metalness: 0.08,
         transparent: true,
-        opacity: 0.92,
+        opacity: 0.6,
         side: THREE.DoubleSide,
       }),
     );
@@ -1332,13 +1336,6 @@ export function buildMap(mapName) {
         polygonOffsetFactor: -7,
         polygonOffsetUnits: -7,
       });
-      const lookoutSeamMat = new THREE.MeshStandardMaterial({
-        color: 0x342318,
-        roughness: 1,
-        polygonOffset: true,
-        polygonOffsetFactor: -12,
-        polygonOffsetUnits: -12,
-      });
       mountainSeasonalMaterials.push({
         material: lookoutWoodMat,
         baseColor: 0x9a7048,
@@ -1351,27 +1348,12 @@ export function buildMap(mapName) {
       lookoutMesh.receiveShadow = true;
       lookoutMesh.renderOrder = 3;
       gameState.mapGroup.add(lookoutMesh);
-      const plankSpacing = 0.42;
-      for (
-        let localDepth = plankSpacing;
-        localDepth < lookout.radius;
-        localDepth += plankSpacing
-      ) {
-        const halfChord = Math.sqrt(
-          Math.max(0, lookout.radius ** 2 - localDepth ** 2),
-        );
-        const seam = new THREE.Mesh(
-          new THREE.BoxGeometry(halfChord * 2, 0.035, 0.055),
-          lookoutSeamMat,
-        );
-        seam.position.set(
-          lookout.centerX,
-          mountain.summit.elevation + 0.075,
-          lookout.joinZ - localDepth,
-        );
-        seam.renderOrder = 10;
-        gameState.mapGroup.add(seam);
-      }
+      // 原本用一圈圈同心弦線模擬木棧板接縫，越靠圓弧邊緣越短——但這個
+      // 遊戲的固定俯角鏡頭下，「越遠的橫條越窄、越靠畫面上方」剛好正是
+      // 樓梯踏階的視覺特徵，玩家會把整片平坦甲板誤讀成一段很陡的階梯，
+      // 這才是「走不上去觀景台」的真正原因（地板其實整片都是平的，
+      // 碰撞完全沒問題，純粹是接縫紋理誤導視覺）。直接拿掉這圈接縫，
+      // 只留木地板色＋外緣扶手，圓弧輪廓本身不會被誤認成階梯。
       for (let i = 0; i < lookoutSegments; i++) {
         const angleA = Math.PI + (i / lookoutSegments) * Math.PI;
         const angleB = Math.PI + ((i + 1) / lookoutSegments) * Math.PI;
@@ -2053,6 +2035,11 @@ export function buildMap(mapName) {
           color: 0x174968,
           roughness: 1,
           metalness: 0,
+          // 不寫深度：這片是貼著水面下方的不透明底色，如果照常寫深度，
+          // 星空/銀河(掛在相機底下、離鏡頭固定很遠)在這片海的範圍內深度
+          // 測試一定輸給它，之後海面調得再透明也穿不透。顏色照樣正常畫，
+          // 只是不擋在深度緩衝裡卡住後面才畫的星空。
+          depthWrite: false,
         }),
       );
       oceanDepthMask.position.y = 0.025;
@@ -2070,7 +2057,7 @@ export function buildMap(mapName) {
           metalness: 0.1,
           flatShading: true,
           transparent: true,
-          opacity: 0.92,
+          opacity: 0.6,
         }),
       );
       waterSurfaceMaterials.push(
@@ -2315,7 +2302,7 @@ export function buildMap(mapName) {
           roughness: 0.16,
           metalness: 0.12,
           transparent: true,
-          opacity: 0.9,
+          opacity: 0.6,
           side: THREE.DoubleSide,
         }),
       );
@@ -2332,6 +2319,8 @@ export function buildMap(mapName) {
           roughness: 1,
           metalness: 0,
           side: THREE.DoubleSide,
+          // 不寫深度，理由同 oceanDepthMask。
+          depthWrite: false,
         }),
       );
       lakeSkyUnderlay.position.set(centerX, 0.035, centerZ);
