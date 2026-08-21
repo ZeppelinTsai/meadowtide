@@ -719,6 +719,7 @@ export function buildMap(mapName) {
       const grassMat = new THREE.MeshStandardMaterial({
         color: 0x78945a,
         roughness: 0.98,
+        side: THREE.DoubleSide,
       });
       const mountainPositions: number[] = [];
       const mountainColors: number[] = [];
@@ -965,6 +966,21 @@ export function buildMap(mapName) {
           );
         }
         for (let i = 0; i < segments; i++) {
+          const outerIndex = 1 + i;
+          const outerX = positions[outerIndex * 3];
+          const outerZ = positions[outerIndex * 3 + 2];
+          const radialX = outerX - centerX;
+          const radialZ = outerZ - centerZ;
+          const radialLength = Math.max(0.001, Math.hypot(radialX, radialZ));
+          const inset = Math.min(2.2, radialLength * 0.25);
+          const innerScale = (radialLength - inset) / radialLength;
+          positions.push(
+            centerX + radialX * innerScale,
+            platform.elevation,
+            centerZ + radialZ * innerScale,
+          );
+        }
+        for (let i = 0; i < segments; i++) {
           const topIndex = 1 + i;
           const cliffDrop = platform.elevation - bottomY;
           const topX = positions[topIndex * 3];
@@ -987,17 +1003,56 @@ export function buildMap(mapName) {
             topZ + (radialZ / radialLength) * skirtRun,
           );
         }
+        const platformNorth = platform.z - 0.5;
+        const platformSouth = platform.z + platform.depth - 0.5;
+        const stairs = [mountain.lowerStair, mountain.upperStair];
+        const isStairOpening = (x: number, z: number) =>
+          stairs.some((stair) => {
+            const insideStairWidth =
+              x >= stair.x - 1 &&
+              x <= stair.x + stair.width;
+            if (!insideStairWidth) return false;
+            const joinsNorthEdge =
+              z < centerZ &&
+              stair.fromZ <= platformNorth + 2.5 &&
+              stair.toZ >= platformNorth - 2.5;
+            const joinsSouthEdge =
+              z >= centerZ &&
+              stair.fromZ <= platformSouth + 2.5 &&
+              stair.toZ >= platformSouth - 2.5;
+            return joinsNorthEdge || joinsSouthEdge;
+          });
         for (let i = 0; i < segments; i++) {
           const next = (i + 1) % segments;
-          indices.push(0, 1 + next, 1 + i);
+          const innerA = 1 + segments + i;
+          const innerB = 1 + segments + next;
+          indices.push(0, innerB, innerA);
+        }
+        for (let i = 0; i < segments; i++) {
+          const next = (i + 1) % segments;
+          const outerA = 1 + i;
+          const outerB = 1 + next;
+          const innerA = 1 + segments + i;
+          const innerB = 1 + segments + next;
+          const midpointX =
+            (positions[outerA * 3] + positions[outerB * 3]) / 2;
+          const midpointZ =
+            (positions[outerA * 3 + 2] + positions[outerB * 3 + 2]) / 2;
+          if (isStairOpening(midpointX, midpointZ)) continue;
+          indices.push(innerA, outerB, outerA, innerA, innerB, outerB);
         }
         const topIndexCount = indices.length;
         for (let i = 0; i < segments; i++) {
           const next = (i + 1) % segments;
           const topA = 1 + i;
           const topB = 1 + next;
-          const bottomA = 1 + segments + i;
-          const bottomB = 1 + segments + next;
+          const bottomA = 1 + segments * 2 + i;
+          const bottomB = 1 + segments * 2 + next;
+          const midpointX =
+            (positions[topA * 3] + positions[topB * 3]) / 2;
+          const midpointZ =
+            (positions[topA * 3 + 2] + positions[topB * 3 + 2]) / 2;
+          if (isStairOpening(midpointX, midpointZ)) continue;
           indices.push(topA, bottomA, topB, topB, bottomA, bottomB);
         }
         const geometry = new THREE.BufferGeometry();
@@ -1021,9 +1076,10 @@ export function buildMap(mapName) {
       };
       // 三層各自都是完整梯形山體，裙擺全部延伸到鏡頭底部之外。
       const mountainSkirtBottomY = -Math.max(24, mountain.height * 0.55);
+      const summitSkirtBottomY = -Math.max(42, mountain.height * 0.9);
       addPlatform(mountain.foot, mountainSkirtBottomY);
       addPlatform(mountain.waist, mountainSkirtBottomY);
-      addPlatform(mountain.summit, mountainSkirtBottomY);
+      addPlatform(mountain.summit, summitSkirtBottomY);
 
       const topMats = [0xd0b982, 0x9a835f].map(
         (color) => new THREE.MeshStandardMaterial({

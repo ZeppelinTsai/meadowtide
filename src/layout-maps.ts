@@ -188,6 +188,23 @@ import { hash2 } from "./utils";
           summit: { x: 11, z: 3, width: 19, depth: 16, elevation: 6.5 },
           lowerStair: { x: 21, width: 3, fromZ: 42, toZ: 51, baseElevation: 0, elevation: 3.2, steps: 14 },
           upperStair: { x: 12, width: 3, fromZ: 17, toZ: 28, baseElevation: 3.2, elevation: 3.3, steps: 16 },
+          treeDensity: 0.42,
+          plazas: {
+            summit: [
+              { x: 15, z: 7, width: 11, depth: 7 },
+              { x: 13, z: 9, width: 15, depth: 3 },
+            ],
+            waist: [
+              { x: 14, z: 31, width: 14, depth: 8 },
+              { x: 11, z: 34, width: 20, depth: 3 },
+              { x: 18, z: 29, width: 10, depth: 12 },
+            ],
+            foot: [
+              { x: 10, z: 54, width: 14, depth: 9 },
+              { x: 8, z: 57, width: 19, depth: 4 },
+              { x: 14, z: 52, width: 9, depth: 13 },
+            ],
+          },
           trees: [
             [27, 56], [9, 57], [18, 63], [24, 52],
             [10, 31], [16, 29], [27, 31], [32, 38], [18, 39], [25, 37],
@@ -259,9 +276,42 @@ import { hash2 } from "./utils";
         path(mountain.upperStair.x, mountain.summit.z + mountain.summit.depth - 5, 11, 3);
         path(mountain.summit.x + 9, mountain.summit.z + 5, 3, 8);
         path(mountain.summit.x + 9, mountain.summit.z + 4, 7, 3);
+        Object.values(mountain.plazas).forEach((plazaParts) =>
+          plazaParts.forEach((part) =>
+            path(part.x, part.z, part.width, part.depth),
+          ),
+        );
+        const protectedClearings = [
+          {
+            x: mountain.foot.x + Math.floor(mountain.foot.width / 2),
+            z: mountain.foot.z + Math.floor(mountain.foot.depth / 2),
+            radius: 4,
+          },
+          {
+            x: mountain.summit.x + Math.floor(mountain.summit.width / 2),
+            z: mountain.summit.z + Math.floor(mountain.summit.depth / 2),
+            radius: 4,
+          },
+          { x: mountain.homeArrival.x, z: mountain.homeArrival.z, radius: 2 },
+        ];
+        for (let z = 0; z < mountain.height; z++) {
+          for (let x = 0; x < mountain.width; x++) {
+            if (tiles[z][x] !== 0) continue;
+            if (
+              protectedClearings.some(
+                (clearing) =>
+                  Math.hypot(x - clearing.x, z - clearing.z) <= clearing.radius,
+              )
+            ) continue;
+            if (hash2(x * 5.17 + 12.3, z * 7.31 + 4.9) < mountain.treeDensity)
+              tiles[z][x] = 2;
+          }
+        }
         tiles[mountain.townGate.z][mountain.townGate.x] = 3;
         tiles[mountain.homeGate.z][mountain.homeGate.x] = 3;
-        mountain.trees.forEach(([x, z]) => (tiles[z][x] = 2));
+        mountain.trees.forEach(([x, z]) => {
+          if (tiles[z]?.[x] === 0) tiles[z][x] = 2;
+        });
         return tiles;
       }
 
