@@ -76,7 +76,6 @@ import {
   windowMats,
   waterSurfaceMaterials,
   waterSkyUnderlayMaterials,
-  waterSparkleMaterials,
   outdoorLampLights,
   foamMeshes,
   windmillRotors,
@@ -764,36 +763,6 @@ export function animate(now) {
     material.color.copy(underwaterSky);
     material.emissive.copy(underwaterSky);
     material.emissiveIntensity = 0.28;
-  });
-  // 水面星光點點：PointsMaterial 不受場景光照影響，深夜環境光再暗都會
-  // 維持原本亮度，跟上面那層 emissive 天空色調(會被夜色蓋暗)是刻意分開
-  // 的兩個效果，互不干擾。可見度公式跟星空本身(updateSeasonalStars)
-  // 同一套，星星看得到的時候，水面倒影才會一起出現。
-  const starReflectionVisibility =
-    Math.max(0, Math.min(1, (nightFactor - 0.38) / 0.5)) *
-    ({
-      clear: 1,
-      cloudy: 0.38,
-      rain: 0.18,
-      typhoon: 0,
-      storm: 0,
-      snow: 0.45,
-      blizzard: 0.03,
-    }[gameState.currentWeather] ?? 1);
-  // 每組獨立閃爍的公式直接比照星空自己那套(updateSeasonalStars)：
-  // sin 波取正值再四次方，大部分時間壓在暗處、只在波峰附近瞬間衝亮，
-  // 才會是「一閃一閃」而不是均勻淡入淡出的一片光。
-  waterSparkleMaterials.forEach((material) => {
-    const phaseGroup = (material as any).userData.phaseGroup ?? 0;
-    const pulse = Math.max(
-      0,
-      Math.sin(
-        gameState.effectElapsed * (1.42 + (phaseGroup % 3) * 0.17) +
-          (phaseGroup * Math.PI * 2) / 6,
-      ),
-    );
-    material.opacity =
-      starReflectionVisibility * (0.05 + Math.pow(pulse, 4) * 0.95);
   });
   // 渡輪跳板：白天靠港放下，夜間視為已啟航/行駛中，收起跳板。渡輪
   // 本身固定不動，只切換跳板可見度，不需要真的動畫船身進出港。

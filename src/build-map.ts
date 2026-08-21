@@ -11,7 +11,6 @@ import {
   northCliffEdgeZ,
   groundY,
   updateCameraFrustum,
-  makeWaterSparklePoints,
 } from "./scene-sky";
 import {
   LAYOUT,
@@ -47,7 +46,6 @@ import {
   windowMats,
   waterSurfaceMaterials,
   waterSkyUnderlayMaterials,
-  waterSparkleMaterials,
   outdoorLampLights,
   foamMeshes,
   windmillRotors,
@@ -133,7 +131,6 @@ export function buildMap(mapName) {
   windowMats.length = 0;
   waterSurfaceMaterials.length = 0;
   waterSkyUnderlayMaterials.length = 0;
-  waterSparkleMaterials.length = 0;
   outdoorLampLights.length = 0;
   seasonalTreeLeafMaterials.length = 0;
   seasonalGroundMaterials.length = 0;
@@ -2073,12 +2070,6 @@ export function buildMap(mapName) {
       gameState.oceanMesh.position.set(0, 0.13, 0);
       gameState.oceanMesh.receiveShadow = true;
       gameState.mapGroup.add(gameState.oceanMesh);
-      gameState.mapGroup.add(
-        makeWaterSparklePoints(minX, minX + 32, dataMinZ, dataMaxZ, 95, 0.075),
-      );
-
-      // 星光倒影散布在真實資料涵蓋的海域(dataMinZ~dataMaxZ)，不撒到
-      // 純視覺延伸的南側/遠海——那邊玩家平常看不到，撒了也是浪費。
 
       // 沙灘跟海交界處放幾組會捲上岸、碎開、又退回去的浪花——原本每一
       // 排(z)都放一組，太密集、疊起來一片白，改成每兩排放一組
@@ -2331,17 +2322,6 @@ export function buildMap(mapName) {
       plateauGroup.add(lakeSkyUnderlay);
       waterSkyUnderlayMaterials.push(
         lakeSkyUnderlay.material as THREE.MeshStandardMaterial,
-      );
-      plateauGroup.add(
-        makeWaterSparklePoints(
-          centerX - radiusX,
-          centerX + radiusX,
-          centerZ - radiusZ,
-          centerZ + radiusZ,
-          34,
-          0.065,
-          (x, z) => isInsideLakeShape(x, z, 0.3),
-        ),
       );
 
       // 湖是橢圓形，用 isInsideLakeShape 篩掉外接矩形四個角落，星光點

@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import { hash2 } from "./utils";
 import { gameState } from "./game-state";
-import { TILE, PLATEAU_Y, NORTH_CLIFF_Z, SOUTH_TERRAIN_EXTENSION, makeWaterSparklePoints } from "./scene-sky";
+import { TILE, PLATEAU_Y, NORTH_CLIFF_Z, SOUTH_TERRAIN_EXTENSION } from "./scene-sky";
 import {
   LAYOUT,
   SHRINE_PATH_START_X,
@@ -1459,19 +1459,6 @@ import { randomPasturePoint } from "./npc-runtime";
           );
           gameState.portWaterMeshes.push(water);
           group.add(water);
-          group.add(
-            makeWaterSparklePoints(
-              x,
-              x + width,
-              z,
-              z + depth,
-              Math.max(10, Math.min(55, Math.round((width * depth) / 10))),
-              0.055,
-            ),
-          );
-
-          // 每塊水面自己撒一批星光點，數量跟面積成比例，小水塘不會跟大船塢
-          // 一樣密。
         };
         addWater(
           port.basin.x,

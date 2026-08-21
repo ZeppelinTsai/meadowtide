@@ -3,12 +3,6 @@ import { gameState } from "./game-state";
 export const windowMats = [];
 export const waterSurfaceMaterials: import("three").MeshStandardMaterial[] = [];
 export const waterSkyUnderlayMaterials: import("three").MeshStandardMaterial[] = [];
-      // 水面上的星光點點——跟水面本身的天空色調不是同一個效果：那個是
-      // MeshStandardMaterial 唯一的 emissive 通道，一旦被拿來畫散落的星星
-      // 亮點，原本「整片水面隨天空變色」的效果就會被蓋掉。這裡另外疊一層
-      // THREE.Points(共用 scene-sky.ts 的 STAR_SPARKLE_TEXTURE)，opacity
-      // 由 game-loop.ts 跟著 nightFactor/天氣同步淡入淡出，兩個效果互不干擾。
-      export const waterSparkleMaterials: import("three").PointsMaterial[] = [];
       // 地圖切換點的黃色門檻標記，跟其他登記表同一套：buildMap() 清空重建，
       // 之後不用重新整理地圖也能一次切換全部標記的顯示/隱藏(見 build-map.ts
       // 的 setThresholdMarkersVisible)。
