@@ -196,8 +196,14 @@ export function buildMap(mapName) {
     const rampX = LAYOUT.coast.rampX;
     const lowlandX = rampX + LAYOUT.coast.rampWidth;
     groundSlab(0, rampX, PLATEAU_Y);
+    // 跟 grassMat 同一套修法：這片地板蓋住沙洲步道/近海這一整塊區域，
+    // 之前一直沒套用，就是「靠近女神祠堂那段海完全看不到星空」的真正
+    // 原因——這片才是實際擋住深度的地板，不是 oceanDepthMask 本身。
     const lowlandMat = new THREE.MeshStandardMaterial({
       color: 0x6ab04c,
+      transparent: true,
+      opacity: 1,
+      depthWrite: false,
     });
     seasonalGroundMaterials.push(grassMat, lowlandMat);
     const cliffMat2 = new THREE.MeshStandardMaterial({
@@ -282,6 +288,7 @@ export function buildMap(mapName) {
       zCenter + (SOUTH_TERRAIN_EXTENSION - NORTH_TERRAIN_EXTENSION) / 2,
     );
     lowland.receiveShadow = true;
+    lowland.renderOrder = 2;
     gameState.mapGroup.add(lowland);
     const southCoastStartZ = TOWN_Z_START - 0.5;
     const southCoastDepth = rows - TOWN_Z_START + SOUTH_TERRAIN_EXTENSION;
@@ -467,7 +474,9 @@ export function buildMap(mapName) {
       basePositions: sgBase,
       baseColors: sgColors.slice(),
     };
-    // 海面本身保留半透明波光；下方用不透明深海層遮住相機星空，避免星星穿透水面。
+    // 海面本身保留半透明波光；下方這片不透明深海層只負責顏色深度感，
+    // 跟草地/港區地板同一套修法（transparent+opacity:1+depthWrite:false+
+    // renderOrder），星空才穿得過去，不是靠這片「擋住」星星。
     const northSeaMask = new THREE.Mesh(
       new THREE.PlaneGeometry(northSeaWidth + 0.4, northSeaDepth + 0.4),
       new THREE.MeshStandardMaterial({
@@ -475,9 +484,8 @@ export function buildMap(mapName) {
         roughness: 1,
         metalness: 0,
         side: THREE.DoubleSide,
-        // 不寫深度，理由同 oceanDepthMask：這片不透明底色貼在水面正下方，
-        // 寫深度的話會擋住掛在相機底下、距離固定很遠的星空/銀河，讓上面
-        // 調透明的海面永遠透不出星星。
+        transparent: true,
+        opacity: 1,
         depthWrite: false,
       }),
     );
@@ -488,6 +496,7 @@ export function buildMap(mapName) {
       northSeaNearZ - northSeaDepth / 2,
     );
     northSeaMask.receiveShadow = true;
+    northSeaMask.renderOrder = 2;
     gameState.mapGroup.add(northSeaMask);
     waterSkyUnderlayMaterials.push(
       northSeaMask.material as THREE.MeshStandardMaterial,
@@ -2060,15 +2069,18 @@ export function buildMap(mapName) {
           color: 0x174968,
           roughness: 1,
           metalness: 0,
-          // 不寫深度：這片是貼著水面下方的不透明底色，如果照常寫深度，
-          // 星空/銀河(掛在相機底下、離鏡頭固定很遠)在這片海的範圍內深度
-          // 測試一定輸給它，之後海面調得再透明也穿不透。顏色照樣正常畫，
-          // 只是不擋在深度緩衝裡卡住後面才畫的星空。
+          // 跟草地/港區地板同一套修法（transparent+opacity:1+depthWrite:
+          // false+renderOrder），不是只關 depthWrite。只關 depthWrite（維持
+          // opaque）理論上也該讓星空穿過去，但實測這片海這樣單獨關掉沒有
+          //效果——原因還沒完全查清楚，直接套用已經證實有效的完整組合。
+          transparent: true,
+          opacity: 1,
           depthWrite: false,
         }),
       );
       oceanDepthMask.position.y = 0.025;
       oceanDepthMask.receiveShadow = true;
+      oceanDepthMask.renderOrder = 2;
       gameState.mapGroup.add(oceanDepthMask);
       waterSkyUnderlayMaterials.push(
         oceanDepthMask.material as THREE.MeshStandardMaterial,
