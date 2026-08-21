@@ -714,6 +714,7 @@ export function buildMap(mapName) {
         color: 0x514a3f,
         roughness: 1,
         flatShading: true,
+        side: THREE.DoubleSide,
       });
       const grassMat = new THREE.MeshStandardMaterial({
         color: 0x78945a,
@@ -935,32 +936,110 @@ export function buildMap(mapName) {
       gameState.mapGroup.add(mountainMesh);
       // 跟生活區西側山壁（makeWesternMountainTerrain）一樣，在山壁外緣散一圈
       // 大石頭打散筆直的地圖邊界，避免整座山的最外圍看起來像切齊的方形。
-      const addPlatform = (platform) => {
-        const height = platform.elevation + 1.2;
-        const mesh = new THREE.Mesh(
-          new THREE.BoxGeometry(platform.width, height, platform.depth),
-          [cliffMat, cliffMat, grassMat, cliffMat, cliffMat, cliffMat],
+      const addPlatform = (platform, bottomY: number) => {
+        const segments = 48;
+        const centerX = platform.x + (platform.width - 1) / 2;
+        const centerZ = platform.z + (platform.depth - 1) / 2;
+        const halfWidth = platform.width / 2;
+        const halfDepth = platform.depth / 2;
+        const positions: number[] = [centerX, platform.elevation, centerZ];
+        const indices: number[] = [];
+        const seed = platform.x * 0.73 + platform.z * 1.37;
+        for (let i = 0; i < segments; i++) {
+          const angle = (i / segments) * Math.PI * 2;
+          const dx = Math.cos(angle);
+          const dz = Math.sin(angle);
+          const rectangleRadius = 1 / Math.max(
+            Math.abs(dx) / halfWidth,
+            Math.abs(dz) / halfDepth,
+          );
+          const irregularity =
+            1.1 +
+            Math.sin(angle * 3 + seed) * 0.045 +
+            Math.sin(angle * 7 - seed * 0.6) * 0.035 +
+            (hash2(i * 3.17, seed) - 0.5) * 0.05;
+          positions.push(
+            centerX + dx * rectangleRadius * irregularity,
+            platform.elevation,
+            centerZ + dz * rectangleRadius * irregularity,
+          );
+        }
+        for (let i = 0; i < segments; i++) {
+          const topIndex = 1 + i;
+          const cliffDrop = platform.elevation - bottomY;
+          const topX = positions[topIndex * 3];
+          const topZ = positions[topIndex * 3 + 2];
+          const radialX = topX - centerX;
+          const radialZ = topZ - centerZ;
+          const radialLength = Math.max(0.001, Math.hypot(radialX, radialZ));
+          // 90° 是直壁；梯地裙擺改成相對水平面 45°～60°。
+          // 固定種子讓每段坡角略有差異，但每次載入都維持相同輪廓。
+          const skirtAngleDegrees = THREE.MathUtils.lerp(
+            45,
+            60,
+            hash2(Math.floor(i / 3) * 2.41 + seed, seed * 4.73),
+          );
+          const skirtRun =
+            cliffDrop / Math.tan(THREE.MathUtils.degToRad(skirtAngleDegrees));
+          positions.push(
+            topX + (radialX / radialLength) * skirtRun,
+            bottomY,
+            topZ + (radialZ / radialLength) * skirtRun,
+          );
+        }
+        for (let i = 0; i < segments; i++) {
+          const next = (i + 1) % segments;
+          indices.push(0, 1 + next, 1 + i);
+        }
+        const topIndexCount = indices.length;
+        for (let i = 0; i < segments; i++) {
+          const next = (i + 1) % segments;
+          const topA = 1 + i;
+          const topB = 1 + next;
+          const bottomA = 1 + segments + i;
+          const bottomB = 1 + segments + next;
+          indices.push(topA, bottomA, topB, topB, bottomA, bottomB);
+        }
+        const geometry = new THREE.BufferGeometry();
+        geometry.setAttribute(
+          "position",
+          new THREE.Float32BufferAttribute(positions, 3),
         );
-        mesh.position.set(
-          platform.x + (platform.width - 1) / 2,
-          platform.elevation - height / 2,
-          platform.z + (platform.depth - 1) / 2,
+        geometry.setIndex(indices);
+        geometry.clearGroups();
+        geometry.addGroup(0, topIndexCount, 0);
+        geometry.addGroup(topIndexCount, indices.length - topIndexCount, 1);
+        geometry.computeVertexNormals();
+        const mesh = new THREE.Mesh(
+          geometry,
+          [grassMat, cliffMat],
         );
         mesh.castShadow = false;
         mesh.receiveShadow = true;
         mesh.renderOrder = 2;
         gameState.mapGroup.add(mesh);
       };
-      addPlatform(mountain.foot);
-      addPlatform(mountain.waist);
-      addPlatform(mountain.summit);
+      // 三層各自都是完整梯形山體，裙擺全部延伸到鏡頭底部之外。
+      const mountainSkirtBottomY = -Math.max(24, mountain.height * 0.55);
+      addPlatform(mountain.foot, mountainSkirtBottomY);
+      addPlatform(mountain.waist, mountainSkirtBottomY);
+      addPlatform(mountain.summit, mountainSkirtBottomY);
 
       const topMats = [0xd0b982, 0x9a835f].map(
-        (color) => new THREE.MeshStandardMaterial({ color, roughness: 1 }),
+        (color) => new THREE.MeshStandardMaterial({
+          color,
+          roughness: 1,
+          polygonOffset: true,
+          polygonOffsetFactor: -6,
+          polygonOffsetUnits: -6,
+        }),
       );
       const sideMat = new THREE.MeshStandardMaterial({
         color: 0x514a3f,
         roughness: 1,
+        polygonOffset: true,
+        polygonOffsetFactor: -6,
+        polygonOffsetUnits: -6,
       });
       [mountain.lowerStair, mountain.upperStair].forEach((stair) => {
         const depth = (stair.toZ - stair.fromZ) / stair.steps;
@@ -977,6 +1056,7 @@ export function buildMap(mapName) {
           );
           mesh.castShadow = true;
           mesh.receiveShadow = true;
+          mesh.renderOrder = 8;
           gameState.mapGroup.add(mesh);
         }
       });
