@@ -1466,25 +1466,17 @@ import { randomPasturePoint } from "./npc-runtime";
           port.basin.width,
           port.basin.height,
         );
-        addWater(
-          port.smallBoatDock.x,
-          port.basin.z - 1,
-          port.width - port.smallBoatDock.x,
-          port.height - (port.basin.z - 1),
-        );
         const oceanViewEdge = port.width + port.oceanViewPadding;
         addWater(14, 0, oceanViewEdge - 14, port.beachDepth + 1);
+        // 船塢東側到外海原本切成三塊各自獨立的矩形(船塢旁水域/外海/外擴
+        // 銜接帶)，邊界彼此不完全對齊，畫面上會看到一條「近海」跟「外海」
+        // 的明顯分隔線。改成單一矩形，從船塢邊緣直接鋪到外海視覺延伸的
+        // 盡頭，跟外海用同一塊水面、同一組頂點，不會再有中間那道縫。
         addWater(
-          port.width,
+          port.smallBoatDock.x,
           port.beachDepth + 1,
-          port.oceanViewPadding,
+          oceanViewEdge - port.smallBoatDock.x,
           port.height - port.beachDepth - 1,
-        );
-        addWater(
-          port.width - port.oceanExpansion,
-          port.beachDepth + 1,
-          port.oceanExpansion,
-          port.basin.z - port.beachDepth - 2,
         );
         // 南側水面逐欄從實際岸線後開始，讓沙灘凹凸不會被矩形水面蓋住。
         for (

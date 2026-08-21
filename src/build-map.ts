@@ -2296,8 +2296,9 @@ export function buildMap(mapName) {
           roughness: 0.16,
           metalness: 0.12,
           transparent: true,
-          // 湖是淺水，比北邊主海域(0.88)透明得多，星空才透得出來。
-          opacity: 0.6,
+          // 湖是淺水，比北邊主海域(0.88)透明得多，星空才透得出來；0.6 試過
+          // 還是看不出效果，再往下調到 0.35。
+          opacity: 0.35,
           side: THREE.DoubleSide,
         }),
       );
