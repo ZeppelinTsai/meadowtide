@@ -547,11 +547,16 @@ export function buildMap(mapName) {
       new THREE.MeshStandardMaterial({
         color: 0xb8aa91,
         roughness: 0.96,
-        // 不寫深度：這片實心地板蓋住整個港區(含船塢/近岸水域下方)，寫
-        // 深度的話，水面上方掛在相機底下的星空/銀河會被這片地板的深度
-        // 直接擋掉——這正是「船塢附近的海看不到星空、外海卻看得到」的
-        // 真正原因：外海裝飾延伸區沒有這片地板，深度測試才通過。實測
-        // 過關掉這裡的 depthWrite 後，船塢跟外海的水面接縫完全消失。
+        // transparent+opacity:1+depthWrite:false，不是只關掉 depthWrite。
+        // 純關 depthWrite（保留 opaque）會讓地板完全不擋深度，星空/銀河
+        // 連沙灘/廣場這些「應該不透光」的地方都會透出來，不是只有水面
+        // 半透明處。改成跟星空同一個 transparent 佇列、opacity 維持 1
+        // （視覺上還是完全不透明），renderOrder 排在星空群組(-0.8~-0.5)
+        // 之後、水面之前：星空先畫→地板用不透明色蓋掉星空（沙灘/廣場
+        // 正常不透光）→水面最後疊上去，水面自己有正常寫深度，地板的
+        // 深度測試會正確避開水面範圍不覆蓋它，水面才能繼續透出星空。
+        transparent: true,
+        opacity: 1,
         depthWrite: false,
       }),
     );
@@ -561,6 +566,7 @@ export function buildMap(mapName) {
       (rows * TILE) / 2 - TILE / 2,
     );
     ground.receiveShadow = true;
+    ground.renderOrder = 2;
     gameState.mapGroup.add(ground);
     plateauGroup.add(makePortScene());
   } else {
