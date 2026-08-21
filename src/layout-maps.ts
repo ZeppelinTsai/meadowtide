@@ -200,7 +200,7 @@ import { hash2 } from "./utils";
           summit: { x: 11, z: 3, width: 19, depth: 16, elevation: 6.5 },
           summitLookout: {
             centerX: 20,
-            joinZ: 4,
+            joinZ: 2,
             radius: 4,
             treeClearRadius: 6.5,
           },
@@ -284,7 +284,7 @@ import { hash2 } from "./utils";
             if (
               dz <= 0 &&
               dx * dx + dz * dz <= mountain.summitLookout.radius ** 2
-            ) tiles[z][x] = 5;
+            ) tiles[z][x] = 0;
           }
         }
         // 山腳先沿平台內側來回折返，再接第一段長階梯；避免入口到階梯只剩一條直角走廊。
@@ -304,6 +304,14 @@ import { hash2 } from "./utils";
         path(mountain.upperStair.x, mountain.summit.z + mountain.summit.depth - 5, 11, 3);
         path(mountain.summit.x + 9, mountain.summit.z + 5, 3, 8);
         path(mountain.summit.x + 9, mountain.summit.z + 4, 7, 3);
+        // 山頂步道再往北延伸到觀景台圓弧範圍內，路面本身接進去，不是
+        // 走到山頂平台北緣就斷掉、剩觀景台那圈草地孤立在外。
+        path(
+          mountain.summitLookout.centerX - 1,
+          mountain.summitLookout.joinZ - 1,
+          3,
+          mountain.summit.z + 4 - (mountain.summitLookout.joinZ - 1),
+        );
         Object.values(mountain.plazas).forEach((plazaParts) =>
           plazaParts.forEach((part) =>
             path(part.x, part.z, part.width, part.depth),

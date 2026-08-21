@@ -733,8 +733,11 @@ export function buildMap(mapName) {
         roughness: 0.95,
       });
       const mountainRailBarMat = new THREE.MeshStandardMaterial({
-        color: 0x8a6846,
+        color: 0x9b7650,
         roughness: 0.9,
+        polygonOffset: true,
+        polygonOffsetFactor: -4,
+        polygonOffsetUnits: -4,
       });
       const railHeight = 0.72;
       const addMountainRailSegment = (
@@ -760,7 +763,7 @@ export function buildMap(mapName) {
         const end = new THREE.Vector3(bx, by + railHeight, bz);
         const delta = end.clone().sub(start);
         const bar = new THREE.Mesh(
-          new THREE.BoxGeometry(delta.length(), 0.065, 0.065),
+          new THREE.BoxGeometry(delta.length(), 0.085, 0.085),
           mountainRailBarMat,
         );
         bar.position.copy(start).add(end).multiplyScalar(0.5);
@@ -988,6 +991,10 @@ export function buildMap(mapName) {
       gameState.mapGroup.add(mountainMesh);
       // 跟生活區西側山壁（makeWesternMountainTerrain）一樣，在山壁外緣散一圈
       // 大石頭打散筆直的地圖邊界，避免整座山的最外圍看起來像切齊的方形。
+      let summitLookoutRailAnchors: {
+        left: THREE.Vector3;
+        right: THREE.Vector3;
+      } | null = null;
       const addPlatform = (platform, bottomY: number) => {
         const segments = 48;
         const centerX = platform.x + (platform.width - 1) / 2;
@@ -997,6 +1004,51 @@ export function buildMap(mapName) {
         const positions: number[] = [centerX, platform.elevation, centerZ];
         const indices: number[] = [];
         const seed = platform.x * 0.73 + platform.z * 1.37;
+        // isStairJoin 系列要先算好，才能在「生成外圈頂點」那一步直接判斷
+        // 每個頂點是否落在樓梯接合區——先前的版本是頂點先照隨機外輪廓算完，
+        // 樓梯缺口/裙帶收邊/方形收邊都是事後在既有頂點上做二次處理，缺口
+        // 本身的邊界仍然是隨機外輪廓的一部分，跟旁邊另外貼上去的固定方形
+        // 收邊（shoulderWidth）對不齊，這才是「樓梯接縫還有一點點瑕疵」
+        // 真正的根源。這一版把樓梯寬度+肩寬直接烤進外圈頂點生成，接合區
+        // 內完全不套用 irregularity，其餘外圈才維持原本的不規則山頭輪廓。
+        const platformNorth = platform.z - 0.5;
+        const platformSouth = platform.z + platform.depth - 0.5;
+        const stairs = [mountain.lowerStair, mountain.upperStair];
+        const shoulderWidth = 1.6;
+        const isStairJoin = (x: number, z: number, sideMargin = 0) =>
+          stairs.some((stair) => {
+            const insideStairWidth =
+              x >= stair.x - 0.52 - sideMargin &&
+              x <= stair.x + stair.width - 0.48 + sideMargin;
+            if (!insideStairWidth) return false;
+            const joinsNorthEdge =
+              z < centerZ &&
+              stair.fromZ <= platformNorth + 2.5 &&
+              stair.toZ >= platformNorth - 2.5;
+            const joinsSouthEdge =
+              z >= centerZ &&
+              stair.fromZ <= platformSouth + 2.5 &&
+              stair.toZ >= platformSouth - 2.5;
+            return joinsNorthEdge || joinsSouthEdge;
+          });
+        const isStairOpening = (x: number, z: number) =>
+          isStairJoin(x, z);
+        const isStairShoulder = (x: number, z: number) =>
+          isStairJoin(x, z, shoulderWidth);
+        // 山腳/山腰的城鎮門與山頂觀景台開口——跟樓梯開口一樣，牆面/裙帶
+        // 在這個範圍內都不該生成，不然平台外圈的岩壁會整圈封死，看起來
+        // 走不出去/走不上觀景台，即使 tile 碰撞其實是通的。
+        const isTransferOpening = (x: number, z: number) =>
+          (platform === mountain.foot &&
+            Math.hypot(x - mountain.townGate.x, z - mountain.townGate.z) < 2.2) ||
+          (platform === mountain.waist &&
+            Math.hypot(x - mountain.homeGate.x, z - mountain.homeGate.z) < 2.2) ||
+          (platform === mountain.summit &&
+            z < centerZ &&
+            Math.abs(x - mountain.summitLookout.centerX) <
+              mountain.summitLookout.radius + 0.35);
+        const isOpening = (x: number, z: number) =>
+          isStairOpening(x, z) || isTransferOpening(x, z);
         for (let i = 0; i < segments; i++) {
           const angle = (i / segments) * Math.PI * 2;
           const dx = Math.cos(angle);
@@ -1005,6 +1057,14 @@ export function buildMap(mapName) {
             Math.abs(dx) / halfWidth,
             Math.abs(dz) / halfDepth,
           );
+          const flatX = centerX + dx * rectangleRadius;
+          const flatZ = centerZ + dz * rectangleRadius;
+          // 樓梯接合區（含肩寬緩衝）直接用未加抖動的矩形邊界，跟固定方形
+          // 收邊、垂直裙帶用的是同一條線；區外才套用不規則抖動的山頭輪廓。
+          if (isStairShoulder(flatX, flatZ)) {
+            positions.push(flatX, platform.elevation, flatZ);
+            continue;
+          }
           const irregularity =
             1.1 +
             Math.sin(angle * 3 + seed) * 0.045 +
@@ -1031,29 +1091,6 @@ export function buildMap(mapName) {
             centerZ + radialZ * innerScale,
           );
         }
-        const platformNorth = platform.z - 0.5;
-        const platformSouth = platform.z + platform.depth - 0.5;
-        const stairs = [mountain.lowerStair, mountain.upperStair];
-        const isStairJoin = (x: number, z: number, sideMargin = 0) =>
-          stairs.some((stair) => {
-            const insideStairWidth =
-              x >= stair.x - 0.52 - sideMargin &&
-              x <= stair.x + stair.width - 0.48 + sideMargin;
-            if (!insideStairWidth) return false;
-            const joinsNorthEdge =
-              z < centerZ &&
-              stair.fromZ <= platformNorth + 2.5 &&
-              stair.toZ >= platformNorth - 2.5;
-            const joinsSouthEdge =
-              z >= centerZ &&
-              stair.fromZ <= platformSouth + 2.5 &&
-              stair.toZ >= platformSouth - 2.5;
-            return joinsNorthEdge || joinsSouthEdge;
-          });
-        const isStairOpening = (x: number, z: number) =>
-          isStairJoin(x, z);
-        const isStairShoulder = (x: number, z: number) =>
-          isStairJoin(x, z, 1.35);
         for (let i = 0; i < segments; i++) {
           const topIndex = 1 + i;
           const topX = positions[topIndex * 3];
@@ -1070,7 +1107,7 @@ export function buildMap(mapName) {
             60,
             hash2(Math.floor(i / 3) * 2.41 + seed, seed * 4.73),
           );
-          const skirtRun = isStairShoulder(topX, topZ)
+          const skirtRun = isStairShoulder(topX, topZ) || isTransferOpening(topX, topZ)
             ? 0
             : (platform.elevation - bottomY) /
               Math.tan(THREE.MathUtils.degToRad(skirtAngleDegrees));
@@ -1079,6 +1116,44 @@ export function buildMap(mapName) {
             bottomY,
             topZ + (radialZ / radialLength) * skirtRun,
           );
+        }
+        const railSuppressed = Array.from({ length: segments }, (_, i) => {
+          const next = (i + 1) % segments;
+          const outerA = 1 + i;
+          const outerB = 1 + next;
+          const midpointX =
+            (positions[outerA * 3] + positions[outerB * 3]) / 2;
+          const midpointZ =
+            (positions[outerA * 3 + 2] + positions[outerB * 3 + 2]) / 2;
+          return (
+            isStairShoulder(midpointX, midpointZ) ||
+            isTransferOpening(midpointX, midpointZ)
+          );
+        });
+        if (platform === mountain.summit) {
+          const transitions: THREE.Vector3[] = [];
+          for (let i = 0; i < segments; i++) {
+            const previous = (i - 1 + segments) % segments;
+            if (railSuppressed[i] === railSuppressed[previous]) continue;
+            const pointIndex = 1 + i;
+            const point = new THREE.Vector3(
+              positions[pointIndex * 3],
+              platform.elevation,
+              positions[pointIndex * 3 + 2],
+            );
+            if (
+              point.z < centerZ &&
+              Math.abs(point.x - mountain.summitLookout.centerX) <
+                mountain.summitLookout.radius + 2
+            ) transitions.push(point);
+          }
+          transitions.sort((a, b) => a.x - b.x);
+          if (transitions.length >= 2) {
+            summitLookoutRailAnchors = {
+              left: transitions[0],
+              right: transitions[transitions.length - 1],
+            };
+          }
         }
         for (let i = 0; i < segments; i++) {
           const next = (i + 1) % segments;
@@ -1106,9 +1181,11 @@ export function buildMap(mapName) {
           const topB = 1 + next;
           const bottomA = 1 + segments * 2 + i;
           const bottomB = 1 + segments * 2 + next;
-          // 僅按樓梯的精確寬度挖開垂直樓基；實心階梯本身會補住缺口。
-          // 裙帶已是 90°，不會再因向外擴張而在樓梯兩側露出星空。
-          if (isStairOpening(
+          // 樓梯精確寬度挖開垂直樓基（實心階梯本身會補住缺口），城鎮門/
+          // 觀景台開口這裡也要一併挖開——裙帶牆面之前只認樓梯，門/觀景台
+          // 那圈仍然整片封死，地板雖然是通的，但視覺上像被石壁擋住走不
+          // 上去；isOpening 把兩種開口都算進去才會真的看得到出口。
+          if (isOpening(
             (positions[topA * 3] + positions[topB * 3]) / 2,
             (positions[topA * 3 + 2] + positions[topB * 3 + 2]) / 2,
           )) continue;
@@ -1133,15 +1210,6 @@ export function buildMap(mapName) {
         mesh.renderOrder = 2;
         gameState.mapGroup.add(mesh);
 
-        const isTransferOpening = (x: number, z: number) =>
-          (platform === mountain.foot &&
-            Math.hypot(x - mountain.townGate.x, z - mountain.townGate.z) < 2.2) ||
-          (platform === mountain.waist &&
-            Math.hypot(x - mountain.homeGate.x, z - mountain.homeGate.z) < 2.2) ||
-          (platform === mountain.summit &&
-            z < centerZ &&
-            Math.abs(x - mountain.summitLookout.centerX) <
-              mountain.summitLookout.radius + 0.35);
         for (let i = 0; i < segments; i++) {
           const next = (i + 1) % segments;
           const outerA = 1 + i;
@@ -1150,12 +1218,7 @@ export function buildMap(mapName) {
           const az = positions[outerA * 3 + 2];
           const bx = positions[outerB * 3];
           const bz = positions[outerB * 3 + 2];
-          const midpointX = (ax + bx) / 2;
-          const midpointZ = (az + bz) / 2;
-          if (
-            isStairShoulder(midpointX, midpointZ) ||
-            isTransferOpening(midpointX, midpointZ)
-          ) continue;
+          if (railSuppressed[i]) continue;
           addMountainRailSegment(
             ax,
             platform.elevation,
@@ -1177,7 +1240,6 @@ export function buildMap(mapName) {
             stair.fromZ <= platformSouth + 2.5 &&
             stair.toZ >= platformSouth - 2.5;
           const landingDepth = 2.4;
-          const shoulderWidth = 1.6;
           const stairLeft = stair.x - 0.5;
           const stairRight = stair.x + stair.width - 0.5;
           const addSquareLanding = (edgeZ: number, inward: number) => {
@@ -1191,7 +1253,10 @@ export function buildMap(mapName) {
               );
               landingShoulder.position.set(
                 x,
-                platform.elevation + 0.012,
+                // 外圈頂點在樓梯接合區已經是精確的 platform.elevation（無抖動、
+                // 無額外偏移），這裡只留極小的 epsilon 避免跟它 z-fighting，
+                // 不能再用舊的 +0.012（那個量級足以在接縫處露出一條台階）。
+                platform.elevation + 0.004,
                 edgeZ + inward * landingDepth / 2,
               );
               landingShoulder.receiveShadow = true;
@@ -1234,8 +1299,10 @@ export function buildMap(mapName) {
           lookout.joinZ + Math.sin(angle) * lookout.radius,
         );
       }
+      // 從上方觀看時必須是 +Y 正面；原本的繞序朝下，導致木地板被背面剔除，
+      // 露出下方山頂綠地，看起來像綠地蓋過平台。
       for (let i = 0; i < lookoutSegments; i++)
-        lookoutIndices.push(0, 1 + i, 2 + i);
+        lookoutIndices.push(0, 2 + i, 1 + i);
       const lookoutTopIndexCount = lookoutIndices.length;
       const bottomOffset = 2 + lookoutSegments;
       for (let i = 0; i < lookoutSegments; i++) {
@@ -1258,10 +1325,53 @@ export function buildMap(mapName) {
         1,
       );
       lookoutGeometry.computeVertexNormals();
-      const lookoutMesh = new THREE.Mesh(lookoutGeometry, [grassMat, cliffMat]);
+      const lookoutWoodMat = new THREE.MeshStandardMaterial({
+        color: 0x9a7048,
+        roughness: 0.92,
+        polygonOffset: true,
+        polygonOffsetFactor: -7,
+        polygonOffsetUnits: -7,
+      });
+      const lookoutSeamMat = new THREE.MeshStandardMaterial({
+        color: 0x342318,
+        roughness: 1,
+        polygonOffset: true,
+        polygonOffsetFactor: -12,
+        polygonOffsetUnits: -12,
+      });
+      mountainSeasonalMaterials.push({
+        material: lookoutWoodMat,
+        baseColor: 0x9a7048,
+        winterColor: 0xe8edf0,
+      });
+      const lookoutMesh = new THREE.Mesh(
+        lookoutGeometry,
+        [lookoutWoodMat, cliffMat],
+      );
       lookoutMesh.receiveShadow = true;
       lookoutMesh.renderOrder = 3;
       gameState.mapGroup.add(lookoutMesh);
+      const plankSpacing = 0.42;
+      for (
+        let localDepth = plankSpacing;
+        localDepth < lookout.radius;
+        localDepth += plankSpacing
+      ) {
+        const halfChord = Math.sqrt(
+          Math.max(0, lookout.radius ** 2 - localDepth ** 2),
+        );
+        const seam = new THREE.Mesh(
+          new THREE.BoxGeometry(halfChord * 2, 0.035, 0.055),
+          lookoutSeamMat,
+        );
+        seam.position.set(
+          lookout.centerX,
+          mountain.summit.elevation + 0.075,
+          lookout.joinZ - localDepth,
+        );
+        seam.renderOrder = 10;
+        gameState.mapGroup.add(seam);
+      }
       for (let i = 0; i < lookoutSegments; i++) {
         const angleA = Math.PI + (i / lookoutSegments) * Math.PI;
         const angleB = Math.PI + ((i + 1) / lookoutSegments) * Math.PI;
@@ -1273,6 +1383,24 @@ export function buildMap(mapName) {
           mountain.summit.elevation,
           lookout.joinZ + Math.sin(angleB) * lookout.radius,
           i % 2 === 0,
+        );
+      }
+      if (summitLookoutRailAnchors) {
+        addMountainRailSegment(
+          summitLookoutRailAnchors.left.x,
+          mountain.summit.elevation,
+          summitLookoutRailAnchors.left.z,
+          lookout.centerX - lookout.radius,
+          mountain.summit.elevation,
+          lookout.joinZ,
+        );
+        addMountainRailSegment(
+          lookout.centerX + lookout.radius,
+          mountain.summit.elevation,
+          lookout.joinZ,
+          summitLookoutRailAnchors.right.x,
+          mountain.summit.elevation,
+          summitLookoutRailAnchors.right.z,
         );
       }
 
@@ -1322,12 +1450,13 @@ export function buildMap(mapName) {
           mesh.renderOrder = 8;
           gameState.mapGroup.add(mesh);
         }
-        const leftX = stair.x - 0.5;
-        const rightX = stair.x + stair.width - 0.5;
+        // 扶手略往踏面外側退，避免與方形平台收邊及階梯盒共面而被遮蔽。
+        const leftX = stair.x - 0.68;
+        const rightX = stair.x + stair.width - 0.32;
         [leftX, rightX].forEach((railX) => {
           for (let step = 0; step < stair.steps; step++) {
-            const y1 = stair.baseElevation + (step / stair.steps) * stair.elevation;
-            const y2 = stair.baseElevation + ((step + 1) / stair.steps) * stair.elevation;
+            const y1 = stair.baseElevation + (step / stair.steps) * stair.elevation + 0.08;
+            const y2 = stair.baseElevation + ((step + 1) / stair.steps) * stair.elevation + 0.08;
             const z1 = stair.toZ - (step / stair.steps) * (stair.toZ - stair.fromZ);
             const z2 = stair.toZ - ((step + 1) / stair.steps) * (stair.toZ - stair.fromZ);
             addMountainRailSegment(railX, y1, z1, railX, y2, z2, step % 2 === 0);
