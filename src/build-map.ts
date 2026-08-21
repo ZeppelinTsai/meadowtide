@@ -906,7 +906,7 @@ export function buildMap(mapName) {
       };
 
       // 三層平台左右各是一整片連續山坡；靠平台處低，往地圖外形成高山脊。
-      addMountainDome();
+      // 保留三層平台與樓梯，不再產生包圍平台的連續斜坡山體。
       const mountainGeometry = new THREE.BufferGeometry();
       mountainGeometry.setAttribute(
         "position",
@@ -955,11 +955,7 @@ export function buildMap(mapName) {
       }
       const addPlatform = (platform) => {
         const mesh = new THREE.Mesh(
-          new THREE.BoxGeometry(
-            platform.width,
-            0.24,
-            platform.depth,
-          ),
+          new THREE.BoxGeometry(platform.width, 0.24, platform.depth),
           [cliffMat, cliffMat, grassMat, cliffMat, cliffMat, cliffMat],
         );
         mesh.position.set(
@@ -1002,26 +998,25 @@ export function buildMap(mapName) {
         }
       });
 
-      [
-        [3, 32],
-        [21, 34],
-        [4, 18],
-        [23, 19],
-        [7, 3],
-        [20, 4],
-        [6, 29],
-        [22, 29],
-        [11, 13],
-        [18, 13],
-        [25, 31],
-        [26, 36],
-      ].forEach(([x, z], index) => {
+      const platformEdgeRocks = [
+        [mountain.foot.x + 1, mountain.foot.z + 2],
+        [mountain.foot.x + mountain.foot.width - 2, mountain.foot.z + 4],
+        [mountain.foot.x + 3, mountain.foot.z + mountain.foot.depth - 3],
+        [mountain.waist.x + 1, mountain.waist.z + 2],
+        [mountain.waist.x + mountain.waist.width - 2, mountain.waist.z + 3],
+        [mountain.waist.x + 4, mountain.waist.z + mountain.waist.depth - 2],
+        [mountain.summit.x + 1, mountain.summit.z + 2],
+        [mountain.summit.x + mountain.summit.width - 2, mountain.summit.z + 3],
+      ];
+      platformEdgeRocks.forEach(([x, z], index) => {
         const rock = makeStone(x, z, hash2(index * 2.7, 8.4));
         rock.position.y += mountainGroundY(x, z);
         rock.scale.setScalar(1.1 + (index % 3) * 0.25);
         gameState.mapGroup.add(rock);
       });
-      const bench = makeBench(13, 7, Math.PI);
+      const summitCenterX = mountain.summit.x + Math.floor(mountain.summit.width / 2);
+      const summitCenterZ = mountain.summit.z + Math.floor(mountain.summit.depth / 2);
+      const bench = makeBench(summitCenterX - 5, summitCenterZ - 2, Math.PI);
       bench.position.y += mountain.summit.elevation;
       gameState.mapGroup.add(bench);
       const summitMarker = new THREE.Group();
@@ -1034,13 +1029,13 @@ export function buildMap(mapName) {
         markerStone,
       );
       ring.rotation.x = Math.PI / 2;
-      ring.position.set(16.5, mountain.summit.elevation + 0.12, 6.5);
+      ring.position.set(summitCenterX + 2.5, mountain.summit.elevation + 0.12, summitCenterZ - 2.5);
       summitMarker.add(ring);
       const post = new THREE.Mesh(
         new THREE.CylinderGeometry(0.07, 0.09, 0.9, 6),
         markerStone,
       );
-      post.position.set(16.5, mountain.summit.elevation + 0.55, 6.5);
+      post.position.set(summitCenterX + 2.5, mountain.summit.elevation + 0.55, summitCenterZ - 2.5);
       summitMarker.add(post);
       gameState.mapGroup.add(summitMarker);
 
@@ -1048,7 +1043,7 @@ export function buildMap(mapName) {
       // 女神祠堂共用同一個 makeToriiGate()，不用另外做新造型。
       const summitTorii = makeToriiGate();
       summitTorii.scale.setScalar(0.75);
-      summitTorii.position.set(15, mountain.summit.elevation, 8.2);
+      summitTorii.position.set(summitCenterX, mountain.summit.elevation, summitCenterZ + 3.2);
       gameState.mapGroup.add(summitTorii);
 
       // 山腳平台補概念圖裡的長椅+營火+木欄杆+告示牌，這輪先只放在
@@ -1056,17 +1051,19 @@ export function buildMap(mapName) {
       // 撐場面，山腳這批是唯一還缺裝飾的地方。
       // 座標刻意選在步道(=)東側的草地上(x=11~17)，避開(18,36)那棵既有
       // 的樹，也不蓋在主要動線上，看起來像特地圍起來的休息角落。
-      const footBench = makeBench(14, 38, Math.PI / 2);
-      footBench.position.y += mountainGroundY(14, 38);
+      const footRestX = mountain.foot.x + Math.floor(mountain.foot.width / 2);
+      const footRestZ = mountain.foot.z + Math.floor(mountain.foot.depth / 2);
+      const footBench = makeBench(footRestX + 2, footRestZ, Math.PI / 2);
+      footBench.position.y += mountainGroundY(footRestX + 2, footRestZ);
       gameState.mapGroup.add(footBench);
-      const campfire = makeCampfireRing(14, 36);
-      campfire.position.y += mountainGroundY(14, 36);
+      const campfire = makeCampfireRing(footRestX, footRestZ);
+      campfire.position.y += mountainGroundY(footRestX, footRestZ);
       gameState.mapGroup.add(campfire);
-      const foothillFence = makeFence(11, 17, 34, 39);
-      foothillFence.position.y += mountainGroundY(14, 36);
+      const foothillFence = makeFence(footRestX - 3, footRestX + 3, footRestZ - 2, footRestZ + 3);
+      foothillFence.position.y += mountainGroundY(footRestX, footRestZ);
       gameState.mapGroup.add(foothillFence);
-      const signpost = makeConstructionSign(6, 41);
-      signpost.position.y += mountainGroundY(6, 41);
+      const signpost = makeConstructionSign(mountain.townGate.x + 2, mountain.townGate.z - 3);
+      signpost.position.y += mountainGroundY(mountain.townGate.x + 2, mountain.townGate.z - 3);
       gameState.mapGroup.add(signpost);
     }
   }
@@ -2049,7 +2046,31 @@ export function loadMap(mapName, startPos) {
     );
     updateCameraFrustum();
     buildMap(mapName);
-    const pos = startPos || MAPS[mapName].playerStart;
+    const requestedPos = startPos || MAPS[mapName].playerStart;
+    const isSafePlayerPosition = (x: number, z: number) =>
+      ![
+        [-0.22, -0.22],
+        [0.22, -0.22],
+        [-0.22, 0.22],
+        [0.22, 0.22],
+      ].some(([dx, dz]) => isBlocked(mapName, x + dx, z + dz));
+    const nearestSafePosition = () => {
+      if (isSafePlayerPosition(requestedPos.x, requestedPos.z)) return requestedPos;
+      const originX = Math.round(requestedPos.x);
+      const originZ = Math.round(requestedPos.z);
+      for (let radius = 1; radius <= 16; radius++) {
+        for (let dz = -radius; dz <= radius; dz++) {
+          for (let dx = -radius; dx <= radius; dx++) {
+            if (Math.max(Math.abs(dx), Math.abs(dz)) !== radius) continue;
+            const x = originX + dx;
+            const z = originZ + dz;
+            if (isSafePlayerPosition(x, z)) return { x, z };
+          }
+        }
+      }
+      return MAPS[mapName].playerStart;
+    };
+    const pos = nearestSafePosition();
     gameState.playerGridPos = { x: pos.x, z: pos.z };
     if (!gameState.player) {
       gameState.player = makeHeroPlayer();
@@ -2246,7 +2267,7 @@ export const events = [
     x: LAYOUT.oldVillage.mountainGate.x,
     z: LAYOUT.oldVillage.mountainGate.z,
     trigger: "touch",
-    action: () => loadMap("mountain", { x: 4, z: 41 }),
+    action: () => loadMap("mountain", { ...LAYOUT.mountain.townArrival }),
   },
   {
     map: "mountain",
@@ -2261,10 +2282,7 @@ export const events = [
     z: MOUNTAIN_GATE_BLOCKER.z,
     trigger: "touch",
     action: () =>
-      loadMap("mountain", {
-        x: LAYOUT.mountain.homeGate.x - 1,
-        z: LAYOUT.mountain.homeGate.z,
-      }),
+      loadMap("mountain", { ...LAYOUT.mountain.homeArrival }),
   },
   {
     map: "mountain",

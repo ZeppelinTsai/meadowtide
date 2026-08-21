@@ -1,6 +1,6 @@
 import { gameState, inventory, cropState, TIME_CONFIG, SEASON_NAMES, WEATHER_NAMES, getSeasonDay, getSeasonPeriod, rollWeatherForSeason, growCropsForNewDay, nearWater, plantSeed, harvestCrop, pickupSeeds, CAST_ANIM_DURATION, OYSTER_RACK_TILES, oysterRackState, harvestOysterRack } from "./game-state";
 import { updateSeasonAndDate } from "./game-clock";
-import { carpenterQuest, POUCH_POS, FARMLAND_TILES, chefQuest, REST_CHAIR } from "./layout-maps";
+import { carpenterQuest, POUCH_POS, FARMLAND_TILES, chefQuest, REST_CHAIR, MAPS } from "./layout-maps";
 import { tryShareChefMeal, mergeChefMealIntoChatLine } from "./chef-quest";
 import { npcGroup, npcs } from "./npc-runtime";
 import { npcLine } from "./npc-defs";
@@ -89,11 +89,15 @@ export const SAVE_KEY_PREFIX = "meadowtide.save.";
           if (targetMap !== gameState.currentMapName) {
             loadMap(targetMap, { x: data.player.x, z: data.player.z });
           } else if (gameState.player) {
-            gameState.player.position.x = data.player.x;
-            gameState.player.position.z = data.player.z;
+            const savedPositionIsBlocked = collidesAt(targetMap, data.player.x, data.player.z);
+            const restoredPosition = savedPositionIsBlocked
+              ? MAPS[targetMap].playerStart
+              : data.player;
+            gameState.player.position.x = restoredPosition.x;
+            gameState.player.position.z = restoredPosition.z;
             gameState.playerGridPos = {
-              x: Math.round(data.player.x),
-              z: Math.round(data.player.z),
+              x: Math.round(restoredPosition.x),
+              z: Math.round(restoredPosition.z),
             };
           }
           gameState.facing = data.player.facing || gameState.facing;
