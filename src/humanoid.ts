@@ -828,6 +828,218 @@ export function addDefaultHumanoidSmile(
       export function makeMaleHeroPlayer() {
         return makeAdventurerHero(false);
       }
+
+      // 山頂鳥居前的靜態守護者角色：銀白長髮半束、綠色和服外套配金色葉紋、
+      // 紅色腰繩、褐色縛口袴褲、深褐金邊靴。沿用 makeAdventurerHero 的
+      // 軀幹/頭部 Y 座標與 1.265 未縮放基準高度（髮冠頂端同樣落在 y=1.265），
+      // 髮束、髮飾與小樹枝屬於突出裝飾，依慣例不計入基準高度。
+      export function makeMountainGuardian() {
+        const group: any = new THREE.Group();
+        const parts: any = {};
+        const mat = (color) =>
+          new THREE.MeshStandardMaterial({ color, flatShading: true });
+        const skinMat = mat(0xf0c8a0);
+        const hairMat = mat(0xe8e6de);
+        const kimonoMat = mat(0x4f6b3a);
+        const innerMat = mat(0xf0e8d8);
+        const cordMat = mat(0xb3382c);
+        const goldMat = mat(0xc9a227);
+        const hakamaMat = mat(0x5a4530);
+        const bootMat = mat(0x2f241c);
+        const twigMat = mat(0x6b4a30);
+        const leafMat = mat(0x7c8f4a);
+        const eyeMat = mat(0x5a3d22);
+
+        const torso = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.155, 0.185, 0.34, 8),
+          innerMat,
+        );
+        torso.position.y = 0.62;
+        torso.castShadow = true;
+        group.add(torso);
+
+        // 交領和服外套側片與翻領，中間露出米色內衫形成 V 領。
+        for (const side of [-1, 1]) {
+          const panel = new THREE.Mesh(
+            new THREE.BoxGeometry(0.13, 0.34, 0.115),
+            kimonoMat,
+          );
+          panel.position.set(side * 0.125, 0.64, 0.015);
+          panel.rotation.z = side * -0.05;
+          panel.castShadow = true;
+          group.add(panel);
+          const lapel = new THREE.Mesh(new THREE.ConeGeometry(0.07, 0.22, 3), kimonoMat);
+          lapel.position.set(side * 0.08, 0.755, -0.075);
+          lapel.rotation.z = side * 0.38;
+          group.add(lapel);
+        }
+        const collarInsert = new THREE.Mesh(
+          new THREE.ConeGeometry(0.05, 0.16, 3),
+          innerMat,
+        );
+        collarInsert.position.set(0, 0.78, -0.09);
+        group.add(collarInsert);
+
+        // 胸前紅繩結與金色葉形飾扣。
+        const cordWrap = new THREE.Mesh(
+          new THREE.TorusGeometry(0.175, 0.014, 5, 10, Math.PI * 1.1),
+          cordMat,
+        );
+        cordWrap.position.set(0, 0.715, 0);
+        cordWrap.rotation.x = Math.PI / 2;
+        cordWrap.rotation.z = Math.PI * 0.45;
+        group.add(cordWrap);
+        const cordKnot = new THREE.Mesh(new THREE.SphereGeometry(0.026, 6, 5), cordMat);
+        cordKnot.position.set(0, 0.7, -0.18);
+        group.add(cordKnot);
+        const leafBrooch = new THREE.Mesh(new THREE.ConeGeometry(0.032, 0.02, 4), goldMat);
+        leafBrooch.rotation.x = Math.PI / 2;
+        leafBrooch.position.set(0, 0.735, -0.185);
+        group.add(leafBrooch);
+
+        // 紅色腰繩取代皮帶，後方垂下兩條繩尾。
+        const sash = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.2, 0.2, 0.05, 8),
+          cordMat,
+        );
+        sash.position.y = 0.45;
+        group.add(sash);
+        for (const side of [-1, 1]) {
+          const tail = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.16, 0.012), cordMat);
+          tail.position.set(side * 0.05, 0.36, 0.19);
+          tail.rotation.x = 0.15;
+          group.add(tail);
+        }
+
+        const head = new THREE.Mesh(new THREE.SphereGeometry(0.205, 10, 8), skinMat);
+        head.scale.set(0.95, 1.06, 0.94);
+        head.position.y = 1.0;
+        head.castShadow = true;
+        group.add(head);
+
+        const hairCap = new THREE.Mesh(new THREE.SphereGeometry(0.22, 9, 7), hairMat);
+        hairCap.scale.set(1.05, 0.68, 1.05);
+        hairCap.position.set(0, 1.115, 0.005);
+        group.add(hairCap);
+
+        // 頭頂半束髮髻，以紅繩繫綁，插一小截樹枝與葉片作裝飾（突出裝飾，
+        // 不計入基準高度）。
+        const bun = new THREE.Mesh(new THREE.SphereGeometry(0.09, 8, 6), hairMat);
+        bun.scale.set(1, 0.85, 1);
+        bun.position.set(0, 1.24, 0.03);
+        group.add(bun);
+        const bunTie = new THREE.Mesh(new THREE.TorusGeometry(0.075, 0.012, 5, 8), cordMat);
+        bunTie.position.set(0, 1.2, 0.03);
+        bunTie.rotation.x = Math.PI / 2;
+        group.add(bunTie);
+        const twig = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.011, 0.24, 5), twigMat);
+        twig.position.set(0.09, 1.27, 0.02);
+        twig.rotation.z = -0.85;
+        twig.rotation.x = 0.3;
+        group.add(twig);
+        for (let i = 0; i < 3; i++) {
+          const leaf = new THREE.Mesh(new THREE.ConeGeometry(0.022, 0.05, 4), leafMat);
+          leaf.position.set(0.155 + i * 0.028, 1.3 + i * 0.02, 0.02 - i * 0.01);
+          leaf.rotation.z = -1.1;
+          group.add(leaf);
+        }
+
+        // 臉側垂下的鬢髮，以及披在背後的長髮束。
+        for (const side of [-1, 1]) {
+          const strand = new THREE.Mesh(
+            new THREE.ConeGeometry(0.028, 0.24, 5),
+            hairMat,
+          );
+          strand.position.set(side * 0.185, 0.9, -0.02);
+          strand.rotation.z = side * 0.12;
+          group.add(strand);
+        }
+        for (let i = 0; i < 5; i++) {
+          const t = i / 4 - 0.5;
+          const len = 0.62 - Math.abs(t) * 0.14;
+          const strand = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.032, 0.014, len, 6),
+            hairMat,
+          );
+          strand.position.set(t * 0.16, 1.0 - len / 2, 0.13 + Math.abs(t) * 0.01);
+          strand.rotation.x = -0.05;
+          strand.rotation.z = t * 0.08;
+          group.add(strand);
+        }
+
+        const nose = new THREE.Mesh(new THREE.ConeGeometry(0.021, 0.045, 5), skinMat);
+        nose.rotation.x = Math.PI / 2;
+        nose.position.set(0, 0.99, -0.195);
+        group.add(nose);
+        for (const side of [-1, 1]) {
+          const eye = new THREE.Mesh(new THREE.SphereGeometry(0.018, 6, 4), eyeMat);
+          eye.scale.set(1, 0.75, 0.35);
+          eye.position.set(side * 0.073, 1.03, -0.188);
+          group.add(eye);
+          const brow = new THREE.Mesh(new THREE.BoxGeometry(0.058, 0.01, 0.012), hairMat);
+          brow.position.set(side * 0.073, 1.075, -0.192);
+          group.add(brow);
+        }
+        addDefaultHumanoidSmile(group, 0.945, -0.201);
+
+        function makeArm(side) {
+          const pivot = new THREE.Group();
+          pivot.position.set(side * 0.235, 0.75, 0);
+          const sleeve = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.075, 0.06, 0.22, 7),
+            kimonoMat,
+          );
+          sleeve.position.y = -0.1;
+          pivot.add(sleeve);
+          const cuff = new THREE.Mesh(new THREE.TorusGeometry(0.046, 0.01, 5, 8), innerMat);
+          cuff.position.y = -0.205;
+          cuff.rotation.x = Math.PI / 2;
+          pivot.add(cuff);
+          const forearm = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.036, 0.042, 0.16, 6),
+            skinMat,
+          );
+          forearm.position.y = -0.285;
+          pivot.add(forearm);
+          const hand = new THREE.Mesh(new THREE.SphereGeometry(0.048, 7, 5), skinMat);
+          hand.position.y = -0.385;
+          pivot.add(hand);
+          group.add(pivot);
+          return pivot;
+        }
+        parts.armL = makeArm(-1);
+        parts.armR = makeArm(1);
+
+        function makeLeg(side) {
+          const pivot = new THREE.Group();
+          pivot.position.set(side * 0.105, 0.44, 0);
+          const hakama = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.095, 0.075, 0.4, 7),
+            hakamaMat,
+          );
+          hakama.position.y = -0.2;
+          pivot.add(hakama);
+          const ankleTie = new THREE.Mesh(new THREE.TorusGeometry(0.058, 0.011, 5, 8), cordMat);
+          ankleTie.position.y = -0.345;
+          ankleTie.rotation.x = Math.PI / 2;
+          pivot.add(ankleTie);
+          const boot = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.12, 0.2), bootMat);
+          boot.position.set(0, -0.38, -0.035);
+          boot.castShadow = true;
+          pivot.add(boot);
+          const bootTrim = new THREE.Mesh(new THREE.BoxGeometry(0.142, 0.02, 0.202), goldMat);
+          bootTrim.position.set(0, -0.325, -0.035);
+          pivot.add(bootTrim);
+          group.add(pivot);
+          return pivot;
+        }
+        parts.legL = makeLeg(-1);
+        parts.legR = makeLeg(1);
+
+        group.parts = parts;
+        group.scale.setScalar(humanoidScale(1.265));
+        return group;
+      }
       // 目前正式入口使用女主角版本。
       export function makeHeroPlayer() {
         return makeAdventurerHero(true);

@@ -70,7 +70,7 @@ import {
   PASTURE,
   hasPastureGrassAt,
 } from "./npc-runtime";
-import { makeHeroPlayer } from "./humanoid";
+import { makeHeroPlayer, makeMountainGuardian } from "./humanoid";
 import { isPointBlockedByScaledBuilding } from "./building-scale";
 import {
   makeTree,
@@ -1538,6 +1538,17 @@ export function buildMap(mapName) {
       summitTorii.scale.setScalar(0.75);
       summitTorii.position.set(summitCenterX, mountain.summit.elevation, summitCenterZ + 3.2);
       gameState.mapGroup.add(summitTorii);
+
+      // 鳥居側邊的靜態守護者角色，面朝鳥居；純裝飾，不參與互動/排程。放在
+      // 鳥居正後方會被上樑在畫面上重疊擋住，改成站在旁側才看得清楚全身。
+      const mountainGuardian = makeMountainGuardian();
+      mountainGuardian.position.set(
+        summitCenterX - 1.7,
+        mountain.summit.elevation,
+        summitCenterZ + 3.2,
+      );
+      mountainGuardian.rotation.y = -Math.PI / 2;
+      gameState.mapGroup.add(mountainGuardian);
 
       // 山腳平台補概念圖裡的長椅+營火+木欄杆+告示牌，這輪先只放在
       // 山腳一處，不是每個平台都鋪滿——山腰/山頂已經有樹/石標/長椅
