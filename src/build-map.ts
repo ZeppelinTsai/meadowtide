@@ -540,20 +540,19 @@ export function buildMap(mapName) {
   } else {
     // oldVillage 這類獨立小地圖：跟 house 一樣是純平地，沒有懸崖/
     // 沙灘的高低差，plateauGroup 維持等於 gameState.mapGroup，不用另外墊高。
-    const ground = new THREE.Mesh(
-      new THREE.BoxGeometry(cols * TILE, 0.2, rows * TILE),
-      new THREE.MeshStandardMaterial({
-        color: mapName === "mountain" ? 0x596068 : 0x6ab04c,
-        roughness: 1,
-      }),
-    );
-    ground.position.set(
-      (cols * TILE) / 2 - TILE / 2,
-      -0.1,
-      (rows * TILE) / 2 - TILE / 2,
-    );
-    ground.receiveShadow = true;
-    gameState.mapGroup.add(ground);
+    if (mapName !== "mountain") {
+      const ground = new THREE.Mesh(
+        new THREE.BoxGeometry(cols * TILE, 0.2, rows * TILE),
+        new THREE.MeshStandardMaterial({ color: 0x6ab04c, roughness: 1 }),
+      );
+      ground.position.set(
+        (cols * TILE) / 2 - TILE / 2,
+        -0.1,
+        (rows * TILE) / 2 - TILE / 2,
+      );
+      ground.receiveShadow = true;
+      gameState.mapGroup.add(ground);
+    }
     if (mapName === "oldVillage") {
       const terraceMat = new THREE.MeshStandardMaterial({
         color: 0x8f8779,
@@ -712,7 +711,7 @@ export function buildMap(mapName) {
     } else if (mapName === "mountain") {
       const mountain = LAYOUT.mountain;
       const cliffMat = new THREE.MeshStandardMaterial({
-        color: 0x747875,
+        color: 0x514a3f,
         roughness: 1,
         flatShading: true,
       });
@@ -936,34 +935,18 @@ export function buildMap(mapName) {
       gameState.mapGroup.add(mountainMesh);
       // 跟生活區西側山壁（makeWesternMountainTerrain）一樣，在山壁外緣散一圈
       // 大石頭打散筆直的地圖邊界，避免整座山的最外圍看起來像切齊的方形。
-      for (let i = 0; i < 26; i++) {
-        const t = i / 25;
-        const z = THREE.MathUtils.lerp(-8, mountain.height + 7, t);
-        const seed = hash2(i * 5.3, 41.7);
-        [worldLeft + 1.4 + seed * 1.6, worldRight - 1.4 - seed * 1.6].forEach(
-          (edgeX, side) => {
-            const rock = makeStone(
-              edgeX,
-              z + (seed - 0.5) * 2.2,
-              hash2(i * 3.1 + side * 9.2, 12.6),
-            );
-            rock.position.y += mountainGroundY(Math.round(edgeX), Math.round(z));
-            rock.scale.set(1.6 + seed * 2.4, 2 + seed * 2.8, 1.6 + seed * 2.4);
-            gameState.mapGroup.add(rock);
-          },
-        );
-      }
       const addPlatform = (platform) => {
+        const height = platform.elevation + 1.2;
         const mesh = new THREE.Mesh(
-          new THREE.BoxGeometry(platform.width, 0.24, platform.depth),
+          new THREE.BoxGeometry(platform.width, height, platform.depth),
           [cliffMat, cliffMat, grassMat, cliffMat, cliffMat, cliffMat],
         );
         mesh.position.set(
           platform.x + (platform.width - 1) / 2,
-          platform.elevation - 0.095,
+          platform.elevation - height / 2,
           platform.z + (platform.depth - 1) / 2,
         );
-        mesh.castShadow = true;
+        mesh.castShadow = false;
         mesh.receiveShadow = true;
         mesh.renderOrder = 2;
         gameState.mapGroup.add(mesh);
@@ -976,7 +959,7 @@ export function buildMap(mapName) {
         (color) => new THREE.MeshStandardMaterial({ color, roughness: 1 }),
       );
       const sideMat = new THREE.MeshStandardMaterial({
-        color: 0x565755,
+        color: 0x514a3f,
         roughness: 1,
       });
       [mountain.lowerStair, mountain.upperStair].forEach((stair) => {
@@ -998,22 +981,6 @@ export function buildMap(mapName) {
         }
       });
 
-      const platformEdgeRocks = [
-        [mountain.foot.x + 1, mountain.foot.z + 2],
-        [mountain.foot.x + mountain.foot.width - 2, mountain.foot.z + 4],
-        [mountain.foot.x + 3, mountain.foot.z + mountain.foot.depth - 3],
-        [mountain.waist.x + 1, mountain.waist.z + 2],
-        [mountain.waist.x + mountain.waist.width - 2, mountain.waist.z + 3],
-        [mountain.waist.x + 4, mountain.waist.z + mountain.waist.depth - 2],
-        [mountain.summit.x + 1, mountain.summit.z + 2],
-        [mountain.summit.x + mountain.summit.width - 2, mountain.summit.z + 3],
-      ];
-      platformEdgeRocks.forEach(([x, z], index) => {
-        const rock = makeStone(x, z, hash2(index * 2.7, 8.4));
-        rock.position.y += mountainGroundY(x, z);
-        rock.scale.setScalar(1.1 + (index % 3) * 0.25);
-        gameState.mapGroup.add(rock);
-      });
       const summitCenterX = mountain.summit.x + Math.floor(mountain.summit.width / 2);
       const summitCenterZ = mountain.summit.z + Math.floor(mountain.summit.depth / 2);
       const bench = makeBench(summitCenterX - 5, summitCenterZ - 2, Math.PI);
