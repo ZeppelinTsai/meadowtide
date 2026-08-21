@@ -2597,6 +2597,11 @@ import { randomPasturePoint } from "./npc-runtime";
           flatShading: true,
           roughness: 1,
         });
+        const railMat = new THREE.MeshStandardMaterial({
+          color: 0x694f36,
+          flatShading: true,
+          roughness: 0.95,
+        });
         const directionLength = Math.hypot(options.directionX, options.directionZ) || 1;
         const directionX = options.directionX / directionLength;
         const directionZ = options.directionZ / directionLength;
@@ -2637,6 +2642,46 @@ import { randomPasturePoint } from "./npc-runtime";
             });
           }
         }
+        const railHeight = 0.62;
+        [-1, 1].forEach((side) => {
+          let previous: THREE.Vector3 | null = null;
+          for (let i = 0; i < options.steps; i++) {
+            const x =
+              options.x + directionX * options.run * i +
+              sideX * side * options.width * 0.58;
+            const z =
+              options.z + directionZ * options.run * i +
+              sideZ * side * options.width * 0.58;
+            const top = options.y - i * options.dropPerStep;
+            const current = new THREE.Vector3(x, top + railHeight, z);
+            if (i % 2 === 0 || i === options.steps - 1) {
+              const post = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.045, 0.055, railHeight, 6),
+                railMat,
+              );
+              post.position.set(x, top + railHeight / 2, z);
+              post.castShadow = true;
+              post.renderOrder = 12;
+              group.add(post);
+            }
+            if (previous) {
+              const delta = current.clone().sub(previous);
+              const bar = new THREE.Mesh(
+                new THREE.BoxGeometry(delta.length(), 0.055, 0.055),
+                railMat,
+              );
+              bar.position.copy(previous).add(current).multiplyScalar(0.5);
+              bar.quaternion.setFromUnitVectors(
+                new THREE.Vector3(1, 0, 0),
+                delta.clone().normalize(),
+              );
+              bar.castShadow = true;
+              bar.renderOrder = 12;
+              group.add(bar);
+            }
+            previous = current;
+          }
+        });
         group.userData.seasonalMaterials = { stepMat, edgeMat };
         return group;
       }

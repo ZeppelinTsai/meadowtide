@@ -198,6 +198,12 @@ import { hash2 } from "./utils";
           foot: { x: 4, z: 49, width: 27, depth: 19, elevation: 0 },
           waist: { x: 7, z: 26, width: 27, depth: 18, elevation: 3.2 },
           summit: { x: 11, z: 3, width: 19, depth: 16, elevation: 6.5 },
+          summitLookout: {
+            centerX: 20,
+            joinZ: 4,
+            radius: 4,
+            treeClearRadius: 6.5,
+          },
           lowerStair: { x: 21, width: 3, fromZ: 42, toZ: 51, baseElevation: 0, elevation: 3.2, steps: 14 },
           upperStair: { x: 12, width: 3, fromZ: 17, toZ: 28, baseElevation: 3.2, elevation: 3.3, steps: 16 },
           treeDensity: 0.42,
@@ -271,6 +277,16 @@ import { hash2 } from "./utils";
         paint(mountain.foot.x, mountain.foot.z, mountain.foot.width, mountain.foot.depth);
         paint(mountain.waist.x, mountain.waist.z, mountain.waist.width, mountain.waist.depth);
         paint(mountain.summit.x, mountain.summit.z, mountain.summit.width, mountain.summit.depth);
+        for (let z = 0; z <= Math.ceil(mountain.summitLookout.joinZ); z++) {
+          for (let x = 0; x < mountain.width; x++) {
+            const dx = x - mountain.summitLookout.centerX;
+            const dz = z - mountain.summitLookout.joinZ;
+            if (
+              dz <= 0 &&
+              dx * dx + dz * dz <= mountain.summitLookout.radius ** 2
+            ) tiles[z][x] = 5;
+          }
+        }
         // 山腳先沿平台內側來回折返，再接第一段長階梯；避免入口到階梯只剩一條直角走廊。
         path(mountain.townGate.x - 1, mountain.foot.z + 12, 3, 7);
         path(mountain.townGate.x - 1, mountain.foot.z + 11, 11, 3);
@@ -303,6 +319,11 @@ import { hash2 } from "./utils";
             x: mountain.summit.x + Math.floor(mountain.summit.width / 2),
             z: mountain.summit.z + Math.floor(mountain.summit.depth / 2),
             radius: 4,
+          },
+          {
+            x: mountain.summitLookout.centerX,
+            z: mountain.summitLookout.joinZ + 1,
+            radius: mountain.summitLookout.treeClearRadius,
           },
           { x: mountain.homeArrival.x, z: mountain.homeArrival.z, radius: 4.5 },
         ];
@@ -358,6 +379,13 @@ import { hash2 } from "./utils";
           const height = stairHeight(stair);
           if (height !== null) return height;
         }
+        const lookoutDx = x - mountain.summitLookout.centerX;
+        const lookoutDz = z - mountain.summitLookout.joinZ;
+        if (
+          lookoutDz <= 0 &&
+          lookoutDx * lookoutDx + lookoutDz * lookoutDz <=
+            mountain.summitLookout.radius ** 2
+        ) return mountain.summit.elevation;
         if (
           x >= mountain.summit.x - 0.5 &&
           x <= mountain.summit.x + mountain.summit.width - 0.5 &&
