@@ -159,7 +159,21 @@ export function buildMap(mapName) {
     // 地面拆成四塊：高台(x0-10) + 三格階梯緩坡(x11,12,13) + 低地沙灘/海(x14+)。
     // 相鄰方塊高度不同，交界處自然露出垂直側面，那就是「階梯」的視覺來源，
     // 不用額外建模階梯形狀
-    const grassMat = new THREE.MeshStandardMaterial({ color: 0x6ab04c });
+    // transparent:true + opacity:1 + depthWrite:false 是刻意的組合，不是
+    // 疏漏：純粹只關掉 depthWrite（保持 opaque）會讓這片地板底下完全沒有
+    // 深度資訊，導致掛在相機底下的星空/銀河在「整片草地」都透出來，不是
+    // 只在湖面——地板需要繼續「擋住」星星，只是要用畫面覆蓋（後畫的不透明
+    // 顏色蓋掉先畫的星星），不能用深度測試擋。opacity:1 讓草地視覺上維持
+    // 完全不透明，renderOrder 排在星空群組(-0.8~-0.5)之後、湖水本身之前，
+    // 星空先畫→草地蓋掉星空（看起來不透光）→湖水最後疊上去，湖水自己的
+    // 深度已經正常寫入，草地的深度測試會正確避開湖面不覆蓋它，湖才能繼續
+    // 透出星空。實測過這個組合：草地不透光、湖面透光，兩者互不影響。
+    const grassMat = new THREE.MeshStandardMaterial({
+      color: 0x6ab04c,
+      transparent: true,
+      opacity: 1,
+      depthWrite: false,
+    });
     const zCenter = (rows * TILE) / 2 - TILE / 2;
     function groundSlab(xStart, xEnd, height) {
       const width = xEnd - xStart;
@@ -176,6 +190,7 @@ export function buildMap(mapName) {
       );
       slab.receiveShadow = true;
       slab.castShadow = true;
+      slab.renderOrder = 2;
       gameState.mapGroup.add(slab);
     }
     const rampX = LAYOUT.coast.rampX;
