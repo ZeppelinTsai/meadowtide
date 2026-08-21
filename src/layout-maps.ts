@@ -67,6 +67,10 @@ import { hash2 } from "./utils";
           steps: 4,
           risePerStep: 0.2,
           width: 1.65,
+          visualSteps: 10,
+          visualRun: 0.12,
+          visualDropPerStep: 1.35,
+          visualWidth: 1.45,
         },
         oldVillage: {
           width: 47,
@@ -183,6 +187,14 @@ import { hash2 } from "./utils";
           homeGate: { x: 32, z: 34 },
           townArrival: { x: 5, z: 65 },
           homeArrival: { x: 30, z: 34 },
+          homeStoneStairs: {
+            x: 31.65,
+            z: 34,
+            steps: 12,
+            run: 0.58,
+            dropPerStep: 0.34,
+            width: 1.85,
+          },
           foot: { x: 4, z: 49, width: 27, depth: 19, elevation: 0 },
           waist: { x: 7, z: 26, width: 27, depth: 18, elevation: 3.2 },
           summit: { x: 11, z: 3, width: 19, depth: 16, elevation: 6.5 },
@@ -292,7 +304,7 @@ import { hash2 } from "./utils";
             z: mountain.summit.z + Math.floor(mountain.summit.depth / 2),
             radius: 4,
           },
-          { x: mountain.homeArrival.x, z: mountain.homeArrival.z, radius: 2 },
+          { x: mountain.homeArrival.x, z: mountain.homeArrival.z, radius: 4.5 },
         ];
         for (let z = 0; z < mountain.height; z++) {
           for (let x = 0; x < mountain.width; x++) {
@@ -310,7 +322,11 @@ import { hash2 } from "./utils";
         tiles[mountain.townGate.z][mountain.townGate.x] = 3;
         tiles[mountain.homeGate.z][mountain.homeGate.x] = 3;
         mountain.trees.forEach(([x, z]) => {
-          if (tiles[z]?.[x] === 0) tiles[z][x] = 2;
+          const insideClearing = protectedClearings.some(
+            (clearing) =>
+              Math.hypot(x - clearing.x, z - clearing.z) <= clearing.radius,
+          );
+          if (tiles[z]?.[x] === 0 && !insideClearing) tiles[z][x] = 2;
         });
         return tiles;
       }

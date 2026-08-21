@@ -9,7 +9,7 @@ import {
   SHRINE_PATH_ELEVATION,
   portSouthBeachEndZ,
 } from "./layout-maps";
-import { windowMats, waterSurfaceMaterials, waterSkyUnderlayMaterials, outdoorLampLights, foamMeshes, windmillRotors, pastureGrassBlades, avenueLeafMaterials, seasonalTreeLeafMaterials, seasonalGroundMaterials, GRASS_STAGE_HEIGHTS, EAST_SEA_WAVE_DIRECTION, gangplankMeshes } from "./scene-registries";
+import { windowMats, waterSurfaceMaterials, waterSkyUnderlayMaterials, outdoorLampLights, foamMeshes, windmillRotors, pastureGrassBlades, avenueLeafMaterials, seasonalTreeLeafMaterials, seasonalGroundMaterials, mountainSeasonalMaterials, GRASS_STAGE_HEIGHTS, EAST_SEA_WAVE_DIRECTION, gangplankMeshes } from "./scene-registries";
 import { randomPasturePoint } from "./npc-runtime";
 
 // 7) 樹 / 建築 / 地形（沿用 v11）
@@ -182,6 +182,14 @@ import { randomPasturePoint } from "./npc-runtime";
           material.color.setHex(groundColor);
           material.roughness = gameState.currentSeason === 3 ? 0.82 : 1;
         });
+        mountainSeasonalMaterials.forEach(
+          ({ material, baseColor, winterColor }) => {
+            material.color.setHex(
+              gameState.currentSeason === 3 ? winterColor : baseColor,
+            );
+            material.roughness = gameState.currentSeason === 3 ? 0.88 : 1;
+          },
+        );
         pastureGrassBlades.forEach((tuft) => {
           tuft.userData.grassMaterial.color.copy(
             gameState.currentSeason === 3
@@ -2567,9 +2575,18 @@ import { randomPasturePoint } from "./npc-runtime";
         return group;
       }
 
-      export function makeMountainGateway() {
+      export function makeSteepStoneStairs(options: {
+        x: number;
+        z: number;
+        y: number;
+        directionX: number;
+        directionZ: number;
+        steps: number;
+        run: number;
+        dropPerStep: number;
+        width: number;
+      }) {
         const group = new THREE.Group();
-        const gateway = LAYOUT.mountainGateway;
         const stepMat = new THREE.MeshStandardMaterial({
           color: 0xaa916b,
           flatShading: true,
@@ -2580,38 +2597,63 @@ import { randomPasturePoint } from "./npc-runtime";
           flatShading: true,
           roughness: 1,
         });
-        for (let i = 0; i < gateway.steps; i++) {
-          const top = PLATEAU_Y + i * gateway.risePerStep;
-          const x = gateway.startX - i;
-          const z = gateway.startZ - i;
+        const directionLength = Math.hypot(options.directionX, options.directionZ) || 1;
+        const directionX = options.directionX / directionLength;
+        const directionZ = options.directionZ / directionLength;
+        const sideX = directionZ;
+        const sideZ = -directionX;
+        for (let i = 0; i < options.steps; i++) {
+          const seed = hash2(i * 4.73 + options.x, options.z * 1.91);
+          const top = options.y - i * options.dropPerStep;
+          const x = options.x + directionX * options.run * i;
+          const z = options.z + directionZ * options.run * i;
+          const treadDepth = options.run * (1.18 + (seed - 0.5) * 0.12);
+          const stepWidth = options.width * (0.94 + seed * 0.1);
           const step = new THREE.Mesh(
             new THREE.BoxGeometry(
-              gateway.width,
-              0.28 + i * 0.08,
-              gateway.width,
+              stepWidth,
+              0.24 + seed * 0.08,
+              treadDepth,
             ),
-            i === gateway.steps - 1 ? edgeMat : stepMat,
+            i % 2 === 0 ? stepMat : edgeMat,
           );
-          step.position.set(x, top - (0.14 + i * 0.04), z);
-          step.rotation.y = -0.08 + (hash2(i, 4.2) - 0.5) * 0.07;
+          step.position.set(x, top - 0.14, z);
+          step.rotation.y = Math.atan2(directionX, directionZ) + (seed - 0.5) * 0.035;
           step.castShadow = true;
           step.receiveShadow = true;
+          step.renderOrder = 10;
           group.add(step);
-          if (i > 0) {
+          if (i > 0 && i % 2 === 0) {
             [-1, 1].forEach((side) => {
-              const seed = hash2(i * 3.7, side * 8.1);
+              const rockSeed = hash2(i * 3.7, side * 8.1 + options.z);
               const rock = makeStone(
-                x + side * (gateway.width * 0.58 + seed * 0.12),
-                z - side * (gateway.width * 0.44) + (seed - 0.5) * 0.25,
-                seed,
+                x + sideX * side * (options.width * 0.58 + rockSeed * 0.12),
+                z + sideZ * side * (options.width * 0.58 + rockSeed * 0.12),
+                rockSeed,
               );
               rock.position.y = top + 0.04;
-              rock.scale.setScalar(1.25 + seed * 0.8);
+              rock.scale.setScalar(0.8 + rockSeed * 0.55);
               group.add(rock);
             });
           }
         }
+        group.userData.seasonalMaterials = { stepMat, edgeMat };
         return group;
+      }
+
+      export function makeMountainGateway() {
+        const gateway = LAYOUT.mountainGateway;
+        return makeSteepStoneStairs({
+          x: gateway.startX - (gateway.steps - 1),
+          z: gateway.startZ - (gateway.steps - 1),
+          y: PLATEAU_Y + 0.08,
+          directionX: -1,
+          directionZ: 0,
+          steps: gateway.visualSteps,
+          run: gateway.visualRun,
+          dropPerStep: gateway.visualDropPerStep,
+          width: gateway.visualWidth,
+        });
       }
 
       export function makeFence(minX, maxX, minZ, maxZ) {

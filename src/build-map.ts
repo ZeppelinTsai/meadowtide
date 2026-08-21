@@ -57,6 +57,7 @@ import {
   avenueLeafMaterials,
   seasonalTreeLeafMaterials,
   seasonalGroundMaterials,
+  mountainSeasonalMaterials,
   SEA_FISH_SCALE,
   LAKE_FISH_SCALE,
   EAST_SEA_WAVE_DIRECTION,
@@ -101,6 +102,7 @@ import {
   makeMountain,
   makeWesternMountainTerrain,
   makeMountainGateway,
+  makeSteepStoneStairs,
   makeFishProp,
   makeLamp,
   makeStreetLamp,
@@ -135,6 +137,7 @@ export function buildMap(mapName) {
   outdoorLampLights.length = 0;
   seasonalTreeLeafMaterials.length = 0;
   seasonalGroundMaterials.length = 0;
+  mountainSeasonalMaterials.length = 0;
   thresholdMarkerMeshes.length = 0;
 
   const map = MAPS[mapName];
@@ -721,6 +724,10 @@ export function buildMap(mapName) {
         roughness: 0.98,
         side: THREE.DoubleSide,
       });
+      mountainSeasonalMaterials.push(
+        { material: grassMat, baseColor: 0x78945a, winterColor: 0xf1f5f7 },
+        { material: cliffMat, baseColor: 0x514a3f, winterColor: 0xd9e1e6 },
+      );
       const mountainPositions: number[] = [];
       const mountainColors: number[] = [];
       const mountainIndices: number[] = [];
@@ -980,37 +987,14 @@ export function buildMap(mapName) {
             centerZ + radialZ * innerScale,
           );
         }
-        for (let i = 0; i < segments; i++) {
-          const topIndex = 1 + i;
-          const cliffDrop = platform.elevation - bottomY;
-          const topX = positions[topIndex * 3];
-          const topZ = positions[topIndex * 3 + 2];
-          const radialX = topX - centerX;
-          const radialZ = topZ - centerZ;
-          const radialLength = Math.max(0.001, Math.hypot(radialX, radialZ));
-          // 90° 是直壁；梯地裙擺改成相對水平面 45°～60°。
-          // 固定種子讓每段坡角略有差異，但每次載入都維持相同輪廓。
-          const skirtAngleDegrees = THREE.MathUtils.lerp(
-            45,
-            60,
-            hash2(Math.floor(i / 3) * 2.41 + seed, seed * 4.73),
-          );
-          const skirtRun =
-            cliffDrop / Math.tan(THREE.MathUtils.degToRad(skirtAngleDegrees));
-          positions.push(
-            topX + (radialX / radialLength) * skirtRun,
-            bottomY,
-            topZ + (radialZ / radialLength) * skirtRun,
-          );
-        }
         const platformNorth = platform.z - 0.5;
         const platformSouth = platform.z + platform.depth - 0.5;
         const stairs = [mountain.lowerStair, mountain.upperStair];
         const isStairOpening = (x: number, z: number) =>
           stairs.some((stair) => {
             const insideStairWidth =
-              x >= stair.x - 1 &&
-              x <= stair.x + stair.width;
+              x >= stair.x - 0.52 &&
+              x <= stair.x + stair.width - 0.48;
             if (!insideStairWidth) return false;
             const joinsNorthEdge =
               z < centerZ &&
@@ -1022,6 +1006,32 @@ export function buildMap(mapName) {
               stair.toZ >= platformSouth - 2.5;
             return joinsNorthEdge || joinsSouthEdge;
           });
+        for (let i = 0; i < segments; i++) {
+          const topIndex = 1 + i;
+          const topX = positions[topIndex * 3];
+          const topZ = positions[topIndex * 3 + 2];
+          const radialX = topX - centerX;
+          const radialZ = topZ - centerZ;
+          const radialLength = Math.max(0.001, Math.hypot(radialX, radialZ));
+          // 90° 是直壁；梯地裙擺改成相對水平面 45°～60°。
+          // 固定種子讓每段坡角略有差異，但每次載入都維持相同輪廓。
+          // 一般邊緣維持原本 45–60° 的不規則山坡；只有樓梯接合處
+          // 收成 90° 垂直，避免向外張的裙帶切進踏面。
+          const skirtAngleDegrees = THREE.MathUtils.lerp(
+            45,
+            60,
+            hash2(Math.floor(i / 3) * 2.41 + seed, seed * 4.73),
+          );
+          const skirtRun = isStairOpening(topX, topZ)
+            ? 0
+            : (platform.elevation - bottomY) /
+              Math.tan(THREE.MathUtils.degToRad(skirtAngleDegrees));
+          positions.push(
+            topX + (radialX / radialLength) * skirtRun,
+            bottomY,
+            topZ + (radialZ / radialLength) * skirtRun,
+          );
+        }
         for (let i = 0; i < segments; i++) {
           const next = (i + 1) % segments;
           const innerA = 1 + segments + i;
@@ -1048,11 +1058,12 @@ export function buildMap(mapName) {
           const topB = 1 + next;
           const bottomA = 1 + segments * 2 + i;
           const bottomB = 1 + segments * 2 + next;
-          const midpointX =
-            (positions[topA * 3] + positions[topB * 3]) / 2;
-          const midpointZ =
-            (positions[topA * 3 + 2] + positions[topB * 3 + 2]) / 2;
-          if (isStairOpening(midpointX, midpointZ)) continue;
+          // 僅按樓梯的精確寬度挖開垂直樓基；實心階梯本身會補住缺口。
+          // 裙帶已是 90°，不會再因向外擴張而在樓梯兩側露出星空。
+          if (isStairOpening(
+            (positions[topA * 3] + positions[topB * 3]) / 2,
+            (positions[topA * 3 + 2] + positions[topB * 3 + 2]) / 2,
+          )) continue;
           indices.push(topA, bottomA, topB, topB, bottomA, bottomB);
         }
         const geometry = new THREE.BufferGeometry();
@@ -1097,6 +1108,18 @@ export function buildMap(mapName) {
         polygonOffsetFactor: -6,
         polygonOffsetUnits: -6,
       });
+      topMats.forEach((material, index) =>
+        mountainSeasonalMaterials.push({
+          material,
+          baseColor: [0xd0b982, 0x9a835f][index],
+          winterColor: index === 0 ? 0xf5f7f8 : 0xe1e7ea,
+        }),
+      );
+      mountainSeasonalMaterials.push({
+        material: sideMat,
+        baseColor: 0x514a3f,
+        winterColor: 0xd5dde2,
+      });
       [mountain.lowerStair, mountain.upperStair].forEach((stair) => {
         const depth = (stair.toZ - stair.fromZ) / stair.steps;
         for (let step = 0; step < stair.steps; step++) {
@@ -1116,6 +1139,33 @@ export function buildMap(mapName) {
           gameState.mapGroup.add(mesh);
         }
       });
+
+      const homeStairs = mountain.homeStoneStairs;
+      const homeStoneStairGroup = makeSteepStoneStairs({
+        x: homeStairs.x,
+        z: homeStairs.z,
+        y: mountain.waist.elevation + 0.08,
+        directionX: 1,
+        directionZ: 0,
+        steps: homeStairs.steps,
+        run: homeStairs.run,
+        dropPerStep: homeStairs.dropPerStep,
+        width: homeStairs.width,
+      });
+      const homeStairMaterials = homeStoneStairGroup.userData.seasonalMaterials;
+      mountainSeasonalMaterials.push(
+        {
+          material: homeStairMaterials.stepMat,
+          baseColor: 0xaa916b,
+          winterColor: 0xf0f3f5,
+        },
+        {
+          material: homeStairMaterials.edgeMat,
+          baseColor: 0x747269,
+          winterColor: 0xd6dde2,
+        },
+      );
+      gameState.mapGroup.add(homeStoneStairGroup);
 
       const summitCenterX = mountain.summit.x + Math.floor(mountain.summit.width / 2);
       const summitCenterZ = mountain.summit.z + Math.floor(mountain.summit.depth / 2);
@@ -1412,13 +1462,9 @@ export function buildMap(mapName) {
         // 本來就跟著季節變色(春粉紅/夏綠/秋橙紅/冬白)，剛好對應概念圖
         // 「賞櫻賞楓區域」：不用另外做櫻花/楓葉專用樹種，同一批樹春天
         // 看起來是賞櫻、秋天自然變成賞楓，比寫死單一顏色更合理。
-        const inMountainWaist =
-          mapName === "mountain" &&
-          z >= LAYOUT.mountain.waist.z &&
-          z < LAYOUT.mountain.waist.z + LAYOUT.mountain.waist.depth;
         const m =
-          (mapName === "livingArea" && AVENUE_TREE_KEYS.has(`${x},${z}`)) ||
-          inMountainWaist
+          mapName === "mountain" ||
+          (mapName === "livingArea" && AVENUE_TREE_KEYS.has(`${x},${z}`))
             ? makeAvenueTree(x, z)
             : makeTree(x, z);
         m.position.y +=
@@ -1483,6 +1529,18 @@ export function buildMap(mapName) {
           );
         if (isOldVillageStair || isMountainStair) return;
         const m = makePath(x, z);
+        if (mapName === "mountain") {
+          const materials = Array.isArray(m.material)
+            ? m.material
+            : [m.material];
+          materials.forEach((material) =>
+            mountainSeasonalMaterials.push({
+              material: material as THREE.MeshStandardMaterial,
+              baseColor: (material as THREE.MeshStandardMaterial).color.getHex(),
+              winterColor: 0xf0f3f4,
+            }),
+          );
+        }
         m.position.y +=
           mapName === "livingArea"
             ? groundY(x, z)
@@ -2057,6 +2115,7 @@ export function buildMap(mapName) {
     }
   }
 
+  if (mapName === "mountain") updateSeasonalGroundColors();
   scene.add(gameState.mapGroup);
   gameState.currentMapName = mapName;
   npcGroup.position.y = mapName === "livingArea" ? PLATEAU_Y : 0;
