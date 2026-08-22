@@ -32,6 +32,7 @@ import {
   SHRINE_PATH_ELEVATION,
   portGroundY,
   oldVillageGroundY,
+  oldVillageSouthBeachEndZ,
   mountainGroundY,
   isOnMountainStair,
   MOUNTAIN_GATE_BLOCKER,
@@ -122,6 +123,39 @@ import {
 } from "./props";
 import { syncFarmVisuals } from "./farm-visuals";
 import { OYSTER_RACK_VISUAL } from "./game-state";
+
+// 地圖整片底板共用的「星空穿透」寫法：transparent+opacity:1+depthWrite:false，
+// 不是只關掉 depthWrite。純關 depthWrite（保留 opaque）會讓地板完全不擋深度，
+// 星空/銀河連沙灘/廣場這些「應該不透光」的地方都會透出來，不是只有水面
+// 半透明處。改成跟星空同一個 transparent 佇列、opacity 維持 1（視覺上還是
+// 完全不透明），renderOrder 排在星空群組(-0.8~-0.5)之後、水面之前：星空
+// 先畫→地板用不透明色蓋掉星空（沙灘/廣場正常不透光）→水面最後疊上去，
+// 水面自己有正常寫深度，地板的深度測試會正確避開水面範圍不覆蓋它，水面
+// 才能繼續透出星空。港區跟舊城鎮的整片地圖底板都蓋在各自的海/沙灘下方，
+// 兩邊必須共用同一套寫法，不要各自複製一份公式——舊城鎮南側沙灘曾經因為
+// 底板沒套用這套寫法，變成看得見實心海底、跟港區不一致。
+function addStarSafeMapFloor(cols, rows, color, roughness) {
+  const material = new THREE.MeshStandardMaterial({
+    color,
+    roughness,
+    transparent: true,
+    opacity: 1,
+    depthWrite: false,
+  });
+  const floor = new THREE.Mesh(
+    new THREE.BoxGeometry(cols * TILE, 0.2, rows * TILE),
+    material,
+  );
+  floor.position.set(
+    (cols * TILE) / 2 - TILE / 2,
+    -0.1,
+    (rows * TILE) / 2 - TILE / 2,
+  );
+  floor.receiveShadow = true;
+  floor.renderOrder = 2;
+  gameState.mapGroup.add(floor);
+  return material;
+}
 
 // ==============================================================
 // 10) 建場景
@@ -551,52 +585,23 @@ export function buildMap(mapName) {
   } else if (mapName === "port") {
     // 港區使用石板廣場底板；北緣 tile 8 仍在下方逐格呼叫共用 makeSand()，
     // 因此與生活區沙灘保持同一套顏色與低模表面。
-    const ground = new THREE.Mesh(
-      new THREE.BoxGeometry(cols * TILE, 0.2, rows * TILE),
-      new THREE.MeshStandardMaterial({
-        color: 0xb8aa91,
-        roughness: 0.96,
-        // transparent+opacity:1+depthWrite:false，不是只關掉 depthWrite。
-        // 純關 depthWrite（保留 opaque）會讓地板完全不擋深度，星空/銀河
-        // 連沙灘/廣場這些「應該不透光」的地方都會透出來，不是只有水面
-        // 半透明處。改成跟星空同一個 transparent 佇列、opacity 維持 1
-        // （視覺上還是完全不透明），renderOrder 排在星空群組(-0.8~-0.5)
-        // 之後、水面之前：星空先畫→地板用不透明色蓋掉星空（沙灘/廣場
-        // 正常不透光）→水面最後疊上去，水面自己有正常寫深度，地板的
-        // 深度測試會正確避開水面範圍不覆蓋它，水面才能繼續透出星空。
-        transparent: true,
-        opacity: 1,
-        depthWrite: false,
-      }),
-    );
-    ground.position.set(
-      (cols * TILE) / 2 - TILE / 2,
-      -0.1,
-      (rows * TILE) / 2 - TILE / 2,
-    );
-    ground.receiveShadow = true;
-    ground.renderOrder = 2;
-    gameState.mapGroup.add(ground);
+    addStarSafeMapFloor(cols, rows, 0xb8aa91, 0.96);
     plateauGroup.add(makePortScene());
   } else {
     // oldVillage 這類獨立小地圖：跟 house 一樣是純平地，沒有懸崖/
     // 沙灘的高低差，plateauGroup 維持等於 gameState.mapGroup，不用另外墊高。
     if (mapName !== "mountain") {
-      const groundMat = new THREE.MeshStandardMaterial({
-        color: getSeasonGrassTone().ground,
-        roughness: 1,
-      });
-      const ground = new THREE.Mesh(
-        new THREE.BoxGeometry(cols * TILE, 0.2, rows * TILE),
-        groundMat,
+      // oldVillage 的南側沙灘/海(見 LAYOUT.oldVillage.southBeach)也蓋在這片
+      // 整塊地板上面，因此跟港區地板共用同一套「星空穿透」寫法(見
+      // addStarSafeMapFloor 內註解)——之前這裡是一塊普通 opaque 地板，
+      // 完整寫入深度，把南側海面下方原本該透出的星空整片擋死，回報「城鎮
+      // 的海看起來有實心海底、跟港口不一樣」就是這塊地板沒套用同一套修法。
+      const groundMat = addStarSafeMapFloor(
+        cols,
+        rows,
+        getSeasonGrassTone().ground,
+        1,
       );
-      ground.position.set(
-        (cols * TILE) / 2 - TILE / 2,
-        -0.1,
-        (rows * TILE) / 2 - TILE / 2,
-      );
-      ground.receiveShadow = true;
-      gameState.mapGroup.add(ground);
       // 之前這片地板沒登記進 seasonalGroundMaterials，導致舊城鎮/藝術村這類
       // 地圖的草地永遠停在建圖當下那個季節色，換季也不會跟著變——跟
       // livingArea 共用同一份季節色表跟登記表，才不會兩邊各自維護一份判斷。
@@ -613,13 +618,22 @@ export function buildMap(mapName) {
       // 完全沒有東西填滿，鏡頭有角度時會直接看穿那個空隙看到背景，
       // 讀起來像一塊脫離地面、穿模飄浮的灰色方塊。實心方塊從地面
       // 蓋到頂，側面本身就是懸崖面，不會露出下面的空洞。
-      const addTerrace = (z, depth, elevation) => {
-        const width = LAYOUT.oldVillage.terraces.westEdge + 0.5;
+      const addTerrace = (
+        z,
+        depth,
+        elevation,
+        xStart = 0,
+        width = LAYOUT.oldVillage.terraces.westEdge + 0.5,
+      ) => {
         const terrace = new THREE.Mesh(
           new THREE.BoxGeometry(width, elevation, depth),
           terraceMat,
         );
-        terrace.position.set((width - 1) / 2, elevation / 2, z + (depth - 1) / 2);
+        terrace.position.set(
+          xStart + (width - 1) / 2,
+          elevation / 2,
+          z + (depth - 1) / 2,
+        );
         terrace.receiveShadow = true;
         terrace.castShadow = true;
         terrace.renderOrder = 1;
@@ -627,6 +641,31 @@ export function buildMap(mapName) {
       };
       addTerrace(0, 10, LAYOUT.oldVillage.terraces.upper.elevation);
       addTerrace(10, 10, LAYOUT.oldVillage.terraces.middle.elevation);
+      // 廣場往東(x>westEdge)墊到 groundElevation 之後，跟西側台地一樣需要
+      // 一塊實心地基撐住，不然懸空的路面/建築會露出下面的空洞。分三塊蓋，
+      // 刻意避開 westStairs 最後一段(x=0~2.5, z19~26, middle→廣場的樓梯)：
+      // 那段樓梯自己的階梯 box 已經是實心幾何，這裡如果整塊蓋過去，樓梯的
+      // 台階會被同高的平面台地穿插/蓋住，看起來像樓梯壞掉、高低層次錯亂
+      // (這正是最近一次回報「第二層樓梯怪怪的」的成因)。
+      //   1) 東側廣場(z0~19，西側同一段已經是 upper/middle 台地，不用重疊)
+      //   2) 南側 z20~26，略過樓梯佔用的 x=0~2.5
+      //   3) 南側 z27~29(樓梯已經結束，這段可以整寬鋪滿)
+      // 三塊都跟 middle 台地同高(groundElevation===middle.elevation)，
+      // 接縫處同高、不會露出高低差。
+      const groundElevation = LAYOUT.oldVillage.groundElevation;
+      // Box A 西緣改到樓梯本身的終點(28，跟 plazaStairs.toX 對齊)，不是
+      // westEdge(27.5)——plazaStairs(x=25~28)最後 0.5 格原本會跟這塊台地
+      // 重疊，同一種問題，一併修掉。
+      const plazaStairsEndX = 28;
+      addTerrace(
+        0,
+        20,
+        groundElevation,
+        plazaStairsEndX,
+        LAYOUT.oldVillage.width - plazaStairsEndX,
+      );
+      addTerrace(20, 7, groundElevation, 3, LAYOUT.oldVillage.width - 3);
+      addTerrace(27, 3, groundElevation, 0, LAYOUT.oldVillage.width);
       const mountainLanding = LAYOUT.oldVillage.mountainLanding;
       const mountainLandingMesh = new THREE.Mesh(
         new THREE.BoxGeometry(
@@ -675,8 +714,8 @@ export function buildMap(mapName) {
           );
           mesh.position.set(
             stair.toX - (step + 0.5) * stepDepth,
-            height / 2,
-            stair.z + 1,
+            (stair.baseElevation || 0) + height / 2,
+            stair.z + (stair.width - 1) / 2,
           );
           mesh.receiveShadow = true;
           mesh.castShadow = true;
@@ -701,7 +740,7 @@ export function buildMap(mapName) {
             ],
           );
           mesh.position.set(
-            stair.x + 1,
+            stair.x + (stair.width - 1) / 2,
             stair.baseElevation + height / 2,
             stair.toZ - (step + 0.5) * stepDepth,
           );
@@ -757,6 +796,70 @@ export function buildMap(mapName) {
           previous = current;
         }
       });
+
+      // 南側新沙灘的海——跟港口南沙灘(makePortScene 的 addWater)同一套
+      // 「每欄水面從實際岸線後開始」寫法，避免矩形水面蓋住鋸齒沙灘。波浪
+      // 動畫沿用 gameState.portWaterMeshes 同一個登記表：game-loop.ts 的
+      // 更新迴圈純讀 mesh 自己的 geometry/position，跟哪張地圖建的無關，
+      // 兩張地圖從不會同時載入，共用同一個陣列不會互相污染，不用另外
+      // 開一份幾乎一樣的更新邏輯。
+      const oldVillageWaterMat = new THREE.MeshStandardMaterial({
+        vertexColors: true,
+        roughness: 0.2,
+        metalness: 0.1,
+        flatShading: true,
+        transparent: true,
+        opacity: 0.6,
+        side: THREE.DoubleSide,
+      });
+      const oldVillageWaterDepthMat = new THREE.MeshStandardMaterial({
+        color: 0x174968,
+        roughness: 1,
+        metalness: 0,
+        side: THREE.DoubleSide,
+        depthWrite: false,
+      });
+      waterSurfaceMaterials.push(oldVillageWaterMat);
+      waterSkyUnderlayMaterials.push(oldVillageWaterDepthMat);
+      const addOldVillageWater = (wx, wz, width, depth) => {
+        if (depth <= 0) return;
+        const geometry = new THREE.PlaneGeometry(
+          width,
+          depth,
+          Math.max(2, Math.ceil(width)),
+          Math.max(2, Math.ceil(depth)),
+        );
+        const colors = new Float32Array(geometry.attributes.position.count * 3);
+        for (let i = 0; i < geometry.attributes.position.count; i++)
+          colors.set([0.18, 0.43, 0.68], i * 3);
+        geometry.setAttribute("color", new THREE.BufferAttribute(colors, 3));
+        const depthMask = new THREE.Mesh(geometry.clone(), oldVillageWaterDepthMat);
+        depthMask.rotation.x = -Math.PI / 2;
+        depthMask.position.set(wx + (width - 1) / 2, 0.025, wz + (depth - 1) / 2);
+        depthMask.receiveShadow = true;
+        gameState.mapGroup.add(depthMask);
+        const water = new THREE.Mesh(geometry, oldVillageWaterMat);
+        water.rotation.x = -Math.PI / 2;
+        water.position.set(wx + (width - 1) / 2, 0.09, wz + (depth - 1) / 2);
+        water.receiveShadow = true;
+        geometry.userData.basePositions = Float32Array.from(
+          geometry.attributes.position.array,
+        );
+        gameState.portWaterMeshes.push(water);
+        gameState.mapGroup.add(water);
+      };
+      {
+        const beach = LAYOUT.oldVillage.southBeach;
+        for (let x = beach.x; x < beach.x + beach.width; x++) {
+          const waterStartZ = oldVillageSouthBeachEndZ(x) + 1;
+          addOldVillageWater(
+            x,
+            waterStartZ,
+            1,
+            LAYOUT.oldVillage.height - waterStartZ,
+          );
+        }
+      }
     } else if (mapName === "mountain") {
       const mountain = LAYOUT.mountain;
       const cliffMat = new THREE.MeshStandardMaterial({
@@ -1656,16 +1759,27 @@ export function buildMap(mapName) {
     // 長椅，位置刻意離廣場邊界(x=22/33、跟港口門的垂直通道)有一段
     // 緩衝，不會卡到既有的門檻/道路。
     const plazaShiftX = LAYOUT.oldVillage.plaza.x - 22;
-    const lamp1 = makeStreetLamp(25 + plazaShiftX, 8, 1);
-    const lamp2 = makeStreetLamp(29 + plazaShiftX, 18, -1);
+    const lamp1Pos = { x: 25 + plazaShiftX, z: 8 };
+    const lamp2Pos = { x: 29 + plazaShiftX, z: 18 };
+    const lamp1 = makeStreetLamp(lamp1Pos.x, lamp1Pos.z, 1);
+    const lamp2 = makeStreetLamp(lamp2Pos.x, lamp2Pos.z, -1);
+    // 廣場墊高到 groundElevation 之後，路燈/長椅底座也要跟著抬高，不然
+    // 廣場墊高後這幾樣家具會維持在舊的 y=0，看起來像陷進地面。跟房子
+    // (townHouse.position.y += oldVillageGroundY(...))同一套做法。
+    lamp1.position.y += oldVillageGroundY(lamp1Pos.x, lamp1Pos.z);
+    lamp2.position.y += oldVillageGroundY(lamp2Pos.x, lamp2Pos.z);
     [lamp1, lamp2].forEach((prop) =>
       prop.traverse((child: any) => {
         if (child.isMesh) child.renderOrder = 2;
       }),
     );
     plateauGroup.add(lamp1, lamp2);
-    const bench1 = makeBench(26 + plazaShiftX, 12, 0);
-    const bench2 = makeBench(30 + plazaShiftX, 14, Math.PI);
+    const bench1Pos = { x: 26 + plazaShiftX, z: 12 };
+    const bench2Pos = { x: 30 + plazaShiftX, z: 14 };
+    const bench1 = makeBench(bench1Pos.x, bench1Pos.z, 0);
+    const bench2 = makeBench(bench2Pos.x, bench2Pos.z, Math.PI);
+    bench1.position.y += oldVillageGroundY(bench1Pos.x, bench1Pos.z);
+    bench2.position.y += oldVillageGroundY(bench2Pos.x, bench2Pos.z);
     [bench1, bench2].forEach((prop) =>
       prop.traverse((child: any) => {
         if (child.isMesh) child.renderOrder = 2;
@@ -2818,47 +2932,6 @@ export const events = [
         z: MOUNTAIN_GATE_BLOCKER.z + 1,
       }),
   },
-  // 美術村 <-> 舊城鎮（南側新門檻）／港口（南側新門檻），兩邊都通
-  {
-    map: "oldVillage",
-    x: LAYOUT.oldVillage.artVillageGate.x,
-    z: LAYOUT.oldVillage.artVillageGate.z,
-    trigger: "touch",
-    action: () => loadMap("artVillage", { x: 3, z: 1 }),
-  },
-  {
-    map: "artVillage",
-    x: 3,
-    z: 0,
-    trigger: "touch",
-    action: () =>
-      loadMap("oldVillage", {
-        x: LAYOUT.oldVillage.artVillageGate.x,
-        z: LAYOUT.oldVillage.artVillageGate.z - 1,
-      }),
-  },
-  {
-    map: "oldVillage",
-    x: LAYOUT.oldVillage.artVillageSouthGate.x,
-    z: LAYOUT.oldVillage.artVillageSouthGate.z,
-    trigger: "touch",
-    action: () =>
-      loadMap("artVillage", {
-        x: LAYOUT.oldVillage.artVillageSouthGate.artX,
-        z: LAYOUT.oldVillage.artVillageSouthGate.artZ + 1,
-      }),
-  },
-  {
-    map: "artVillage",
-    x: LAYOUT.oldVillage.artVillageSouthGate.artX,
-    z: LAYOUT.oldVillage.artVillageSouthGate.artZ,
-    trigger: "touch",
-    action: () =>
-      loadMap("oldVillage", {
-        x: LAYOUT.oldVillage.artVillageSouthGate.x,
-        z: LAYOUT.oldVillage.artVillageSouthGate.z - 1,
-      }),
-  },
   // 舊城鎮(東側 x=13)<-> 港口(西側 x=0)：整條邊界都能走過去，不是單一
   // 傳送點——沿邊每一排各自登記一組雙向觸發，逐格對應同一個 z。
   // 舊城鎮擴高到 15 排(z=0~14)才跟港口(16 排)的西側邊界對得起來，
@@ -2893,4 +2966,23 @@ export const events = [
           z: LAYOUT.oldVillage.portGate.z + i,
         }),
     })),
+  // 城鎮南沙灘 <-> 港口南沙灘：兩邊 southBeach.depth 現在都是 30，這裡另外
+  // 加一組雙向點對點傳送，讓兩片沙灘實際連通，不只是風格一致。z 挑在
+  // oldVillageSouthBeachEndZ()/portSouthBeachEndZ() 公式的保底沙地範圍內
+  // (兩邊鋸齒海岸線不管 x 抖到哪裡，這個 z 之前一定是沙)，避開最南側的
+  // 保底外海，觸發點才不會剛好卡進海裡走不動。
+  {
+    map: "oldVillage",
+    x: 23,
+    z: 36,
+    trigger: "touch",
+    action: () => loadMap("port", { x: 10, z: 34 }),
+  },
+  {
+    map: "port",
+    x: 10,
+    z: 36,
+    trigger: "touch",
+    action: () => loadMap("oldVillage", { x: 23, z: 34 }),
+  },
 ];

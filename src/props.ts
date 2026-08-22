@@ -2542,9 +2542,11 @@ export function makeWoodPlankTexture({
         const positions = [];
         const colors = [];
         const indices = [];
-        // 東側近景稍亮、較有植被色；往西升高後才逐漸轉成冷灰岩色。
-        const low = new THREE.Color(0x849276);
-        const high = new THREE.Color(0x626b74);
+        // 顏色跟山區地圖(mountain)自己的背景山體(見 build-map.ts 的
+        // mountainMesh vertexColors)同一組數值，兩張地圖的遠景山看起來才
+        // 是同一座山，不是各自配色。
+        const low = new THREE.Color(0x555b53);
+        const high = new THREE.Color(0x7d8070);
         for (let iz = 0; iz <= zSegments; iz++) {
           const tz = iz / zSegments;
           const z = THREE.MathUtils.lerp(northZ, southZ, tz);
@@ -2565,8 +2567,10 @@ export function makeWoodPlankTexture({
               Math.sin(tx * 22 + z * 0.075) * (0.2 + tx * 1.15);
             const rugged =
               (broadRidge + brokenFace + rockBands) * Math.pow(tx, 0.52);
+            // 往 Y 拉高(42→58)，讓山壁在鏡頭可視角度內覆蓋更多天空範圍，
+            // 減少稜線起伏低點剛好被鏡頭看穿到後面星空的機會。
             const y =
-              PLATEAU_Y + 0.08 + Math.pow(tx, 0.28) * 42 + rugged;
+              PLATEAU_Y + 0.08 + Math.pow(tx, 0.28) * 58 + rugged;
             positions.push(x, y, z);
             const shade = low
               .clone()
@@ -2613,6 +2617,34 @@ export function makeWoodPlankTexture({
         slope.receiveShadow = true;
         slope.castShadow = true;
         group.add(slope);
+
+        // 山壁背板——擋在起伏山坡後面的一片實心背景牆，防止稜線在某些角度
+        // /z 值剛好出現低點時，鏡頭直接看穿到後面的星空(破圖)。跟這個專案
+        // 其他「地板/水面蓋住星空」的做法同一套：transparent+opacity:1+
+        // depthWrite:false，星空先畫，這片背板後畫、用不透明色蓋掉星空，
+        // 不是靠深度測試擋（深度測試擋得住的話，前面那片本來就是不透明
+        // 材質，山壁本身早該擋住，不會再破圖）。side:DoubleSide 是因為
+        // 這個固定俯角鏡頭不保證只從東側看過來。
+        const backdropHeight = 90;
+        const backdrop = new THREE.Mesh(
+          new THREE.PlaneGeometry(southZ - northZ, backdropHeight),
+          new THREE.MeshStandardMaterial({
+            color: high.clone().lerp(low, 0.3),
+            roughness: 1,
+            side: THREE.DoubleSide,
+            transparent: true,
+            opacity: 1,
+            depthWrite: false,
+          }),
+        );
+        backdrop.rotation.y = Math.PI / 2;
+        backdrop.position.set(
+          westX - 3,
+          PLATEAU_Y - 10 + backdropHeight / 2,
+          (northZ + southZ) / 2,
+        );
+        backdrop.renderOrder = 1;
+        group.add(backdrop);
 
         // 島緣外側的碎岩帶，打散筆直接縫並形成概念圖那種山腳峭壁。
         for (let i = 0; i < 42; i++) {

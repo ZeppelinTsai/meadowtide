@@ -74,7 +74,27 @@ import { hash2 } from "./utils";
         },
         oldVillage: {
           width: 47,
-          height: 30,
+          // 整個城鎮(除了南側新沙灘)統一墊高 1(mountainLanding/upper/middle/
+          // 廣場預設地面 groundElevation 全部各自 +1)，保留原本的三層地形
+          // 相對關係，不是把 middle 跟廣場拉平到同一層——第一版誤把兩者拉
+          // 平、順手拿掉了 middle→廣場的樓梯(plazaStairs 的 z=16 那段、
+          // westStairs 的 z19~26 那段)，是判斷錯誤，已還原並依統一 +1 更新
+          // 高度。groundElevation(=1)數值特地跟 LAYOUT.port.elevation 一樣，
+          // 是刻意讓兩個城鎮地圖同一套「墊高平台+階梯下到沙灘」語彙。
+          //
+          // 南側新擴充部分：現有城鎮地面(z<30，墊高後)直接接一小段階梯(併進
+          // westStairs 陣列共用既有樓梯渲染/collision，不用另外寫一套、也
+          // 不另外墊一塊台地)下到沙灘/海。southBeach.z=30(不是南側新增區域
+          // 的最前緣 34)，因為階梯只佔 x=28~34 這一小段寬度，寬度以外的
+          // 全部欄位在 z=30 就已經直接落到沙灘(0)——不然階梯以外的欄位會
+          // 卡在墊高後的地面(1)一路到 z=34 才下海，變成階梯以外的地方有一
+          // 道看不見、走不下去的懸崖(先前正是這個原因走不到沙灘)。depth 仍
+          // 是 30，跟港口南沙灘同一個數字、同一套「先鋪滿海、再依 x 算的
+          // 鋸齒海岸線疊沙」寫法。沙灘本身維持 elevation 0，跟
+          // makeSand()/水面貼圖寫死的海平面基準一致。
+          height: 64,
+          groundElevation: 1,
+          southBeach: { x: 0, z: 30, width: 47, depth: 30 },
           westExpansion: 6,
           houseVisualScale: 1.5,
           houseDoorWorldHeight: 1.05,
@@ -90,23 +110,31 @@ import { hash2 } from "./utils";
           },
           mountainRoad: { x: 3, z: 29, width: 3 },
           mountainGate: { x: 1, z: 0 },
-          artVillageGate: { x: 3, z: 29 },
-          artVillageSouthGate: { x: 36, z: 29, artX: 9, artZ: 0 },
           plaza: { x: 28, z: 4, width: 18, height: 22 },
+          // 統一 +1：upper 2→3、middle 1→2，跟 mountainLanding(3→4)、
+          // groundElevation(=1，廣場預設地面)保持原本一路遞減的相對關係，
+          // 三層地形＋廣場的落差都還在，只是整體墊高了一階。
           terraces: {
-            upper: { maxZ: 9, elevation: 2 },
-            middle: { minZ: 10, maxZ: 19, elevation: 1 },
+            upper: { maxZ: 9, elevation: 3 },
+            middle: { minZ: 10, maxZ: 19, elevation: 2 },
             westEdge: 27.5,
           },
-          mountainLanding: { x: 0, z: 0, width: 3, depth: 2, elevation: 3 },
+          mountainLanding: { x: 0, z: 0, width: 3, depth: 2, elevation: 4 },
+          // upper(3)→廣場(1)：中間隔著 middle，落差變成 2(原本只差 1)。
+          // middle(2)→廣場(1)：落差 1，跟統一 +1 之前一樣。
           plazaStairs: [
-            { z: 7, width: 3, fromX: 25, toX: 28, elevation: 2, steps: 6 },
-            { z: 16, width: 3, fromX: 25, toX: 28, elevation: 1, steps: 6 },
+            { z: 7, width: 3, fromX: 25, toX: 28, baseElevation: 1, elevation: 2, steps: 6 },
+            { z: 16, width: 3, fromX: 25, toX: 28, baseElevation: 1, elevation: 1, steps: 6 },
           ],
           westStairs: [
-            { x: 0, width: 3, fromZ: 2, toZ: 7, baseElevation: 2, elevation: 1, steps: 6 },
-            { x: 0, width: 3, fromZ: 9, toZ: 16, baseElevation: 1, elevation: 1, steps: 7 },
-            { x: 0, width: 3, fromZ: 19, toZ: 26, baseElevation: 0, elevation: 1, steps: 7 },
+            { x: 0, width: 3, fromZ: 2, toZ: 7, baseElevation: 3, elevation: 1, steps: 6 },
+            { x: 0, width: 3, fromZ: 9, toZ: 16, baseElevation: 2, elevation: 1, steps: 7 },
+            { x: 0, width: 3, fromZ: 19, toZ: 26, baseElevation: 1, elevation: 1, steps: 7 },
+            // 南側新沙灘的下坡階梯——直接接在墊高後的城鎮地面(groundElevation
+            // =1)後面，下到沙灘(0)。沿用同一個陣列/同一套 oldVillageGroundY()
+            // 公式(z 越小值越高)，不用另外寫一份。fromZ(30)頂端 1，toZ(33)
+            // 底端 0，緊接 southBeach。x 從 20 移到 28。
+            { x: 28, width: 7, fromZ: 30, toZ: 33, baseElevation: 0, elevation: 1, steps: 6 },
           ],
           carpenterHouse: { x: 6, z: 13, d: 3, doorX: 7 },
           // w/d/doorX/wallColor/roofColor/role：10 棟對應使用者定案的城鎮
@@ -205,7 +233,12 @@ import { hash2 } from "./utils";
           // isTransferOpening)，不要另外存一份 centerX/joinZ 分開維護。
           summitLookout: { x: 16, z: 0, width: 12, depth: 3 },
           lowerStair: { x: 21, width: 3, fromZ: 42, toZ: 51, baseElevation: 0, elevation: 3.2, steps: 14 },
-          upperStair: { x: 12, width: 3, fromZ: 17, toZ: 28, baseElevation: 3.2, elevation: 3.3, steps: 16 },
+          // X 對齊山腳→山腰的 lowerStair(x=21)，兩段樓梯疊成同一直線走廊，
+          // 不再是左右交錯的之字形。isStairJoin()/mountainGroundY() 等全部
+          // 從這個值算開口/高度，改這裡就會自動連動；只有下面兩條
+          // path() 的寬度是為了舊 x=12 手調的魔術數字，得跟著重新推導，
+          // 不然新位置下寬度會蓋出地圖邊界。
+          upperStair: { x: 21, width: 3, fromZ: 17, toZ: 28, baseElevation: 3.2, elevation: 3.3, steps: 16 },
           treeDensity: 0.42,
           plazas: {
             summit: [
@@ -231,7 +264,9 @@ import { hash2 } from "./utils";
         },
         port: {
           width: 34,
-          height: 50,
+          // 南沙灘深度從 10 擴到 30(southBeach.depth)，height 對應加 10 到 60
+          // 才裝得下(oceanExpansion 的最後 10 排維持不變，仍是最南側保底外海)。
+          height: 60,
           oceanExpansion: 10,
           oceanViewPadding: 50,
           beachDepth: 10,
@@ -246,7 +281,7 @@ import { hash2 } from "./utils";
           basin: { x: 6, z: 18, width: 15, height: 9 },
           ferry: { x: 13, z: 22 },
           southQuay: { z: 27, height: 3 },
-          southBeach: { x: 0, z: 30, width: 21, depth: 10 },
+          southBeach: { x: 0, z: 30, width: 21, depth: 30 },
           southBeachStairs: { x: 7, z: 29, width: 7, depth: 3 },
           smallBoatDock: { x: 21, z: 27, length: 9 },
           shops: [
@@ -293,11 +328,26 @@ import { hash2 } from "./utils";
         // 山腰的路往右繞過賞櫻平台，再折回左側的第二段階梯。
         path(mountain.lowerStair.x, mountain.waist.z + 14, 10, 3);
         path(mountain.waist.x + mountain.waist.width - 6, mountain.waist.z + 7, 3, 9);
-        path(mountain.upperStair.x, mountain.waist.z + 6, mountain.waist.width - 9, 3);
+        // 寬度算到 waist.x+width-6(=下面那條垂直連接路的 x)右側再多蓋 1 格，
+        // 兩條路才會確實重疊銜接；改用 upperStair.x 現算，不寫死舊位置(x=12)
+        // 才會用到的魔術數字 18，不然樓梯搬到 x=21 後這條路會蓋出 waist 右邊界。
+        path(
+          mountain.upperStair.x,
+          mountain.waist.z + 6,
+          mountain.waist.x + mountain.waist.width - 4 - mountain.upperStair.x,
+          3,
+        );
         path(mountain.upperStair.x, mountain.waist.z, 3, 9);
         path(mountain.upperStair.x, mountain.upperStair.fromZ, mountain.upperStair.width, mountain.upperStair.toZ - mountain.upperStair.fromZ + 1);
-        // 第三階直接抵達山頂，但山頂步道仍有一次轉折才到觀景中心。
-        path(mountain.upperStair.x, mountain.summit.z + mountain.summit.depth - 5, 11, 3);
+        // 第三階直接抵達山頂，但山頂步道仍有一次轉折才到觀景中心。寬度算到
+        // summit.x+9+7(=下面那條 7 格寬廣場路的右緣)，跟上面一樣改用
+        // upperStair.x 現算，不寫死舊位置(x=12)才對得上的魔術數字 11。
+        path(
+          mountain.upperStair.x,
+          mountain.summit.z + mountain.summit.depth - 5,
+          mountain.summit.x + 16 - mountain.upperStair.x,
+          3,
+        );
         path(mountain.summit.x + 9, mountain.summit.z + 5, 3, 8);
         path(mountain.summit.x + 9, mountain.summit.z + 4, 7, 3);
         // 山頂步道再往北延伸到觀景台矩形範圍內，路面本身接進去，不是
@@ -483,10 +533,17 @@ import { hash2 } from "./utils";
       // 都呼叫這個函式，避免沙格已經彎曲但水面仍維持一條直線。
       export function portSouthBeachEndZ(x: number) {
         const beach = LAYOUT.port.southBeach;
-        const wave = Math.sin((x + 1.5) * 0.72) * 1.05;
-        const noise = (hash2(x * 1.91, 73.4) - 0.5) * 1.1;
-        const offset = Math.max(-1, Math.min(1, Math.round(wave + noise)));
-        return beach.z + beach.depth - 1 + offset;
+        // depth 從 10 擴到 30 之後，鋸齒振幅也跟著放大(1.05/1.1→2.6/2.8，
+        // 夾值±1→±4)，海岸線在更大範圍裡才看得出明顯凹凸，不會看起來只是
+        // 一條位移過的直線。基準點抓在 beach.z+14(大約整段 30 深的中段偏
+        // 前)，讓沙灘中段夠寬、海岸線抖動之後仍離地圖最南緣(height-1)有
+        // 十幾格保底外海，不用再另外夾 Math.min——之前用 height-2 夾的
+        // 版本，數值剛好落在公式自然範圍之內，反而把抖動整個吃掉，變成
+        // 一條死板的直線（已在 map-debug 實測踩到這個坑）。
+        const wave = Math.sin((x + 1.5) * 0.72) * 2.6;
+        const noise = (hash2(x * 1.91, 73.4) - 0.5) * 2.8;
+        const offset = Math.max(-4, Math.min(4, Math.round(wave + noise)));
+        return beach.z + 14 + offset;
       }
 
       export function oldVillageGroundY(x: number, z: number) {
@@ -530,11 +587,25 @@ import { hash2 } from "./utils";
             Math.min(1, (stair.toX - x) / (stair.toX - stair.fromX)),
           );
           return (
+            (stair.baseElevation || 0) +
             Math.ceil(progress * stair.steps - Number.EPSILON) *
-            (stair.elevation / stair.steps)
+              (stair.elevation / stair.steps)
           );
         }
-        if (x > village.terraces.westEdge) return 0;
+        // 南側新擴充區：沙灘/海固定海平面(0)，跟 makeSand()/水面貼圖寫死的
+        // 假設一致。這個判斷要放在下面的 x>westEdge 判斷之前——westEdge 是
+        // 舊城鎮原本範圍(z0~29)才有意義的規則，z>=30 的新區域不該被它攔截。
+        // 不能帶 -0.5 容許值：南側樓梯(westStairs 最後一段)fromZ 剛好等於
+        // southBeach.z(30)，容許值會讓 z=29.5~29.99 落進這個分支提早跌到
+        // 海平面(0)，跟樓梯銜接處的地面高度(groundElevation=1)產生一階落差，
+        // 玩家會被 canTraverseVillageHeight() 的高度差門檻卡在樓梯正前方，
+        // 連樓梯本身都還沒走到就過不去。
+        if (z >= village.southBeach.z) return 0;
+        // 廣場/南側預設地面墊高跟 middle 台地同高(groundElevation)，整個
+        // 城鎮除了沙灘都在同一個抬高的地基上，才會有「平台」的觀感——這也是
+        // middle.elevation 現在剛好等於 groundElevation 的原因，兩者本來就
+        // 該是同一塊地基，不是巧合。
+        if (x > village.terraces.westEdge) return village.groundElevation;
         if (z <= village.terraces.upper.maxZ)
           return village.terraces.upper.elevation;
         if (
@@ -542,7 +613,19 @@ import { hash2 } from "./utils";
           z <= village.terraces.middle.maxZ
         )
           return village.terraces.middle.elevation;
-        return 0;
+        return village.groundElevation;
+      }
+      // 南沙灘海岸線以 x 為種子產生穩定的鋸齒凹凸，跟 portSouthBeachEndZ()
+      // 同一套公式——地圖、碰撞與水面都呼叫這個函式，沙格彎曲時水面才會
+      // 跟著彎，不會沙灘已經凹凸不平、水面還是一條直線。
+      export function oldVillageSouthBeachEndZ(x: number) {
+        const beach = LAYOUT.oldVillage.southBeach;
+        // 基準點跟 portSouthBeachEndZ() 同一個相對位置(beach.z+14，depth=30
+        // 的中段偏前)，兩邊沙灘深度現在都是 30，海岸線的比例才會一致。
+        const wave = Math.sin((x + 2.3) * 0.58) * 2.6;
+        const noise = (hash2(x * 1.73, 88.1) - 0.5) * 2.8;
+        const offset = Math.max(-4, Math.min(4, Math.round(wave + noise)));
+        return Math.min(LAYOUT.oldVillage.height - 2, beach.z + 14 + offset);
       }
 
       export function isOnOldVillageStair(x: number, z: number) {
@@ -632,17 +715,19 @@ import { hash2 } from "./utils";
         }
 
         // 港口南側低地沙灘。先完成外海配置再覆寫沙地，確保擴建後的
-        // z=30~39 是可行走沙灘，而新增加的最南十列仍維持外海。
+        // z=30~58 是可行走沙灘，最南一列仍保底維持外海。
+        // 上界夾在 p.height-1：depth 擴到 30 後 southBeach.z+depth 剛好等於
+        // p.height(=60)，超出陣列最後一排(59)會直接 TypeError。
+        const southOceanFillEndZ = Math.min(
+          p.height - 1,
+          p.southBeach.z + p.southBeach.depth,
+        );
         for (
           let x = p.southBeach.x;
           x < p.southBeach.x + p.southBeach.width;
           x++
         ) {
-          for (
-            let z = p.southBeach.z;
-            z <= p.southBeach.z + p.southBeach.depth;
-            z++
-          )
+          for (let z = p.southBeach.z; z <= southOceanFillEndZ; z++)
             tiles[z][x] = 9;
         }
         for (
@@ -714,8 +799,6 @@ import { hash2 } from "./utils";
           tiles[0][village.livingGate.x + x] = 3;
         for (let z = 0; z < village.portGate.height; z++)
           tiles[village.portGate.z + z][village.portGate.x] = 3;
-        tiles[village.artVillageGate.z][village.artVillageGate.x] = 3;
-        tiles[village.artVillageSouthGate.z][village.artVillageSouthGate.x] = 3;
         tiles[village.mountainGate.z][village.mountainGate.x] = 3;
         village.houses.forEach((house) => {
           const width = house.w ?? 1;
@@ -724,6 +807,16 @@ import { hash2 } from "./utils";
             for (let x = house.x; x < house.x + width; x++) tiles[z][x] = 1;
           }
         });
+        // 南側新沙灘/海——跟港口南沙灘同一套「先鋪滿整段海，再依 x 算的
+        // 鋸齒岸線疊蓋沙灘」寫法：沙灘凹凸不平，不是一條直線。
+        const beach = village.southBeach;
+        for (let x = beach.x; x < beach.x + beach.width; x++) {
+          for (let z = beach.z; z < village.height; z++) tiles[z][x] = 9;
+        }
+        for (let x = beach.x; x < beach.x + beach.width; x++) {
+          const shoreEndZ = oldVillageSouthBeachEndZ(x);
+          for (let z = beach.z; z <= shoreEndZ; z++) tiles[z][x] = 8;
+        }
         return tiles;
       }
 
@@ -848,9 +941,8 @@ import { hash2 } from "./utils";
         },
         // 舊城鎮——目前只做骨架：一塊廣場空地＋幾間空屋佔位方塊(makeTownPlaceholder)，
         // 沒有木匠工坊內裝。playerStart 設在北側，之後往北接港口商業街入口。
-        // 南側這輪接上美術村的新門檻(3,11)，之前留給「以後另一位居民」的
-        // 路還沒動到——這一格只佔最後一排的 x=3，其餘南側空地依然沒畫、
-        // 不佔座標。
+        // 南側原本接美術村的兩個門檻已移除，改成南側新沙灘(見 LAYOUT.oldVillage
+        // 的 westStairs 最後一段+southBeach)。
         oldVillage: {
           tiles: makeOldVillageTiles(),
           placeholders: LAYOUT.oldVillage.houses,
@@ -862,33 +954,10 @@ import { hash2 } from "./utils";
         },
         // 港口——左側石板廣場接舊城鎮；中央是三面石造碼頭包圍的內港與渡輪；
         // 北側商店背後的沙灘延續生活區；右側木棧橋停小艇。保留原本西界換圖、
-        // 木匠事件(7,3)與美術村入口(3,15)。
+        // 木匠事件(7,3)。南側沙灘深度擴充到 30(見 LAYOUT.port.southBeach)。
         port: {
           tiles: makePortTiles(),
           playerStart: { ...LAYOUT.port.playerArrival },
-        },
-        // 美術村——這輪只求骨架能走通，不做藝術裝置的細節，內容先放幾個空屋
-        // 佔位方塊。北側兩個門檻分別接舊城鎮跟港口各自的南側新門檻，呼應
-        // 關係圖裡「美術區橫跨舊城鎮跟港口下方，雙向都能進入」的設計——
-        // 兩個城鎮地圖各自獨立，這裡不是真的接在同一塊地上，只是敘事上/
-        // 玩法上「往南都會走到這個共用的美術村」。
-        artVillage: {
-          tiles: [
-            [0, 0, 0, 3, 0, 0, 0, 0, 0, 3, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-            [0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-          ],
-          placeholders: [
-            { x: 2, z: 2, seed: 0.2 },
-            { x: 9, z: 2, seed: 0.65 },
-            { x: 5, z: 5, seed: 0.45 },
-          ],
-          playerStart: { x: 6, z: 4 },
         },
         // 女神祠堂——生活區私人海岸沿著北側沙灘往北走到底的小平台，這輪
         // 只求「走得到、有地方站」，退潮限定的判定邏輯之後再接；先放一塊
