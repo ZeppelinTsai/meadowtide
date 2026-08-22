@@ -113,6 +113,9 @@ export const waterSkyUnderlayMaterials: import("three").MeshStandardMaterial[] =
         material: import("three").MeshStandardMaterial;
         baseColor: number;
         winterColor: number;
+        // 只有真正的草地材質才會給這欄——石頭/木棧板/階梯沒有秋天落葉，維持
+        // baseColor/winterColor 兩色循環；省略這欄的項目在秋天照樣用 baseColor。
+        autumnColor?: number;
       }> = [];
       export const pastureGrassBlades = []; // 牧場裡會被風吹動的草叢，每叢存自己的葉片群組
       export const GRASS_STAGE_HEIGHTS = [0.2, 0.46, 0.82]; // 短、中、長；長草約到動物胸高

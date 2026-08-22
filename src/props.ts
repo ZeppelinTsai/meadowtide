@@ -1,6 +1,6 @@
 import * as THREE from "three";
 import { hash2 } from "./utils";
-import { gameState } from "./game-state";
+import { gameState, getSeasonGrassTone, mapleAutumnColor } from "./game-state";
 import { TILE, PLATEAU_Y, NORTH_CLIFF_Z, SOUTH_TERRAIN_EXTENSION } from "./scene-sky";
 import {
   LAYOUT,
@@ -177,28 +177,38 @@ import { randomPasturePoint } from "./npc-runtime";
         );
       }
       export function updateSeasonalGroundColors() {
-        const groundColor = gameState.currentSeason === 3 ? 0xe8eef2 : 0x6ab04c;
+        const tone = getSeasonGrassTone();
         seasonalGroundMaterials.forEach((material) => {
-          material.color.setHex(groundColor);
-          material.roughness = gameState.currentSeason === 3 ? 0.82 : 1;
+          material.color.setHex(tone.ground);
+          material.roughness = tone.roughness;
         });
         mountainSeasonalMaterials.forEach(
-          ({ material, baseColor, winterColor }) => {
+          ({ material, baseColor, winterColor, autumnColor }) => {
             material.color.setHex(
-              gameState.currentSeason === 3 ? winterColor : baseColor,
+              gameState.currentSeason === 3
+                ? winterColor
+                : gameState.currentSeason === 2 && autumnColor !== undefined
+                  ? autumnColor
+                  : baseColor,
             );
             material.roughness = gameState.currentSeason === 3 ? 0.88 : 1;
           },
         );
         pastureGrassBlades.forEach((tuft) => {
           tuft.userData.grassMaterial.color.copy(
-            gameState.currentSeason === 3
-              ? tuft.userData.winterGrassColor
-              : tuft.userData.baseGrassColor,
+            seasonalPastureGrassColor(tuft.userData),
           );
-          tuft.userData.grassMaterial.roughness =
-            gameState.currentSeason === 3 ? 0.78 : 1;
+          tuft.userData.grassMaterial.roughness = tone.roughness;
         });
+      }
+      // 牧場風吹草跟地板共用 SEASON_GRASS_TONES 的季節判斷，只是牧草额外保留
+      // 楓紅/楓黃兩種秋色(makeWindGrass() 依 seed 各叢混色)，不能只套地板的
+      // 單一秋色，所以額外抽成這個小函式讓建立時跟每次換季更新時共用同一套
+      // 「哪個季節挑哪個顏色」判斷，不寫兩份三元判斷。
+      function seasonalPastureGrassColor(userData) {
+        if (gameState.currentSeason === 3) return userData.winterGrassColor;
+        if (gameState.currentSeason === 2) return userData.autumnGrassColor;
+        return userData.baseGrassColor;
       }
       export function makeBuilding({
         x,
@@ -637,8 +647,12 @@ import { randomPasturePoint } from "./npc-runtime";
       }
       export function makeGrassTuft(x, z, seed) {
         const g = new THREE.Group();
+        // 裝飾用小草叢每次進地圖(buildMap())都重新生成，不需要另外掛進
+        // 季節材質登記表做即時更新，直接在建立當下依目前季節挑色即可，
+        // 跟牧場風吹草共用同一顆 mapleAutumnColor()，不重寫混色公式。
         const mat = new THREE.MeshStandardMaterial({
-          color: 0x4f9e46,
+          color:
+            gameState.currentSeason === 2 ? mapleAutumnColor(seed) : 0x4f9e46,
           flatShading: true,
         });
         for (let i = 0; i < 3; i++) {
@@ -669,8 +683,13 @@ import { randomPasturePoint } from "./npc-runtime";
           -0.08,
           (seed - 0.5) * 0.08,
         );
+        const autumnGrassColor = mapleAutumnColor(seed);
         const mat = new THREE.MeshStandardMaterial({
-          color: gameState.currentSeason === 3 ? winterGrassColor : grassColor,
+          color: seasonalPastureGrassColor({
+            baseGrassColor: grassColor,
+            autumnGrassColor,
+            winterGrassColor,
+          }),
           flatShading: true,
           side: THREE.DoubleSide,
         });
@@ -715,6 +734,7 @@ import { randomPasturePoint } from "./npc-runtime";
         g.userData.stage = -1;
         g.userData.grassMaterial = mat;
         g.userData.baseGrassColor = grassColor;
+        g.userData.autumnGrassColor = autumnGrassColor;
         g.userData.winterGrassColor = winterGrassColor;
         return g;
       }

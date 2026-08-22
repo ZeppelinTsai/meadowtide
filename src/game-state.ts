@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { hash2 } from "./utils";
 import { LAYOUT, MAPS, isInsideLakeShape } from "./layout-maps";
 import { npcs } from "./npc-runtime";
 import { syncFarmVisuals } from "./farm-visuals";
@@ -34,7 +35,7 @@ export const gameState = {
     start: number;
     duration: number;
   } | null,
-  zoom: 10,
+  zoom: 5,
   nextMeteorAt: Infinity,
   meteorBurstRemaining: 0,
   meteorBurstCooldownUntil: 0,
@@ -90,6 +91,32 @@ export const SEASON_DAYLIGHT = Object.freeze({
   autumn: Object.freeze({ sunrise: 6, sunset: 18, peak: 17 }),
   winter: Object.freeze({ sunrise: 7, sunset: 17, peak: 13.5 }),
 });
+// 全域草地/地面季節配色——所有草地相關材質(livingArea/舊城鎮地板、牧場
+// 風吹草)都應該讀這張表，不要各自寫一份「冬天用A色否則用B色」的三元判斷，
+// 避免兩處配色之後各自漂移。秋天刻意選介於楓紅與楓黃之間的暖橙色，代表
+// 落葉混雜草地；牧場風吹草另外在 makeWindGrass() 用 seed 在楓紅／楓黃兩色
+// 之間做逐叢差異，做出真正「紅黃混搭」的斑駁效果，不是整片單一顏色。
+export const SEASON_GRASS_TONES = Object.freeze({
+  spring: Object.freeze({ ground: 0x6ab04c, roughness: 1 }),
+  summer: Object.freeze({ ground: 0x6ab04c, roughness: 1 }),
+  autumn: Object.freeze({ ground: 0xc07a35, roughness: 0.88 }),
+  winter: Object.freeze({ ground: 0xe8eef2, roughness: 0.82 }),
+});
+export const AUTUMN_GRASS_MAPLE_RED = 0xb5432a;
+export const AUTUMN_GRASS_MAPLE_YELLOW = 0xe0a934;
+// 給任何一叢草/一顆草簇用同一顆 seed 算出的秋色，楓紅／楓黃混色比例跟
+// seed 綁定(不是 Math.random)，同一叢草每次重建場景顏色都一樣，不會
+// 每次進地圖閃爍成不同色。makeWindGrass()/makeGrassTuft() 共用這個函式，
+// 不要各自重寫一份 lerp 公式。
+export function mapleAutumnColor(seed: number) {
+  return new THREE.Color(AUTUMN_GRASS_MAPLE_RED)
+    .lerp(new THREE.Color(AUTUMN_GRASS_MAPLE_YELLOW), hash2(seed * 3.7, seed * 1.3))
+    .offsetHSL(0, 0, (seed - 0.5) * 0.06);
+}
+export function getSeasonGrassTone(seasonIndex = gameState.currentSeason) {
+  const key = TIME_CONFIG.seasons[seasonIndex] as keyof typeof SEASON_GRASS_TONES;
+  return SEASON_GRASS_TONES[key];
+}
 export const METEOR_CONFIG = Object.freeze({
   maxActive: 20,
   normalMinPerHour: 0.35,
@@ -135,6 +162,14 @@ export function getSeasonPeriod(day = gameState.currentDay) {
   const seasonDay = getSeasonDay(day);
   return seasonDay <= 7 ? "上旬" : seasonDay <= 14 ? "中旬" : "下旬";
 }
+// 第 0 天(遊戲開局)定為週日，之後每 7 天循環一次；純用 currentDay 換算，
+// 不另外存一個會跟 currentDay 脫鉤的計數器。
+export function getDayOfWeek(day = gameState.currentDay) {
+  return day % 7;
+}
+export function isSunday(day = gameState.currentDay) {
+  return getDayOfWeek(day) === 0;
+}
 export function getDaylightForSeason(seasonIndex = gameState.currentSeason) {
   const key = TIME_CONFIG.seasons[seasonIndex] as keyof typeof SEASON_DAYLIGHT;
   const daylight = SEASON_DAYLIGHT[key];
@@ -167,9 +202,14 @@ export function getNightFactor(phase = gameState.currentPhase) {
 export function isNightTime() {
   return getNightFactor() >= 0.55;
 }
-export function rollWeatherForSeason(seasonIndex: number) {
+export function rollWeatherForSeason(
+  seasonIndex: number,
+  day = gameState.currentDay,
+) {
+  if (isSunday(day)) return "clear"; // 固定週日放晴，不進入天氣機率表
   const r = Math.random();
-  if (seasonIndex === 0) return r < 0.55 ? "clear" : r < 0.72 ? "cloudy" : "rain";
+  if (seasonIndex === 0)
+    return r < 0.55 ? "clear" : r < 0.72 ? "cloudy" : "rain";
   if (seasonIndex === 1)
     return r < 0.52
       ? "clear"
@@ -180,7 +220,8 @@ export function rollWeatherForSeason(seasonIndex: number) {
           : r < 0.93
             ? "typhoon"
             : "storm";
-  if (seasonIndex === 2) return r < 0.58 ? "clear" : r < 0.76 ? "cloudy" : "rain";
+  if (seasonIndex === 2)
+    return r < 0.58 ? "clear" : r < 0.76 ? "cloudy" : "rain";
   return r < 0.45
     ? "clear"
     : r < 0.6
@@ -190,7 +231,7 @@ export function rollWeatherForSeason(seasonIndex: number) {
         : "blizzard";
 }
 gameState.currentSeason = getSeasonIndex(0);
-gameState.currentWeather = rollWeatherForSeason(gameState.currentSeason);
+gameState.currentWeather = rollWeatherForSeason(gameState.currentSeason, 0);
 gameState.previousWeather = gameState.currentWeather;
 // 天氣切換緩衝：換日當下天氣字串還是瞬間換，但視覺強度(雨/雪/閃電/
 // 天色)從這個時間點開始花 WEATHER_TRANSITION_SECONDS 秒淡入，不會整片

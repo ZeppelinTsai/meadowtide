@@ -1,6 +1,6 @@
 import * as THREE from "three";
 import { hash2 } from "./utils";
-import { gameState } from "./game-state";
+import { gameState, getSeasonGrassTone, SEASON_GRASS_TONES } from "./game-state";
 import {
   scene,
   TILE,
@@ -307,7 +307,6 @@ export function buildMap(mapName) {
     );
     southBeach.receiveShadow = true;
     gameState.mapGroup.add(southBeach);
-    updateSeasonalGroundColors();
 
     // 右側沙灘也往北補齊，接住延伸後的海面與海堤，不留下綠色斷帶。
     // 第 0～2 排包含通往祠堂的沙洲，海格會被步道資料覆寫，因此不能只用
@@ -582,9 +581,13 @@ export function buildMap(mapName) {
     // oldVillage 這類獨立小地圖：跟 house 一樣是純平地，沒有懸崖/
     // 沙灘的高低差，plateauGroup 維持等於 gameState.mapGroup，不用另外墊高。
     if (mapName !== "mountain") {
+      const groundMat = new THREE.MeshStandardMaterial({
+        color: getSeasonGrassTone().ground,
+        roughness: 1,
+      });
       const ground = new THREE.Mesh(
         new THREE.BoxGeometry(cols * TILE, 0.2, rows * TILE),
-        new THREE.MeshStandardMaterial({ color: 0x6ab04c, roughness: 1 }),
+        groundMat,
       );
       ground.position.set(
         (cols * TILE) / 2 - TILE / 2,
@@ -593,6 +596,10 @@ export function buildMap(mapName) {
       );
       ground.receiveShadow = true;
       gameState.mapGroup.add(ground);
+      // 之前這片地板沒登記進 seasonalGroundMaterials，導致舊城鎮/藝術村這類
+      // 地圖的草地永遠停在建圖當下那個季節色，換季也不會跟著變——跟
+      // livingArea 共用同一份季節色表跟登記表，才不會兩邊各自維護一份判斷。
+      seasonalGroundMaterials.push(groundMat);
     }
     if (mapName === "oldVillage") {
       const terraceMat = new THREE.MeshStandardMaterial({
@@ -763,7 +770,14 @@ export function buildMap(mapName) {
         side: THREE.DoubleSide,
       });
       mountainSeasonalMaterials.push(
-        { material: grassMat, baseColor: 0x78945a, winterColor: 0xf1f5f7 },
+        {
+          material: grassMat,
+          baseColor: 0x78945a,
+          winterColor: 0xf1f5f7,
+          // 山區草地跟其他草地共用同一張全域秋色表，不是這裡另外挑一個秋色——
+          // 之前漏了這欄，山頂草地換季時樹葉變紅了、地板還是夏天的綠。
+          autumnColor: SEASON_GRASS_TONES.autumn.ground,
+        },
         { material: cliffMat, baseColor: 0x514a3f, winterColor: 0xd9e1e6 },
       );
       const mountainRailPostMat = new THREE.MeshStandardMaterial({
@@ -2463,7 +2477,11 @@ export function buildMap(mapName) {
     }
   }
 
-  if (mapName === "mountain") updateSeasonalGroundColors();
+  // 所有地圖共用同一個季節上色收尾：不管哪個分支各自登記了哪些草地/地面
+  // 材質(seasonalGroundMaterials/mountainSeasonalMaterials/
+  // pastureGrassBlades)，這裡統一套一次目前季節色，不必每個分支自己記得
+  // 呼叫——舊城鎮那片地板先前就是漏了這一步，換季後仍停在建圖當下的顏色。
+  updateSeasonalGroundColors();
   scene.add(gameState.mapGroup);
   gameState.currentMapName = mapName;
   npcGroup.position.y = mapName === "livingArea" ? PLATEAU_Y : 0;

@@ -8,7 +8,7 @@ import { dialogEl } from "./dialogue";
 export function beginNewDay(day) {
         gameState.currentSeason = getSeasonIndex(day);
         gameState.previousWeather = gameState.currentWeather;
-        gameState.currentWeather = rollWeatherForSeason(gameState.currentSeason);
+        gameState.currentWeather = rollWeatherForSeason(gameState.currentSeason, day);
         gameState.weatherChangedAt = gameState.elapsed;
         updateAvenueTreeColors();
         updateSeasonalTreeColors();

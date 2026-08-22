@@ -43,7 +43,8 @@ export const SAVE_KEY_PREFIX = "meadowtide.save.";
         updateSeasonAndDate();
         gameState.prevDay = gameState.currentDay;
         gameState.currentWeather =
-          data.currentWeather || rollWeatherForSeason(gameState.currentSeason);
+          data.currentWeather ||
+          rollWeatherForSeason(gameState.currentSeason, gameState.currentDay);
         gameState.pouchCollectedDay = Number.isFinite(data.pouchCollectedDay)
           ? data.pouchCollectedDay
           : -1;
