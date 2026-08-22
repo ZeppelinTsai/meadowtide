@@ -124,35 +124,49 @@ import {
 import { syncFarmVisuals } from "./farm-visuals";
 import { OYSTER_RACK_VISUAL } from "./game-state";
 
-// 地圖整片底板共用的「星空穿透」寫法：transparent+opacity:1+depthWrite:false，
+// 地圖底板，可選「星空穿透」寫法：transparent+opacity:1+depthWrite:false，
 // 不是只關掉 depthWrite。純關 depthWrite（保留 opaque）會讓地板完全不擋深度，
 // 星空/銀河連沙灘/廣場這些「應該不透光」的地方都會透出來，不是只有水面
 // 半透明處。改成跟星空同一個 transparent 佇列、opacity 維持 1（視覺上還是
 // 完全不透明），renderOrder 排在星空群組(-0.8~-0.5)之後、水面之前：星空
 // 先畫→地板用不透明色蓋掉星空（沙灘/廣場正常不透光）→水面最後疊上去，
 // 水面自己有正常寫深度，地板的深度測試會正確避開水面範圍不覆蓋它，水面
-// 才能繼續透出星空。港區跟舊城鎮的整片地圖底板都蓋在各自的海/沙灘下方，
-// 兩邊必須共用同一套寫法，不要各自複製一份公式——舊城鎮南側沙灘曾經因為
-// 底板沒套用這套寫法，變成看得見實心海底、跟港區不一致。
-function addStarSafeMapFloor(cols, rows, color, roughness) {
-  const material = new THREE.MeshStandardMaterial({
-    color,
-    roughness,
-    transparent: true,
-    opacity: 1,
-    depthWrite: false,
-  });
+// 才能繼續透出星空。
+//
+// starSafe 只能套在「上面沒有其他東西」的裸露地板（例如海/沙灘正下方）。
+// 舊城鎮的 terraceMat(石質台地/步道) 自己也是 depthWrite:false（避免相鄰
+// 台階間的 z-fighting），一旦底板也進了 transparent 佇列，兩者的繪製順序
+// 只看 renderOrder、opaque/transparent 佇列一定整批排在 transparent 佇列
+// 之前——底板(transparent)因此永遠畫在 terraceMat(opaque) 之後，會把整片
+// 石質地板/步道蓋成草地色，曾經因此把舊城鎮的石地板、步道全部吃成草地。
+// 所以舊城鎮只有「南側新沙灘/海」這塊裸地板可以套 starSafe，城鎮本體(有
+// terraceMat 蓋著的範圍)一定要用普通 opaque 地板，兩塊分開蓋、不要合成
+// 一塊，靠 z 分界銜接。
+function addMapFloorPatch({
+  x = 0,
+  z = 0,
+  width,
+  depth,
+  color,
+  roughness,
+  starSafe = false,
+}) {
+  const material = new THREE.MeshStandardMaterial(
+    starSafe
+      ? { color, roughness, transparent: true, opacity: 1, depthWrite: false }
+      : { color, roughness },
+  );
   const floor = new THREE.Mesh(
-    new THREE.BoxGeometry(cols * TILE, 0.2, rows * TILE),
+    new THREE.BoxGeometry(width * TILE, 0.2, depth * TILE),
     material,
   );
   floor.position.set(
-    (cols * TILE) / 2 - TILE / 2,
+    x * TILE + (width * TILE) / 2 - TILE / 2,
     -0.1,
-    (rows * TILE) / 2 - TILE / 2,
+    z * TILE + (depth * TILE) / 2 - TILE / 2,
   );
   floor.receiveShadow = true;
-  floor.renderOrder = 2;
+  if (starSafe) floor.renderOrder = 2;
   gameState.mapGroup.add(floor);
   return material;
 }
@@ -584,27 +598,53 @@ export function buildMap(mapName) {
     gameState.mapGroup.add(plateauGroup);
   } else if (mapName === "port") {
     // 港區使用石板廣場底板；北緣 tile 8 仍在下方逐格呼叫共用 makeSand()，
-    // 因此與生活區沙灘保持同一套顏色與低模表面。
-    addStarSafeMapFloor(cols, rows, 0xb8aa91, 0.96);
+    // 因此與生活區沙灘保持同一套顏色與低模表面。港區的碼頭/樓梯材質都是
+    // 正常寫深度的 opaque 材質，沒有 oldVillage terraceMat 那種
+    // depthWrite:false 的台地，所以整片底板可以直接套 starSafe，不用分塊。
+    addMapFloorPatch({
+      width: cols,
+      depth: rows,
+      color: 0xb8aa91,
+      roughness: 0.96,
+      starSafe: true,
+    });
     plateauGroup.add(makePortScene());
   } else {
     // oldVillage 這類獨立小地圖：跟 house 一樣是純平地，沒有懸崖/
     // 沙灘的高低差，plateauGroup 維持等於 gameState.mapGroup，不用另外墊高。
-    if (mapName !== "mountain") {
-      // oldVillage 的南側沙灘/海(見 LAYOUT.oldVillage.southBeach)也蓋在這片
-      // 整塊地板上面，因此跟港區地板共用同一套「星空穿透」寫法(見
-      // addStarSafeMapFloor 內註解)——之前這裡是一塊普通 opaque 地板，
-      // 完整寫入深度，把南側海面下方原本該透出的星空整片擋死，回報「城鎮
-      // 的海看起來有實心海底、跟港口不一樣」就是這塊地板沒套用同一套修法。
-      const groundMat = addStarSafeMapFloor(
-        cols,
-        rows,
-        getSeasonGrassTone().ground,
-        1,
-      );
+    if (mapName === "oldVillage") {
+      // 城鎮本體(北側，terraceMat 石質台地/步道蓋著的範圍)跟南側新沙灘/海
+      // 分兩塊蓋，中間以 southBeach.z 為界——見 addMapFloorPatch 內註解，
+      // 城鎮本體這塊絕對不能套 starSafe，套了會把 terraceMat 的石質地板/
+      // 步道整片蓋成草地色(這正是「城鎮的石質地板跟步道不見了」的成因)。
+      // 只有南側沒有 terraceMat 覆蓋的裸露沙灘/海才需要星空穿透。
+      const beachZ = LAYOUT.oldVillage.southBeach.z;
+      const groundColor = getSeasonGrassTone().ground;
+      const townFloorMat = addMapFloorPatch({
+        width: cols,
+        depth: beachZ,
+        color: groundColor,
+        roughness: 1,
+      });
+      const seaFloorMat = addMapFloorPatch({
+        z: beachZ,
+        width: cols,
+        depth: rows - beachZ,
+        color: groundColor,
+        roughness: 1,
+        starSafe: true,
+      });
       // 之前這片地板沒登記進 seasonalGroundMaterials，導致舊城鎮/藝術村這類
       // 地圖的草地永遠停在建圖當下那個季節色，換季也不會跟著變——跟
       // livingArea 共用同一份季節色表跟登記表，才不會兩邊各自維護一份判斷。
+      seasonalGroundMaterials.push(townFloorMat, seaFloorMat);
+    } else if (mapName !== "mountain") {
+      const groundMat = addMapFloorPatch({
+        width: cols,
+        depth: rows,
+        color: getSeasonGrassTone().ground,
+        roughness: 1,
+      });
       seasonalGroundMaterials.push(groundMat);
     }
     if (mapName === "oldVillage") {
