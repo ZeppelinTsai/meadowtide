@@ -110,6 +110,7 @@ import {
   makeInteriorWall,
   makeFurniture,
   updateSeasonalGroundColors,
+  makeWoodPlankTexture,
   FLOWER_COLORS,
   makeFlagpole,
   makeBellCupola,
@@ -1043,10 +1044,6 @@ export function buildMap(mapName) {
       gameState.mapGroup.add(mountainMesh);
       // 跟生活區西側山壁（makeWesternMountainTerrain）一樣，在山壁外緣散一圈
       // 大石頭打散筆直的地圖邊界，避免整座山的最外圍看起來像切齊的方形。
-      let summitLookoutRailAnchors: {
-        left: THREE.Vector3;
-        right: THREE.Vector3;
-      } | null = null;
       const addPlatform = (platform, bottomY: number) => {
         const segments = 48;
         const centerX = platform.x + (platform.width - 1) / 2;
@@ -1090,6 +1087,11 @@ export function buildMap(mapName) {
         // 山腳/山腰的城鎮門與山頂觀景台開口——跟樓梯開口一樣，牆面/裙帶
         // 在這個範圍內都不該生成，不然平台外圈的岩壁會整圈封死，看起來
         // 走不出去/走不上觀景台，即使 tile 碰撞其實是通的。
+        // 山頂開口這裡之前是用「跟觀景台圓心的距離 < 半徑+0.35」的模糊門檻，
+        // 跟觀景台自己的矩形範圍對不齊——兩套判斷各自一份公式，門檻抓得
+        // 不夠準確時，summit 外圈的岩壁/裙帶還是會有一小段蓋在觀景台的
+        // 實際地板範圍上，看起來像走不上去。改成直接比對觀景台矩形的
+        // x 範圍(跟 mountainGroundY() 用同一組邊界)，兩邊不會再各自漂移。
         const isTransferOpening = (x: number, z: number) =>
           (platform === mountain.foot &&
             Math.hypot(x - mountain.townGate.x, z - mountain.townGate.z) < 2.2) ||
@@ -1097,10 +1099,20 @@ export function buildMap(mapName) {
             Math.hypot(x - mountain.homeGate.x, z - mountain.homeGate.z) < 2.2) ||
           (platform === mountain.summit &&
             z < centerZ &&
-            Math.abs(x - mountain.summitLookout.centerX) <
-              mountain.summitLookout.radius + 0.35);
+            x >= mountain.summitLookout.x - 0.5 &&
+            x <= mountain.summitLookout.x + mountain.summitLookout.width - 0.5);
         const isOpening = (x: number, z: number) =>
           isStairOpening(x, z) || isTransferOpening(x, z);
+        // 跟樓梯的 isStairShoulder 同一個道理：開口本身(isTransferOpening)只
+        // 決定牆面/扶手在哪裡不生成，但外圈頂點原本還是套用 irregularity
+        // 隨機抖動，開口兩側最後一段扶手的端點就會落在抖動過的位置，跟
+        // 觀景台自己那圈固定矩形扶手的端點對不上，看起來像扶手斷開一截。
+        // 開口範圍外再加一點緩衝一起拉平(不抖動)，端點才會穩定貼齊觀景台。
+        const isTransferOpeningShoulder = (x: number, z: number) =>
+          platform === mountain.summit &&
+          z < centerZ &&
+          x >= mountain.summitLookout.x - 1.5 &&
+          x <= mountain.summitLookout.x + mountain.summitLookout.width + 1.5;
         for (let i = 0; i < segments; i++) {
           const angle = (i / segments) * Math.PI * 2;
           const dx = Math.cos(angle);
@@ -1111,9 +1123,9 @@ export function buildMap(mapName) {
           );
           const flatX = centerX + dx * rectangleRadius;
           const flatZ = centerZ + dz * rectangleRadius;
-          // 樓梯接合區（含肩寬緩衝）直接用未加抖動的矩形邊界，跟固定方形
-          // 收邊、垂直裙帶用的是同一條線；區外才套用不規則抖動的山頭輪廓。
-          if (isStairShoulder(flatX, flatZ)) {
+          // 樓梯接合區（含肩寬緩衝）跟山頂觀景台開口（含緩衝）都直接用未加
+          // 抖動的矩形邊界；區外才套用不規則抖動的山頭輪廓。
+          if (isStairShoulder(flatX, flatZ) || isTransferOpeningShoulder(flatX, flatZ)) {
             positions.push(flatX, platform.elevation, flatZ);
             continue;
           }
@@ -1182,31 +1194,12 @@ export function buildMap(mapName) {
             isTransferOpening(midpointX, midpointZ)
           );
         });
-        if (platform === mountain.summit) {
-          const transitions: THREE.Vector3[] = [];
-          for (let i = 0; i < segments; i++) {
-            const previous = (i - 1 + segments) % segments;
-            if (railSuppressed[i] === railSuppressed[previous]) continue;
-            const pointIndex = 1 + i;
-            const point = new THREE.Vector3(
-              positions[pointIndex * 3],
-              platform.elevation,
-              positions[pointIndex * 3 + 2],
-            );
-            if (
-              point.z < centerZ &&
-              Math.abs(point.x - mountain.summitLookout.centerX) <
-                mountain.summitLookout.radius + 2
-            ) transitions.push(point);
-          }
-          transitions.sort((a, b) => a.x - b.x);
-          if (transitions.length >= 2) {
-            summitLookoutRailAnchors = {
-              left: transitions[0],
-              right: transitions[transitions.length - 1],
-            };
-          }
-        }
+        // 舊版這裡會另外掃一次 summit 外圈、找出跟觀景台缺口相鄰的兩個
+        // transition 點，事後再用 addMountainRailSegment 把 summit 欄杆
+        // 缺口跟觀景台欄杆橋接起來。現在 isTransferOpening 直接比對觀景台
+        // 矩形邊界(見上面)，summit 自己的欄杆(下面 railSuppressed 那段
+        // 通用邏輯)本來就會精準停在 x=lookout.x-0.5/x=lookout.x+width-0.5，
+        // 跟觀景台欄杆的端點完全對齊，不再需要另外橋接一段。
         for (let i = 0; i < segments; i++) {
           const next = (i + 1) % segments;
           const innerA = 1 + segments + i;
@@ -1328,111 +1321,113 @@ export function buildMap(mapName) {
       addPlatform(mountain.summit, summitSkirtBottomY);
 
       const lookout = mountain.summitLookout;
-      const lookoutSegments = 28;
-      const lookoutPositions: number[] = [
-        lookout.centerX,
-        mountain.summit.elevation + 0.018,
-        lookout.joinZ,
-      ];
-      const lookoutIndices: number[] = [];
-      for (let i = 0; i <= lookoutSegments; i++) {
-        const angle = Math.PI + (i / lookoutSegments) * Math.PI;
-        lookoutPositions.push(
-          lookout.centerX + Math.cos(angle) * lookout.radius,
-          mountain.summit.elevation + 0.018,
-          lookout.joinZ + Math.sin(angle) * lookout.radius,
-        );
-      }
-      for (let i = 0; i <= lookoutSegments; i++) {
-        const angle = Math.PI + (i / lookoutSegments) * Math.PI;
-        lookoutPositions.push(
-          lookout.centerX + Math.cos(angle) * lookout.radius,
-          summitSkirtBottomY,
-          lookout.joinZ + Math.sin(angle) * lookout.radius,
-        );
-      }
-      // 從上方觀看時必須是 +Y 正面；原本的繞序朝下，導致木地板被背面剔除，
-      // 露出下方山頂綠地，看起來像綠地蓋過平台。
-      for (let i = 0; i < lookoutSegments; i++)
-        lookoutIndices.push(0, 2 + i, 1 + i);
-      const lookoutTopIndexCount = lookoutIndices.length;
-      const bottomOffset = 2 + lookoutSegments;
-      for (let i = 0; i < lookoutSegments; i++) {
-        const topA = 1 + i;
-        const topB = 2 + i;
-        const bottomA = bottomOffset + i;
-        const bottomB = bottomOffset + i + 1;
-        lookoutIndices.push(topA, bottomA, topB, topB, bottomA, bottomB);
-      }
-      const lookoutGeometry = new THREE.BufferGeometry();
-      lookoutGeometry.setAttribute(
-        "position",
-        new THREE.Float32BufferAttribute(lookoutPositions, 3),
+      const lookoutLeftX = lookout.x - 0.5;
+      const lookoutRightX = lookout.x + lookout.width - 0.5;
+      const lookoutNorthZ = lookout.z - 0.5;
+      // 南緣精確等於 summit 北緣(summit.z-0.5=2.5，跟 mountainGroundY()/
+      // isTransferOpening 用同一個邊界)，兩片地板在這裡剛好相接、中間不留
+      // 裙帶也不放扶手——這正是修掉「主角無法從山頂走到觀景台」的關鍵：
+      // 舊版用圓形(centerX/joinZ/radius)描述觀景台，跟 summit 本身的矩形
+      // 邊界是兩組不同公式，continuous 座標移動時 mountainGroundY() 在圓形
+      // 邊緣跟矩形邊緣中間有一小段(z 介於 2~2.5)兩邊公式都沒接住，直接
+      // 掉回預設高度 0，跟站立處落差瞬間變成 6.5，超過 canTraverseVillageHeight()
+      // 的 0.7 落差上限，移動就被擋住。現在兩邊都用同一種
+      // 「x-0.5 ~ x+width-0.5」矩形寫法、邊界數字完全對齊，不會再出現這種
+      // 兩份公式各自漂移出的死角。
+      const lookoutSouthZ = lookout.z + lookout.depth - 0.5;
+      const lookoutY = mountain.summit.elevation + 0.018;
+      const lookoutWidthUnits = lookoutRightX - lookoutLeftX;
+      const lookoutDepthUnits = lookoutSouthZ - lookoutNorthZ;
+      const LOOKOUT_PLANK_COUNT = 6;
+      const LOOKOUT_PLANK_WORLD_WIDTH = 0.5;
+      const lookoutWoodTexture = makeWoodPlankTexture({
+        plankCount: LOOKOUT_PLANK_COUNT,
+        seed: lookout.x * 1.7 + lookout.z,
+      });
+      // 板子沿長邊(世界 X)方向鋪，跨短邊(世界 Z，觀景台深度)一片片排開；
+      // repeat.y 抓成「深度 ÷ 每片板實際寬度」，板寬才不會隨觀景台尺寸跑掉。
+      lookoutWoodTexture.repeat.set(
+        lookoutWidthUnits / 3,
+        lookoutDepthUnits / (LOOKOUT_PLANK_COUNT * LOOKOUT_PLANK_WORLD_WIDTH),
       );
-      lookoutGeometry.setIndex(lookoutIndices);
-      lookoutGeometry.addGroup(0, lookoutTopIndexCount, 0);
-      lookoutGeometry.addGroup(
-        lookoutTopIndexCount,
-        lookoutIndices.length - lookoutTopIndexCount,
-        1,
-      );
-      lookoutGeometry.computeVertexNormals();
       const lookoutWoodMat = new THREE.MeshStandardMaterial({
-        color: 0x9a7048,
+        map: lookoutWoodTexture,
+        color: 0xffffff,
         roughness: 0.92,
         polygonOffset: true,
         polygonOffsetFactor: -7,
         polygonOffsetUnits: -7,
       });
+      // 材質改用貼圖後 color 只當濾鏡，維持白色才不會把木紋貼圖染色；
+      // 冬天改套一層霜白色調在貼圖上，做出積雪棧板的效果。
       mountainSeasonalMaterials.push({
         material: lookoutWoodMat,
-        baseColor: 0x9a7048,
-        winterColor: 0xe8edf0,
+        baseColor: 0xffffff,
+        winterColor: 0xcfe0e6,
       });
-      const lookoutMesh = new THREE.Mesh(
-        lookoutGeometry,
-        [lookoutWoodMat, cliffMat],
+      const lookoutTopGeometry = new THREE.PlaneGeometry(
+        lookoutWidthUnits,
+        lookoutDepthUnits,
       );
-      lookoutMesh.receiveShadow = true;
-      lookoutMesh.renderOrder = 3;
-      gameState.mapGroup.add(lookoutMesh);
-      // 原本用一圈圈同心弦線模擬木棧板接縫，越靠圓弧邊緣越短——但這個
-      // 遊戲的固定俯角鏡頭下，「越遠的橫條越窄、越靠畫面上方」剛好正是
-      // 樓梯踏階的視覺特徵，玩家會把整片平坦甲板誤讀成一段很陡的階梯，
-      // 這才是「走不上去觀景台」的真正原因（地板其實整片都是平的，
-      // 碰撞完全沒問題，純粹是接縫紋理誤導視覺）。直接拿掉這圈接縫，
-      // 只留木地板色＋外緣扶手，圓弧輪廓本身不會被誤認成階梯。
-      for (let i = 0; i < lookoutSegments; i++) {
-        const angleA = Math.PI + (i / lookoutSegments) * Math.PI;
-        const angleB = Math.PI + ((i + 1) / lookoutSegments) * Math.PI;
-        addMountainRailSegment(
-          lookout.centerX + Math.cos(angleA) * lookout.radius,
-          mountain.summit.elevation,
-          lookout.joinZ + Math.sin(angleA) * lookout.radius,
-          lookout.centerX + Math.cos(angleB) * lookout.radius,
-          mountain.summit.elevation,
-          lookout.joinZ + Math.sin(angleB) * lookout.radius,
-          i % 2 === 0,
+      lookoutTopGeometry.rotateX(-Math.PI / 2);
+      const lookoutTopMesh = new THREE.Mesh(lookoutTopGeometry, lookoutWoodMat);
+      lookoutTopMesh.position.set(
+        (lookoutLeftX + lookoutRightX) / 2,
+        lookoutY,
+        (lookoutNorthZ + lookoutSouthZ) / 2,
+      );
+      lookoutTopMesh.receiveShadow = true;
+      lookoutTopMesh.renderOrder = 3;
+      gameState.mapGroup.add(lookoutTopMesh);
+
+      // 北/西/東三面裙帶下探到跟其他平台一樣的懸崖底部，南面(接山頂平台)
+      // 完全不建裙帶——沿用跟平台裙帶同一顆 cliffMat，不用另外註冊季節材質。
+      const addLookoutSkirt = (ax, az, bx, bz) => {
+        const positions = [
+          ax, lookoutY, az,
+          bx, lookoutY, bz,
+          bx, summitSkirtBottomY, bz,
+          ax, summitSkirtBottomY, az,
+        ];
+        const geometry = new THREE.BufferGeometry();
+        geometry.setAttribute(
+          "position",
+          new THREE.Float32BufferAttribute(positions, 3),
         );
-      }
-      if (summitLookoutRailAnchors) {
-        addMountainRailSegment(
-          summitLookoutRailAnchors.left.x,
-          mountain.summit.elevation,
-          summitLookoutRailAnchors.left.z,
-          lookout.centerX - lookout.radius,
-          mountain.summit.elevation,
-          lookout.joinZ,
-        );
-        addMountainRailSegment(
-          lookout.centerX + lookout.radius,
-          mountain.summit.elevation,
-          lookout.joinZ,
-          summitLookoutRailAnchors.right.x,
-          mountain.summit.elevation,
-          summitLookoutRailAnchors.right.z,
-        );
-      }
+        geometry.setIndex([0, 2, 1, 0, 3, 2]);
+        geometry.computeVertexNormals();
+        const mesh = new THREE.Mesh(geometry, cliffMat);
+        mesh.receiveShadow = true;
+        mesh.renderOrder = 3;
+        gameState.mapGroup.add(mesh);
+      };
+      addLookoutSkirt(lookoutLeftX, lookoutNorthZ, lookoutRightX, lookoutNorthZ); // 北緣，懸崖外緣
+      addLookoutSkirt(lookoutLeftX, lookoutSouthZ, lookoutLeftX, lookoutNorthZ); // 西緣
+      addLookoutSkirt(lookoutRightX, lookoutNorthZ, lookoutRightX, lookoutSouthZ); // 東緣
+
+      // 扶手沿北/西/東三邊排列，南面(接山頂步道)開放不放扶手，跟裙帶同一個
+      // 開口。summit 平台自己的外圈扶手(addPlatform 內的通用邏輯)現在會
+      // 精準停在 lookoutLeftX/lookoutRightX，跟這裡的扶手端點完全對齊，
+      // 不需要再另外算一段橋接扶手。
+      const addLookoutRailEdge = (ax, az, bx, bz) => {
+        const length = Math.hypot(bx - ax, bz - az);
+        const steps = Math.max(1, Math.round(length / 1.4));
+        for (let i = 0; i < steps; i++) {
+          const t0 = i / steps,
+            t1 = (i + 1) / steps;
+          addMountainRailSegment(
+            THREE.MathUtils.lerp(ax, bx, t0),
+            mountain.summit.elevation,
+            THREE.MathUtils.lerp(az, bz, t0),
+            THREE.MathUtils.lerp(ax, bx, t1),
+            mountain.summit.elevation,
+            THREE.MathUtils.lerp(az, bz, t1),
+          );
+        }
+      };
+      addLookoutRailEdge(lookoutLeftX, lookoutSouthZ, lookoutLeftX, lookoutNorthZ);
+      addLookoutRailEdge(lookoutLeftX, lookoutNorthZ, lookoutRightX, lookoutNorthZ);
+      addLookoutRailEdge(lookoutRightX, lookoutNorthZ, lookoutRightX, lookoutSouthZ);
 
       const topMats = [0xd0b982, 0x9a835f].map(
         (color) => new THREE.MeshStandardMaterial({

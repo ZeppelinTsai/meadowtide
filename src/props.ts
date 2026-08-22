@@ -12,6 +12,59 @@ import {
 import { windowMats, waterSurfaceMaterials, waterSkyUnderlayMaterials, outdoorLampLights, foamMeshes, windmillRotors, pastureGrassBlades, avenueLeafMaterials, seasonalTreeLeafMaterials, seasonalGroundMaterials, mountainSeasonalMaterials, GRASS_STAGE_HEIGHTS, EAST_SEA_WAVE_DIRECTION, gangplankMeshes } from "./scene-registries";
 import { randomPasturePoint } from "./npc-runtime";
 
+// 木棧板材質——canvas 現畫木紋貼圖，跟 scene-sky.ts/weather-particles.ts
+// 同一套「3D 世界不接外部圖片，程式生成貼圖」規則。畫一塊正方形貼圖，
+// 靠 texture.repeat 依實際世界尺寸鋪滿，不用每個呼叫端各自重畫一次。
+// 目前給山頂觀景台用；之後棧橋/碼頭甲板要類似木板質感也能直接共用。
+export function makeWoodPlankTexture({
+  plankColor = 0xa9825a,
+  seamColor = 0x5a3d24,
+  plankCount = 6,
+  seed = 0,
+} = {}) {
+  const canvas = document.createElement("canvas");
+  canvas.width = 256;
+  canvas.height = 256;
+  const ctx = canvas.getContext("2d");
+  ctx.fillStyle = `#${new THREE.Color(plankColor).getHexString()}`;
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  const plankHeight = canvas.height / plankCount;
+  // 每片板子單獨加一點明暗差異，不然整塊貼圖看起來還是一片死板的單色。
+  for (let i = 0; i < plankCount; i++) {
+    const shade = (hash2(seed + i * 3.1, i * 1.7) - 0.5) * 0.28;
+    ctx.fillStyle =
+      shade < 0
+        ? `rgba(0,0,0,${-shade})`
+        : `rgba(255,255,255,${shade})`;
+    ctx.fillRect(0, i * plankHeight, canvas.width, plankHeight);
+  }
+  // 縱向細木紋，弱化貼圖被拉伸鋪滿時的重複感。
+  ctx.strokeStyle = "rgba(0,0,0,0.08)";
+  ctx.lineWidth = 1;
+  for (let i = 0; i < 48; i++) {
+    const x = hash2(seed + i * 7.3, 2.1) * canvas.width;
+    ctx.beginPath();
+    ctx.moveTo(x, 0);
+    ctx.lineTo(x, canvas.height);
+    ctx.stroke();
+  }
+  // 板縫——這才是「明顯木板材質」的關鍵，沒有這條線只會看起來是一片
+  // 普通木頭色地板，不會被讀成一片一片的甲板。
+  ctx.strokeStyle = `#${new THREE.Color(seamColor).getHexString()}`;
+  ctx.lineWidth = 4;
+  for (let i = 0; i <= plankCount; i++) {
+    const y = i * plankHeight;
+    ctx.beginPath();
+    ctx.moveTo(0, y);
+    ctx.lineTo(canvas.width, y);
+    ctx.stroke();
+  }
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.wrapS = THREE.RepeatWrapping;
+  texture.wrapT = THREE.RepeatWrapping;
+  return texture;
+}
+
 // 7) 樹 / 建築 / 地形（沿用 v11）
       // ==============================================================
       export function makeTree(x, z) {
