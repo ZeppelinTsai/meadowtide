@@ -1,6 +1,10 @@
 import * as THREE from "three";
 import { hash2 } from "./utils";
-import { gameState, getSeasonGrassTone, SEASON_GRASS_TONES } from "./game-state";
+import {
+  gameState,
+  getSeasonGrassTone,
+  SEASON_GRASS_TONES,
+} from "./game-state";
 import {
   scene,
   TILE,
@@ -361,10 +365,11 @@ export function buildMap(mapName) {
     // 第 0～2 排包含通往祠堂的沙洲，海格會被步道資料覆寫，因此不能只用
     // 第 0 排的 indexOf(9) 判斷海岸線。從北側數排中取第一個有效海岸；
     // 目前第 3 排就是玄武岩南側真正的海岸資料。
-    const northOceanStartX = map.tiles
-      .slice(0, 6)
-      .map((row) => row.indexOf(9))
-      .find((x) => x > lowlandX) ?? -1;
+    const northOceanStartX =
+      map.tiles
+        .slice(0, 6)
+        .map((row) => row.indexOf(9))
+        .find((x) => x > lowlandX) ?? -1;
     if (northOceanStartX > lowlandX) {
       // 玄武岩岬角的西側柱群會比低地邊界再往西伸約 3 格；沙灘也必須
       // 鋪到岩腳下，否則遠景會在玄武岩與海灘之間露出一條綠色底板。
@@ -873,9 +878,16 @@ export function buildMap(mapName) {
         for (let i = 0; i < geometry.attributes.position.count; i++)
           colors.set([0.18, 0.43, 0.68], i * 3);
         geometry.setAttribute("color", new THREE.BufferAttribute(colors, 3));
-        const depthMask = new THREE.Mesh(geometry.clone(), oldVillageWaterDepthMat);
+        const depthMask = new THREE.Mesh(
+          geometry.clone(),
+          oldVillageWaterDepthMat,
+        );
         depthMask.rotation.x = -Math.PI / 2;
-        depthMask.position.set(wx + (width - 1) / 2, 0.025, wz + (depth - 1) / 2);
+        depthMask.position.set(
+          wx + (width - 1) / 2,
+          0.025,
+          wz + (depth - 1) / 2,
+        );
         depthMask.receiveShadow = true;
         gameState.mapGroup.add(depthMask);
         const water = new THREE.Mesh(geometry, oldVillageWaterMat);
@@ -1046,11 +1058,21 @@ export function buildMap(mapName) {
             const envelope = xOpen * zOpen;
             // 兩組不同頻率/相位的稜線疊加，才會沿著自由邊斷斷續續冒出好幾
             // 座山頭，而不是單一一個中央凸起；再加一點細碎雜訊做岩面粗糙感。
-            const ridgeA = Math.sin(tx * freqA + phaseA) * Math.cos(tz * freqB * 0.7 + phaseB) * 0.72;
-            const ridgeB = Math.cos(tx * freqB + phaseB) * Math.sin(tz * freqA * 0.6 + phaseA) * 0.46;
-            const jitter = (hash2(ix * 7.3 + seedX, iz * 6.1 + seedZ) - 0.5) * 0.42;
-            const roundedBulge = Math.sin(tx * Math.PI) * Math.sin(tz * Math.PI) * 0.9;
-            const relief = Math.pow(envelope, 0.72) * (0.42 + ridgeA + ridgeB + jitter) + roundedBulge;
+            const ridgeA =
+              Math.sin(tx * freqA + phaseA) *
+              Math.cos(tz * freqB * 0.7 + phaseB) *
+              0.72;
+            const ridgeB =
+              Math.cos(tx * freqB + phaseB) *
+              Math.sin(tz * freqA * 0.6 + phaseA) *
+              0.46;
+            const jitter =
+              (hash2(ix * 7.3 + seedX, iz * 6.1 + seedZ) - 0.5) * 0.42;
+            const roundedBulge =
+              Math.sin(tx * Math.PI) * Math.sin(tz * Math.PI) * 0.9;
+            const relief =
+              Math.pow(envelope, 0.72) * (0.42 + ridgeA + ridgeB + jitter) +
+              roundedBulge;
             const y = baseY + relief;
             mountainPositions.push(x, y, z);
             const shade = new THREE.Color(0x555b53).lerp(
@@ -1082,24 +1104,43 @@ export function buildMap(mapName) {
         const zMax = mountain.height + 8;
         const base = mountainPositions.length / 3;
         const centerX = mountain.summit.x + (mountain.summit.width - 1) / 2;
-        const summitCenterZ = mountain.summit.z + (mountain.summit.depth - 1) / 2;
+        const summitCenterZ =
+          mountain.summit.z + (mountain.summit.depth - 1) / 2;
         const waistCenterZ = mountain.waist.z + (mountain.waist.depth - 1) / 2;
         const footCenterZ = mountain.foot.z + (mountain.foot.depth - 1) / 2;
         const profileAt = (z: number) => {
           if (z <= summitCenterZ) {
-            const t = Math.max(0, Math.min(1, (z - zMin) / (summitCenterZ - zMin)));
-            return { height: THREE.MathUtils.lerp(0.25, summitY, t), halfWidth: THREE.MathUtils.lerp(5, 15, t) };
+            const t = Math.max(
+              0,
+              Math.min(1, (z - zMin) / (summitCenterZ - zMin)),
+            );
+            return {
+              height: THREE.MathUtils.lerp(0.25, summitY, t),
+              halfWidth: THREE.MathUtils.lerp(5, 15, t),
+            };
           }
           if (z <= waistCenterZ) {
             const t = (z - summitCenterZ) / (waistCenterZ - summitCenterZ);
-            return { height: THREE.MathUtils.lerp(summitY, waistY, t), halfWidth: THREE.MathUtils.lerp(15, 19, t) };
+            return {
+              height: THREE.MathUtils.lerp(summitY, waistY, t),
+              halfWidth: THREE.MathUtils.lerp(15, 19, t),
+            };
           }
           if (z <= footCenterZ) {
             const t = (z - waistCenterZ) / (footCenterZ - waistCenterZ);
-            return { height: THREE.MathUtils.lerp(waistY, footY + 0.2, t), halfWidth: THREE.MathUtils.lerp(19, 22, t) };
+            return {
+              height: THREE.MathUtils.lerp(waistY, footY + 0.2, t),
+              halfWidth: THREE.MathUtils.lerp(19, 22, t),
+            };
           }
-          const t = Math.max(0, Math.min(1, (z - footCenterZ) / (zMax - footCenterZ)));
-          return { height: THREE.MathUtils.lerp(footY + 0.2, 0.05, t), halfWidth: THREE.MathUtils.lerp(22, 24, t) };
+          const t = Math.max(
+            0,
+            Math.min(1, (z - footCenterZ) / (zMax - footCenterZ)),
+          );
+          return {
+            height: THREE.MathUtils.lerp(footY + 0.2, 0.05, t),
+            halfWidth: THREE.MathUtils.lerp(22, 24, t),
+          };
         };
         for (let iz = 0; iz <= zSegments; iz++) {
           const tz = iz / zSegments;
@@ -1108,12 +1149,18 @@ export function buildMap(mapName) {
           for (let ix = 0; ix <= xSegments; ix++) {
             const tx = ix / xSegments;
             const x = THREE.MathUtils.lerp(xMin, xMax, tx);
-            const radial = Math.min(1, Math.abs(x - centerX) / profile.halfWidth);
+            const radial = Math.min(
+              1,
+              Math.abs(x - centerX) / profile.halfWidth,
+            );
             const dome = Math.pow(Math.max(0, 1 - radial * radial), 0.48);
             const envelope = Math.sin(tx * Math.PI) * Math.sin(tz * Math.PI);
             const broad = Math.sin(x * 0.34 + z * 0.11) * 0.22;
             const broken = (hash2(ix * 5.7, iz * 8.3) - 0.5) * 0.22;
-            const y = Math.max(-0.12, profile.height * dome + (broad + broken) * envelope);
+            const y = Math.max(
+              -0.12,
+              profile.height * dome + (broad + broken) * envelope,
+            );
             mountainPositions.push(x, y, z);
             const shade = new THREE.Color(0x535a52).lerp(
               new THREE.Color(0x7b806f),
@@ -1127,14 +1174,21 @@ export function buildMap(mapName) {
           if (
             z >= mountain.height - 1 &&
             Math.abs(x - mountain.townGate.x) <= 1.4
-          ) return false;
+          )
+            return false;
           if (
             x >= mountain.width - 1 &&
             Math.abs(z - mountain.homeGate.z) <= 1.5
-          ) return false;
+          )
+            return false;
           const tileX = Math.round(x);
           const tileZ = Math.round(z);
-          if (tileZ >= 0 && tileZ < map.tiles.length && tileX >= 0 && tileX < map.tiles[0].length)
+          if (
+            tileZ >= 0 &&
+            tileZ < map.tiles.length &&
+            tileX >= 0 &&
+            tileX < map.tiles[0].length
+          )
             return map.tiles[tileZ][tileX] === 1;
           const profile = profileAt(z);
           return Math.abs(x - centerX) < profile.halfWidth;
@@ -1223,8 +1277,7 @@ export function buildMap(mapName) {
               stair.toZ >= platformSouth - 2.5;
             return joinsNorthEdge || joinsSouthEdge;
           });
-        const isStairOpening = (x: number, z: number) =>
-          isStairJoin(x, z);
+        const isStairOpening = (x: number, z: number) => isStairJoin(x, z);
         const isStairShoulder = (x: number, z: number) =>
           isStairJoin(x, z, shoulderWidth);
         // 山腳/山腰的城鎮門與山頂觀景台開口——跟樓梯開口一樣，牆面/裙帶
@@ -1237,9 +1290,11 @@ export function buildMap(mapName) {
         // x 範圍(跟 mountainGroundY() 用同一組邊界)，兩邊不會再各自漂移。
         const isTransferOpening = (x: number, z: number) =>
           (platform === mountain.foot &&
-            Math.hypot(x - mountain.townGate.x, z - mountain.townGate.z) < 2.2) ||
+            Math.hypot(x - mountain.townGate.x, z - mountain.townGate.z) <
+              2.2) ||
           (platform === mountain.waist &&
-            Math.hypot(x - mountain.homeGate.x, z - mountain.homeGate.z) < 2.2) ||
+            Math.hypot(x - mountain.homeGate.x, z - mountain.homeGate.z) <
+              2.2) ||
           (platform === mountain.summit &&
             z < centerZ &&
             x >= mountain.summitLookout.x - 0.5 &&
@@ -1260,15 +1315,16 @@ export function buildMap(mapName) {
           const angle = (i / segments) * Math.PI * 2;
           const dx = Math.cos(angle);
           const dz = Math.sin(angle);
-          const rectangleRadius = 1 / Math.max(
-            Math.abs(dx) / halfWidth,
-            Math.abs(dz) / halfDepth,
-          );
+          const rectangleRadius =
+            1 / Math.max(Math.abs(dx) / halfWidth, Math.abs(dz) / halfDepth);
           const flatX = centerX + dx * rectangleRadius;
           const flatZ = centerZ + dz * rectangleRadius;
           // 樓梯接合區（含肩寬緩衝）跟山頂觀景台開口（含緩衝）都直接用未加
           // 抖動的矩形邊界；區外才套用不規則抖動的山頭輪廓。
-          if (isStairShoulder(flatX, flatZ) || isTransferOpeningShoulder(flatX, flatZ)) {
+          if (
+            isStairShoulder(flatX, flatZ) ||
+            isTransferOpeningShoulder(flatX, flatZ)
+          ) {
             positions.push(flatX, platform.elevation, flatZ);
             continue;
           }
@@ -1314,10 +1370,11 @@ export function buildMap(mapName) {
             60,
             hash2(Math.floor(i / 3) * 2.41 + seed, seed * 4.73),
           );
-          const skirtRun = isStairShoulder(topX, topZ) || isTransferOpening(topX, topZ)
-            ? 0
-            : (platform.elevation - bottomY) /
-              Math.tan(THREE.MathUtils.degToRad(skirtAngleDegrees));
+          const skirtRun =
+            isStairShoulder(topX, topZ) || isTransferOpening(topX, topZ)
+              ? 0
+              : (platform.elevation - bottomY) /
+                Math.tan(THREE.MathUtils.degToRad(skirtAngleDegrees));
           positions.push(
             topX + (radialX / radialLength) * skirtRun,
             bottomY,
@@ -1328,8 +1385,7 @@ export function buildMap(mapName) {
           const next = (i + 1) % segments;
           const outerA = 1 + i;
           const outerB = 1 + next;
-          const midpointX =
-            (positions[outerA * 3] + positions[outerB * 3]) / 2;
+          const midpointX = (positions[outerA * 3] + positions[outerB * 3]) / 2;
           const midpointZ =
             (positions[outerA * 3 + 2] + positions[outerB * 3 + 2]) / 2;
           return (
@@ -1355,8 +1411,7 @@ export function buildMap(mapName) {
           const outerB = 1 + next;
           const innerA = 1 + segments + i;
           const innerB = 1 + segments + next;
-          const midpointX =
-            (positions[outerA * 3] + positions[outerB * 3]) / 2;
+          const midpointX = (positions[outerA * 3] + positions[outerB * 3]) / 2;
           const midpointZ =
             (positions[outerA * 3 + 2] + positions[outerB * 3 + 2]) / 2;
           if (isStairOpening(midpointX, midpointZ)) continue;
@@ -1373,10 +1428,13 @@ export function buildMap(mapName) {
           // 觀景台開口這裡也要一併挖開——裙帶牆面之前只認樓梯，門/觀景台
           // 那圈仍然整片封死，地板雖然是通的，但視覺上像被石壁擋住走不
           // 上去；isOpening 把兩種開口都算進去才會真的看得到出口。
-          if (isOpening(
-            (positions[topA * 3] + positions[topB * 3]) / 2,
-            (positions[topA * 3 + 2] + positions[topB * 3 + 2]) / 2,
-          )) continue;
+          if (
+            isOpening(
+              (positions[topA * 3] + positions[topB * 3]) / 2,
+              (positions[topA * 3 + 2] + positions[topB * 3 + 2]) / 2,
+            )
+          )
+            continue;
           indices.push(topA, bottomA, topB, topB, bottomA, bottomB);
         }
         const geometry = new THREE.BufferGeometry();
@@ -1389,10 +1447,7 @@ export function buildMap(mapName) {
         geometry.addGroup(0, topIndexCount, 0);
         geometry.addGroup(topIndexCount, indices.length - topIndexCount, 1);
         geometry.computeVertexNormals();
-        const mesh = new THREE.Mesh(
-          geometry,
-          [grassMat, cliffMat],
-        );
+        const mesh = new THREE.Mesh(geometry, [grassMat, cliffMat]);
         mesh.castShadow = false;
         mesh.receiveShadow = true;
         mesh.renderOrder = 2;
@@ -1445,7 +1500,7 @@ export function buildMap(mapName) {
                 // 無額外偏移），這裡只留極小的 epsilon 避免跟它 z-fighting，
                 // 不能再用舊的 +0.012（那個量級足以在接縫處露出一條台階）。
                 platform.elevation + 0.004,
-                edgeZ + inward * landingDepth / 2,
+                edgeZ + (inward * landingDepth) / 2,
               );
               landingShoulder.receiveShadow = true;
               landingShoulder.renderOrder = 7;
@@ -1527,10 +1582,18 @@ export function buildMap(mapName) {
       // 完全不建裙帶——沿用跟平台裙帶同一顆 cliffMat，不用另外註冊季節材質。
       const addLookoutSkirt = (ax, az, bx, bz) => {
         const positions = [
-          ax, lookoutY, az,
-          bx, lookoutY, bz,
-          bx, summitSkirtBottomY, bz,
-          ax, summitSkirtBottomY, az,
+          ax,
+          lookoutY,
+          az,
+          bx,
+          lookoutY,
+          bz,
+          bx,
+          summitSkirtBottomY,
+          bz,
+          ax,
+          summitSkirtBottomY,
+          az,
         ];
         const geometry = new THREE.BufferGeometry();
         geometry.setAttribute(
@@ -1544,9 +1607,19 @@ export function buildMap(mapName) {
         mesh.renderOrder = 3;
         gameState.mapGroup.add(mesh);
       };
-      addLookoutSkirt(lookoutLeftX, lookoutNorthZ, lookoutRightX, lookoutNorthZ); // 北緣，懸崖外緣
+      addLookoutSkirt(
+        lookoutLeftX,
+        lookoutNorthZ,
+        lookoutRightX,
+        lookoutNorthZ,
+      ); // 北緣，懸崖外緣
       addLookoutSkirt(lookoutLeftX, lookoutSouthZ, lookoutLeftX, lookoutNorthZ); // 西緣
-      addLookoutSkirt(lookoutRightX, lookoutNorthZ, lookoutRightX, lookoutSouthZ); // 東緣
+      addLookoutSkirt(
+        lookoutRightX,
+        lookoutNorthZ,
+        lookoutRightX,
+        lookoutSouthZ,
+      ); // 東緣
 
       // 扶手沿北/西/東三邊排列，南面(接山頂步道)開放不放扶手，跟裙帶同一個
       // 開口。summit 平台自己的外圈扶手(addPlatform 內的通用邏輯)現在會
@@ -1568,18 +1641,34 @@ export function buildMap(mapName) {
           );
         }
       };
-      addLookoutRailEdge(lookoutLeftX, lookoutSouthZ, lookoutLeftX, lookoutNorthZ);
-      addLookoutRailEdge(lookoutLeftX, lookoutNorthZ, lookoutRightX, lookoutNorthZ);
-      addLookoutRailEdge(lookoutRightX, lookoutNorthZ, lookoutRightX, lookoutSouthZ);
+      addLookoutRailEdge(
+        lookoutLeftX,
+        lookoutSouthZ,
+        lookoutLeftX,
+        lookoutNorthZ,
+      );
+      addLookoutRailEdge(
+        lookoutLeftX,
+        lookoutNorthZ,
+        lookoutRightX,
+        lookoutNorthZ,
+      );
+      addLookoutRailEdge(
+        lookoutRightX,
+        lookoutNorthZ,
+        lookoutRightX,
+        lookoutSouthZ,
+      );
 
       const topMats = [0xd0b982, 0x9a835f].map(
-        (color) => new THREE.MeshStandardMaterial({
-          color,
-          roughness: 1,
-          polygonOffset: true,
-          polygonOffsetFactor: -6,
-          polygonOffsetUnits: -6,
-        }),
+        (color) =>
+          new THREE.MeshStandardMaterial({
+            color,
+            roughness: 1,
+            polygonOffset: true,
+            polygonOffsetFactor: -6,
+            polygonOffsetUnits: -6,
+          }),
       );
       const sideMat = new THREE.MeshStandardMaterial({
         color: 0x514a3f,
@@ -1623,11 +1712,28 @@ export function buildMap(mapName) {
         const rightX = stair.x + stair.width - 0.32;
         [leftX, rightX].forEach((railX) => {
           for (let step = 0; step < stair.steps; step++) {
-            const y1 = stair.baseElevation + (step / stair.steps) * stair.elevation + 0.08;
-            const y2 = stair.baseElevation + ((step + 1) / stair.steps) * stair.elevation + 0.08;
-            const z1 = stair.toZ - (step / stair.steps) * (stair.toZ - stair.fromZ);
-            const z2 = stair.toZ - ((step + 1) / stair.steps) * (stair.toZ - stair.fromZ);
-            addMountainRailSegment(railX, y1, z1, railX, y2, z2, step % 2 === 0);
+            const y1 =
+              stair.baseElevation +
+              (step / stair.steps) * stair.elevation +
+              0.08;
+            const y2 =
+              stair.baseElevation +
+              ((step + 1) / stair.steps) * stair.elevation +
+              0.08;
+            const z1 =
+              stair.toZ - (step / stair.steps) * (stair.toZ - stair.fromZ);
+            const z2 =
+              stair.toZ -
+              ((step + 1) / stair.steps) * (stair.toZ - stair.fromZ);
+            addMountainRailSegment(
+              railX,
+              y1,
+              z1,
+              railX,
+              y2,
+              z2,
+              step % 2 === 0,
+            );
           }
         });
       });
@@ -1659,8 +1765,10 @@ export function buildMap(mapName) {
       );
       gameState.mapGroup.add(homeStoneStairGroup);
 
-      const summitCenterX = mountain.summit.x + Math.floor(mountain.summit.width / 2);
-      const summitCenterZ = mountain.summit.z + Math.floor(mountain.summit.depth / 2);
+      const summitCenterX =
+        mountain.summit.x + Math.floor(mountain.summit.width / 2);
+      const summitCenterZ =
+        mountain.summit.z + Math.floor(mountain.summit.depth / 2);
       const bench = makeBench(summitCenterX - 5, summitCenterZ - 2, Math.PI);
       bench.position.y += mountain.summit.elevation;
       gameState.mapGroup.add(bench);
@@ -1674,13 +1782,21 @@ export function buildMap(mapName) {
         markerStone,
       );
       ring.rotation.x = Math.PI / 2;
-      ring.position.set(summitCenterX + 2.5, mountain.summit.elevation + 0.12, summitCenterZ - 2.5);
+      ring.position.set(
+        summitCenterX + 2.5,
+        mountain.summit.elevation + 0.12,
+        summitCenterZ - 2.5,
+      );
       summitMarker.add(ring);
       const post = new THREE.Mesh(
         new THREE.CylinderGeometry(0.07, 0.09, 0.9, 6),
         markerStone,
       );
-      post.position.set(summitCenterX + 2.5, mountain.summit.elevation + 0.55, summitCenterZ - 2.5);
+      post.position.set(
+        summitCenterX + 2.5,
+        mountain.summit.elevation + 0.55,
+        summitCenterZ - 2.5,
+      );
       summitMarker.add(post);
       gameState.mapGroup.add(summitMarker);
 
@@ -1688,7 +1804,11 @@ export function buildMap(mapName) {
       // 女神祠堂共用同一個 makeToriiGate()，不用另外做新造型。
       const summitTorii = makeToriiGate();
       summitTorii.scale.setScalar(0.75);
-      summitTorii.position.set(summitCenterX, mountain.summit.elevation, summitCenterZ + 3.2);
+      summitTorii.position.set(
+        summitCenterX,
+        mountain.summit.elevation,
+        summitCenterZ + 3.2,
+      );
       gameState.mapGroup.add(summitTorii);
 
       // 鳥居側邊的靜態守護者角色，面朝鳥居；純裝飾，不參與互動/排程。放在
@@ -1715,11 +1835,22 @@ export function buildMap(mapName) {
       const campfire = makeCampfireRing(footRestX, footRestZ);
       campfire.position.y += mountainGroundY(footRestX, footRestZ);
       gameState.mapGroup.add(campfire);
-      const foothillFence = makeFence(footRestX - 3, footRestX + 3, footRestZ - 2, footRestZ + 3);
+      const foothillFence = makeFence(
+        footRestX - 3,
+        footRestX + 3,
+        footRestZ - 2,
+        footRestZ + 3,
+      );
       foothillFence.position.y += mountainGroundY(footRestX, footRestZ);
       gameState.mapGroup.add(foothillFence);
-      const signpost = makeConstructionSign(mountain.townGate.x + 2, mountain.townGate.z - 3);
-      signpost.position.y += mountainGroundY(mountain.townGate.x + 2, mountain.townGate.z - 3);
+      const signpost = makeConstructionSign(
+        mountain.townGate.x + 2,
+        mountain.townGate.z - 3,
+      );
+      signpost.position.y += mountainGroundY(
+        mountain.townGate.x + 2,
+        mountain.townGate.z - 3,
+      );
       gameState.mapGroup.add(signpost);
     }
   }
@@ -2050,7 +2181,9 @@ export function buildMap(mapName) {
           materials.forEach((material) =>
             mountainSeasonalMaterials.push({
               material: material as THREE.MeshStandardMaterial,
-              baseColor: (material as THREE.MeshStandardMaterial).color.getHex(),
+              baseColor: (
+                material as THREE.MeshStandardMaterial
+              ).color.getHex(),
               winterColor: 0xf0f3f4,
             }),
           );
@@ -2646,7 +2779,8 @@ export function buildMap(mapName) {
     }
   });
   npcGroup.visible =
-    mapName === "livingArea" || mapName === "oldVillage" ||
+    mapName === "livingArea" ||
+    mapName === "oldVillage" ||
     ((carpenterQuest.stage === "escorting" ||
       carpenterQuest.stage === "village_scene_done") &&
       (mapName === "port" || mapName === "oldVillage"));
@@ -2671,9 +2805,7 @@ export function isBlocked(mapName, x, z) {
         building,
         x,
         z,
-        mapName === "oldVillage"
-          ? LAYOUT.oldVillage.houseVisualScale
-          : 1,
+        mapName === "oldVillage" ? LAYOUT.oldVillage.houseVisualScale : 1,
       ),
     )
   )
@@ -2732,7 +2864,8 @@ export function loadMap(mapName, startPos) {
         [0.22, 0.22],
       ].some(([dx, dz]) => isBlocked(mapName, x + dx, z + dz));
     const nearestSafePosition = () => {
-      if (isSafePlayerPosition(requestedPos.x, requestedPos.z)) return requestedPos;
+      if (isSafePlayerPosition(requestedPos.x, requestedPos.z))
+        return requestedPos;
       const originX = Math.round(requestedPos.x);
       const originZ = Math.round(requestedPos.z);
       for (let radius = 1; radius <= 16; radius++) {
@@ -2782,13 +2915,13 @@ export function loadMap(mapName, startPos) {
         carpenterQuest.stage === "village_scene_done") &&
       (mapName === "port" || mapName === "oldVillage")
     ) {
-      const aunt = npcs.find((n) => n.id === "aunt");
+      const mayor = npcs.find((n) => n.id === "mayor");
       const carpenter = npcs.find((n) => n.id === "carpenter");
       // 換地圖會讓 escort 的軌跡（carpenterEscortTrail）整條重置，重新從
       // 兩人「當下位置」開始記錄；如果這裡把兩人擺在側邊/前方的偏移座標，
       // 重置後的軌跡起點就不在主角實際走過的路徑上，直到主角走出取樣距離
       // 之前，兩人都會照著這個離題的假起點穿模。所以跟主角疊在同一點最保險。
-      [aunt, carpenter].forEach((npc) => {
+      [mayor, carpenter].forEach((npc) => {
         if (!npc) return;
         npc.mesh.visible = true;
         npc.mesh.position.set(pos.x, gameState.player.position.y, pos.z);
@@ -2958,8 +3091,7 @@ export const events = [
     x: MOUNTAIN_GATE_BLOCKER.x,
     z: MOUNTAIN_GATE_BLOCKER.z,
     trigger: "touch",
-    action: () =>
-      loadMap("mountain", { ...LAYOUT.mountain.homeArrival }),
+    action: () => loadMap("mountain", { ...LAYOUT.mountain.homeArrival }),
   },
   {
     map: "mountain",

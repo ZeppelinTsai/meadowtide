@@ -66,21 +66,21 @@ export function startChefDockScene() {
   showDialogSequence([
     {
       text: "「這次船上也有一個人要來——說是想在島上開間能吃飯、能過夜的地方。」",
-      speaker: "aunt",
+      speaker: "mayor",
       name: "村長",
     },
-    "[船靠岸，一位揹著大背包的女性走下船，先没看阿姨，反而先抬頭聞了聞風的味道]",
+    "[船靠岸，一位揹著大背包的女性走下船，先没看村長，反而先抬頭聞了聞風的味道]",
     { text: "「……海風裡有煙燻味。有人在曬魚乾？」", speaker: "chef" },
     {
       text: "「啊——對，是東邊那戶。你鼻子真靈。」",
-      speaker: "aunt",
+      speaker: "mayor",
       name: "村長",
     },
     { text: "「（低頭看了看自己的背包）職業病。」", speaker: "chef" },
     { text: "「聽說村子裡有間空著的民宿？」", speaker: "chef" },
     {
       text: "「有，不過荒廢好一陣子了。要不要先去看看？」",
-      speaker: "aunt",
+      speaker: "mayor",
       name: "村長",
     },
     { text: "「看看無妨。」", speaker: "chef" },
@@ -194,7 +194,7 @@ export function isInRestArea(x: number, z: number) {
 }
 
 // 「一起吃飯」不用嚴格到公尺級的距離判定——只要生活區裡有任何一個已經
-// 現身的 NPC（阿姨/入住後的木匠），就算大家共處在同一個生活空間裡，敘事
+// 現身的 NPC（村長/入住後的木匠），就算大家共處在同一個生活空間裡，敘事
 // 上足夠了。故意不比座標距離：省掉一整類「座標系統/門檻抓多少才對」可能
 // 出錯的地方，呼叫端本來就只在 currentMapName==="livingArea" 時才會問這
 // 個問題，不需要另外比對地圖名稱。
@@ -229,12 +229,7 @@ function evaluateChefMealConditions() {
     hour >= CHEF_MEAL_WINDOW_START && hour < CHEF_MEAL_WINDOW_END;
   const hasFood = inventory.harvested > 0 || inventory.fish > 0;
   return {
-    ok:
-      stageOk &&
-      !alreadyToday &&
-      !alreadyProven &&
-      inWindow &&
-      hasFood,
+    ok: stageOk && !alreadyToday && !alreadyProven && inWindow && hasFood,
     inRestArea,
     alreadyToday,
     alreadyProven,

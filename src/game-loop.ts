@@ -147,9 +147,9 @@ function updateCarpenterEscortTrail() {
   }
   if (carpenterEscortTrailMap !== gameState.currentMapName) {
     carpenterEscortTrailMap = gameState.currentMapName;
-    const aunt = npcs.find((npc) => npc.id === "aunt");
+    const mayor = npcs.find((npc) => npc.id === "mayor");
     const carpenter = npcs.find((npc) => npc.id === "carpenter");
-    carpenterEscortTrail = [carpenter?.mesh, aunt?.mesh, gameState.player]
+    carpenterEscortTrail = [carpenter?.mesh, mayor?.mesh, gameState.player]
       .filter(Boolean)
       .map((mesh: any) => ({
         x: mesh.position.x,
@@ -163,7 +163,10 @@ function updateCarpenterEscortTrail() {
     z: gameState.player.position.z,
     rotation: gameState.player.rotation.y,
   };
-  if (!newest || Math.hypot(playerPoint.x - newest.x, playerPoint.z - newest.z) >= 0.045)
+  if (
+    !newest ||
+    Math.hypot(playerPoint.x - newest.x, playerPoint.z - newest.z) >= 0.045
+  )
     carpenterEscortTrail.push(playerPoint);
   if (carpenterEscortTrail.length > 260) carpenterEscortTrail.shift();
 }
@@ -515,15 +518,16 @@ export function animate(now) {
     const isCarpenterEscortActor =
       (carpenterQuest.stage === "escorting" ||
         carpenterQuest.stage === "village_scene_done") &&
-      (n.id === "aunt" || n.id === "carpenter");
+      (n.id === "mayor" || n.id === "carpenter");
     const isCarpenterWaitingAtHouse =
       (carpenterQuest.stage === "construction" ||
         carpenterQuest.stage === "ready_for_move_in") &&
       n.id === "carpenter";
     if (
       (isCarpenterEscortActor || isCarpenterWaitingAtHouse) &&
-      (gameState.currentMapName === "port" || gameState.currentMapName === "oldVillage") &&
-      (n.id === "aunt" || n.id === "carpenter")
+      (gameState.currentMapName === "port" ||
+        gameState.currentMapName === "oldVillage") &&
+      (n.id === "mayor" || n.id === "carpenter")
     ) {
       if (
         (carpenterQuest.stage === "village_scene_done" ||
@@ -546,7 +550,7 @@ export function animate(now) {
         return;
       }
       const trailPoint = sampleCarpenterEscortTrail(
-        n.id === "aunt" ? 0.72 : 1.42,
+        n.id === "mayor" ? 0.72 : 1.42,
       );
       if (!trailPoint) return;
       const moved = Math.hypot(
@@ -581,8 +585,12 @@ export function animate(now) {
         z: Math.round(n.mesh.position.z),
       };
       const activeMap = MAPS[gameState.currentMapName];
-      const path = aStar(startGrid, target, activeMap.tiles[0].length, activeMap.tiles.length, (x, z) =>
-        isBlocked(gameState.currentMapName, x, z),
+      const path = aStar(
+        startGrid,
+        target,
+        activeMap.tiles[0].length,
+        activeMap.tiles.length,
+        (x, z) => isBlocked(gameState.currentMapName, x, z),
       );
       n.path = path && path.length ? path : [target]; // 找不到路就退回直線，至少不會卡死
       n.pathIndex =
