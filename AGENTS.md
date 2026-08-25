@@ -436,6 +436,50 @@ meadowtideI18n.locales           // 列出支援的語言代碼 ["zh","en","ja"]
 事件、劇情觸發的喜劇橋段）真的做出來、需要配樂的時候再找，不要現在
 選好晾在那裡。
 
+## 一次性音效系統：`src/sfx.ts`（2026-08-25 已實作，來源：Kenney 音效包，CC0）
+
+- 跟 `music.ts` 的 BGM 系統是刻意分開的兩套：BGM 是常駐 loop、經
+  `AudioContext`/`GainNode` 做淡入淡出的單軌狀態機；`sfx.ts` 是「觸發當下
+  播一次就丟掉」的短音效（砍材、採礦、拋竿、收竿…），用原生 `<audio>`
+  就好，不用接進 BGM 那張 `GainNode` 圖，兩者互不干擾、可以同時響。
+  `sfx.ts` 刻意是零 import 的葉節點模組，不會捲進專案既有的循環 import
+  問題（見下面「除錯」段落與 `scene-sky.ts` 相關踩雷紀錄），要新增音效
+  只改這個檔案跟呼叫端就好。
+- **播放**：`playSfx(path, volume?)` 播單一音效；`playRandomSfx(paths[],
+  volume?)` 從一組候選路徑隨機挑一個播——同一個動作通常備好幾個變化版
+  （kenney 音效包大多一組 5 個 `_000~_004`），每次隨機挑，聽起來才不會
+  太機械式重複。兩者都建立在同一個快取機制上：每個音檔路徑對應一個
+  `HTMLAudioElement`「範本」（`loadSfxTemplate()`，只建立一次並快取），
+  實際播放時 `cloneNode(true)` 出一個新的一次性副本再 `.play()`——這樣
+  連續觸發（連砍兩下、礦點很密集連採）可以疊播，不會被前一個播放中的
+  音效打斷或卡住。`.play()` 的 Promise 失敗會安靜吞掉（`.catch(() =>
+  {})`），不讓瀏覽器自動播放限制或缺檔問題打斷遊戲邏輯；缺檔案只在
+  console 警告一次（跟 BGM 系統缺檔的容錯慣例一致），之後把音檔補進資料
+  夾就自動生效，不用改程式碼。
+- **音量**：`SFX_VOLUME`（目前 `1.0`，2026-08-25 從最初的 `0.55` 拉高——
+  玩家反饋原本太小聲）是全域預設值，`playSfx`/`playRandomSfx` 都可以用
+  第二個參數個別覆蓋，但目前四個呼叫點都用預設值。使用者提過之後會在
+  主選單加音量設定選項，屆時直接把 `SFX_VOLUME` 換成讀取玩家調整過的值
+  （或是在 `playSfx` 內乘上一個全域倍率）即可，四個呼叫點（見下方）完全
+  不用跟著動。
+- **已有的音效分類**（集中在 `sfx.ts` 底部維護，全部來自
+  `public/assets/audio/sfx/` 底下的 CC0 素材，換音檔/加變化版本只改這裡，
+  不用去每個呼叫點找）：`CHOP_WOOD_SFX`（砍材/砍礦共用的木質敲擊音，5 個
+  變化）、`MINE_ORE_SFX`（採礦敲擊音，5 個變化）、`FISH_CAST_SFX`（拋竿，
+  借用「丟骰子」的甩動+落地聲代表甩竿出去，3 個變化）、`FISH_REEL_SFX`
+  （收竿，借用「皮帶扣具」的拉緊聲代表拉線回收，2 個變化）——後兩組是
+  找質感最接近的替代品，音效包裡沒有專門的釣魚素材；之後補到專用音檔
+  時直接換掉這兩個陣列的路徑即可，呼叫端不用動。
+- **呼叫點**：全部集中在 `input-save.ts` 那個單一的 E 鍵
+  `keydown` handler 裡——砍材/採石的 `harvestGatherNode` 成功分支
+  （`granted > 0`）呼叫 `playRandomSfx(CHOP_WOOD_SFX)`；採礦的
+  `harvestOreNode` 成功分支（`result.amount > 0 && result.tier`）呼叫
+  `playRandomSfx(MINE_ORE_SFX)`；`fishingState` 從 `"idle"` 轉
+  `"casting"` 時呼叫 `playRandomSfx(FISH_CAST_SFX)`；從 `"biting"` 轉為
+  收竿結算時呼叫 `playRandomSfx(FISH_REEL_SFX)`。新增其他動作的音效時，
+  比照這個模式：在 `sfx.ts` 加一組路徑陣列，在對應的遊戲邏輯分支呼叫
+  `playRandomSfx()`，不用另外包裝或建立新的播放器。
+
 ## 遊戲時間節奏
 
 - `TIME_CONFIG` 是唯一時間參數來源：現實 30 秒＝遊戲 1 小時、一天 24 小時

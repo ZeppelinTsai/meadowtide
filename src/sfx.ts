@@ -10,7 +10,10 @@
 // 遊戲，音檔之後陸續補進資料夾就會自動生效，不用改程式碼。
 // ==============================================================
 export const SFX_BASE_PATH = "./assets/audio/sfx/";
-export const SFX_VOLUME = 0.55;
+// 玩家反饋原本 0.55 太小聲，先拉到 100%(1.0，約是原本的兩倍)當新的
+// 預設值；之後主選單做音量設定選項時，這裡改成讀玩家調整過的值即可，
+// 呼叫端(input-save.ts 四個播放點)不用跟著動。
+export const SFX_VOLUME = 1.0;
 
 const sfxTemplates: Record<string, HTMLAudioElement> = {};
 
