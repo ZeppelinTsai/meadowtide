@@ -14,6 +14,14 @@ export const waterSkyUnderlayMaterials: import("three").MeshStandardMaterial[] =
         nodeId: string;
         map: "livingArea" | "mountain";
       }[] = [];
+      // 鐘乳石洞窟礦石節點——跟 gatherNodeMeshes 同一套模式，buildMap()
+      // 重建這個地圖時清空重登記；礦石是「換樓層才重灑」不是「按時段
+      // 刷新」，所以不需要 gatherNodeMeshes 那種原地搬動邏輯，採完直接
+      // 隱藏就好。
+      export const oreNodeMeshes: {
+        group: import("three").Group;
+        nodeId: string;
+      }[] = [];
       const THRESHOLD_VISIBLE_KEY = "meadowtide.debug.thresholdMarkersVisible";
       // 開發模式下記住這個開關：Vite 幾乎每次存檔都會整頁重新載入(見
       // chef-quest.ts 對同一個現象的說明)，沒有這段的話每次改完程式碼

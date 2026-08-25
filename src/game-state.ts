@@ -103,6 +103,10 @@ export const gameState = {
     duration: number;
   }[],
   gatherSpawnSlot: Number.MIN_SAFE_INTEGER,
+  // 鐘乳石洞窟目前所在樓層(1~25)，只有在 stalactiteCave 地圖裡有意義；
+  // 離開地圖不重置，下次從舊城鎮洞口走進去才會強制設回 1(見 mine.ts
+  // 的 regenerateMineFloor 呼叫點)。
+  mineFloor: 1,
 };
 
 export const inventory = {
@@ -112,6 +116,13 @@ export const inventory = {
   wood: 10,
   stone: 5,
   oysters: 0,
+  // 鐘乳石洞窟礦石——跟木材/石頭是不同系統(見 mine.ts)，5 階對應
+  // 銅/銀/金/星晶/神晶，數值型別跟其他資源一致方便 HUD 共用格式化邏輯。
+  copper: 0,
+  silver: 0,
+  gold: 0,
+  starCrystal: 0,
+  godCrystal: 0,
   // 料理成品——跟其他資源不同，種類不只一種，所以用「食譜 id -> 數量」
   // 的表，不是單一數字。哪個 id 對應哪道菜看下面的 RECIPES。
   dishes: {} as Record<string, number>,

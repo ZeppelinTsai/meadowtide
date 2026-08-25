@@ -68,7 +68,20 @@ import {
   thresholdMarkerMeshes,
   thresholdMarkersVisible,
   gatherNodeMeshes,
+  oreNodeMeshes,
 } from "./scene-registries";
+import {
+  MINE_SIZE,
+  MINE_FLOOR_MAX,
+  ORE_TIERS,
+  ORE_NODES,
+  mineUpStairs,
+  mineDownStairs,
+  mineTierForFloor,
+  mineStairRotation,
+  regenerateMineFloor,
+  regenerateMineFloorTiles,
+} from "./mine";
 import {
   npcGroup,
   npcs,
@@ -129,6 +142,8 @@ import {
   makeWoodPile,
   makeStonePile,
   makeAnimalFeeder,
+  makeOreNode,
+  makeMineStaircase,
 } from "./props";
 import { syncFarmVisuals } from "./farm-visuals";
 import {
@@ -206,6 +221,7 @@ export function buildMap(mapName) {
   mountainSeasonalMaterials.length = 0;
   thresholdMarkerMeshes.length = 0;
   gatherNodeMeshes.length = 0;
+  oreNodeMeshes.length = 0;
   refreshGatherNodes();
 
   const map = MAPS[mapName];
@@ -685,11 +701,18 @@ export function buildMap(mapName) {
       seasonalGroundMaterials.push(townFloorMat, seaFloorMat, westBeachFloorMat);
     } else if (mapName === "stalactiteCave") {
       // 洞窟內部地板刻意不登記進 seasonalGroundMaterials——室內看不到
-      // 天空，不該跟著戶外季節變色，顏色固定用偏冷的岩灰色。
+      // 天空，不該跟著戶外季節變色。改用當前樓層的礦石階層色跟基底岩灰
+      // 混一點，樓層越深地板越偏該階層色，是「往下走氣氛在變」的其中
+      // 一個線索(另外兩個是牆體色跟樓梯平台色，見下面對應位置)。
+      const mineFloorTier = ORE_TIERS[mineTierForFloor(gameState.mineFloor) - 1];
+      const mineFloorColor = new THREE.Color(0x3a3d38).lerp(
+        new THREE.Color(mineFloorTier.color),
+        0.16,
+      );
       addMapFloorPatch({
         width: cols,
         depth: rows,
-        color: 0x3a3d38,
+        color: mineFloorColor,
         roughness: 1,
       });
     } else if (mapName !== "mountain") {
@@ -2015,48 +2038,64 @@ export function buildMap(mapName) {
     plateauGroup.add(torii);
   }
   if (mapName === "stalactiteCave") {
-    // 簡易版內裝：天花板垂幾根鐘乳石、地上散幾顆石頭，純氣氛裝飾，
-    // 不互動、不擋路(擋路已經由牆體 tile=1 處理)。座標是房間自己的
-    // 本地格子(0~8 x 0~6)，跟舊城鎮那邊的洞口座標無關。
-    const caveRockMat = new THREE.MeshStandardMaterial({
-      color: 0x54584f,
-      roughness: 1,
-      flatShading: true,
+    // 採礦系統(mine.ts)——樓層對應礦石階層(1~5)決定這裡的配色，往下走
+    // 越接近自己的世界觀那兩階(星晶/神晶)。座標是房間本地格子(50x50)，
+    // 跟舊城鎮那邊的洞口座標無關；洞口進來時的樓層重置在 events 表的
+    // enterMine()，這裡只管「當前樓層長怎樣」。
+    const mineFloor = gameState.mineFloor;
+    const tier = ORE_TIERS[mineTierForFloor(mineFloor) - 1];
+
+    // 樓梯——上樓永遠存在(第 1 層的上樓梯改成走出洞口回舊城鎮，動作在
+    // events 表的 mineGoUp() 判斷樓層再決定要不要真的換地圖)；下樓在
+    // MINE_FLOOR_MAX 不存在，這裡跟 tile 資料(mine.ts 的
+    // makeMineFloorTiles())用同一個 mineDownStairs() 判斷，不會兜不攏。
+    const up = mineUpStairs();
+    const upStair = makeMineStaircase("up", tier.accentColor);
+    upStair.position.set(up.x, 0, up.z);
+    upStair.rotation.y = mineStairRotation("up");
+    plateauGroup.add(upStair);
+    const down = mineDownStairs(mineFloor);
+    if (down) {
+      const downStair = makeMineStaircase("down", tier.color);
+      downStair.position.set(down.x, 0, down.z);
+      downStair.rotation.y = mineStairRotation("down");
+      plateauGroup.add(downStair);
+    }
+
+    // 礦石節點——跟木材/石頭同一套「靠近按 E 就沒了」的採集慣例，登記進
+    // oreNodeMeshes 讓 input-save.ts 採集成功時可以直接把對應的 group
+    // 藏起來，不用整層重建。
+    ORE_NODES.forEach((n) => {
+      const node = makeOreNode(n.x, n.z, tier.color, tier.accentColor, n.colorSeed);
+      node.visible = !n.collected;
+      plateauGroup.add(node);
+      oreNodeMeshes.push({ group: node, nodeId: n.id });
     });
-    const caveDarkRockMat = new THREE.MeshStandardMaterial({
+
+    // 天花板垂幾根鐘乳石當氣氛裝飾，用樓層數決定性灑點(同一層每次重進
+    // 都長一樣)，純視覺不擋路，避開樓梯附近讓動線乾淨。
+    const decorRockMat = new THREE.MeshStandardMaterial({
       color: 0x33362f,
       roughness: 1,
       flatShading: true,
     });
-    [
-      { x: 2, z: 2, len: 0.6 },
-      { x: 5.5, z: 1.6, len: 0.85 },
-      { x: 6.6, z: 3.4, len: 0.5 },
-      { x: 3, z: 4.2, len: 0.65 },
-    ].forEach(({ x, z, len }, i) => {
+    for (let i = 0; i < 26; i++) {
+      const nx = hash2(mineFloor * 9.3 + i * 4.1, i * 2.2);
+      const nz = hash2(i * 6.7, mineFloor * 5.1 + i * 1.3);
+      const x = 3 + Math.floor(nx * (MINE_SIZE - 6));
+      const z = 3 + Math.floor(nz * (MINE_SIZE - 6));
+      if (Math.abs(x - up.x) + Math.abs(z - up.z) < 3) continue;
+      if (down && Math.abs(x - down.x) + Math.abs(z - down.z) < 3) continue;
+      const len = 0.5 + hash2(x, z) * 0.6;
       const stalactite = new THREE.Mesh(
-        new THREE.ConeGeometry(0.13 + (i % 2) * 0.03, len, 6),
-        caveDarkRockMat,
+        new THREE.ConeGeometry(0.12 + hash2(z, x) * 0.05, len, 6),
+        decorRockMat,
       );
       stalactite.rotation.z = Math.PI;
       stalactite.position.set(x, 2.3 - len / 2, z);
       stalactite.castShadow = true;
       plateauGroup.add(stalactite);
-    });
-    [
-      { x: 1.4, z: 4.6, r: 0.42 },
-      { x: 6.8, z: 1.2, r: 0.36 },
-    ].forEach(({ x, z, r }, i) => {
-      const rock = new THREE.Mesh(
-        new THREE.DodecahedronGeometry(r, 0),
-        i === 0 ? caveRockMat : caveDarkRockMat,
-      );
-      rock.position.set(x, r * 0.6, z);
-      rock.rotation.set(i, i * 2.1, i * 0.4);
-      rock.castShadow = true;
-      rock.receiveShadow = true;
-      plateauGroup.add(rock);
-    });
+    }
   }
   if (mapName === "oldVillage") {
     // 廣場(LAYOUT.oldVillage.plaza：x=22~32,z=4~25)裡放兩盞路燈、兩張
@@ -2238,11 +2277,17 @@ export function buildMap(mapName) {
       } else if (tile === 1 && mapName === "stalactiteCave") {
         // 洞窟牆體只求「看起來是石壁」，不像 house 那樣做門窗開口——
         // 純方塊+粗糙岩灰材質，跟外面洞口(makeOldVillageStalactiteCaveEntrance)
-        // 同一色系但不共用材質實例(那邊有窗戶/發光邏輯，這裡不需要)。
+        // 同一色系但不共用材質實例(那邊有窗戶/發光邏輯，這裡不需要)。牆色
+        // 也混一點當層礦石階層色，跟地板呼應。
+        const mineWallTier = ORE_TIERS[mineTierForFloor(gameState.mineFloor) - 1];
+        const mineWallColor = new THREE.Color(0x4a4d47).lerp(
+          new THREE.Color(mineWallTier.color),
+          0.22,
+        );
         const wall = new THREE.Mesh(
           new THREE.BoxGeometry(TILE * 0.98, 2.3, TILE * 0.98),
           new THREE.MeshStandardMaterial({
-            color: 0x4a4d47,
+            color: mineWallColor,
             roughness: 1,
             flatShading: true,
           }),
@@ -3032,6 +3077,14 @@ export function loadMap(mapName, startPos) {
       mapName === "port" ? 20 : mapName === "mountain" ? 22 : 18,
     );
     updateCameraFrustum();
+    // 存讀檔還原到洞窟中途樓層時會直接呼叫 loadMap("stalactiteCave", …)，
+    // 不會經過 enterMine()/mineGoUp()/mineGoDown()——這裡補一次保險，只重
+    // 建地磚(純樓層函式，重算不會弄丟東西)，不能呼叫會連礦石節點一起
+    // 重灑的完整版，不然剛從存檔讀回來的 ORE_NODES collected 狀態會被
+    // 蓋掉。三個換樓動作各自已經呼叫過完整版，這裡重覆呼叫地磚版只是
+    // 多算一次同樣的結果，不會有副作用。
+    if (mapName === "stalactiteCave")
+      regenerateMineFloorTiles(gameState.mineFloor);
     buildMap(mapName);
     const requestedPos = startPos || MAPS[mapName].playerStart;
     const isSafePlayerPosition = (x: number, z: number) =>
@@ -3138,43 +3191,80 @@ const WORLD_MAP_TRANSITIONS: TransitionLink[] = [
       arrivalAt: () => LAYOUT.mountain.townArrival,
     },
   },
-  // 鐘乳石洞窟——洞口(entranceX~entranceX+entranceWidth)沿線 3 格都能走
-  // 進去，跟內部房間門(x=3~5)逐格對齊；觸發點/門都用 LAYOUT.oldVillage.
-  // stalactiteCave 現值推導，洞窟之後再拓寬/搬動也不用回來改這裡。
-  {
-    id: "old-village-stalactite-cave",
-    a: {
-      map: "oldVillage",
-      count: LAYOUT.oldVillage.stalactiteCave.entranceWidth,
-      triggerAt: (i) => ({
-        x: LAYOUT.oldVillage.stalactiteCave.entranceX + i,
-        z:
-          LAYOUT.oldVillage.stalactiteCave.z +
-          LAYOUT.oldVillage.stalactiteCave.depth -
-          1,
-      }),
-      arrivalAt: (i) => ({ x: 3 + i, z: 5 }),
-    },
-    b: {
-      map: "stalactiteCave",
-      count: LAYOUT.oldVillage.stalactiteCave.entranceWidth,
-      triggerAt: (i) => ({ x: 3 + i, z: 6 }),
-      arrivalAt: (i) => ({
-        x: LAYOUT.oldVillage.stalactiteCave.entranceX + i,
-        z:
-          LAYOUT.oldVillage.stalactiteCave.z +
-          LAYOUT.oldVillage.stalactiteCave.depth,
-      }),
-    },
-  },
 ];
 const worldTransitionEvents = createTransitionEvents(
   WORLD_MAP_TRANSITIONS,
   (map, arrival) => loadMap(map, { ...arrival }),
 );
 
+// 鐘乳石洞窟進出/換樓——不是走 WORLD_MAP_TRANSITIONS 那套「單純幾何對應」
+// 的產生器，因為進洞口要順便重置樓層、踩樓梯要依目前樓層決定是換樓層
+// 還是離開地圖，這些都是有狀態的分支，用手寫 action 比硬塞進通用產生
+// 器直接。三個動作都會呼叫 regenerateMineFloor()，樓層資料/礦石節點在
+// loadMap() 之前就準備好，buildMap() 讀到的永遠是當前樓層該有的內容。
+function enterMine() {
+  regenerateMineFloor(1);
+  loadMap("stalactiteCave", mineUpStairs());
+}
+function mineGoUp() {
+  if (gameState.mineFloor <= 1) {
+    const cave = LAYOUT.oldVillage.stalactiteCave;
+    const mouthZ = cave.z + cave.depth - 1;
+    loadMap("oldVillage", {
+      x: cave.entranceX + Math.floor((cave.entranceWidth - 1) / 2),
+      z: mouthZ + 1,
+    });
+    return;
+  }
+  regenerateMineFloor(gameState.mineFloor - 1);
+  loadMap("stalactiteCave", mineDownStairs(gameState.mineFloor) || mineUpStairs());
+}
+function mineGoDown() {
+  if (gameState.mineFloor >= MINE_FLOOR_MAX) return;
+  regenerateMineFloor(gameState.mineFloor + 1);
+  loadMap("stalactiteCave", mineUpStairs());
+}
+
 export const events = [
   ...worldTransitionEvents,
+  // 洞口(entranceX~entranceX+entranceWidth)沿線 3 格都能走進去，座標用
+  // LAYOUT.oldVillage.stalactiteCave 現值推導，洞窟之後再拓寬/搬動也不用
+  // 回來改這裡。
+  ...Array.from(
+    { length: LAYOUT.oldVillage.stalactiteCave.entranceWidth },
+    (_, i) => ({
+      map: "oldVillage",
+      x: LAYOUT.oldVillage.stalactiteCave.entranceX + i,
+      z:
+        LAYOUT.oldVillage.stalactiteCave.z +
+        LAYOUT.oldVillage.stalactiteCave.depth -
+        1,
+      trigger: "touch",
+      action: () => enterMine(),
+    }),
+  ),
+  {
+    map: "stalactiteCave",
+    get x() {
+      return mineUpStairs().x;
+    },
+    get z() {
+      return mineUpStairs().z;
+    },
+    trigger: "touch",
+    action: () => mineGoUp(),
+  },
+  {
+    map: "stalactiteCave",
+    get x() {
+      return mineDownStairs(gameState.mineFloor)?.x ?? -1;
+    },
+    get z() {
+      return mineDownStairs(gameState.mineFloor)?.z ?? -1;
+    },
+    trigger: "touch",
+    action: () => mineGoDown(),
+  },
   {
     map: "livingArea",
     x: LAYOUT.house.doorX,

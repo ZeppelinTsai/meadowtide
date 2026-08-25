@@ -3942,3 +3942,139 @@ export function makeWoodPlankTexture({
       }
 
       // ==============================================================
+      // 鐘乳石洞窟採礦系統(mine.ts)的模型——沿用木材/石頭採集點
+      // (makeStonePile 那套「岩石堆+castShadow」)的做法，但額外嵌幾顆
+      // 依礦石階層上色的晶粒當辨識重點，純材質顏色分辨、不用 emissive
+      // 發光(跟木材/石頭堆同一個理由：不是「今天採過沒」需要提示的東西)。
+      // ==============================================================
+      export function makeOreNode(x, z, color, accentColor, colorSeed) {
+        const group = new THREE.Group();
+        const baseColor = new THREE.Color(color);
+        baseColor.offsetHSL((colorSeed - 0.5) * 0.06, 0, (colorSeed - 0.5) * 0.16);
+        const rockMat = new THREE.MeshStandardMaterial({
+          color: baseColor,
+          flatShading: true,
+          roughness: 0.85,
+        });
+        const accentMat = new THREE.MeshStandardMaterial({
+          color: accentColor,
+          flatShading: true,
+          roughness: 0.5,
+          metalness: 0.2,
+        });
+        const darkRockMat = new THREE.MeshStandardMaterial({
+          color: 0x38393a,
+          flatShading: true,
+          roughness: 0.95,
+        });
+        const rocks = [
+          { x: -0.1, z: 0.06, r: 0.17, seed: 0.3, mat: darkRockMat },
+          { x: 0.13, z: -0.04, r: 0.15, seed: 0.7, mat: darkRockMat },
+          { x: -0.02, z: 0.16, r: 0.12, seed: 1.1, mat: rockMat },
+          { x: 0.03, z: -0.02, r: 0.19, seed: 1.6, mat: rockMat },
+        ];
+        rocks.forEach((r) => {
+          const mesh = new THREE.Mesh(new THREE.IcosahedronGeometry(r.r, 0), r.mat);
+          mesh.position.set(r.x, r.r * 0.72, r.z);
+          mesh.rotation.set(r.seed * 5, r.seed * 3, r.seed * 2);
+          mesh.castShadow = true;
+          mesh.receiveShadow = true;
+          group.add(mesh);
+        });
+        const glints = [
+          { x: -0.06, y: 0.16, z: 0.09, r: 0.06, seed: colorSeed },
+          { x: 0.1, y: 0.13, z: 0.02, r: 0.05, seed: (colorSeed * 1.7) % 1 },
+          { x: 0.0, y: 0.19, z: -0.06, r: 0.045, seed: (colorSeed * 2.3) % 1 },
+        ];
+        glints.forEach((g) => {
+          const mesh = new THREE.Mesh(
+            new THREE.OctahedronGeometry(g.r, 0),
+            g.seed > 0.5 ? accentMat : rockMat,
+          );
+          mesh.position.set(g.x, g.y, g.z);
+          mesh.rotation.set(g.seed * 4, g.seed * 6, g.seed * 2);
+          mesh.castShadow = true;
+          group.add(mesh);
+        });
+        group.position.set(x, 0, z);
+        return group;
+      }
+
+      // 挖礦成功飛出去的碎屑，跟 makeChipDebris 同款但顏色吃礦石階層色，
+      // 不共用同一個函式是因為 makeChipDebris 的 kind 參數目前只認
+      // "wood"/"stone" 兩種，改成吃任意顏色比硬塞第三種 kind 字串更直接。
+      export function makeOreChipDebris(color, seed) {
+        const mat = new THREE.MeshStandardMaterial({
+          color,
+          flatShading: true,
+          roughness: 0.7,
+          metalness: 0.15,
+        });
+        const chip = new THREE.Mesh(new THREE.TetrahedronGeometry(0.06, 0), mat);
+        chip.rotation.set(seed * 6, seed * 4, seed * 2);
+        chip.castShadow = true;
+        return chip;
+      }
+
+      // 洞窟樓梯——上/下樓都用真的階梯造型(側邊矮牆+頂/底端一塊指示色
+      // 平台)，刻意不做牧場物語那種「地上一個方洞」的樣式；平台顏色用
+      // 當層礦石階層色，一眼就能對到牆體/地板同一組配色，沒有用
+      // emissive(理由跟洞口拱門的石框一樣：純靜態對比色提示，不暗示
+      // 「這裡可以互動」)。
+      export function makeMineStaircase(direction, tierColor) {
+        const group = new THREE.Group();
+        const stoneMat = new THREE.MeshStandardMaterial({
+          color: 0x54564f,
+          flatShading: true,
+          roughness: 0.95,
+        });
+        const darkStoneMat = new THREE.MeshStandardMaterial({
+          color: 0x2f302b,
+          flatShading: true,
+          roughness: 0.95,
+        });
+        const accentMat = new THREE.MeshStandardMaterial({
+          color: tierColor,
+          flatShading: true,
+          roughness: 0.5,
+          metalness: 0.15,
+        });
+        const sign = direction === "up" ? 1 : -1;
+        const stepCount = 5;
+        for (let i = 0; i < stepCount; i++) {
+          const y = sign * i * 0.16;
+          const zOff = -0.34 + i * 0.17;
+          const step = new THREE.Mesh(
+            new THREE.BoxGeometry(0.86, 0.14, 0.2),
+            i === stepCount - 1 ? accentMat : stoneMat,
+          );
+          step.position.set(0, y, zOff);
+          step.castShadow = true;
+          step.receiveShadow = true;
+          group.add(step);
+        }
+        [-0.46, 0.46].forEach((xSide) => {
+          const rail = new THREE.Mesh(
+            new THREE.BoxGeometry(0.08, 0.5, 0.9),
+            darkStoneMat,
+          );
+          rail.position.set(xSide, sign * 0.16, 0.1);
+          rail.castShadow = true;
+          rail.receiveShadow = true;
+          group.add(rail);
+        });
+        const landing = new THREE.Mesh(
+          new THREE.BoxGeometry(0.9, 0.06, 0.5),
+          direction === "up" ? accentMat : darkStoneMat,
+        );
+        landing.position.set(
+          0,
+          sign * 0.16 * (stepCount - 1) + sign * 0.05,
+          -0.34 + stepCount * 0.17,
+        );
+        landing.receiveShadow = true;
+        group.add(landing);
+        return group;
+      }
+
+      // ==============================================================

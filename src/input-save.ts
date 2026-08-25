@@ -27,6 +27,7 @@ import {
   cookMeal,
 } from "./game-state";
 import { updateSeasonAndDate } from "./game-clock";
+import { ORE_NODES, harvestOreNode } from "./mine";
 import {
   carpenterQuest,
   POUCH_POS,
@@ -53,6 +54,7 @@ import {
   makeBobber,
   makeFishProp,
   makeChipDebris,
+  makeOreChipDebris,
 } from "./props";
 import { syncFarmVisuals } from "./farm-visuals";
 import {
@@ -65,7 +67,7 @@ import {
   getMeteorShowerHudLabel,
   groundY,
 } from "./scene-sky";
-import { gatherNodeMeshes, setThresholdMarkersVisible } from "./scene-registries";
+import { gatherNodeMeshes, oreNodeMeshes, setThresholdMarkersVisible } from "./scene-registries";
 
 export const SAVE_KEY_PREFIX = "meadowtide.save.";
 export function saveGame(slot = "default") {
@@ -94,6 +96,12 @@ export function saveGame(slot = "default") {
     gatherSpawnSlot: gameState.gatherSpawnSlot,
     woodNodes: JSON.parse(JSON.stringify(WOOD_NODES)),
     stoneNodes: JSON.parse(JSON.stringify(STONE_NODES)),
+    // 洞窟樓層+礦石節點——不像 woodNodes/stoneNodes 有「刷新時段」欄位，
+    // 單純存目前樓層跟該層的採集狀態；讀檔時只還原資料，實際地磚/模型
+    // 由 loadMap() 的 regenerateMineFloor() 保險呼叫重新生成(見
+    // build-map.ts)，這裡不用另外存 tiles。
+    mineFloor: gameState.mineFloor,
+    oreNodes: JSON.parse(JSON.stringify(ORE_NODES)),
   };
   localStorage.setItem(SAVE_KEY_PREFIX + slot, JSON.stringify(data));
   return data;
@@ -158,6 +166,10 @@ export function loadGame(slot = "default") {
     STONE_NODES.splice(0, STONE_NODES.length, ...data.stoneNodes);
   } else {
     refreshGatherNodes(true);
+  }
+  gameState.mineFloor = Number.isFinite(data.mineFloor) ? data.mineFloor : 1;
+  if (Array.isArray(data.oreNodes)) {
+    ORE_NODES.splice(0, ORE_NODES.length, ...data.oreNodes);
   }
   if (data.player) {
     const targetMap = data.currentMapName || "livingArea";
@@ -426,6 +438,43 @@ addEventListener("keydown", (e) => {
             gatherNode.x + (Math.random() - 0.5) * 0.3,
             gameState.player.position.y + 0.3,
             gatherNode.z + (Math.random() - 0.5) * 0.3,
+          );
+          scene.add(chip);
+          gameState.gatherChipAnims.push({
+            mesh: chip,
+            vx: (Math.random() - 0.5) * 1.4,
+            vy: 1.6 + Math.random() * 0.6,
+            vz: (Math.random() - 0.5) * 1.4,
+            start: gameState.elapsed,
+            duration: 0.6,
+          });
+        }
+      }
+      return;
+    }
+  }
+
+  // 鐘乳石洞窟礦石——跟木材/石頭同一種鄰接判定(曼哈頓距離<=1)，但獨立
+  // 一份清單/邏輯(mine.ts)，不跟地表採集共用：採到的種類/顏色都吃目前
+  // 樓層對應的礦石階層，跟日夜時段無關，換樓層才會重灑。
+  if (gameState.currentMapName === "stalactiteCave") {
+    const { x: mx, z: mz } = gameState.playerGridPos;
+    const oreNode = ORE_NODES.find(
+      (n) => !n.collected && Math.abs(n.x - mx) + Math.abs(n.z - mz) <= 1,
+    );
+    if (oreNode) {
+      const result = harvestOreNode(oreNode.x, oreNode.z);
+      if (result.amount > 0 && result.tier) {
+        const meshEntry = oreNodeMeshes.find(
+          (entry) => entry.nodeId === oreNode.id,
+        );
+        if (meshEntry) meshEntry.group.visible = false;
+        for (let i = 0; i < 3; i++) {
+          const chip = makeOreChipDebris(result.tier.accentColor, Math.random());
+          chip.position.set(
+            oreNode.x + (Math.random() - 0.5) * 0.3,
+            gameState.player.position.y + 0.3,
+            oreNode.z + (Math.random() - 0.5) * 0.3,
           );
           scene.add(chip);
           gameState.gatherChipAnims.push({
