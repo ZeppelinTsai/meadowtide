@@ -3,7 +3,6 @@ import { hash2 } from "./utils";
 import { LAYOUT, MAPS, isInsideLakeShape } from "./layout-maps";
 import { npcs } from "./npc-runtime";
 import { syncFarmVisuals } from "./farm-visuals";
-import { showDialog } from "./dialogue";
 
 // ==============================================================
 // 遷移筆記：這個檔案集中放「會被跨檔案讀寫的可變基本狀態」。原本單一
@@ -28,6 +27,15 @@ export const gameState = {
   biteWindowStart: 0,
   bobberMesh: null as THREE.Object3D | null,
   fishFeedback: null as { text: string; until: number } | null,
+  // 牡蠣架收成的 UI 回饋——跟 fishFeedback 同一套「elapsed 到期就清掉」
+  // 的做法，animate() 每幀讀這個物件去更新 #harvestToast。
+  harvestFeedback: null as {
+    kind: "success" | "empty";
+    title: string;
+    text: string;
+    count?: number;
+    until: number;
+  } | null,
   castAnimEnd: 0,
   catchAnim: null as {
     mesh: THREE.Object3D;
@@ -338,9 +346,20 @@ export function growCropsForNewDay() {
 // 項目時，往這個清單加新座標就好，不用另外設計系統。
 // 珍珠判定系統這輪還沒接（暫停中，等牡蠣架視覺/位置確認過再繼續）。
 // ==============================================================
-export const OYSTER_RACK_TILES = [[44, 14]];
+// 這裡本來只列 (44,14) 一格，但玩家的碰撞箱半寬是 0.22(見
+// input-save.ts 的 collidesAt)，往浮筏方向一路走到底，四個角落裡
+// 最靠海那個角落會先撞到 x=46 的海(9)，實際會被擋在中心點約
+// x=45.28，四捨五入之後 playerGridPos 落在 (45,14)，不是 (44,14)——
+// 也就是玩家自然走到底、感覺「已經站在浮筏旁邊」的那格，反而不算數，
+// 這才是「站不上去/採不到」的真正原因，不是判定寫錯。把最靠海這格
+// 也一起算進採集點，兩格都能觸發，不用逼玩家往回退一步才踩得中。
+export const OYSTER_RACK_TILES = [
+  [44, 14],
+  [45, 14],
+];
 export const OYSTER_RACK_VISUAL = { x: 46, z: 14 };
-export const OYSTER_HARVESTS_PER_DAY = 3; // 一個採集點一天最多收成 3 次
+export const OYSTER_HARVESTS_PER_DAY = 1; // 放養式養殖：一天巡一次就好，
+// 不是能重複伸手撈的採集點——跟農地/釣魚那種可以來回刷的機制刻意不同。
 export const OYSTER_YIELD_MIN = 3,
   OYSTER_YIELD_MAX = 5; // 每次收成 3~5 個
 export const oysterRackState: Record<
@@ -357,9 +376,12 @@ export function harvestOysterRack(x: number, z: number) {
     rackState.lastHarvestDay = gameState.currentDay;
   }
   if (rackState.harvestsToday >= OYSTER_HARVESTS_PER_DAY) {
-    showDialog(
-      `這片牡蠣架今天已經收成 ${OYSTER_HARVESTS_PER_DAY} 次了，明天再來看看。`,
-    );
+    gameState.harvestFeedback = {
+      kind: "empty",
+      title: "牡蠣架",
+      text: "今天已經巡視過了，明天再來看看。",
+      until: gameState.elapsed + 2.6,
+    };
     return;
   }
   const yieldCount =
@@ -370,5 +392,11 @@ export function harvestOysterRack(x: number, z: number) {
   // TODO(珍珠系統下一階段)：這裡之後要接珍珠判定——每次收成動作各自
   // 判定粉/黑/金三個等級，機率獨立(20%/10%/5%)，解鎖條件另外處理。
   // 現在先只累加生牡蠣數量，讓採集點本身可以先測試。
-  showDialog(`收成了 ${yieldCount} 顆牡蠣。`);
+  gameState.harvestFeedback = {
+    kind: "success",
+    title: "潮間帶巡視",
+    text: `牡蠣 ×${yieldCount}`,
+    count: yieldCount,
+    until: gameState.elapsed + 2.6,
+  };
 }

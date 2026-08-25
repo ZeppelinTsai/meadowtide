@@ -174,6 +174,86 @@ body {
   border: 1px solid #5fb8e0;
   z-index: 15;
 }
+/* 牡蠣架收成回饋卡——跟 #fishHint 一樣是純提示、不擋互動(pointer-events:
+   none)，但刻意放在畫面上方置中，跟底部的對話框/釣魚提示分開，看起來
+   比較像「拿到東西」的通知卡，不是「有人在跟你說話」。預設完全透明+往上
+   偏移，加上 .show 才淡入滑下來，一路平滑；珍珠圖示用 SVG 現畫(跟專案
+   一貫「UI 層可以用外部圖片，但這裡乾脆直接畫」的做法一致，不用等美術
+   給檔案)。 */
+#harvestToast {
+  position: fixed;
+  top: 96px;
+  left: 50%;
+  transform: translate(-50%, -14px);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 20px 10px 14px;
+  background: linear-gradient(
+    160deg,
+    rgba(38, 32, 20, 0.92),
+    rgba(20, 17, 12, 0.92)
+  );
+  border: 1.5px solid rgba(245, 197, 66, 0.75);
+  border-radius: 12px;
+  box-shadow:
+    0 8px 22px rgba(0, 0, 0, 0.35),
+    0 0 0 1px rgba(245, 197, 66, 0.12) inset;
+  opacity: 0;
+  pointer-events: none;
+  z-index: 15;
+  transition:
+    opacity 0.28s ease,
+    transform 0.28s cubic-bezier(0.2, 0.9, 0.3, 1.3);
+}
+#harvestToast.show {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
+#harvestToastIcon {
+  flex: none;
+  display: flex;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.4));
+  animation: harvestToastPop 0.4s cubic-bezier(0.3, 1.4, 0.4, 1);
+}
+#harvestToastBody {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+#harvestToastTitle {
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  color: rgba(245, 197, 66, 0.85);
+}
+#harvestToastText {
+  font-size: 17px;
+  font-weight: 600;
+  color: #fdf6e3;
+}
+/* 「今天已經巡視過了」——用低飽和的灰藍取代金色，圖示也跟著去色，
+   一眼就能跟「有收穫」的版本分開，不用特地去讀文字才知道結果 */
+#harvestToast.harvestToast--empty {
+  border-color: rgba(150, 170, 190, 0.55);
+}
+#harvestToast.harvestToast--empty #harvestToastTitle {
+  color: rgba(180, 195, 210, 0.85);
+}
+#harvestToast.harvestToast--empty #harvestToastIcon {
+  filter: grayscale(0.9) opacity(0.6);
+  animation: none;
+}
+@keyframes harvestToastPop {
+  0% {
+    transform: scale(0.5);
+  }
+  60% {
+    transform: scale(1.12);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
 canvas {
   display: block;
   touch-action: none;

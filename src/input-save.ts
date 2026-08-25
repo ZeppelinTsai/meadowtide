@@ -332,6 +332,21 @@ addEventListener("keydown", (e) => {
     return;
   }
 
+  // 牡蠣架的沙灘互動格緊貼海邊，這個判定一定要排在下面的 nearWater()
+  // 釣魚判定之前——不然站在那格按 E 一定會被釣魚搶走(那格 nearWater()
+  // 必然是 true)，之前就是這樣才會站在牡蠣架旁邊按 E 卻跳出釣魚提示、
+  // 牡蠣完全採不到。
+  if (gameState.currentMapName === "livingArea") {
+    const { x: oysterX, z: oysterZ } = gameState.playerGridPos;
+    const onOysterRack = OYSTER_RACK_TILES.some(
+      ([ox, oz]) => ox === oysterX && oz === oysterZ,
+    );
+    if (onOysterRack) {
+      harvestOysterRack(oysterX, oysterZ);
+      return;
+    }
+  }
+
   if (gameState.currentMapName === "livingArea" && nearWater()) {
     if (gameState.fishingState === "idle") {
       gameState.fishingState = "casting";
@@ -375,13 +390,6 @@ addEventListener("keydown", (e) => {
   const { x, z } = gameState.playerGridPos;
   if (x === POUCH_POS.x && z === POUCH_POS.z) {
     pickupSeeds();
-    return;
-  }
-  const onOysterRack = OYSTER_RACK_TILES.some(
-    ([ox, oz]) => ox === x && oz === z,
-  );
-  if (onOysterRack) {
-    harvestOysterRack(x, z);
     return;
   }
   const onFarmland = FARMLAND_TILES.some(([fx, fz]) => fx === x && fz === z);

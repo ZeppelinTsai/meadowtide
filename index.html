@@ -29,6 +29,48 @@
       <div id="dialogContinue">按 E 繼續 ▾</div>
     </div>
     <div id="fishHint"></div>
+    <div id="harvestToast">
+      <div id="harvestToastIcon">
+        <svg viewBox="0 0 48 48" width="30" height="30" aria-hidden="true">
+          <defs>
+            <radialGradient id="harvestPearlGrad" cx="45%" cy="35%" r="65%">
+              <stop offset="0%" stop-color="#fffaf0" />
+              <stop offset="55%" stop-color="#f5d98a" />
+              <stop offset="100%" stop-color="#c9a355" />
+            </radialGradient>
+            <linearGradient id="harvestShellGrad" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#f4ead9" />
+              <stop offset="100%" stop-color="#c7ac82" />
+            </linearGradient>
+          </defs>
+          <path
+            d="M24 41 C7 41 3 26 5.5 17 C10.5 19.5 16.5 22 24 22 C31.5 22 37.5 19.5 42.5 17 C45 26 41 41 24 41 Z"
+            fill="url(#harvestShellGrad)"
+            stroke="#8a7452"
+            stroke-width="1.2"
+          />
+          <path
+            d="M24 22 C20 22.5 16 22 11.5 20 M24 22 C28 22.5 32 22 36.5 20 M24 22 C22.5 27 22 33 22.5 38 M24 22 C25.5 27 26 33 25.5 38"
+            fill="none"
+            stroke="#8a7452"
+            stroke-width="1"
+            opacity="0.55"
+          />
+          <circle
+            cx="24"
+            cy="15"
+            r="7.5"
+            fill="url(#harvestPearlGrad)"
+            stroke="#e8c877"
+            stroke-width="1"
+          />
+        </svg>
+      </div>
+      <div id="harvestToastBody">
+        <div id="harvestToastTitle"></div>
+        <div id="harvestToastText"></div>
+      </div>
+    </div>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

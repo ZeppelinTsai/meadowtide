@@ -480,6 +480,38 @@ export function animate(now) {
     fishHintEl.style.display = "none";
   }
 
+  // --- 牡蠣架收成回饋卡：跟上面 fishHint 同一招，gameState.harvestFeedback
+  // 到期(elapsed > until)就清掉，這裡只負責把目前狀態同步到 DOM ---
+  const harvestToastEl =
+    (window as any).__harvestToastEl ||
+    ((window as any).__harvestToastEl = document.getElementById(
+      "harvestToast",
+    ));
+  const harvestToastTitleEl =
+    (window as any).__harvestToastTitleEl ||
+    ((window as any).__harvestToastTitleEl = document.getElementById(
+      "harvestToastTitle",
+    ));
+  const harvestToastTextEl =
+    (window as any).__harvestToastTextEl ||
+    ((window as any).__harvestToastTextEl = document.getElementById(
+      "harvestToastText",
+    ));
+  if (
+    gameState.harvestFeedback &&
+    gameState.elapsed > gameState.harvestFeedback.until
+  )
+    gameState.harvestFeedback = null;
+  if (gameState.harvestFeedback) {
+    const fb = gameState.harvestFeedback;
+    harvestToastTitleEl.textContent = fb.title;
+    harvestToastTextEl.textContent = fb.text;
+    harvestToastEl.classList.toggle("harvestToast--empty", fb.kind === "empty");
+    harvestToastEl.classList.add("show");
+  } else {
+    harvestToastEl.classList.remove("show");
+  }
+
   // 格子座標現在只是「玩家四捨五入後大概在哪一格」，給種田/撿種子/開門這些
   // 本來就是格子概念的系統用，跟移動本身脫鉤
   // 對話開著的時候整段跳過：主角位置雖然被鎖住(dt=0)不會再移動，但如果
