@@ -61,12 +61,13 @@ import { setThresholdMarkersVisible } from "./scene-registries";
 export const SAVE_KEY_PREFIX = "meadowtide.save.";
 export function saveGame(slot = "default") {
   const data = {
-    version: 2,
+    version: 3,
     elapsed: gameState.elapsed,
     currentDay: gameState.currentDay,
     currentPhase: gameState.currentPhase,
     currentSeason: gameState.currentSeason,
     currentWeather: gameState.currentWeather,
+    weatherSchedules: JSON.parse(JSON.stringify(gameState.weatherSchedules)),
     pouchCollectedDay: gameState.pouchCollectedDay,
     currentMapName: gameState.currentMapName,
     player: gameState.player
@@ -93,6 +94,7 @@ export function loadGame(slot = "default") {
   gameState.elapsed = Math.max(0, Number(data.elapsed) || 0);
   updateSeasonAndDate();
   gameState.prevDay = gameState.currentDay;
+  gameState.weatherSchedules = data.weatherSchedules || {};
   gameState.currentWeather =
     data.currentWeather ||
     rollWeatherForSeason(gameState.currentSeason, gameState.currentDay);

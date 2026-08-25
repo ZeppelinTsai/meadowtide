@@ -21,6 +21,9 @@ export const gameState = {
   currentWeather: "clear" as string, // 下面初始化時會用 rollWeatherForSeason 覆蓋
   previousWeather: "clear" as string,
   weatherChangedAt: 0,
+  // 每個 21 天季節預先產生完整天氣，才能保證極端天氣前後的過渡日。
+  // key 是從遊戲開局起算的絕對季節編號，不只用 0~3 的季節索引。
+  weatherSchedules: {} as Record<string, string[]>,
   fishingState: "idle" as string,
   fishingTimer: 0,
   biteWaitTime: 0,
@@ -210,33 +213,95 @@ export function getNightFactor(phase = gameState.currentPhase) {
 export function isNightTime() {
   return getNightFactor() >= 0.55;
 }
+
+export const MAX_EXTREME_WEATHER_PER_SEASON = 2;
+
+function rollOrdinaryWeather(seasonIndex: number, random: () => number) {
+  const r = random();
+  if (seasonIndex === 0)
+    return r < 0.55 ? "clear" : r < 0.72 ? "cloudy" : "rain";
+  if (seasonIndex === 1)
+    return r < 0.62 ? "clear" : r < 0.77 ? "cloudy" : "rain";
+  if (seasonIndex === 2)
+    return r < 0.58 ? "clear" : r < 0.76 ? "cloudy" : "rain";
+  return r < 0.53 ? "clear" : r < 0.71 ? "cloudy" : "snow";
+}
+
+export function createSeasonWeatherSchedule(
+  absoluteSeason: number,
+  random: () => number = Math.random,
+) {
+  const seasonIndex =
+    ((absoluteSeason % TIME_CONFIG.seasons.length) + TIME_CONFIG.seasons.length) %
+    TIME_CONFIG.seasons.length;
+  const firstAbsoluteDay = absoluteSeason * TIME_CONFIG.daysPerSeason;
+  const schedule: string[] = Array.from(
+    { length: TIME_CONFIG.daysPerSeason },
+    () => rollOrdinaryWeather(seasonIndex, random),
+  );
+  const protectedDays = new Set<number>();
+
+  for (let index = 0; index < schedule.length; index++) {
+    const seasonDay = index + 1;
+    const absoluteDay = firstAbsoluteDay + index;
+    if (isSunday(absoluteDay) || METEOR_SHOWER_SCHEDULE[seasonDay]) {
+      schedule[index] = "clear";
+      protectedDays.add(index);
+    }
+  }
+
+  const transitionWeather = seasonIndex === 1 ? "rain" : "snow";
+  if (seasonIndex !== 1 && seasonIndex !== 3) return schedule;
+
+  const candidates = Array.from(
+    { length: Math.max(0, schedule.length - 2) },
+    (_, index) => index + 1,
+  ).filter(
+    (center) =>
+      !protectedDays.has(center - 1) &&
+      !protectedDays.has(center) &&
+      !protectedDays.has(center + 1),
+  );
+
+  // Fisher-Yates 洗牌後依序挑選不重疊的三日區段。
+  for (let index = candidates.length - 1; index > 0; index--) {
+    const swapIndex = Math.floor(random() * (index + 1));
+    [candidates[index], candidates[swapIndex]] = [
+      candidates[swapIndex],
+      candidates[index],
+    ];
+  }
+  const chosenCenters: number[] = [];
+  for (const center of candidates) {
+    if (chosenCenters.some((chosen) => Math.abs(chosen - center) <= 2)) continue;
+    chosenCenters.push(center);
+    if (chosenCenters.length === MAX_EXTREME_WEATHER_PER_SEASON) break;
+  }
+
+  for (const center of chosenCenters) {
+    schedule[center - 1] = transitionWeather;
+    schedule[center] =
+      seasonIndex === 1 ? (random() < 0.62 ? "typhoon" : "storm") : "blizzard";
+    schedule[center + 1] = transitionWeather;
+  }
+  return schedule;
+}
+
 export function rollWeatherForSeason(
   seasonIndex: number,
   day = gameState.currentDay,
 ) {
-  if (isSunday(day)) return "clear"; // 固定週日放晴，不進入天氣機率表
-  const r = Math.random();
-  if (seasonIndex === 0)
-    return r < 0.55 ? "clear" : r < 0.72 ? "cloudy" : "rain";
-  if (seasonIndex === 1)
-    return r < 0.52
-      ? "clear"
-      : r < 0.65
-        ? "cloudy"
-        : r < 0.82
-          ? "rain"
-          : r < 0.93
-            ? "typhoon"
-            : "storm";
-  if (seasonIndex === 2)
-    return r < 0.58 ? "clear" : r < 0.76 ? "cloudy" : "rain";
-  return r < 0.45
-    ? "clear"
-    : r < 0.6
-      ? "cloudy"
-      : r < 0.84
-        ? "snow"
-        : "blizzard";
+  const absoluteSeason = Math.floor(day / TIME_CONFIG.daysPerSeason);
+  const scheduleKey = String(absoluteSeason);
+  const schedule =
+    gameState.weatherSchedules[scheduleKey] ||
+    (gameState.weatherSchedules[scheduleKey] =
+      createSeasonWeatherSchedule(absoluteSeason));
+  const seasonDayIndex = ((day % TIME_CONFIG.daysPerSeason) + TIME_CONFIG.daysPerSeason) %
+    TIME_CONFIG.daysPerSeason;
+  // seasonIndex 保留在介面中，讓既有呼叫端不必改；排程以 absolute day 為準。
+  void seasonIndex;
+  return schedule[seasonDayIndex];
 }
 gameState.currentSeason = getSeasonIndex(0);
 gameState.currentWeather = rollWeatherForSeason(gameState.currentSeason, 0);
