@@ -149,6 +149,7 @@ import {
   makeSteepStoneStairs,
   makeFishProp,
   makeLamp,
+  makeCeilingLamp,
   makeStreetLamp,
   makeBench,
   makeFence,
@@ -2612,12 +2613,27 @@ export function buildMap(mapName) {
 
   gameState.houseLampLight = null;
   gameState.houseLampBulbMat = null;
+  gameState.houseCeilingLampLight = null;
+  gameState.houseCeilingLampBulbMat = null;
   if (mapName === "house") {
+    // 桌燈跟著餐桌一起搬到新格局的位置(x=11,z=6，見 layout-maps.ts 的
+    // house.furniture)，2026-08-26 房子放大前後桌子座標不一樣，這裡要
+    // 跟著換，不然燈會插在空地上、桌子底下沒燈。
     const lamp = makeLamp();
-    lamp.group.position.set(5, 0.45, 2); // 桌上，桌面高度約 0.45
+    lamp.group.position.set(11, 0.45, 6); // 桌上，桌面高度約 0.45
     plateauGroup.add(lamp.group);
     gameState.houseLampLight = lamp.light;
     gameState.houseLampBulbMat = lamp.bulbMat;
+
+    // 2026-08-26 新增頂燈——掛在天花板高度(牆高 1.4，稍微退一點避免跟
+    // 牆頂共面 z-fighting)，擺在主空間中央(x=8 大約是新格局的水平中心，
+    // z=6 跟餐桌同排)，distance=7 的涵蓋範圍蓋住主要活動區；臥室隔間
+    // 擋住視線+光線，暫時沒有另外配一盞，之後要加再說。
+    const ceilingLamp = makeCeilingLamp();
+    ceilingLamp.group.position.set(8, 1.36, 6);
+    plateauGroup.add(ceilingLamp.group);
+    gameState.houseCeilingLampLight = ceilingLamp.light;
+    gameState.houseCeilingLampBulbMat = ceilingLamp.bulbMat;
   }
 
   avenueLeafMaterials.length = 0;
@@ -3800,28 +3816,22 @@ export const events = [
     trigger: "touch",
     action: () => loadMap("house", { ...MAPS.house.playerStart }),
   },
-  {
+  // 2026-08-26 房子內部放大兩倍，門從舊格局的 (2,6)/(3,6)(8x7 格局最後
+  // 一排)搬到新格局的 (7,13)/(8,13)(16x14 格局最後一排，見
+  // layout-maps.ts 的 MAPS.house.tiles)，兩格門改用 Array.from 一次
+  // 登記，不用複製貼上兩份幾乎一樣的物件。外部(LAYOUT.house，w/d/doorX)
+  // 沒有變，落點公式不用動。
+  ...Array.from({ length: 2 }, (_, i) => ({
     map: "house",
-    x: 2,
-    z: 6,
+    x: 7 + i,
+    z: 13,
     trigger: "touch",
     action: () =>
       loadMap("livingArea", {
         x: LAYOUT.house.doorX,
         z: LAYOUT.house.z + LAYOUT.house.d + 1,
       }),
-  },
-  {
-    map: "house",
-    x: 3,
-    z: 6,
-    trigger: "touch",
-    action: () =>
-      loadMap("livingArea", {
-        x: LAYOUT.house.doorX,
-        z: LAYOUT.house.z + LAYOUT.house.d + 1,
-      }),
-  },
+  })),
   // 生活區南側海岸(x=37~46，z=42 整排，地圖最南端) <-> 港口北端
   // (碼頭附近)——z=37~42 這段南側延伸地形已經在 layout-maps.ts 補上
   // 真的沙灘/海資料(coastShoreJitter 那段)，不再是純視覺蓋住的假

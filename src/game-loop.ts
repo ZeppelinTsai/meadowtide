@@ -973,6 +973,10 @@ export function animate(now) {
     gameState.houseLampBulbMat.emissiveIntensity = nightFactor;
     gameState.houseLampLight.intensity = nightFactor * 1.6;
   }
+  if (gameState.houseCeilingLampLight) {
+    gameState.houseCeilingLampBulbMat.emissiveIntensity = nightFactor;
+    gameState.houseCeilingLampLight.intensity = nightFactor * 2.2;
+  }
 
   // 正交相機大幅拉遠時也沿原視角後退，避免視窗下緣落到地面以下而看見天空球。
   const camDist = Math.max(16, gameState.zoom * 1.55);

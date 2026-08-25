@@ -3654,6 +3654,50 @@ export function makeWoodPlankTexture({
         return { group, bulbMat, light };
       }
 
+      // 天花板頂燈——房子放大之後桌燈(makeLamp，distance 只有 2.4)照不到
+      // 整個空間，這裡另外做一組吊掛式頂燈，掛在天花板附近往下垂，
+      // distance 拉大到 7 涵蓋主空間；材質/開關邏輯(bulbMat 隨 nightFactor
+      // 發光、light.intensity 隨 nightFactor)跟桌燈同一套，只是掛的位置
+      // 跟照明範圍不同。group 原點對齊天花板掛點，子物件用負 y 往下垂吊，
+      // 呼叫端只要把 group 擺在天花板高度(~1.35~1.4)就好。
+      export function makeCeilingLamp() {
+        const group = new THREE.Group();
+        const dark = new THREE.MeshStandardMaterial({ color: 0x3a3a3a });
+        const mount = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.03, 0.03, 0.1, 6),
+          dark,
+        );
+        mount.position.y = -0.05;
+        group.add(mount);
+        const shadeMat = new THREE.MeshStandardMaterial({
+          color: 0x4a4438,
+          roughness: 0.9,
+        });
+        const shade = new THREE.Mesh(
+          new THREE.ConeGeometry(0.22, 0.16, 10, 1, true),
+          shadeMat,
+        );
+        shade.rotation.x = Math.PI;
+        shade.position.y = -0.14;
+        shade.castShadow = true;
+        group.add(shade);
+        const bulbMat = new THREE.MeshStandardMaterial({
+          color: 0xfff3c4,
+          emissive: new THREE.Color(0xffdd88),
+          emissiveIntensity: 0,
+        });
+        const bulb = new THREE.Mesh(
+          new THREE.SphereGeometry(0.08, 8, 6),
+          bulbMat,
+        );
+        bulb.position.y = -0.2;
+        group.add(bulb);
+        const light = new THREE.PointLight(0xffdd99, 0, 7, 1.6);
+        light.position.y = -0.2;
+        group.add(light);
+        return { group, bulbMat, light };
+      }
+
       export function makeStreetLamp(x, z, towardRoad) {
         const group = new THREE.Group();
         const metal = new THREE.MeshStandardMaterial({

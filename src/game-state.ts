@@ -81,6 +81,11 @@ export const gameState = {
   isSitting: false,
   houseLampLight: null as THREE.PointLight | null,
   houseLampBulbMat: null as THREE.MeshStandardMaterial | null,
+  // 2026-08-26 加的頂燈(makeCeilingLamp)——桌燈(houseLampLight)範圍只有
+  // 2.4，房子放大之後照不到整個空間，頂燈用更大的 distance 補主空間的
+  // 整體照明，晝夜邏輯(game-loop.ts)跟桌燈同一套 nightFactor 開關。
+  houseCeilingLampLight: null as THREE.PointLight | null,
+  houseCeilingLampBulbMat: null as THREE.MeshStandardMaterial | null,
   ePressed: false,
   lastFrame: 0, // main.ts 啟動迴圈時會用 performance.now() 設一次
   prevDay: 0,
