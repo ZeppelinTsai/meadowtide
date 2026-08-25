@@ -2814,11 +2814,18 @@ export function makeWoodPlankTexture({
             const rockBands =
               Math.sin(tx * 22 + z * 0.075) * (0.2 + tx * 1.15);
             const rugged =
-              (broadRidge + brokenFace + rockBands) * Math.pow(tx, 0.52);
-            // 往 Y 拉高(42→58)，讓山壁在鏡頭可視角度內覆蓋更多天空範圍，
-            // 減少稜線起伏低點剛好被鏡頭看穿到後面星空的機會。
+              (broadRidge + brokenFace + rockBands) *
+              Math.pow(tx, 0.72) *
+              0.45;
+            // 坡度由 LAYOUT 統一控制；舊版 tx^0.28*58 在山腳會突然抬升，
+            // 視覺接近直壁。現在用水平距離×tan(角度)形成穩定的 30° 緩坡。
+            const horizontalRun = (eastX - westX) * tx;
             const y =
-              PLATEAU_Y + 0.08 + Math.pow(tx, 0.28) * 58 + rugged;
+              PLATEAU_Y +
+              0.08 +
+              horizontalRun *
+                Math.tan(THREE.MathUtils.degToRad(LAYOUT.mountainBand.slopeDegrees)) +
+              rugged;
             positions.push(x, y, z);
             const shade = low
               .clone()

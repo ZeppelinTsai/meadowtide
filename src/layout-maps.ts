@@ -70,7 +70,7 @@ import { repaintRegion } from "./region-paint";
           // 沿用鄰排的舊海岸線，導致海面網格蓋住新沙灘（曾經真的踩到這個坑）。
           oceanCols: 16,
         },
-        mountainBand: { x: -7, width: 6 },
+        mountainBand: { x: -7, width: 6, slopeDegrees: 30 },
         mountainGateway: {
           startX: 3,
           startZ: 20,

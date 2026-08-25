@@ -425,3 +425,6 @@ meadowtideI18n.locales           // 列出支援的語言代碼 ["zh","en","ja"]
 - 生活區採集點只可在西側 `x=0～3` 的可走草地生成。魚池左上岸的六棵遮陽樹
   由 `LAYOUT.lake.shadeTreeOffsets` 定位，碰撞 tile 與季節變色樹模型都從這份
   資料推導；移動魚池時不可另留寫死的樹座標。
+- 生活區西側背景山坡的基準角度由 `LAYOUT.mountainBand.slopeDegrees` 控制，
+  目前為 30°；`makeWesternMountainTerrain()` 必須從這個角度計算線性抬升，
+  不可另寫非線性高牆公式。修改後執行 `npm run build`。
