@@ -23,6 +23,7 @@ import {
   CARPENTER_HOUSE,
   isInsideLakeShape,
   AVENUE_TREE_KEYS,
+  LAKE_SHADE_TREE_TILES,
   TOWN_Z_START,
   RAMP_CORRIDOR_MIN_Z,
   RAMP_CORRIDOR_MAX_Z,
@@ -2145,9 +2146,13 @@ export function buildMap(mapName) {
         // 本來就跟著季節變色(春粉紅/夏綠/秋橙紅/冬白)，剛好對應概念圖
         // 「賞櫻賞楓區域」：不用另外做櫻花/楓葉專用樹種，同一批樹春天
         // 看起來是賞櫻、秋天自然變成賞楓，比寫死單一顏色更合理。
+        const isLakeShadeTree =
+          mapName === "livingArea" &&
+          LAKE_SHADE_TREE_TILES.some(([treeX, treeZ]) => treeX === x && treeZ === z);
         const m =
           mapName === "mountain" ||
-          (mapName === "livingArea" && AVENUE_TREE_KEYS.has(`${x},${z}`))
+          (mapName === "livingArea" &&
+            (AVENUE_TREE_KEYS.has(`${x},${z}`) || isLakeShadeTree))
             ? makeAvenueTree(x, z)
             : makeTree(x, z);
         m.position.y +=

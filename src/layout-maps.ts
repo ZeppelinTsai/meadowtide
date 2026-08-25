@@ -49,7 +49,14 @@ import { repaintRegion } from "./region-paint";
           plotSize: 3,
           gap: 1,
         }, // 3 欄 × 4 排，共 12 塊田
-        lake: { x: 2, z: 0, width: 18, height: 17 }, // 整座湖西移 1 格、北移 3 格
+        lake: {
+          x: 2,
+          z: 0,
+          width: 18,
+          height: 17,
+          // 左上岸六棵遮陽樹；沿湖水外緣排列，用相對座標讓湖搬遷時一起移動。
+          shadeTreeOffsets: [[7, 0], [6, 1], [5, 2], [5, 3], [5, 4], [4, 5]],
+        },
         coast: {
           eastExpansion: 5,
           rampX: 34,
@@ -1181,6 +1188,13 @@ import { repaintRegion } from "./region-paint";
           MAPS.livingArea.tiles[z][x] = isInsideLakeShape(x, z) ? 6 : 0;
         }
       }
+      export const LAKE_SHADE_TREE_TILES = LAYOUT.lake.shadeTreeOffsets.map(
+        ([dx, dz]) => [LAYOUT.lake.x + dx, LAYOUT.lake.z + dz],
+      );
+      LAKE_SHADE_TREE_TILES.forEach(([x, z]) => {
+        if (MAPS.livingArea.tiles[z]?.[x] === 0)
+          MAPS.livingArea.tiles[z][x] = 2;
+      });
 
       // 湖的外框清理可能掃到相鄰建築；地形完成後以 buildings 為唯一資料源重建
       // 完整佔地，確保主屋與穀倉的視覺、tile 碰撞永遠一致。

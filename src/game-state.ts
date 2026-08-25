@@ -555,7 +555,7 @@ function gatherCandidates(zone: GatherNode["zone"]) {
   const tiles = MAPS[mapName].tiles;
   const bounds =
     zone === "mountainSide"
-      ? { x: 1, z: 1, width: 6, depth: tiles.length - 2 }
+      ? { x: 0, z: 1, width: 4, depth: tiles.length - 2 }
       : LAYOUT.mountain[zone];
   const cells: { x: number; z: number }[] = [];
   for (let z = bounds.z; z < bounds.z + bounds.depth; z++) {
