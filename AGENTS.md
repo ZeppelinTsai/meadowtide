@@ -118,6 +118,10 @@
   `findWesternShoreSandX()`（`src/shore-foam.ts`）；`makeFoam()` 的
   `waveDirection` 必須朝陸地，南岸另旋轉 `rotationY=Math.PI/2` 讓浪花沿
   東西向岸線延伸。修改岸線或浪花範圍後同樣執行上述三個驗證命令。
+- `foamMeshes` 這類逐幀動畫登記表必須在 `buildMap()` 開頭、任何地圖
+  分支建立物件之前清空，再由該次建圖重新登記。禁止在共用海面收尾才清空：
+  港口／舊城鎮會比收尾更早建立浪花，晚清空會留下畫面上的 mesh，卻讓
+  `animate()` 失去登記項目，造成「生活區會動、其他地圖浪花靜止」。
 
 ## 採集點延後刷新與多 agent 提交
 
