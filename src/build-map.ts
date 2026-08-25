@@ -789,6 +789,40 @@ export function buildMap(mapName) {
     }
     if (mapName === "oldVillage") {
       plateauGroup.add(makeOldVillageStalactiteCaveEntrance());
+      // 洞窟岩石後面補一片實心山峰，擋住鏡頭縮小時「石頭後面其實是空的」
+      // 穿幫——makeOldVillageStalactiteCaveEntrance() 只在洞口周圍散低矮
+      // 石頭(最高約 2.7)，沒有真的堆出山體量感，鏡頭拉遠一看石頭群後面
+      // 就是空地/地圖邊界。這裡借用跟下面 mapName === "livingArea" 那段
+      // 西側山脈同一套 makeMountain() 圓錐堆疊手法：沿洞窟寬度交錯排成
+      // 多排，往北(z 變小，也就是玩家站在洞口往裡看過去的「後面」)堆約
+      // 10 格深，前排矮、越往深處越高，做出一路往上升起的山勢；純視覺
+      // 塞背景，跟 tile/collision 完全無關，不影響任何走位判定。
+      {
+        const cave = LAYOUT.oldVillage.stalactiteCave;
+        const CAVE_BACKDROP_ROWS = 4;
+        const CAVE_BACKDROP_DEPTH = 10;
+        const backdropWidth = cave.width + 2;
+        const backdropColumns = Math.ceil(backdropWidth / 1.6);
+        for (let row = 0; row < CAVE_BACKDROP_ROWS; row++) {
+          for (let col = 0; col <= backdropColumns; col++) {
+            const s = hash2(
+              col * 4.1 + row * 7.3 + 11,
+              row * 2.6 + col * 1.1 + 5,
+            );
+            const bx =
+              cave.x -
+              1 +
+              (col + (row % 2) * 0.5) * (backdropWidth / backdropColumns);
+            const bz =
+              cave.z -
+              1 -
+              (row / (CAVE_BACKDROP_ROWS - 1)) * (CAVE_BACKDROP_DEPTH - 1) -
+              s * 1.3;
+            const height = 2.6 + s * 2.4 + row * 0.6;
+            plateauGroup.add(makeMountain(bx, bz, height, s));
+          }
+        }
+      }
       const terraceMat = new THREE.MeshStandardMaterial({
         color: 0x8f8779,
         roughness: 0.98,
