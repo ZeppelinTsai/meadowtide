@@ -1627,15 +1627,27 @@ export function buildMap(mapName) {
           (platform === mountain.foot &&
             Math.hypot(x - mountain.townGate.x, z - mountain.townGate.z) <
               2.2) ||
-          (platform === mountain.waist &&
-            Math.hypot(x - mountain.homeGate.x, z - mountain.homeGate.z) <
-              2.2) ||
           (platform === mountain.summit &&
             z < centerZ &&
             x >= mountain.summitLookout.x - 0.5 &&
             x <= mountain.summitLookout.x + mountain.summitLookout.width - 0.5);
+        // 住家傳送點的石梯(homeStoneStairs)自己會蓋一組扶手(makeSteepStoneStairs)，
+        // 跟其他單純門檻(isTransferOpening，沒有自帶扶手)不是同一種東西——
+        // 沿用圓形門檻那套，圓弧邊界跟直線樓梯兩側扶手端點對不齊，看起來
+        // 像斷開一截、樓梯憑空浮在原地。改用跟 lowerStair/upperStair 同一種
+        // 「固定方形收邊」手法(isStairJoin 系列)：那組是南北向樓梯用 z 頭尾
+        // 比對，這裡樓梯是東西向(directionX=1)，改成比對 z 帶(樓梯寬度)＋只
+        // 認東側(x > centerX)，才不會跟西側平台邊界同一段 z 混在一起誤觸發。
+        const homeStairs = mountain.homeStoneStairs;
+        const isHomeStairJoin = (x: number, z: number, sideMargin = 0) =>
+          platform === mountain.waist &&
+          x > centerX &&
+          z >= homeStairs.z - homeStairs.width / 2 - sideMargin &&
+          z <= homeStairs.z + homeStairs.width / 2 + sideMargin;
+        const isHomeStairShoulder = (x: number, z: number) =>
+          isHomeStairJoin(x, z, shoulderWidth);
         const isOpening = (x: number, z: number) =>
-          isStairOpening(x, z) || isTransferOpening(x, z);
+          isStairOpening(x, z) || isTransferOpening(x, z) || isHomeStairJoin(x, z);
         // 跟樓梯的 isStairShoulder 同一個道理：開口本身(isTransferOpening)只
         // 決定牆面/扶手在哪裡不生成，但外圈頂點原本還是套用 irregularity
         // 隨機抖動，開口兩側最後一段扶手的端點就會落在抖動過的位置，跟
@@ -1658,7 +1670,8 @@ export function buildMap(mapName) {
           // 抖動的矩形邊界；區外才套用不規則抖動的山頭輪廓。
           if (
             isStairShoulder(flatX, flatZ) ||
-            isTransferOpeningShoulder(flatX, flatZ)
+            isTransferOpeningShoulder(flatX, flatZ) ||
+            isHomeStairShoulder(flatX, flatZ)
           ) {
             positions.push(flatX, platform.elevation, flatZ);
             continue;
@@ -1706,7 +1719,9 @@ export function buildMap(mapName) {
             hash2(Math.floor(i / 3) * 2.41 + seed, seed * 4.73),
           );
           const skirtRun =
-            isStairShoulder(topX, topZ) || isTransferOpening(topX, topZ)
+            isStairShoulder(topX, topZ) ||
+            isTransferOpening(topX, topZ) ||
+            isHomeStairShoulder(topX, topZ)
               ? 0
               : (platform.elevation - bottomY) /
                 Math.tan(THREE.MathUtils.degToRad(skirtAngleDegrees));
@@ -1725,7 +1740,8 @@ export function buildMap(mapName) {
             (positions[outerA * 3 + 2] + positions[outerB * 3 + 2]) / 2;
           return (
             isStairShoulder(midpointX, midpointZ) ||
-            isTransferOpening(midpointX, midpointZ)
+            isTransferOpening(midpointX, midpointZ) ||
+            isHomeStairShoulder(midpointX, midpointZ)
           );
         });
         // 舊版這裡會另外掃一次 summit 外圈、找出跟觀景台缺口相鄰的兩個
@@ -3550,15 +3566,32 @@ export function fadeIn() {
 const WORLD_MAP_TRANSITIONS: TransitionLink[] = [
   {
     id: "old-village-mountain",
+    // 2026-08-25 左右各擴張 1 格：count 對齊 mountainGate/townGate 的
+    // width(=3)，index 0/1/2 對應 x-1/x/x+1，兩側用同一個 index 取值，
+    // 從舊城鎮左緣走進去就落在山路左緣、右緣對右緣，不會左右跳位。
     a: {
       map: "oldVillage",
-      triggerAt: () => LAYOUT.oldVillage.mountainGate,
-      arrivalAt: () => LAYOUT.oldVillage.mountainArrival,
+      count: LAYOUT.oldVillage.mountainGate.width,
+      triggerAt: (i) => ({
+        x: LAYOUT.oldVillage.mountainGate.x + i - 1,
+        z: LAYOUT.oldVillage.mountainGate.z,
+      }),
+      arrivalAt: (i) => ({
+        x: LAYOUT.oldVillage.mountainArrival.x + i - 1,
+        z: LAYOUT.oldVillage.mountainArrival.z,
+      }),
     },
     b: {
       map: "mountain",
-      triggerAt: () => LAYOUT.mountain.townGate,
-      arrivalAt: () => LAYOUT.mountain.townArrival,
+      count: LAYOUT.mountain.townGate.width,
+      triggerAt: (i) => ({
+        x: LAYOUT.mountain.townGate.x + i - 1,
+        z: LAYOUT.mountain.townGate.z,
+      }),
+      arrivalAt: (i) => ({
+        x: LAYOUT.mountain.townArrival.x + i - 1,
+        z: LAYOUT.mountain.townArrival.z,
+      }),
     },
   },
 ];
@@ -3885,24 +3918,31 @@ export const events = [
         z: LAYOUT.livingArea.oldVillageGate.z - 1,
       }),
   })),
-  {
+  // 2026-08-26 上下(z)各擴張 1 格：index 0/1/2 對應 z-1/z/z+1，兩側用
+  // 同一個 index 取值，跟舊城鎮/山區那組門一樣的道理，觸發格跟落點對齊，
+  // 不會左右(這裡是上下)跳位。
+  ...Array.from({ length: MOUNTAIN_GATE_BLOCKER.width }, (_, i) => ({
     map: "livingArea",
     x: MOUNTAIN_GATE_BLOCKER.x,
-    z: MOUNTAIN_GATE_BLOCKER.z,
+    z: MOUNTAIN_GATE_BLOCKER.z + i - 1,
     trigger: "touch",
-    action: () => loadMap("mountain", { ...LAYOUT.mountain.homeArrival }),
-  },
-  {
+    action: () =>
+      loadMap("mountain", {
+        x: LAYOUT.mountain.homeArrival.x,
+        z: LAYOUT.mountain.homeArrival.z + i - 1,
+      }),
+  })),
+  ...Array.from({ length: LAYOUT.mountain.homeGate.width }, (_, i) => ({
     map: "mountain",
     x: LAYOUT.mountain.homeGate.x,
-    z: LAYOUT.mountain.homeGate.z,
+    z: LAYOUT.mountain.homeGate.z + i - 1,
     trigger: "touch",
     action: () =>
       loadMap("livingArea", {
         x: MOUNTAIN_GATE_BLOCKER.x + 1,
-        z: MOUNTAIN_GATE_BLOCKER.z + 1,
+        z: MOUNTAIN_GATE_BLOCKER.z + 1 + i - 1,
       }),
-  },
+  })),
   // 舊城鎮東側 <-> 港口西側：沿邊逐格登記雙向觸發並對應同一個 z；
   // 目前由 z=4 一路連通到 z=47，包含指定的兩側沙灘區 z=30~47。
   ...Array.from({ length: LAYOUT.oldVillage.portGate.height }, (_, i) => ({

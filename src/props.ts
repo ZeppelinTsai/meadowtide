@@ -9,6 +9,8 @@ import {
   SHRINE_PATH_LENGTH,
   SHRINE_PATH_ELEVATION,
   portSouthBeachEndZ,
+  STAIR_SLOPE_TAN,
+  DECORATIVE_STAIR_WIDTH,
 } from "./layout-maps";
 import { windowMats, waterSurfaceMaterials, waterSkyUnderlayMaterials, outdoorLampLights, foamMeshes, windmillRotors, pastureGrassBlades, avenueLeafMaterials, seasonalTreeLeafMaterials, seasonalGroundMaterials, mountainSeasonalMaterials, GRASS_STAGE_HEIGHTS, EAST_SEA_WAVE_DIRECTION, SOUTH_SEA_WAVE_DIRECTION, gangplankMeshes } from "./scene-registries";
 import { findSouthernShoreSandZ } from "./shore-foam";
@@ -3053,8 +3055,10 @@ export function makeWoodPlankTexture({
         const zSegments = 36;
         // 草地主地板的實際西緣是 x=-0.5；坡地多壓進去 0.25 格，避免兩片
         // 幾何之間露出天空細縫。這段重疊位於地圖外，不會吃掉可行走草地。
-        const eastX = -0.25;
-        const westX = -34;
+        // 2026-08-26：兩個端點搬進 LAYOUT.mountainBand，makeMountainGateway()
+        // 的裝飾石梯要用同一組數字算山坡高度，不能各自寫一份。
+        const eastX = LAYOUT.mountainBand.slopeEastX;
+        const westX = LAYOUT.mountainBand.slopeWestX;
         // 山脈只略微越過北側懸崖，不再一路鋪到 z=-34、侵入北方海景。
         const northZ = NORTH_CLIFF_Z - 3.2;
         const southZ = rows + SOUTH_TERRAIN_EXTENSION + 24;
@@ -3302,18 +3306,35 @@ export function makeWoodPlankTexture({
 
       export function makeMountainGateway() {
         const gateway = LAYOUT.mountainGateway;
+        // 2026-08-26 三次調整：上一版讓每階下降量貼著山坡地形的 30° 緩坡
+        // 走，副作用是「樓底(最靠近草地、玩家最先看到的那階)」被墊到跟
+        // 山坡同高，離真正的草地地面還有一截，看起來像第一階特別高。
+        // 玩家要求跟住家那組(homeStoneStairs)統一角度(60°)/寬度，這裡改
+        // 成：樓底(i = steps-1，最後一階)直接釘在真正的地面高度，樓梯用
+        // 固定 60° 往山裡爬升——起點(i=0，最深/最高那階)的 y 用「地面
+        // 高度 + 總落差」反推，不是從地面往下算。
+        //
+        // 60° 比山坡本身的 30° 陡，樓梯爬升速度比山坡本身快，理論上爬得
+        // 越遠、樓梯表面跟山坡表面的落差就越大(這裡是樓梯浮在山坡上方，
+        // 不是鑽進去)——两个角度不同，全程貼合是做不到的，只能靠縮短
+        // 水平總長(visualRun×(visualSteps-1))把落差壓在不明顯的範圍，
+        // 樓底附近(玩家視線焦點)保證貼地，最深那一兩階飄高一點在陡峭
+        // 石梯本來就常見，不算破圖。
+        const dropPerStep = gateway.visualRun * STAIR_SLOPE_TAN;
+        const groundY = PLATEAU_Y + 0.08;
+        const topY = groundY + dropPerStep * (gateway.visualSteps - 1);
         const visualTopX =
           gateway.visualBottomX - gateway.visualRun * (gateway.visualSteps - 1);
         return makeSteepStoneStairs({
           x: visualTopX,
-          z: (gateway.visualMinZ + gateway.visualMaxZ) / 2,
-          y: PLATEAU_Y + 0.08,
+          z: gateway.visualZ,
+          y: topY,
           directionX: 1,
           directionZ: 0,
           steps: gateway.visualSteps,
           run: gateway.visualRun,
-          dropPerStep: gateway.visualDropPerStep,
-          width: gateway.visualMaxZ - gateway.visualMinZ + 1,
+          dropPerStep,
+          width: DECORATIVE_STAIR_WIDTH,
         });
       }
 
