@@ -13,6 +13,6 @@ build/*
 !build/icon.ico
 .env
 .env.local
-
+/release/
 # 保留 VSC 的 workspace 設定不忽略，方便共用編輯器設定
 !.vscode/settings.json
