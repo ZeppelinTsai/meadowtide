@@ -2776,6 +2776,84 @@ export function makeWoodPlankTexture({
         return g;
       }
 
+      export function makeOldVillageStalactiteCaveEntrance() {
+        const cave = LAYOUT.oldVillage.stalactiteCave;
+        const group = new THREE.Group();
+        const rockMat = new THREE.MeshStandardMaterial({
+          color: 0x59615b,
+          roughness: 1,
+          flatShading: true,
+        });
+        const darkRockMat = new THREE.MeshStandardMaterial({
+          color: 0x3b403d,
+          roughness: 1,
+          flatShading: true,
+        });
+        const openingMat = new THREE.MeshBasicMaterial({
+          color: 0x090d0d,
+          side: THREE.DoubleSide,
+        });
+        const addRock = (x, y, z, radius, sx, sy, sz, seed) => {
+          const rock = new THREE.Mesh(
+            new THREE.DodecahedronGeometry(radius, 0),
+            seed > 0.55 ? darkRockMat : rockMat,
+          );
+          rock.position.set(x, y, z);
+          rock.scale.set(sx, sy, sz);
+          rock.rotation.set(seed * 0.25, seed * Math.PI, seed * 0.16);
+          rock.castShadow = true;
+          rock.receiveShadow = true;
+          group.add(rock);
+        };
+
+        const centerX = cave.x + (cave.width - 1) / 2;
+        const entranceZ = cave.z + cave.depth - 0.35;
+        addRock(cave.x + 0.8, 1.25, cave.z + 2.1, 1.55, 1.15, 1.05, 1.35, 0.21);
+        addRock(cave.x + cave.width - 1.8, 1.35, cave.z + 2, 1.65, 1.2, 1.1, 1.3, 0.73);
+        addRock(centerX, 2.15, cave.z + 1.7, 1.75, 1.55, 0.75, 1.25, 0.46);
+        addRock(cave.x + 0.45, 0.8, cave.z + 4.25, 1.15, 0.9, 1.15, 0.8, 0.34);
+        addRock(cave.x + cave.width - 1.45, 0.82, cave.z + 4.2, 1.18, 0.95, 1.18, 0.82, 0.82);
+
+        const arch = new THREE.Shape();
+        arch.moveTo(-1.05, 0);
+        arch.lineTo(-1.05, 0.85);
+        arch.quadraticCurveTo(-0.9, 2.05, 0, 2.2);
+        arch.quadraticCurveTo(0.9, 2.05, 1.05, 0.85);
+        arch.lineTo(1.05, 0);
+        arch.closePath();
+        const opening = new THREE.Mesh(new THREE.ShapeGeometry(arch), openingMat);
+        opening.position.set(centerX, 0.03, entranceZ);
+        opening.renderOrder = 4;
+        group.add(opening);
+
+        const innerFloor = new THREE.Mesh(
+          new THREE.PlaneGeometry(cave.entranceWidth + 0.35, 2.7),
+          openingMat,
+        );
+        innerFloor.rotation.x = -Math.PI / 2;
+        innerFloor.position.set(centerX, 0.035, entranceZ - 1.15);
+        innerFloor.renderOrder = 4;
+        group.add(innerFloor);
+
+        [-0.58, 0, 0.55].forEach((offset, index) => {
+          const length = [0.48, 0.72, 0.42][index];
+          const stalactite = new THREE.Mesh(
+            new THREE.ConeGeometry(0.1 + index * 0.015, length, 6),
+            darkRockMat,
+          );
+          stalactite.rotation.z = Math.PI;
+          stalactite.position.set(
+            centerX + offset,
+            1.93 - length / 2 - Math.abs(offset) * 0.15,
+            entranceZ + 0.035,
+          );
+          stalactite.castShadow = true;
+          stalactite.renderOrder = 5;
+          group.add(stalactite);
+        });
+        return group;
+      }
+
       export function makeWesternMountainTerrain(rows) {
         const group = new THREE.Group();
         const xSegments = 16;

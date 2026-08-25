@@ -108,3 +108,11 @@ test("舊城鎮西南刪除區核心是海，外緣保持不規則", () => {
   );
   assert.ok(edges.size > 2, "海岸外緣不能是筆直方框");
 });
+
+test("舊城鎮鐘乳石洞窟山體有碰撞，中央入口保持可走", () => {
+  const cave = LAYOUT.oldVillage.stalactiteCave;
+  assert.equal(MAPS.oldVillage.tiles[cave.z][cave.x], 1);
+  for (let z = cave.entranceStartZ; z < cave.z + cave.depth; z++)
+    for (let x = cave.entranceX; x < cave.entranceX + cave.entranceWidth; x++)
+      assert.equal(MAPS.oldVillage.tiles[z][x], 8, `洞口 (${x},${z})`);
+});

@@ -125,6 +125,15 @@ import { repaintRegion } from "./region-paint";
           // addTerrace 的 xStart、OLD_VILLAGE_RAILS 前兩段)另外手動對應
           // 調整，這個工具目前不會幫忙掃到那些。
           westBeach: { x: 0, z: 0, width: 30, height: 64 },
+          stalactiteCave: {
+            x: 20,
+            z: 0,
+            width: 6,
+            depth: 6,
+            entranceX: 22,
+            entranceWidth: 2,
+            entranceStartZ: 3,
+          },
           southwestSeaCutout: {
             x: 11,
             z: 38,
@@ -936,6 +945,14 @@ import { repaintRegion } from "./region-paint";
           for (let x = seaCutout.x; x <= seaEndX; x++)
             tiles[z][x] = 9;
         }
+        // 西北沙灘的山腳洞窟：山體格不可走，中央留兩格寬、三格深的假入口。
+        // 目前只做視覺洞口，不觸發換圖；走到深處會由北側實心山壁擋住。
+        const cave = village.stalactiteCave;
+        for (let z = cave.z; z < cave.z + cave.depth - 1; z++)
+          for (let x = cave.x; x < cave.x + cave.width; x++) tiles[z][x] = 1;
+        for (let z = cave.entranceStartZ; z < cave.z + cave.depth; z++)
+          for (let x = cave.entranceX; x < cave.entranceX + cave.entranceWidth; x++)
+            tiles[z][x] = 8;
         // 沙灘生成會覆寫邊界格，因此最後重畫與港口相連的黃色門檻。
         // z=4~47 全部逐格連通，其中 z=30~47 是這次新增的沙灘通道。
         for (let z = 0; z < village.portGate.height; z++) {

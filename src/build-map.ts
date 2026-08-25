@@ -104,6 +104,7 @@ import {
   makeFoam,
   makeRedWindmill,
   makeMountain,
+  makeOldVillageStalactiteCaveEntrance,
   makeWesternMountainTerrain,
   makeMountainGateway,
   makeSteepStoneStairs,
@@ -692,6 +693,7 @@ export function buildMap(mapName) {
       seasonalGroundMaterials.push(groundMat);
     }
     if (mapName === "oldVillage") {
+      plateauGroup.add(makeOldVillageStalactiteCaveEntrance());
       const terraceMat = new THREE.MeshStandardMaterial({
         color: 0x8f8779,
         roughness: 0.98,
