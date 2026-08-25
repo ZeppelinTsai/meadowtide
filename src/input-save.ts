@@ -374,7 +374,7 @@ addEventListener("keydown", (e) => {
     Math.hypot(
       gameState.player.position.x - FEEDER_VISUAL.x,
       gameState.player.position.z - FEEDER_VISUAL.z,
-    ) <= 1.5
+    ) <= FEEDER_VISUAL.interactionRadius
   ) {
     const added = refillFeeder();
     gameState.harvestFeedback =

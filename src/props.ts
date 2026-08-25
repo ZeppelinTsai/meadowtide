@@ -2218,48 +2218,84 @@ export function makeWoodPlankTexture({
         return chip;
       }
 
-      // 動物投餵機——牧場邊一座簡單的木架漏斗+食槽。
-      export function makeAnimalFeeder(x, z) {
+      // 動物小屋左牆的自動加工／投餵設備：長槽沿整面側牆延伸，右側輸送管
+      // 穿入小屋，表示加工後會直接送進室內餵食槽。
+      export function makeAnimalFeeder(config) {
+        const { x, z, width, depth, height } = config;
         const group = new THREE.Group();
-        const legMat = new THREE.MeshStandardMaterial({ color: 0x5c4a36 });
-        const woodMat = new THREE.MeshStandardMaterial({
-          color: 0x9c7a4e,
+        const frameMat = new THREE.MeshStandardMaterial({
+          color: 0x4b4a43,
           flatShading: true,
+          roughness: 0.82,
+          metalness: 0.22,
         });
-        const hopperMat = new THREE.MeshStandardMaterial({
+        const panelMat = new THREE.MeshStandardMaterial({
           color: 0x7a8a63,
           flatShading: true,
-          roughness: 0.85,
+          roughness: 0.78,
         });
-        [
-          [-0.28, -0.14],
-          [0.28, -0.14],
-          [-0.28, 0.14],
-          [0.28, 0.14],
-        ].forEach(([lx, lz]) => {
-          const leg = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.32, 0.05), legMat);
-          leg.position.set(lx, 0.16, lz);
+        const trimMat = new THREE.MeshStandardMaterial({
+          color: 0xb69259,
+          flatShading: true,
+          roughness: 0.72,
+        });
+
+        [-1, 0, 1].forEach((row) => {
+          const leg = new THREE.Mesh(
+            new THREE.BoxGeometry(0.09, 0.42, 0.09),
+            frameMat,
+          );
+          leg.position.set(0, 0.21, row * depth * 0.38);
           leg.castShadow = true;
           group.add(leg);
         });
+
         const trough = new THREE.Mesh(
-          new THREE.BoxGeometry(0.7, 0.14, 0.34),
-          woodMat,
+          new THREE.BoxGeometry(width, 0.28, depth),
+          trimMat,
         );
-        trough.position.y = 0.36;
+        trough.position.y = 0.5;
         trough.castShadow = true;
         trough.receiveShadow = true;
         group.add(trough);
-        const hopper = new THREE.Mesh(new THREE.ConeGeometry(0.26, 0.5, 4), hopperMat);
+
+        const processor = new THREE.Mesh(
+          new THREE.BoxGeometry(width * 0.9, height * 0.62, depth * 0.78),
+          panelMat,
+        );
+        processor.position.y = 0.72 + height * 0.31;
+        processor.castShadow = true;
+        processor.receiveShadow = true;
+        group.add(processor);
+
+        const hopper = new THREE.Mesh(
+          new THREE.CylinderGeometry(width * 0.42, width * 0.34, height * 0.45, 4),
+          panelMat,
+        );
         hopper.rotation.y = Math.PI / 4;
-        hopper.position.y = 0.78;
+        hopper.position.y = height * 1.18;
         hopper.castShadow = true;
         group.add(hopper);
-        const roof = new THREE.Mesh(new THREE.ConeGeometry(0.34, 0.16, 4), woodMat);
-        roof.rotation.y = Math.PI / 4;
-        roof.position.y = 1.08;
-        roof.castShadow = true;
-        group.add(roof);
+
+        // 橫向輸送管從設備右側接進小屋左牆。
+        const feedPipe = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.12, 0.12, 1.05, 8),
+          frameMat,
+        );
+        feedPipe.rotation.z = Math.PI / 2;
+        feedPipe.position.set(0.52, 0.82, 0);
+        feedPipe.castShadow = true;
+        group.add(feedPipe);
+
+        // 三個檢修面板讓長設備看起來是一整套加工機，而不是放大的單一漏斗。
+        [-0.28, 0, 0.28].forEach((ratio) => {
+          const panel = new THREE.Mesh(
+            new THREE.BoxGeometry(0.04, 0.34, depth * 0.2),
+            trimMat,
+          );
+          panel.position.set(-width * 0.47, 0.9, ratio * depth);
+          group.add(panel);
+        });
         group.position.set(x, 0, z);
         return group;
       }

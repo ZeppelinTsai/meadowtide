@@ -136,6 +136,7 @@ import {
   WOOD_NODES,
   STONE_NODES,
   FEEDER_VISUAL,
+  isPointInsideFeeder,
   refreshGatherNodes,
 } from "./game-state";
 
@@ -2594,7 +2595,7 @@ export function buildMap(mapName) {
 
     // 動物投餵機——放在牧場邊、穀倉門口西側，跟穀倉保持一點距離，不擋
     // 動物早晚進出的三格門口空地(見 npc-runtime.ts 的 hasPastureGrassAt)。
-    plateauGroup.add(makeAnimalFeeder(FEEDER_VISUAL.x, FEEDER_VISUAL.z));
+    plateauGroup.add(makeAnimalFeeder(FEEDER_VISUAL));
 
     // 生活區採集點：靠西側山景的開闊草地，每個半日批次各 5 木、5 石。
     WOOD_NODES.filter((n) => n.map === "livingArea").forEach((n) => {
@@ -2877,6 +2878,7 @@ export function isBlocked(mapName, x, z) {
     )
   )
     return true;
+  if (mapName === "livingArea" && isPointInsideFeeder(x, z)) return true;
   if (mapName === "livingArea" && z < 0) {
     const onNorthPlateau =
       x >= 0 && x < LAYOUT.coast.rampX && z >= northCliffEdgeZ(x) + 0.62;

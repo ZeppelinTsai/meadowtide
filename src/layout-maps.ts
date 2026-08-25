@@ -11,7 +11,7 @@ import { repaintRegion } from "./region-paint";
       export const LAYOUT = {
         // 北側新增 5 排：動物區留在新空間，其餘舊區域整體往南順延。
         house: { x: 20, z: 9 + NORTH_EXPANSION, w: 3, d: 2, doorX: 21, visualScale: 2, doorWorldHeight: 1.05 },
-        barn: { x: 23, z: -2, w: 3, d: 2, doorX: 24, visualScale: 2, doorWorldHeight: 1.05 }, // 整座動物小屋向北移 3 格
+        barn: { x: 20, z: -2, w: 3, d: 2, doorX: 21, visualScale: 2, doorWorldHeight: 1.05 }, // 整座動物小屋向左移 3 格
         pasture: { x: 17, z: -2, width: 15, height: 16 }, // 延伸到小屋左右，外緣由渲染做不規則化
         orchard: {
           x: 28,
@@ -1020,9 +1020,20 @@ import { repaintRegion } from "./region-paint";
           new Array(northRowWidth).fill(0),
         ),
       );
-      for (let z = 1 + NORTH_EXPANSION; z <= 3 + NORTH_EXPANSION; z++) {
-        for (let x = LAYOUT.barn.x; x < LAYOUT.barn.x + LAYOUT.barn.w; x++)
-          MAPS.livingArea.tiles[z][x] = 0;
+      // 先清掉牧場範圍內所有舊建築 tile，再依 LAYOUT.barn 重畫；否則小屋
+      // 橫向搬家時只清新位置，舊位置會留下不可見碰撞。
+      for (
+        let z = Math.max(0, LAYOUT.pasture.z);
+        z < Math.min(MAPS.livingArea.tiles.length, LAYOUT.pasture.z + LAYOUT.pasture.height);
+        z++
+      ) {
+        for (let x = LAYOUT.pasture.x; x < LAYOUT.pasture.x + LAYOUT.pasture.width; x++) {
+          if (
+            MAPS.livingArea.tiles[z]?.[x] === 1 ||
+            MAPS.livingArea.tiles[z]?.[x] === 3
+          )
+            MAPS.livingArea.tiles[z][x] = 0;
+        }
       }
       for (let z = LAYOUT.barn.z; z < LAYOUT.barn.z + LAYOUT.barn.d; z++) {
         if (z < 0 || z >= MAPS.livingArea.tiles.length) continue;

@@ -4,6 +4,7 @@ import { LAYOUT, MAPS, isInsideLakeShape } from "./layout-maps";
 import { npcs, hasPastureGrassAt } from "./npc-runtime";
 import { syncFarmVisuals } from "./farm-visuals";
 import { createWeatherSchedule } from "./weather-schedule";
+import { getScaledBuildingBounds } from "./building-scale";
 export { MAX_EXTREME_WEATHER_PER_SEASON } from "./weather-schedule";
 
 // ==============================================================
@@ -473,7 +474,21 @@ export function isOysterRackReady() {
 // 放在牧場邊、穀倉門口(BARN_DOOR)西側，跟穀倉保持距離，不擋動物早晚
 // 進出的門口空地——座標選在生活區西側開闊草地，已用 map-debug 確認是
 // 平坦草地(tile===0)、不在任何建築/牧草禁區範圍內。
-export const FEEDER_VISUAL = { x: 21, z: 1 };
+const barnVisualBounds = getScaledBuildingBounds(LAYOUT.barn);
+export const FEEDER_VISUAL = Object.freeze({
+  x: barnVisualBounds.minX - 0.5,
+  z: barnVisualBounds.centerZ,
+  width: 0.9,
+  depth: (barnVisualBounds.maxZ - barnVisualBounds.minZ) * 0.9,
+  height: 1.45,
+  interactionRadius: 2.25,
+});
+export function isPointInsideFeeder(x: number, z: number) {
+  return (
+    Math.abs(x - FEEDER_VISUAL.x) <= FEEDER_VISUAL.width / 2 + 0.06 &&
+    Math.abs(z - FEEDER_VISUAL.z) <= FEEDER_VISUAL.depth / 2 + 0.06
+  );
+}
 export const FEEDER_CAPACITY = 99;
 export const FEEDER_REGRAZE_DAYS = 3;
 export const pastureDepletedTiles: Record<string, number> = {};
