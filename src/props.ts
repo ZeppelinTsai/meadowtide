@@ -966,23 +966,62 @@ export function makeWoodPlankTexture({
         return group;
       }
 
-      // 牡蠣養殖架——浮筏＋垂繩，珍珠系統的採集點。跟碼頭(makeDock)同一套
-      // 木板材質，浮筏四角加圓形浮球撐著漂在水面上，繩子垂下去掛著一串串
-      // 牡蠣殼(用 IcosahedronGeometry 湊不規則的殼形，跟 makeStone 同招)。
+      // 牡蠣養殖架——浮筏＋垂繩，珍珠系統的採集點。原本是鋪滿的實心木板，
+      // 現在改成「井」字的竹枝格架：外框＋內部兩兩交叉，中間刻意留空隙，
+      // 從甲板縫隙就能隱約看到底下的海面跟垂掛的牡蠣殼，不是一整塊看不透
+      // 的平台。牡蠣殼一樣用 IcosahedronGeometry 湊不規則的殼形(跟
+      // makeStone 同招)，分成「趴在竹枝交叉點上」跟「垂進水裡」兩層。
       export function makeOysterRack(x, z) {
         const group = new THREE.Group();
-        const plankMat = new THREE.MeshStandardMaterial({ color: 0x8a6a45 });
         const raftSize = 1.3;
-        for (let i = 0; i < 4; i++) {
-          const plank = new THREE.Mesh(
-            new THREE.BoxGeometry(raftSize, 0.07, 0.28),
-            plankMat,
+        const deckY = 0.32;
+        const poleRadius = 0.035;
+
+        // 竹枝顏色每根都帶一點深淺差異(用 hash2 取偏移)，不要整批同一個
+        // 棕色，不然遠看會像一塊塑膠板，不像泡過海水、曬過太陽的真竹竿。
+        const poleBaseColor = new THREE.Color(0x8f7248);
+        const poleDarkColor = new THREE.Color(0x5f4a2c);
+        function makePole(len, seed, axis) {
+          const mat = new THREE.MeshStandardMaterial({
+            color: poleBaseColor
+              .clone()
+              .lerp(poleDarkColor, hash2(seed, 4.4) * 0.7),
+            roughness: 0.95,
+          });
+          const pole = new THREE.Mesh(
+            new THREE.CylinderGeometry(poleRadius, poleRadius * 0.85, len, 6),
+            mat,
           );
-          plank.position.set(0, 0.32, -raftSize / 2 + 0.35 + i * 0.3);
-          plank.castShadow = true;
-          plank.receiveShadow = true;
-          group.add(plank);
+          pole.rotation[axis === "x" ? "z" : "x"] = Math.PI / 2;
+          pole.castShadow = true;
+          pole.receiveShadow = true;
+          return pole;
         }
+
+        // 外框——細竹竿把四個浮桶串起來，raft 才不會看起來懸空散開。
+        [-raftSize / 2, raftSize / 2].forEach((pz, i) => {
+          const pole = makePole(raftSize, i, "x");
+          pole.position.set(0, deckY, pz);
+          group.add(pole);
+        });
+        [-raftSize / 2, raftSize / 2].forEach((px, i) => {
+          const pole = makePole(raftSize, i + 2, "z");
+          pole.position.set(px, deckY + 0.015, 0);
+          group.add(pole);
+        });
+        // 內部交叉——兩根沿 x、兩根沿 z，疊出「井」字的窗格，中間刻意留空
+        // 隙，才看得到底下的海面跟養殖繩，不是鋪滿的實心甲板。
+        [-0.32, 0.32].forEach((pz, i) => {
+          const pole = makePole(raftSize, i + 4, "x");
+          pole.position.set(0, deckY + 0.03, pz);
+          group.add(pole);
+        });
+        [-0.32, 0.32].forEach((px, i) => {
+          const pole = makePole(raftSize, i + 6, "z");
+          pole.position.set(px, deckY + 0.045, 0);
+          group.add(pole);
+        });
+
         const buoyMat = new THREE.MeshStandardMaterial({ color: 0xd9482f });
         [
           [-raftSize / 2, -raftSize / 2],
@@ -998,34 +1037,70 @@ export function makeWoodPlankTexture({
           buoy.castShadow = true;
           group.add(buoy);
         });
+
+        // 養殖繩＋牡蠣殼——沿著井字的交叉點垂下去，殼故意分成「趴在框上」
+        // 跟「垂進水裡」兩層：框上那層從甲板縫隙直接看得到，水裡那層要湊
+        // 近或角度夠斜才會露出來，呼應真的蚵架殼堆長在竹枝跟繩子上的樣子。
         const ropeMat = new THREE.MeshStandardMaterial({ color: 0x3a3226 });
         const shellMat = new THREE.MeshStandardMaterial({
-          color: 0x5c5a52,
+          color: 0x8f9188,
           flatShading: true,
           roughness: 0.9,
         });
-        [-0.4, 0, 0.4].forEach((rx, i) => {
+        const clusterSpots = [
+          [-0.32, -0.32],
+          [0.32, -0.32],
+          [-0.32, 0.32],
+          [0.32, 0.32],
+          [0, 0],
+        ];
+        clusterSpots.forEach(([rx, rz], ci) => {
           const rope = new THREE.Mesh(
-            new THREE.CylinderGeometry(0.015, 0.015, 0.5, 5),
+            new THREE.CylinderGeometry(0.014, 0.014, 0.42, 5),
             ropeMat,
           );
-          rope.position.set(rx, 0.05, 0);
+          rope.position.set(rx, deckY - 0.16, rz);
           group.add(rope);
-          for (let s = 0; s < 3; s++) {
+          // 趴在竹枝交叉點上的殼——甲板縫隙直接看得到，不用湊近角度
+          for (let s = 0; s < 2; s++) {
             const shell = new THREE.Mesh(
-              new THREE.IcosahedronGeometry(0.07 + hash2(i, s) * 0.03, 0),
+              new THREE.IcosahedronGeometry(0.06 + hash2(ci, s) * 0.025, 0),
               shellMat,
             );
             shell.position.set(
-              rx + (hash2(s, i) - 0.5) * 0.08,
-              -0.12 - s * 0.09,
-              (hash2(i * 3, s) - 0.5) * 0.08,
+              rx + (hash2(s, ci) - 0.5) * 0.1,
+              deckY + 0.05 + hash2(ci, s + 9) * 0.03,
+              rz + (hash2(ci * 3, s) - 0.5) * 0.1,
             );
-            shell.rotation.set(hash2(s, 1) * 6, hash2(s, 2) * 6, hash2(s, 3) * 6);
+            shell.rotation.set(
+              hash2(s, ci + 1) * 6,
+              hash2(s, ci + 2) * 6,
+              hash2(s, ci + 3) * 6,
+            );
+            shell.castShadow = true;
+            group.add(shell);
+          }
+          // 垂進水裡那串——沿繩子往下長，貼著海面若隱若現
+          for (let s = 0; s < 3; s++) {
+            const shell = new THREE.Mesh(
+              new THREE.IcosahedronGeometry(0.06 + hash2(ci + s, s) * 0.03, 0),
+              shellMat,
+            );
+            shell.position.set(
+              rx + (hash2(s, ci + 5) - 0.5) * 0.08,
+              deckY - 0.22 - s * 0.08,
+              rz + (hash2(ci * 3, s + 5) - 0.5) * 0.08,
+            );
+            shell.rotation.set(
+              hash2(s, ci + 4) * 6,
+              hash2(s, ci + 5) * 6,
+              hash2(s, ci + 6) * 6,
+            );
             shell.castShadow = true;
             group.add(shell);
           }
         });
+
         group.position.set(x, 0, z);
         return group;
       }
