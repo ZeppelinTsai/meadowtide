@@ -15,6 +15,8 @@
 - `src/*-quest.ts`：各角色劇情狀態機。
 - `scripts/map-debug.ts`：可直接 import 地圖資料的 Node 除錯工具。
 - `scripts/building-debug.ts`：检查缩放建筑的世界边界、门廊碰撞与最终门高。
+- `scripts/audit-raw-coordinates.ts`：掃出 `LAYOUT` 外寫死的座標，複查清單。
+- `src/region-paint.ts`、`src/map-shift.ts`：地圖區域安全重繪與座標平移工具。
 - `public/assets/`：Vite 靜態素材；程式內以 `/assets/...` 或相容打包的相對 URL 引用。
 
 所有 3D 視覺仍以程式生成的幾何圖形為主。這份筆記是接手專案前應先讀的規則與
@@ -162,6 +164,56 @@ npm run building-debug
 
 主屋、动物小屋及旧城镇每栋房屋都必须出现在报告中。改动完成后还要跑
 `npm run build`；涉及地图位置时，另按上节要求在前后跑 `map-debug`。
+
+## 地圖座標平移工具：`src/region-paint.ts`、`src/map-shift.ts`、`scripts/audit-raw-coordinates.ts`
+
+解決的是這份文件裡「除錯工具找到最後一批死資料」「除錯工具抓到另一個舊帳」
+反覆出現過的同一類問題：搬遷一個區域時，舊位置沒有真的清乾淨（湖、舊農田都
+踩過），或是有座標寫死在 `LAYOUT` 外面、搬家時完全沒被動到。單一資料源仍是
+`LAYOUT`；這三支工具不取代它，只是讓「依 `LAYOUT` 重繪」跟「整批搬遷座標」
+這兩個操作不必再靠一次性手刻陣列與人工複查。
+
+- **`src/region-paint.ts` 的 `repaintRegion(tiles, regionId, cells, newTileValue, clearTileValue?)`**：
+  安全重繪一個具名區域——先清掉這個 `regionId` 上次畫過的格子（登記表記錄，
+  不靠 tile 數值獨一無二），再畫新格子、更新登記表。**已用於**
+  `LAYOUT.farm` 的走道繪製（見 `layout-maps.ts` 裡 `farm-paths` 那段）：農田
+  走道跟一般道路共用 tile 值 `5`，不能像湖（`tile===6` 全地圖獨用）那樣直接
+  「清掉所有該數值格子」，所以之前農田搬家完全沒有清舊資料的步驟，是已知
+  但還沒發生過的坑。之後湖、行道樹等區域要不要也換成 `repaintRegion`，等
+  真的要搬家時再改，不用現在全部換掉。整包地圖重新建置時記得呼叫
+  `resetRegionPaintRegistry()`，避免登記表殘留上一輪建置的紀錄。
+- **`src/map-shift.ts` 的 `expandTileGrid(tiles, direction, amount, fillValue?)`**：
+  取代手刻 `unshift`/`push`/`splice` 陣列擴張（`NORTH_EXPANSION`、`X_OFFSET`
+  當初就是這樣手刻的）。往南／東擴張時既有內容座標不變；往北／西擴張會讓
+  既有內容整批位移，回傳值是實際位移量（收縮會被夾住，不等於輸入值）。
+  搭配 **`shiftCoordinates(targets, dx, dz)`／`shiftCoordinatesDeep(target, dx, dz)`**
+  批次位移一批帶座標的物件（只認 `x/z/x1/z1/x2/z2/fromX/fromZ/toX/toZ` 這幾組
+  鍵名，其他鍵不動）；往北擴張對應 `dz`、往西擴張對應 `dx`，只傳「這次真的
+  要一起搬」的那個 `LAYOUT` 子物件（例如只傳 `LAYOUT.oldVillage`），不要整包
+  `LAYOUT` 一起丟，否則會搬到不相干地圖的座標。
+- **`scripts/audit-raw-coordinates.ts`**：風險清單產生器，不是自動修復或
+  pass/fail 檢查（找到的項目不是 bug，只是「平移工具碰不到、要人工判斷」的
+  提醒，所以刻意不用非零退出碼失敗，跟本節下面「應以非零退出碼失敗」的
+  通則不同——原因寫在腳本開頭）。純 AST 掃描 `LAYOUT` 範圍以外、看起來像
+  座標的物件屬性與變數宣告，抓不到 `worldLeft` 這種沒有 X/Z 結尾的邊界變數，
+  當複查清單用，不是完整性保證。跑法：
+
+  ```bash
+  npm run audit-coordinates
+  ```
+
+  對 `layout-maps.ts`／`build-map.ts` 掃過一次的已知需複查項目：
+  `build-map.ts` 裡 `northSeaWestX`/`northCliffStartX`/`plazaStairsEndX` 等
+  程序化地形邊界常數、`events` 陣列裡舊城鎮南沙灘⇄港口南沙灘傳送點
+  （約 3148～3158 行，`x:23,z:36` / `x:10,z:34`）、主屋門口出口座標
+  （約 2955～2971 行）。這些搬家時不會自動跟著動，改動相關區域前先看一眼
+  這份清單。
+
+  測試：
+
+  ```bash
+  npm run test:map-tools
+  ```
 
 ## 辅助程序与新规则
 

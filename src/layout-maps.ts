@@ -1,4 +1,5 @@
 import { hash2 } from "./utils";
+import { repaintRegion } from "./region-paint";
 
 // ==============================================================
       // 統一佈局設定 —— 之後要調哪個區域的位置/大小，改這裡就好，不要再
@@ -1138,16 +1139,23 @@ import { hash2 } from "./utils";
           }
         }
       }
-      // 區塊間的走道完全由欄／排數推導，會自動貫穿整片農田。
-      for (let bc = 1; bc < FARM_ORIGIN.columns; bc++) {
-        const pathX = FARM_ORIGIN.x + bc * FARM_BLOCK_STEP - FARM_ORIGIN.gap;
-        for (let z = FARM_ORIGIN.z; z <= FARM_MAX_Z; z++)
-          MAPS.livingArea.tiles[z][pathX] = 5;
-      }
-      for (let br = 1; br < FARM_ORIGIN.rows; br++) {
-        const pathZ = FARM_ORIGIN.z + br * FARM_BLOCK_STEP - FARM_ORIGIN.gap;
-        for (let x = FARM_ORIGIN.x; x <= FARM_MAX_X; x++)
-          MAPS.livingArea.tiles[pathZ][x] = 5;
+      // 區塊間的走道完全由欄／排數推導，會自動貫穿整片農田。用 repaintRegion
+      // 記錄這次實際畫了哪些格子，下次 LAYOUT.farm 搬家、這段重新執行時會
+      // 先清掉舊格子——不能像湖那樣直接「清掉所有 tile===5」，這個值同時
+      // 被道路/樓梯/行道樹間隙共用，見 region-paint.ts 開頭的說明。
+      {
+        const farmPathCells: Array<[number, number]> = [];
+        for (let bc = 1; bc < FARM_ORIGIN.columns; bc++) {
+          const pathX = FARM_ORIGIN.x + bc * FARM_BLOCK_STEP - FARM_ORIGIN.gap;
+          for (let z = FARM_ORIGIN.z; z <= FARM_MAX_Z; z++)
+            farmPathCells.push([pathX, z]);
+        }
+        for (let br = 1; br < FARM_ORIGIN.rows; br++) {
+          const pathZ = FARM_ORIGIN.z + br * FARM_BLOCK_STEP - FARM_ORIGIN.gap;
+          for (let x = FARM_ORIGIN.x; x <= FARM_MAX_X; x++)
+            farmPathCells.push([x, pathZ]);
+        }
+        repaintRegion(MAPS.livingArea.tiles, "farm-paths", farmPathCells, 5);
       }
 
       // 湖再放大一輪，往「房子左上」拉：原本 5×4(20格)，現在 6×6(36格)。

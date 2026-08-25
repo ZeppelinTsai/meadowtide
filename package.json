@@ -12,7 +12,9 @@
     "build:win": "npm run build && electron-builder --win nsis",
     "preview": "vite preview",
     "map-debug": "tsx scripts/map-debug.ts",
-    "building-debug": "tsx scripts/building-debug.ts"
+    "building-debug": "tsx scripts/building-debug.ts",
+    "audit-coordinates": "tsx scripts/audit-raw-coordinates.ts src/layout-maps.ts src/build-map.ts",
+    "test:map-tools": "tsx --test src/region-paint.test.ts src/map-shift.test.ts"
   },
   "dependencies": {
     "three": "0.128.0"
