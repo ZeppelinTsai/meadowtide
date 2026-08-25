@@ -6,6 +6,7 @@ import {
 } from "./layout-maps";
 import { showDialog, showDialogSequence, dialogQueue } from "./dialogue";
 import { npcGroup, npcs } from "./npc-runtime";
+import { t } from "./i18n";
 
 export function carpenterHasMaterials() {
   return (
@@ -45,21 +46,30 @@ export function startCarpenterDockScene() {
     fade.style.opacity = "0";
     showDialogSequence([
       {
-        text: "「船差不多要到了。這位是……木工出身，說是想找個能重新蓋東西的地方。」",
+        text: t("carpenter.dock.mayorIntro"),
         speaker: "mayor",
-        name: "村長",
+        name: t("carpenter.name.mayor"),
       },
-      "[船靠岸，一個背著工具包的年輕人跳下船，還沒站穩就先低頭看了看腳下的木棧板]",
-      { text: "「這塊板已經鬆了。」", speaker: "carpenter" },
-      { text: "「呃——歡迎來到島上？」", speaker: "mayor", name: "村長" },
+      t("carpenter.dock.narrationArrive"),
       {
-        text: "「（蹲下，用手指按了按木板）嗯，歡迎。這個要是不修，再一個月就會有人踩空摔進海裡。」",
+        text: t("carpenter.dock.carpenterPlank"),
         speaker: "carpenter",
+        name: t("carpenter.name.carpenter"),
       },
       {
-        text: "「（苦笑）他就是這樣。走吧，先帶他去看看能住的地方。」",
+        text: t("carpenter.dock.mayorWelcome"),
         speaker: "mayor",
-        name: "村長",
+        name: t("carpenter.name.mayor"),
+      },
+      {
+        text: t("carpenter.dock.carpenterKneel"),
+        speaker: "carpenter",
+        name: t("carpenter.name.carpenter"),
+      },
+      {
+        text: t("carpenter.dock.mayorLaugh"),
+        speaker: "mayor",
+        name: t("carpenter.name.mayor"),
       },
     ]);
   }, 400);
@@ -72,8 +82,9 @@ export function tryStartCarpenterConstruction() {
   if (!carpenterHasMaterials()) {
     carpenterQuest.stage = "escorting";
     showDialog({
-      text: "「這樣還不夠，等你準備齊了再來找我。」",
+      text: t("carpenter.materialsNotEnough"),
       speaker: "carpenter",
+      name: t("carpenter.name.carpenter"),
     });
     return;
   }
@@ -90,12 +101,14 @@ export function tryStartCarpenterConstruction() {
   npcGroup.visible = true;
   showDialogSequence([
     {
-      text: "「夠了。剩下的我自己來——不是不信任你，是這種事我習慣自己看著。」",
+      text: t("carpenter.construction.start1"),
       speaker: "carpenter",
+      name: t("carpenter.name.carpenter"),
     },
     {
-      text: "「你要是哪天閒著沒事，可以來看看。我大概不會跟你聊天，但可以讓你看我怎麼修。」",
+      text: t("carpenter.construction.start2"),
       speaker: "carpenter",
+      name: t("carpenter.name.carpenter"),
     },
   ]);
 }
@@ -108,22 +121,33 @@ export function startCarpenterVillageScene() {
   }
   showDialogSequence(
     [
-      "[木匠一路經過每一戶空屋都會放慢腳步看兩眼]",
+      t("carpenter.village.narrationWalk"),
       {
-        text: "「（自言自語）這間的地基還行……這間屋頂大概撐不過下一次颱風。」",
+        text: t("carpenter.village.mutter"),
         speaker: "carpenter",
+        name: t("carpenter.name.carpenter"),
       },
-      "[抵達指定的空屋，他站在門口看了很久，沒有立刻進去]",
-      "玩家：「這間怎麼樣？」",
-      { text: "「……可以。」", speaker: "carpenter" },
+      t("carpenter.village.narrationDoor"),
+      t("carpenter.village.playerAsk"),
       {
-        text: "「我蓋過不少房子。別人的。這是第一次要蓋一間，是我自己要住的。」",
+        text: t("carpenter.village.ok"),
         speaker: "carpenter",
+        name: t("carpenter.name.carpenter"),
       },
-      { text: "「有點奇怪。」", speaker: "carpenter" },
       {
-        text: "「材料的話——木材跟石材，能給我多少？」",
+        text: t("carpenter.village.builtMany"),
         speaker: "carpenter",
+        name: t("carpenter.name.carpenter"),
+      },
+      {
+        text: t("carpenter.village.odd"),
+        speaker: "carpenter",
+        name: t("carpenter.name.carpenter"),
+      },
+      {
+        text: t("carpenter.village.materialsAsk"),
+        speaker: "carpenter",
+        name: t("carpenter.name.carpenter"),
       },
     ],
     tryStartCarpenterConstruction,
@@ -132,13 +156,14 @@ export function startCarpenterVillageScene() {
 export function startCarpenterMoveInScene() {
   carpenterQuest.stage = "moved_in";
   showDialogSequence([
-    "[窗戶第一次亮起燈，木匠站在自己家門口，看著屋裡的光]",
+    t("carpenter.moveIn.narrationLight"),
     {
       // 這是刻意選定的「關鍵劇情節點」CG 掛點：入住當晚的收尾這一句份量
       // 夠重，值得全螢幕 CG。圖檔還沒生成，src/assets/cg/ 沒有對應檔案
       // 時 setDialogCg() 會 warn 一聲然後留在原本的 3D 畫面，不會卡住。
-      text: "「這是我這輩子第一次，晚上回家的時候，知道裡面沒有別人在等我驗收。」",
+      text: t("carpenter.moveIn.final"),
       speaker: "carpenter",
+      name: t("carpenter.name.carpenter"),
       cg: "carpenter_movein",
     },
   ]);

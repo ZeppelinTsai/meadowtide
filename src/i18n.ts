@@ -1,0 +1,225 @@
+// i18n.ts — 語言系統骨架。目前只有木匠事件（src/carpenter-quest.ts）真的
+// 掛了三種語言的翻譯，其餘對話（NPC 閒聊、其他角色事件）仍是純中文字串，
+// 這是刻意的試點範圍，不是遺漏。之後要幫哪個場景上多語言，把該場景的
+// 字串改成 t("key") 呼叫、把對應翻譯加進下面 TRANSLATIONS 就好，不用
+// 動這個檔案的 t()/setLocale() 本體。
+//
+// 使用方式（瀏覽器 devtools console，遊戲跑起來之後就能打）：
+//   meadowtideI18n.setLocale("en")   // 切到英文
+//   meadowtideI18n.setLocale("ja")   // 切到日文
+//   meadowtideI18n.setLocale("zh")   // 切回中文（預設）
+//   meadowtideI18n.getLocale()       // 查目前語言
+//   meadowtideI18n.locales           // 列出支援的語言代碼
+//
+// 已知限制（現階段刻意簡化，不是 bug）：
+// - 語言只在「下一次觸發新對話」時生效，已經顯示在畫面上的對話框不會
+//   即時重繪成新語言——因為 dialogue.ts 的 showDialogSequence() 是把整段
+//   對話陣列在觸發當下算好存進 dialogQueue，t() 只在那個當下被呼叫一次。
+// - 沒有持久化：重新整理頁面、或存讀檔，都會回到預設語言 zh；正式的語言
+//   選單（UI、記住玩家選擇存進存檔）之後有需求再做。
+// - 沒有處理立繪/CG 檔名依語言切換——目前所有語言共用同一套
+//   public/assets/portraits、public/assets/cg，不用另外準備多語言素材。
+
+export type Locale = "zh" | "en" | "ja";
+export const SUPPORTED_LOCALES: Locale[] = ["zh", "en", "ja"];
+export const DEFAULT_LOCALE: Locale = "zh";
+
+let currentLocale: Locale = DEFAULT_LOCALE;
+
+export function getLocale(): Locale {
+  return currentLocale;
+}
+
+export function setLocale(locale: string): boolean {
+  if (!SUPPORTED_LOCALES.includes(locale as Locale)) {
+    console.warn(
+      `[i18n] 不支援的語言代碼 "${locale}"，可用：${SUPPORTED_LOCALES.join(", ")}`,
+    );
+    return false;
+  }
+  currentLocale = locale as Locale;
+  console.log(
+    `[i18n] 語言已切換為 "${currentLocale}"（下一次觸發的對話會套用新語言）`,
+  );
+  return true;
+}
+
+type TranslationTree = { [key: string]: string | TranslationTree };
+
+function resolve(tree: TranslationTree, path: string[]): string | undefined {
+  let node: string | TranslationTree | undefined = tree;
+  for (const part of path) {
+    if (typeof node !== "object" || node === null) return undefined;
+    node = node[part];
+  }
+  return typeof node === "string" ? node : undefined;
+}
+
+/**
+ * 依目前語言查翻譯字串；key 用點分隔對應巢狀結構，例如
+ * "carpenter.dock.mayorIntro"。查不到目前語言的翻譯會退回 DEFAULT_LOCALE
+ * （中文），兩邊都查不到就直接回傳 key 本身並在 console 警告——這樣缺翻譯
+ * 時畫面上會出現看得懂是哪一句缺的 key，不會整個對話框空白或噴例外。
+ */
+export function t(key: string): string {
+  const path = key.split(".");
+  const direct = resolve(TRANSLATIONS[currentLocale], path);
+  if (direct !== undefined) return direct;
+  const fallback = resolve(TRANSLATIONS[DEFAULT_LOCALE], path);
+  if (fallback !== undefined) {
+    console.warn(`[i18n] "${key}" 缺少 "${currentLocale}" 翻譯，改用預設語言。`);
+    return fallback;
+  }
+  console.warn(`[i18n] 找不到翻譯鍵 "${key}"`);
+  return key;
+}
+
+// ==============================================================
+// 翻譯內容——目前只有 carpenter.* 這一組（對應 src/carpenter-quest.ts
+// 的四段對話 + 材料不足提示 + 名牌），是第一個試點，用來驗證整套
+// key/查表/console 切換語言的機制堪用。其他事件（例如之後的 chef.*）要
+// 上多語言時，比照這個結構在下面新增一個頂層 key 就好。
+// ==============================================================
+const TRANSLATIONS: Record<Locale, TranslationTree> = {
+  zh: {
+    carpenter: {
+      name: { mayor: "村長", carpenter: "木匠" },
+      dock: {
+        mayorIntro:
+          "「船差不多要到了。這位是……木工出身，說是想找個能重新蓋東西的地方。」",
+        narrationArrive:
+          "[船靠岸，一個背著工具包的年輕人跳下船，還沒站穩就先低頭看了看腳下的木棧板]",
+        carpenterPlank: "「這塊板已經鬆了。」",
+        mayorWelcome: "「呃——歡迎來到島上？」",
+        carpenterKneel:
+          "「（蹲下，用手指按了按木板）嗯，歡迎。這個要是不修，再一個月就會有人踩空摔進海裡。」",
+        mayorLaugh: "「（苦笑）他就是這樣。走吧，先帶他去看看能住的地方。」",
+      },
+      materialsNotEnough: "「這樣還不夠，等你準備齊了再來找我。」",
+      construction: {
+        start1:
+          "「夠了。剩下的我自己來——不是不信任你，是這種事我習慣自己看著。」",
+        start2:
+          "「你要是哪天閒著沒事，可以來看看。我大概不會跟你聊天，但可以讓你看我怎麼修。」",
+      },
+      village: {
+        narrationWalk: "[木匠一路經過每一戶空屋都會放慢腳步看兩眼]",
+        mutter:
+          "「（自言自語）這間的地基還行……這間屋頂大概撐不過下一次颱風。」",
+        narrationDoor: "[抵達指定的空屋，他站在門口看了很久，沒有立刻進去]",
+        playerAsk: "玩家：「這間怎麼樣？」",
+        ok: "「……可以。」",
+        builtMany:
+          "「我蓋過不少房子。別人的。這是第一次要蓋一間，是我自己要住的。」",
+        odd: "「有點奇怪。」",
+        materialsAsk: "「材料的話——木材跟石材，能給我多少？」",
+      },
+      moveIn: {
+        narrationLight: "[窗戶第一次亮起燈，木匠站在自己家門口，看著屋裡的光]",
+        final:
+          "「這是我這輩子第一次，晚上回家的時候，知道裡面沒有別人在等我驗收。」",
+      },
+    },
+  },
+  en: {
+    carpenter: {
+      name: { mayor: "Mayor", carpenter: "Carpenter" },
+      dock: {
+        mayorIntro:
+          '"The ferry should be here soon. This is... a carpenter by trade — he says he\'s looking for a place where he can rebuild things."',
+        narrationArrive:
+          "[The boat docks. A young man with a tool bag slung over his shoulder jumps off, and before he's even steadied himself, he's already looking down at the boards under his feet.]",
+        carpenterPlank: '"This board\'s come loose."',
+        mayorWelcome: '"Uh — welcome to the island?"',
+        carpenterKneel:
+          '"(Crouches down, presses a finger against the plank) Mm. Welcome. If this isn\'t fixed, someone\'s going to step through it and fall into the sea within a month."',
+        mayorLaugh:
+          '"(Wry smile) That\'s just how he is. Come on, let\'s show him somewhere he could live."',
+      },
+      materialsNotEnough:
+        '"That\'s not enough yet. Come find me again once you\'ve got the rest."',
+      construction: {
+        start1:
+          '"That\'s enough. I\'ll take it from here myself — it\'s not that I don\'t trust you, I just prefer to watch this kind of thing with my own eyes."',
+        start2:
+          '"If you\'re ever free with nothing to do, feel free to stop by. I probably won\'t talk much, but you can watch how I work."',
+      },
+      village: {
+        narrationWalk:
+          "[The carpenter slows down in front of every empty house along the way, giving each one a long look.]",
+        mutter:
+          '"(Mutters to himself) This one\'s foundation is decent... that roof over there probably won\'t survive the next typhoon."',
+        narrationDoor:
+          "[He arrives at the designated empty house and stands at the door for a long while without going in.]",
+        playerAsk: 'You: "What do you think of this one?"',
+        ok: '"...It\'ll do."',
+        builtMany:
+          '"I\'ve built plenty of houses. For other people. This is the first time I\'m building one for myself to live in."',
+        odd: '"Feels strange."',
+        materialsAsk:
+          '"About the materials — wood and stone, how much can you spare?"',
+      },
+      moveIn: {
+        narrationLight:
+          "[The window lights up for the first time. The carpenter stands at his own front door, looking at the light spilling out from inside.]",
+        final:
+          '"This is the first time in my life that, coming home at night, I know there\'s no one inside waiting to inspect my work."',
+      },
+    },
+  },
+  ja: {
+    carpenter: {
+      name: { mayor: "村長", carpenter: "大工" },
+      dock: {
+        mayorIntro:
+          "「そろそろ船が着く頃だ。この人は……大工の出で、何か建て直せる場所を探しているらしい。」",
+        narrationArrive:
+          "[船が着岸し、道具袋を背負った若者が飛び降りる。体勢を整える前に、まず足元の桟橋の板を見下ろした]",
+        carpenterPlank: "「この板、緩んでるな。」",
+        mayorWelcome: "「え——島へようこそ、かな？」",
+        carpenterKneel:
+          "「（しゃがんで指で板を押してみる）ふむ、ようこそ。これを直さなきゃ、来月には誰か踏み抜いて海に落ちるぞ。」",
+        mayorLaugh: "「（苦笑い）彼はいつもこうなんだ。行こう、まずは住める場所を案内しよう。」",
+      },
+      materialsNotEnough: "「これじゃまだ足りない。揃ったらまた来てくれ。」",
+      construction: {
+        start1:
+          "「もう十分だ。あとは自分でやる——信用してないわけじゃない、こういうことは自分の目で見ながらやる質でね。」",
+        start2:
+          "「暇な時にでも見に来るといい。あまり喋らないと思うが、どう直すか見せてやれる。」",
+      },
+      village: {
+        narrationWalk: "[木匠は道すがら、どの空き家の前でも歩みを緩めて二度見していく]",
+        mutter:
+          "「（独り言）この家の基礎はまだいい……あっちの屋根は次の台風は持たないだろうな。」",
+        narrationDoor:
+          "[目当ての空き家に着くと、彼は戸口でしばらく立ち止まり、すぐには中に入らなかった]",
+        playerAsk: "主人公：「この家、どう思う？」",
+        ok: "「……悪くない。」",
+        builtMany:
+          "「今まで何軒も家を建ててきた。全部人のためにだ。自分が住む家を建てるのは、これが初めてだ。」",
+        odd: "「なんだか変な感じだ。」",
+        materialsAsk: "「材料の話だが——木材と石材、どれくらい用意できる？」",
+      },
+      moveIn: {
+        narrationLight: "[初めて窓に明かりが灯る。木匠は自分の家の前に立ち、中から漏れる光を見つめていた]",
+        final:
+          "「夜に家へ帰って、中で誰も俺の仕事を検分して待っていない——そう思えたのは、生まれて初めてだ。」",
+      },
+    },
+  },
+};
+
+// ==============================================================
+// 瀏覽器 console 切換語言的入口。刻意不寫成 Vite 環境變數或正式 UI
+// 選單——現階段只是給你在瀏覽器開發者工具手動測試多語言對話用，正式的
+// 語言選單（UI、記住玩家選擇存進存檔）之後有需求再做。guard 住
+// typeof window，避免這個模組萬一被 Node 腳本 import 時噴錯。
+// ==============================================================
+if (typeof window !== "undefined") {
+  (window as any).meadowtideI18n = {
+    setLocale,
+    getLocale,
+    locales: SUPPORTED_LOCALES,
+  };
+}
