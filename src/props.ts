@@ -3637,6 +3637,73 @@ export function makeWoodPlankTexture({
           rug.position.y = 0.015;
           rug.receiveShadow = true;
           g.add(rug);
+        } else if (item.type === "stove") {
+          // 通用料理系統的互動點——爐台本體+一口鍋，鍋底一圈常亮的暖色
+          // emissive 代表爐火，不用另外做真的火焰粒子。跟採集點的
+          // 「今天能不能用」發光不同，這裡沒有每日限制(食材夠不夠才是
+          // 唯一限制)，所以固定亮著，不用 game-loop.ts 逐幀調整。
+          const body = new THREE.Mesh(
+            new THREE.BoxGeometry(0.62, 0.46, 0.5),
+            new THREE.MeshStandardMaterial({ color: 0x4a4a4d, flatShading: true }),
+          );
+          body.position.y = 0.23;
+          body.castShadow = true;
+          body.receiveShadow = true;
+          g.add(body);
+          const stovetop = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.16, 0.18, 0.05, 10),
+            new THREE.MeshStandardMaterial({
+              color: 0x2c2c2e,
+              roughness: 0.7,
+              emissive: new THREE.Color(0xff7a3c),
+              emissiveIntensity: 0.4,
+            }),
+          );
+          stovetop.position.y = 0.48;
+          g.add(stovetop);
+          const pot = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.13, 0.14, 0.16, 10),
+            new THREE.MeshStandardMaterial({ color: 0x6b6f76, metalness: 0.3, roughness: 0.6 }),
+          );
+          pot.position.y = 0.58;
+          pot.castShadow = true;
+          g.add(pot);
+          const potHandleMat = new THREE.MeshStandardMaterial({ color: 0x3a3a3c });
+          [-0.14, 0.14].forEach((hx) => {
+            const handle = new THREE.Mesh(new THREE.SphereGeometry(0.025, 6, 5), potHandleMat);
+            handle.position.set(hx, 0.58, 0);
+            g.add(handle);
+          });
+        } else if (item.type === "counter") {
+          // 流理台——純裝飾，跟爐台湊出「廚房一角」；上面擺一顆砧板+兩顆
+          // 蔬果球體，暗示這裡是備料檯，不用真的做寫實食材模型。
+          const top = new THREE.Mesh(
+            new THREE.BoxGeometry(0.7, 0.44, 0.5),
+            new THREE.MeshStandardMaterial({ color: 0xc9a877, flatShading: true }),
+          );
+          top.position.y = 0.22;
+          top.castShadow = true;
+          top.receiveShadow = true;
+          g.add(top);
+          const board = new THREE.Mesh(
+            new THREE.BoxGeometry(0.32, 0.02, 0.22),
+            new THREE.MeshStandardMaterial({ color: 0xdac496 }),
+          );
+          board.position.set(-0.08, 0.45, 0.05);
+          board.receiveShadow = true;
+          g.add(board);
+          [
+            { x: 0.16, z: -0.08, color: 0xd2483a },
+            { x: 0.2, z: 0.08, color: 0xe0a934 },
+          ].forEach((v) => {
+            const veg = new THREE.Mesh(
+              new THREE.SphereGeometry(0.06, 7, 6),
+              new THREE.MeshStandardMaterial({ color: v.color, flatShading: true }),
+            );
+            veg.position.set(v.x, 0.5, v.z);
+            veg.castShadow = true;
+            g.add(veg);
+          });
         }
         return g;
       }

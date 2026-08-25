@@ -112,6 +112,9 @@ export const inventory = {
   wood: 10,
   stone: 5,
   oysters: 0,
+  // 料理成品——跟其他資源不同，種類不只一種，所以用「食譜 id -> 數量」
+  // 的表，不是單一數字。哪個 id 對應哪道菜看下面的 RECIPES。
+  dishes: {} as Record<string, number>,
 };
 export const cropState: Record<string, { stage: number; plantedDay: number }> =
   {};
@@ -647,3 +650,74 @@ export function harvestGatherNode(kind: GatherKind, x: number, z: number) {
   return amount;
 }
 refreshGatherNodes();
+
+// ==============================================================
+// 通用料理系統——房子廚房的爐台前按 E 直接開煮，不做選單：自動挑目前
+// 食材做得出、等級最高的那一道，跟採集/牡蠣「靠近按 E 就決定結果」是
+// 同一套互動慣例。等級(普通/喜歡/最愛)沿用 task.md 好感度禮物的同一套
+// 詞彙，之後要把煮好的成品拿去當贈禮用，不用再另外設計一套料理品質
+// 稱呼。食材只吃得到已經有型別的資源(收成/魚/牡蠣)，作物種類還沒分
+// 型，所以先不分蔬菜/肉類這種更細的食譜條件。
+// ==============================================================
+export interface Recipe {
+  id: string;
+  name: string;
+  tier: "普通" | "喜歡" | "最愛";
+  cost: Partial<Record<"harvested" | "fish" | "oysters", number>>;
+}
+export const RECIPES: Recipe[] = [
+  { id: "grilledVeggie", name: "烤蔬菜", tier: "普通", cost: { harvested: 2 } },
+  { id: "seafoodSoup", name: "海鮮湯", tier: "普通", cost: { fish: 2 } },
+  { id: "garlicGreens", name: "蒜炒野菜", tier: "喜歡", cost: { harvested: 3 } },
+  { id: "bakedOyster", name: "奶油烤牡蠣", tier: "喜歡", cost: { oysters: 2 } },
+  {
+    id: "islandPlatter",
+    name: "島嶼海鮮拼盤",
+    tier: "最愛",
+    cost: { fish: 2, oysters: 1, harvested: 1 },
+  },
+];
+const RECIPE_TIER_RANK: Record<Recipe["tier"], number> = {
+  最愛: 2,
+  喜歡: 1,
+  普通: 0,
+};
+
+function canAffordRecipe(recipe: Recipe) {
+  return (Object.entries(recipe.cost) as [keyof typeof recipe.cost, number][]).every(
+    ([key, amount]) => inventory[key as "harvested" | "fish" | "oysters"] >= amount,
+  );
+}
+
+// 爐台前按 E 呼叫——食材做得出的食譜裡挑等級最高的那個，同等級照
+// RECIPES 陣列順序(陣列本身已經照「越晚出現越講究」排好)挑第一個；
+// 一道都做不出來就回傳 null，並丟出提示今天食材不夠。
+export function cookMeal(): Recipe | null {
+  const affordable = RECIPES.filter(canAffordRecipe).sort(
+    (a, b) => RECIPE_TIER_RANK[b.tier] - RECIPE_TIER_RANK[a.tier],
+  );
+  const recipe = affordable[0];
+  if (!recipe) {
+    gameState.harvestFeedback = {
+      kind: "empty",
+      title: "廚房",
+      text: "食材不夠，煮不出任何一道菜",
+      until: gameState.elapsed + 2.6,
+    };
+    return null;
+  }
+  (Object.entries(recipe.cost) as ["harvested" | "fish" | "oysters", number][]).forEach(
+    ([key, amount]) => {
+      inventory[key] -= amount;
+    },
+  );
+  inventory.dishes[recipe.id] = (inventory.dishes[recipe.id] || 0) + 1;
+  gameState.harvestFeedback = {
+    kind: "success",
+    title: "料理完成",
+    text: `${recipe.name}（${recipe.tier}）×1`,
+    until: gameState.elapsed + 2.6,
+  };
+  return recipe;
+}
+

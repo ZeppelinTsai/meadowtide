@@ -950,6 +950,11 @@ import { repaintRegion } from "./region-paint";
             { type: "chair", x: 5, z: 3, rot: Math.PI },
             { type: "chair", x: 6, z: 2, rot: -Math.PI / 2 },
             { type: "rug", x: 3, z: 3, nonBlocking: true },
+            // 廚房——擴建進西牆那扇窗(見上面 windows 的 (0,4) west)旁邊本來
+            // 空著的走道地板，不用擴建房子本體格局。爐台是真正的互動點，
+            // 流理台純裝飾，兩格湊出「廚房一角」的感覺就好，不用整排櫥櫃。
+            { type: "stove", x: 1, z: 4 },
+            { type: "counter", x: 2, z: 4 },
           ],
           playerStart: { x: 3, z: 5 },
         },

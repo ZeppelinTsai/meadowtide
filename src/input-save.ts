@@ -24,6 +24,7 @@ import {
   STONE_NODES,
   harvestGatherNode,
   refreshGatherNodes,
+  cookMeal,
 } from "./game-state";
 import { updateSeasonAndDate } from "./game-clock";
 import {
@@ -441,6 +442,19 @@ addEventListener("keydown", (e) => {
     }
   }
 
+  // 廚房爐台——房子裡按 E 就直接開煮(見 MAPS.house.furniture 的
+  // stove)，跟採集點同一種曼哈頓距離<=1 判定，不用另外做選單。
+  if (gameState.currentMapName === "house") {
+    const { x: hx, z: hz } = gameState.playerGridPos;
+    const stove = (MAPS.house.furniture || []).find(
+      (item) => item.type === "stove",
+    );
+    if (stove && Math.abs(stove.x - hx) + Math.abs(stove.z - hz) <= 1) {
+      cookMeal();
+      return;
+    }
+  }
+
   if (gameState.currentMapName === "livingArea" && nearWater()) {
     if (gameState.fishingState === "idle") {
       gameState.fishingState = "casting";
@@ -563,5 +577,5 @@ export function updateHud() {
   hudEl.dataset.nightFactor = ((window as any).__nightFactor || 0).toFixed(3);
   const meteorShowerLabel = getMeteorShowerHudLabel();
   const weatherLabel = `${WEATHER_NAMES[gameState.currentWeather]}${meteorShowerLabel ? `・<b style="color:#a9d8ff">${meteorShowerLabel}</b>` : ""}`;
-  hudEl.innerHTML = `${SEASON_NAMES[gameState.currentSeason]}季 ・ 第 <b>${getSeasonDay()}</b> 日（${getSeasonPeriod()}）・ ${weatherLabel} ・ ${String(hh).padStart(2, "0")}:${String(mm).padStart(2, "0")}${gameState.musicMuted ? " ・ 靜音" : ""}<br>種子 <b>${inventory.seeds}</b> ・ 收成 <b>${inventory.harvested}</b> ・ 魚 <b>${inventory.fish}</b><br>村長印象 <b>${npcs[0].memory}</b> ・ 木匠印象 <b>${npcs[1].memory}</b>`;
+  hudEl.innerHTML = `${SEASON_NAMES[gameState.currentSeason]}季 ・ 第 <b>${getSeasonDay()}</b> 日（${getSeasonPeriod()}）・ ${weatherLabel} ・ ${String(hh).padStart(2, "0")}:${String(mm).padStart(2, "0")}${gameState.musicMuted ? " ・ 靜音" : ""}<br>種子 <b>${inventory.seeds}</b> ・ 收成 <b>${inventory.harvested}</b> ・ 魚 <b>${inventory.fish}</b> ・ 料理 <b>${Object.values(inventory.dishes).reduce((a, b) => a + b, 0)}</b><br>村長印象 <b>${npcs[0].memory}</b> ・ 木匠印象 <b>${npcs[1].memory}</b>`;
 }
