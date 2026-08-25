@@ -87,7 +87,7 @@ import { repaintRegion } from "./region-paint";
           visualWidth: 1.45,
         },
         oldVillage: {
-          width: 47,
+          width: 77,
           // 整個城鎮(除了南側新沙灘)統一墊高 1(mountainLanding/upper/middle/
           // 廣場預設地面 groundElevation 全部各自 +1)，保留原本的三層地形
           // 相對關係，不是把 middle 跟廣場拉平到同一層——第一版誤把兩者拉
@@ -108,48 +108,72 @@ import { repaintRegion } from "./region-paint";
           // makeSand()/水面貼圖寫死的海平面基準一致。
           height: 64,
           groundElevation: 1,
-          southBeach: { x: 0, z: 30, width: 47, depth: 30 },
-          westExpansion: 6,
-          houseVisualScale: 1.5,
-          houseDoorWorldHeight: 1.05,
-          livingGate: { x: 33, z: 0, width: 3 },
-          portGate: {
-            x: 46,
-            z: 4,
+          southBeach: { x: 30, z: 30, width: 47, depth: 30 },
+          // 西側新沙灘——跟南側新沙灘同一套「先鋪滿整段海，再依座標算
+          // 鋸齒岸線疊沙」寫法（見 makeOldVillageTiles()/
+          // oldVillageWestBeachStartX()），只是換成沿 z 逐排、往東(靠近
+          // 城鎮那側)疊沙、往西(x=0，地圖真正邊界)維持海。寬度(30 格)
+          // 跟南側沙灘的 depth 同一個數字，純粹是這次需求指定的量，不是
+          // 公式推導出來的巧合。加了這塊之後，原本西側(westStairs/
+          // mountainGate/houses…)全部整批 +30，把 x=0~29 空出來給沙灘，
+          // 不是在原地改地形——用法比照 map-shift.ts 的
+          // shiftRegisteredMap(西移 amount=30)：地磚陣列往西 unshift 30
+          // 欄，這張地圖底下所有帶 x 座標的資料(這個物件本身、
+          // MAPS.oldVillage.placeholders/houses)全部同步 +30，這次是手動
+          // 展開改在這份字面量裡，沒有真的呼叫那個 runtime 工具——
+          // build-map.ts 那邊有幾個沒有走 LAYOUT 的寫死 x 數字(三塊
+          // addTerrace 的 xStart、OLD_VILLAGE_RAILS 前兩段)另外手動對應
+          // 調整，這個工具目前不會幫忙掃到那些。
+          westBeach: { x: 0, z: 0, width: 30, height: 64 },
+          southwestSeaCutout: {
+            x: 11,
+            z: 38,
+            upperCoreEndX: 16,
+            deepStartZ: 45,
+            deepCoreEndX: 29,
             height: 26,
           },
-          mountainRoad: { x: 3, z: 29, width: 3 },
-          mountainGate: { x: 1, z: 0 },
-          mountainArrival: { x: 1, z: 1 },
-          southBeachGate: { x: 23, z: 36 },
-          southBeachArrival: { x: 23, z: 34 },
-          plaza: { x: 28, z: 4, width: 18, height: 22 },
+          westExpansion: 36,
+          houseVisualScale: 1.5,
+          houseDoorWorldHeight: 1.05,
+          livingGate: { x: 63, z: 0, width: 3 },
+          portGate: {
+            x: 76,
+            z: 4,
+            height: 44,
+            beachStartZ: 30,
+            beachEndZ: 47,
+          },
+          mountainRoad: { x: 33, z: 29, width: 3 },
+          mountainGate: { x: 31, z: 0 },
+          mountainArrival: { x: 31, z: 1 },
+          plaza: { x: 58, z: 4, width: 18, height: 22 },
           // 統一 +1：upper 2→3、middle 1→2，跟 mountainLanding(3→4)、
           // groundElevation(=1，廣場預設地面)保持原本一路遞減的相對關係，
           // 三層地形＋廣場的落差都還在，只是整體墊高了一階。
           terraces: {
             upper: { maxZ: 9, elevation: 3 },
             middle: { minZ: 10, maxZ: 19, elevation: 2 },
-            westEdge: 27.5,
+            westEdge: 57.5,
           },
-          mountainLanding: { x: 0, z: 0, width: 3, depth: 2, elevation: 4 },
+          mountainLanding: { x: 30, z: 0, width: 3, depth: 2, elevation: 4 },
           // upper(3)→廣場(1)：中間隔著 middle，落差變成 2(原本只差 1)。
           // middle(2)→廣場(1)：落差 1，跟統一 +1 之前一樣。
           plazaStairs: [
-            { z: 7, width: 3, fromX: 25, toX: 28, baseElevation: 1, elevation: 2, steps: 6 },
-            { z: 16, width: 3, fromX: 25, toX: 28, baseElevation: 1, elevation: 1, steps: 6 },
+            { z: 7, width: 3, fromX: 55, toX: 58, baseElevation: 1, elevation: 2, steps: 6 },
+            { z: 16, width: 3, fromX: 55, toX: 58, baseElevation: 1, elevation: 1, steps: 6 },
           ],
           westStairs: [
-            { x: 0, width: 3, fromZ: 2, toZ: 7, baseElevation: 3, elevation: 1, steps: 6 },
-            { x: 0, width: 3, fromZ: 9, toZ: 16, baseElevation: 2, elevation: 1, steps: 7 },
-            { x: 0, width: 3, fromZ: 19, toZ: 26, baseElevation: 1, elevation: 1, steps: 7 },
+            { x: 30, width: 3, fromZ: 2, toZ: 7, baseElevation: 3, elevation: 1, steps: 6 },
+            { x: 30, width: 3, fromZ: 9, toZ: 16, baseElevation: 2, elevation: 1, steps: 7 },
+            { x: 30, width: 3, fromZ: 19, toZ: 26, baseElevation: 1, elevation: 1, steps: 7 },
             // 南側新沙灘的下坡階梯——直接接在墊高後的城鎮地面(groundElevation
             // =1)後面，下到沙灘(0)。沿用同一個陣列/同一套 oldVillageGroundY()
             // 公式(z 越小值越高)，不用另外寫一份。fromZ(30)頂端 1，toZ(33)
             // 底端 0，緊接 southBeach。x 從 20 移到 28。
-            { x: 28, width: 7, fromZ: 30, toZ: 33, baseElevation: 0, elevation: 1, steps: 6 },
+            { x: 58, width: 7, fromZ: 30, toZ: 33, baseElevation: 0, elevation: 1, steps: 6 },
           ],
-          carpenterHouse: { x: 6, z: 13, d: 3, doorX: 7 },
+          carpenterHouse: { x: 36, z: 13, d: 3, doorX: 37 },
           // w/d/doorX/wallColor/roofColor/role：10 棟對應使用者定案的城鎮
           // 角色設定(4/3/3 三排)。role 純粹是資料標籤，給 build-map.ts 挑
           // 對應的門口裝飾用，也方便之後其他系統(NPC 排程等)用名字找到
@@ -169,54 +193,54 @@ import { repaintRegion } from "./region-paint";
             // 學校——雙倍寬度，磚紅屋頂+暖色牆面，屋頂鐘塔+旗桿是最醒目
             // 的地標。
             {
-              x: 5, z: 4, seed: 0.18, w: 4, d: 3, doorX: 6.5, role: "school",
+              x: 35, z: 4, seed: 0.18, w: 4, d: 3, doorX: 36.5, role: "school",
               wallColor: 0xe4c9a0, roofColor: 0x7a2e2e,
             },
             // 醫院——白牆+藍灰屋頂的醫療配色，門口上方掛紅十字招牌。
             {
-              x: 11, z: 4, seed: 0.34, w: 3, d: 3, doorX: 12, role: "hospital",
+              x: 41, z: 4, seed: 0.34, w: 3, d: 3, doorX: 42, role: "hospital",
               wallColor: 0xf2f0ea, roofColor: 0x3a5a72,
             },
             // 醫生家——跟醫院同一套藍調但降一階彩度，門口掛小十字牌。
             {
-              x: 16, z: 4, seed: 0.52, w: 3, d: 3, doorX: 17, role: "doctor",
+              x: 46, z: 4, seed: 0.52, w: 3, d: 3, doorX: 47, role: "doctor",
               wallColor: 0xd7e3e6, roofColor: 0x4a5a5e,
             },
             // 護士家——淺薄荷綠牆+暖陶土屋頂，跟醫生家同組但用色區分開來。
             {
-              x: 21, z: 4, seed: 0.68, w: 3, d: 3, doorX: 22, role: "nurse",
+              x: 51, z: 4, seed: 0.68, w: 3, d: 3, doorX: 52, role: "nurse",
               wallColor: 0xdce8dc, roofColor: 0x8a5a42,
             },
             // 老師家——暖芥末黃牆面，門口一疊書本裝飾。
             {
-              x: 6, z: 13, seed: 0.27, w: 3, d: 3, doorX: 7, role: "carpenter",
+              x: 36, z: 13, seed: 0.27, w: 3, d: 3, doorX: 37, role: "carpenter",
               wallColor: 0xd8c078, roofColor: 0x5a4530,
             },
             // 海洋學家家——藍綠牆面+風化灰藍屋頂，門口掛一個簡化船舵裝飾。
             {
-              x: 12, z: 13, seed: 0.46, w: 3, d: 3, doorX: 13,
+              x: 42, z: 13, seed: 0.46, w: 3, d: 3, doorX: 43,
               role: "oceanographer", wallColor: 0x9fc4c9, roofColor: 0x33525c,
             },
             // 雜貨店兼行政中心——雙倍寬度，整個城鎮視覺上的商業/行政門面：
             // 遮陽棚+吊招牌。
             {
-              x: 18, z: 13, seed: 0.73, w: 4, d: 3, doorX: 19.5,
+              x: 48, z: 13, seed: 0.73, w: 4, d: 3, doorX: 49.5,
               role: "generalStore", wallColor: 0xd9a94a, roofColor: 0x2f6b63,
             },
             // 木匠家——木匠事件用的「還沒整修好」空屋，見上方說明。
             {
-              x: 6, z: 23, seed: 0.22, w: 3, d: 3, doorX: 7,
+              x: 36, z: 23, seed: 0.22, w: 3, d: 3, doorX: 37,
               role: "teacher", wallColor: 0xb8aa91, roofColor: 0x51443f,
             },
             // 藝術家家——粉調牆面+梅紫屋頂，門口擺一個簡化畫架。
             {
-              x: 12, z: 23, seed: 0.57, w: 3, d: 3, doorX: 13,
+              x: 42, z: 23, seed: 0.57, w: 3, d: 3, doorX: 43,
               role: "artist", wallColor: 0xd6a0c4, roofColor: 0x5a3a6a,
             },
             // 民宿——雙倍寬度，門口一支吊招牌+一盞燈籠，比住宅群更有「迎賓」
             // 的存在感。
             {
-              x: 18, z: 23, seed: 0.81, w: 4, d: 3, doorX: 19.5,
+              x: 48, z: 23, seed: 0.81, w: 4, d: 3, doorX: 49.5,
               role: "guesthouse", wallColor: 0xdcb894, roofColor: 0x4a3428,
             },
           ],
@@ -286,12 +310,16 @@ import { repaintRegion } from "./region-paint";
           elevation: 1,
           stairs: { x: 4, z: 8, width: 9, depth: 3 },
           livingGate: { x: 0, z: 0, width: 14 },
-          oldVillageGate: { x: 0, z: 4, height: 26 },
+          oldVillageGate: {
+            x: 0,
+            z: 4,
+            height: 44,
+            beachStartZ: 30,
+            beachEndZ: 47,
+          },
           playerArrival: { x: 7, z: 11 },
           carpenterMeet: { x: 13, z: 28 },
           townGate: { x: 3, z: 29 },
-          southBeachGate: { x: 10, z: 36 },
-          southBeachArrival: { x: 10, z: 34 },
           shopRoad: { z: 14, height: 5 },
           basin: { x: 6, z: 18, width: 15, height: 9 },
           ferry: { x: 13, z: 22 },
@@ -620,6 +648,11 @@ import { repaintRegion } from "./region-paint";
         // 玩家會被 canTraverseVillageHeight() 的高度差門檻卡在樓梯正前方，
         // 連樓梯本身都還沒走到就過不去。
         if (z >= village.southBeach.z) return 0;
+        // 西側新沙灘：同一套固定海平面(0)道理，跟南側沙灘那段共用同一個
+        // 早退邏輯順序(放在樓梯判斷之後、westEdge/terraces 判斷之前)。
+        // 不用 -0.5 容許值，因為西邊第一段樓梯緊接在 x=village.westBeach
+        // .width(30)之後，跟南側樓梯緊接 southBeach.z 是同一種邊界寫法。
+        if (x < village.westBeach.x + village.westBeach.width) return 0;
         // 廣場/南側預設地面墊高跟 middle 台地同高(groundElevation)，整個
         // 城鎮除了沙灘都在同一個抬高的地基上，才會有「平台」的觀感——這也是
         // middle.elevation 現在剛好等於 groundElevation 的原因，兩者本來就
@@ -645,6 +678,43 @@ import { repaintRegion } from "./region-paint";
         const noise = (hash2(x * 1.73, 88.1) - 0.5) * 2.8;
         const offset = Math.max(-4, Math.min(4, Math.round(wave + noise)));
         return Math.min(LAYOUT.oldVillage.height - 2, beach.z + 14 + offset);
+      }
+
+      // 西沙灘岸線以 z 為種子產生鋸齒凹凸，跟 oldVillageSouthBeachEndZ()
+      // 同一套公式，只是方向轉 90 度：沙灘貼著城鎮那一側(x 較大、靠近
+      // village.westBeach.width)、外海在地圖真正邊界(x=0)那一側——跟南側
+      // 沙灘「貼著城鎮的 z 較小那側」是同一個相對關係(近城鎮=沙、遠城鎮=
+      // 海)。種子用不同的第二參數(46.7 而非 88.1)，避免兩段海岸線長得
+      // 一模一樣。回傳值是「沙灘覆蓋到哪個 x」，沙灘實際範圍是
+      // [回傳值, westBeach.width-1]，再往西(更小的 x)都是海。
+      export function oldVillageWestBeachStartX(z: number) {
+        const beach = LAYOUT.oldVillage.westBeach;
+        const wave = Math.sin((z + 2.3) * 0.58) * 2.6;
+        const noise = (hash2(z * 1.73, 46.7) - 0.5) * 2.8;
+        const offset = Math.max(-4, Math.min(4, Math.round(wave + noise)));
+        const townEdgeX = beach.x + beach.width - 1;
+        return Math.max(beach.x + 1, townEdgeX - 14 + offset);
+      }
+
+      /** 西南刪除區每列海水向東延伸到哪一格；核心範圍外再做不規則岸線。 */
+      export function oldVillageSouthwestSeaEndX(z: number) {
+        const sea = LAYOUT.oldVillage.southwestSeaCutout;
+        // z=38~45 之間以 smoothstep 從 x=16 漸進擴到 x=29，不在 z=45
+        // 突然跳出一個直角。外緣再疊低頻波動，讓 (19~31,44) 一帶自然凹凸。
+        const progress = Math.max(
+          0,
+          Math.min(1, (z - sea.z) / (sea.deepStartZ - sea.z)),
+        );
+        const smooth = progress * progress * (3 - 2 * progress);
+        const coreEndX = Math.round(
+          sea.upperCoreEndX +
+            (sea.deepCoreEndX - sea.upperCoreEndX) * smooth,
+        );
+        const extra = Math.max(
+          0,
+          Math.min(3, Math.round(1.5 + Math.sin((z + 2.4) * 0.83) * 1.5)),
+        );
+        return coreEndX + extra;
       }
 
       export function isOnOldVillageStair(x: number, z: number) {
@@ -676,11 +746,11 @@ import { repaintRegion } from "./region-paint";
       // 留空，只封住能直接跨越高低差的邊緣。
       export const OLD_VILLAGE_RAILS = [
         {
-          x1: 3, z1: 9.5, x2: 25, z2: 9.5,
+          x1: 33, z1: 9.5, x2: 55, z2: 9.5,
           elevation: LAYOUT.oldVillage.terraces.upper.elevation,
         },
         {
-          x1: 3, z1: 19.5, x2: 25, z2: 19.5,
+          x1: 33, z1: 19.5, x2: 55, z2: 19.5,
           elevation: LAYOUT.oldVillage.terraces.middle.elevation,
         },
         { x1: LAYOUT.oldVillage.terraces.westEdge, z1: 0, x2: LAYOUT.oldVillage.terraces.westEdge, z2: 6.5 },
@@ -798,10 +868,18 @@ import { repaintRegion } from "./region-paint";
 
         // Cinque Terre-inspired hillside circulation: three terraces, narrow climbs,
         // and a broad civic space opening toward the old fishing port.
-        const terraceRoadWidth = Math.floor(village.terraces.westEdge - 1);
-        paint(2, 7, terraceRoadWidth, 3);
-        paint(2, 16, terraceRoadWidth, 3);
-        paint(2, 26, terraceRoadWidth, 3);
+        // roadStartX：原本寫死 2(緊貼西側樓梯，刻意跟 westStairs 的 x=0~2
+        // 最後一欄重疊一點，跟樓梯銜接不留縫)，西側新沙灘加入後改成從
+        // westBeach 推導——城鎮乾地西緣(townWestX)再往東 2 格，維持跟樓梯
+        // 同一種「差 2 格」關係，不是直接 +30 硬套，因為 terraceRoadWidth
+        // 的公式本身也吃 westEdge(已經 +30)，兩邊都改才會維持原本的寬度。
+        const roadStartX = village.westBeach.x + village.westBeach.width + 2;
+        const terraceRoadWidth = Math.floor(
+          village.terraces.westEdge + 0.5 - roadStartX,
+        );
+        paint(roadStartX, 7, terraceRoadWidth, 3);
+        paint(roadStartX, 16, terraceRoadWidth, 3);
+        paint(roadStartX, 26, terraceRoadWidth, 3);
         // 樓梯本身由橫向道路與廣場覆蓋；不再額外鋪一條直向土色平台，
         // 避免樓梯兩旁露出突兀的方形路皮。
         paint(village.plaza.x, village.plaza.z, village.plaza.width, village.plaza.height);
@@ -812,7 +890,7 @@ import { repaintRegion } from "./region-paint";
           village.mountainLanding.width,
           8,
         );
-        paint(3, 24, village.mountainRoad.width, 6);
+        paint(village.westBeach.x + village.westBeach.width + 3, 24, village.mountainRoad.width, 6);
 
         for (let x = 0; x < village.livingGate.width; x++)
           tiles[0][village.livingGate.x + x] = 3;
@@ -835,6 +913,39 @@ import { repaintRegion } from "./region-paint";
         for (let x = beach.x; x < beach.x + beach.width; x++) {
           const shoreEndZ = oldVillageSouthBeachEndZ(x);
           for (let z = beach.z; z <= shoreEndZ; z++) tiles[z][x] = 8;
+        }
+        // 西側新沙灘/海——跟南側同一套「先鋪滿整段海，再疊鋸齒沙灘」寫法，
+        // 只是沿 z 逐排、沙灘貼著城鎮那一側(x 較大)、海在地圖真正邊界
+        // (x=0)那一側。z 用整張地圖的高度(village.height)，讓西沙灘一路
+        // 延伸到最南端，跟南沙灘在西南角自然接上，不留一塊乾地夾在中間。
+        const westBeach = village.westBeach;
+        for (let z = 0; z < village.height; z++) {
+          for (let x = westBeach.x; x < westBeach.x + westBeach.width; x++)
+            tiles[z][x] = 9;
+        }
+        for (let z = 0; z < village.height; z++) {
+          const shoreStartX = oldVillageWestBeachStartX(z);
+          for (let x = shoreStartX; x < westBeach.x + westBeach.width; x++)
+            tiles[z][x] = 8;
+        }
+        // 西南角切回外海：x=11~16 從 z=38 往南必定是海，z=45 起再保證
+        // x=17~29 也是海；每列向東額外吃進 0~4 格，避免切口像直角方框。
+        const seaCutout = village.southwestSeaCutout;
+        for (let z = seaCutout.z; z < seaCutout.z + seaCutout.height; z++) {
+          const seaEndX = oldVillageSouthwestSeaEndX(z);
+          for (let x = seaCutout.x; x <= seaEndX; x++)
+            tiles[z][x] = 9;
+        }
+        // 沙灘生成會覆寫邊界格，因此最後重畫與港口相連的黃色門檻。
+        // z=4~47 全部逐格連通，其中 z=30~47 是這次新增的沙灘通道。
+        for (let z = 0; z < village.portGate.height; z++) {
+          const worldZ = village.portGate.z + z;
+          if (
+            worldZ >= village.portGate.beachStartZ &&
+            worldZ <= village.portGate.beachEndZ
+          )
+            tiles[worldZ][village.portGate.x - 1] = 8;
+          tiles[worldZ][village.portGate.x] = 3;
         }
         return tiles;
       }
@@ -1008,9 +1119,13 @@ import { repaintRegion } from "./region-paint";
       // 標記；只對到 z=0~14(舊城鎮的範圍)，港口多出來的最後一排(z=15)
       // 沒有對應的舊城鎮列，不畫。
       for (let z = 0; z < LAYOUT.port.oldVillageGate.height; z++) {
-        MAPS.port.tiles[LAYOUT.port.oldVillageGate.z + z][
-          LAYOUT.port.oldVillageGate.x
-        ] = 3;
+        const worldZ = LAYOUT.port.oldVillageGate.z + z;
+        if (
+          worldZ >= LAYOUT.port.oldVillageGate.beachStartZ &&
+          worldZ <= LAYOUT.port.oldVillageGate.beachEndZ
+        )
+          MAPS.port.tiles[worldZ][LAYOUT.port.oldVillageGate.x + 1] = 8;
+        MAPS.port.tiles[worldZ][LAYOUT.port.oldVillageGate.x] = 3;
       }
 
       // ==============================================================

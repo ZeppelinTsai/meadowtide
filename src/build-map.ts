@@ -37,7 +37,6 @@ import {
   SHRINE_PATH_ELEVATION,
   portGroundY,
   oldVillageGroundY,
-  oldVillageSouthBeachEndZ,
   mountainGroundY,
   isOnMountainStair,
   MOUNTAIN_GATE_BLOCKER,
@@ -645,23 +644,36 @@ export function buildMap(mapName) {
     // oldVillage 這類獨立小地圖：跟 house 一樣是純平地，沒有懸崖/
     // 沙灘的高低差，plateauGroup 維持等於 gameState.mapGroup，不用另外墊高。
     if (mapName === "oldVillage") {
-      // 城鎮本體(北側，terraceMat 石質台地/步道蓋著的範圍)跟南側新沙灘/海
-      // 分兩塊蓋，中間以 southBeach.z 為界——見 addMapFloorPatch 內註解，
+      // 城鎮本體(terraceMat 石質台地/步道蓋著的範圍)跟南側新沙灘/海、西側
+      // 新沙灘/海分三塊蓋，靠 x/z 分界銜接——見 addMapFloorPatch 內註解，
       // 城鎮本體這塊絕對不能套 starSafe，套了會把 terraceMat 的石質地板/
       // 步道整片蓋成草地色(這正是「城鎮的石質地板跟步道不見了」的成因)。
-      // 只有南側沒有 terraceMat 覆蓋的裸露沙灘/海才需要星空穿透。
+      // 只有沒有 terraceMat 覆蓋的裸露沙灘/海(南側、西側)才需要星空穿透。
+      // townWestX 是城鎮乾地的西緣，西側新沙灘(x<townWestX)整欄不管 z、
+      // 全部歸西沙灘那塊(含西南角，跟南沙灘接壤的部分)，城鎮本體/南沙灘
+      // 只需要再依 beachZ 切一刀，三塊剛好無縫拼滿整張地圖，互不重疊。
       const beachZ = LAYOUT.oldVillage.southBeach.z;
+      const townWestX = LAYOUT.oldVillage.westBeach.x + LAYOUT.oldVillage.westBeach.width;
       const groundColor = getSeasonGrassTone().ground;
       const townFloorMat = addMapFloorPatch({
-        width: cols,
+        x: townWestX,
+        width: cols - townWestX,
         depth: beachZ,
         color: groundColor,
         roughness: 1,
       });
       const seaFloorMat = addMapFloorPatch({
+        x: townWestX,
         z: beachZ,
-        width: cols,
+        width: cols - townWestX,
         depth: rows - beachZ,
+        color: groundColor,
+        roughness: 1,
+        starSafe: true,
+      });
+      const westBeachFloorMat = addMapFloorPatch({
+        width: townWestX,
+        depth: rows,
         color: groundColor,
         roughness: 1,
         starSafe: true,
@@ -669,7 +681,7 @@ export function buildMap(mapName) {
       // 之前這片地板沒登記進 seasonalGroundMaterials，導致舊城鎮/藝術村這類
       // 地圖的草地永遠停在建圖當下那個季節色，換季也不會跟著變——跟
       // livingArea 共用同一份季節色表跟登記表，才不會兩邊各自維護一份判斷。
-      seasonalGroundMaterials.push(townFloorMat, seaFloorMat);
+      seasonalGroundMaterials.push(townFloorMat, seaFloorMat, westBeachFloorMat);
     } else if (mapName !== "mountain") {
       const groundMat = addMapFloorPatch({
         width: cols,
@@ -711,24 +723,42 @@ export function buildMap(mapName) {
         terrace.renderOrder = 1;
         gameState.mapGroup.add(terrace);
       };
-      addTerrace(0, 10, LAYOUT.oldVillage.terraces.upper.elevation);
-      addTerrace(10, 10, LAYOUT.oldVillage.terraces.middle.elevation);
+      // townWestX：城鎮本體(乾地)實際的西緣——西側新沙灘(x=0~29)加入之後，
+      // 原本這裡一路寫死的 0/3 這幾個西緣魔術數字全部不再等於地圖真正的
+      // 西界，改成從 westBeach 推導，才不會跟沙灘重疊蓋出一塊浮在海面上
+      // 的台地方塊。
+      const townWestX = LAYOUT.oldVillage.westBeach.x + LAYOUT.oldVillage.westBeach.width;
+      addTerrace(
+        0,
+        10,
+        LAYOUT.oldVillage.terraces.upper.elevation,
+        townWestX,
+        LAYOUT.oldVillage.terraces.westEdge + 0.5 - townWestX,
+      );
+      addTerrace(
+        10,
+        10,
+        LAYOUT.oldVillage.terraces.middle.elevation,
+        townWestX,
+        LAYOUT.oldVillage.terraces.westEdge + 0.5 - townWestX,
+      );
       // 廣場往東(x>westEdge)墊到 groundElevation 之後，跟西側台地一樣需要
       // 一塊實心地基撐住，不然懸空的路面/建築會露出下面的空洞。分三塊蓋，
-      // 刻意避開 westStairs 最後一段(x=0~2.5, z19~26, middle→廣場的樓梯)：
+      // 刻意避開 westStairs 最後一段(z19~26，middle→廣場的樓梯)：
       // 那段樓梯自己的階梯 box 已經是實心幾何，這裡如果整塊蓋過去，樓梯的
       // 台階會被同高的平面台地穿插/蓋住，看起來像樓梯壞掉、高低層次錯亂
       // (這正是最近一次回報「第二層樓梯怪怪的」的成因)。
       //   1) 東側廣場(z0~19，西側同一段已經是 upper/middle 台地，不用重疊)
-      //   2) 南側 z20~26，略過樓梯佔用的 x=0~2.5
-      //   3) 南側 z27~29(樓梯已經結束，這段可以整寬鋪滿)
+      //   2) 南側 z20~26，略過樓梯佔用的西緣三格
+      //   3) 南側 z27~29(樓梯已經結束，這段鋪到城鎮西緣即可，不能再鋪進
+      //      西側新沙灘，所以西緣改成 townWestX，不是地圖真正的 x=0)
       // 三塊都跟 middle 台地同高(groundElevation===middle.elevation)，
       // 接縫處同高、不會露出高低差。
       const groundElevation = LAYOUT.oldVillage.groundElevation;
-      // Box A 西緣改到樓梯本身的終點(28，跟 plazaStairs.toX 對齊)，不是
-      // westEdge(27.5)——plazaStairs(x=25~28)最後 0.5 格原本會跟這塊台地
-      // 重疊，同一種問題，一併修掉。
-      const plazaStairsEndX = 28;
+      // Box A 西緣改到樓梯本身的終點(跟 plazaStairs.toX 對齊)，不是
+      // westEdge——plazaStairs 最後 0.5 格原本會跟這塊台地重疊，同一種
+      // 問題，一併修掉。
+      const plazaStairsEndX = LAYOUT.oldVillage.plazaStairs[0].toX;
       addTerrace(
         0,
         20,
@@ -736,8 +766,8 @@ export function buildMap(mapName) {
         plazaStairsEndX,
         LAYOUT.oldVillage.width - plazaStairsEndX,
       );
-      addTerrace(20, 7, groundElevation, 3, LAYOUT.oldVillage.width - 3);
-      addTerrace(27, 3, groundElevation, 0, LAYOUT.oldVillage.width);
+      addTerrace(20, 7, groundElevation, townWestX + 3, LAYOUT.oldVillage.width - (townWestX + 3));
+      addTerrace(27, 3, groundElevation, townWestX, LAYOUT.oldVillage.width - townWestX);
       const mountainLanding = LAYOUT.oldVillage.mountainLanding;
       const mountainLandingMesh = new THREE.Mesh(
         new THREE.BoxGeometry(
@@ -927,16 +957,20 @@ export function buildMap(mapName) {
         gameState.portWaterMeshes.push(water);
         gameState.mapGroup.add(water);
       };
-      {
-        const beach = LAYOUT.oldVillage.southBeach;
-        for (let x = beach.x; x < beach.x + beach.width; x++) {
-          const waterStartZ = oldVillageSouthBeachEndZ(x) + 1;
-          addOldVillageWater(
-            x,
-            waterStartZ,
-            1,
-            LAYOUT.oldVillage.height - waterStartZ,
-          );
+      // 直接由最終 tile 9 掃描水面。先前南海、西海與切除區各畫一批透明
+      // water mesh，重疊處會變成淺藍矩形殘影；現在每列連續海格只生成一次，
+      // 水面、碰撞與不規則岸線自然共用 MAPS 的同一份結果。
+      for (let z = 0; z < MAPS.oldVillage.tiles.length; z++) {
+        const row = MAPS.oldVillage.tiles[z];
+        let x = 0;
+        while (x < row.length) {
+          if (row[x] !== 9) {
+            x++;
+            continue;
+          }
+          const startX = x;
+          while (x < row.length && row[x] === 9) x++;
+          addOldVillageWater(startX, z, x - startX, 1);
         }
       }
     } else if (mapName === "mountain") {
@@ -3033,19 +3067,6 @@ const WORLD_MAP_TRANSITIONS: TransitionLink[] = [
       arrivalAt: () => LAYOUT.mountain.townArrival,
     },
   },
-  {
-    id: "old-village-port-south-beach",
-    a: {
-      map: "oldVillage",
-      triggerAt: () => LAYOUT.oldVillage.southBeachGate,
-      arrivalAt: () => LAYOUT.oldVillage.southBeachArrival,
-    },
-    b: {
-      map: "port",
-      triggerAt: () => LAYOUT.port.southBeachGate,
-      arrivalAt: () => LAYOUT.port.southBeachArrival,
-    },
-  },
 ];
 const worldTransitionEvents = createTransitionEvents(
   WORLD_MAP_TRANSITIONS,
@@ -3197,10 +3218,8 @@ export const events = [
         z: MOUNTAIN_GATE_BLOCKER.z + 1,
       }),
   },
-  // 舊城鎮(東側 x=13)<-> 港口(西側 x=0)：整條邊界都能走過去，不是單一
-  // 傳送點——沿邊每一排各自登記一組雙向觸發，逐格對應同一個 z。
-  // 舊城鎮擴高到 15 排(z=0~14)才跟港口(16 排)的西側邊界對得起來，
-  // 港口多出來的最後一排(z=15)沒有對應的舊城鎮列，不參與這組。
+  // 舊城鎮東側 <-> 港口西側：沿邊逐格登記雙向觸發並對應同一個 z；
+  // 目前由 z=4 一路連通到 z=47，包含指定的兩側沙灘區 z=30~47。
   ...Array.from({ length: LAYOUT.oldVillage.portGate.height }, (_, i) => ({
     map: "oldVillage",
     x: LAYOUT.oldVillage.portGate.x,

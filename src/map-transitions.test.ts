@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { LAYOUT, MAPS } from "./layout-maps";
+import { LAYOUT, MAPS, oldVillageSouthwestSeaEndX } from "./layout-maps";
 import { createTransitionEvents } from "./map-transitions";
 
 function hasWalkableRoute(
@@ -76,9 +76,35 @@ test("正式地圖的傳送抵達點到門檻之間都有連續可走地磚", ()
   const routes = [
     [MAPS.mountain.tiles, LAYOUT.mountain.townArrival, LAYOUT.mountain.townGate, "山區→舊城鎮"],
     [MAPS.oldVillage.tiles, LAYOUT.oldVillage.mountainArrival, LAYOUT.oldVillage.mountainGate, "舊城鎮→山區"],
-    [MAPS.oldVillage.tiles, LAYOUT.oldVillage.southBeachArrival, LAYOUT.oldVillage.southBeachGate, "舊城鎮南灘"],
-    [MAPS.port.tiles, LAYOUT.port.southBeachArrival, LAYOUT.port.southBeachGate, "港口南灘"],
   ] as const;
   for (const [tiles, arrival, gate, label] of routes)
     assert.equal(hasWalkableRoute(tiles, arrival, gate), true, `${label} 的中間地磚必須連通`);
+});
+
+test("舊城鎮與港口 z=30~47 邊界都是雙向傳送用黃色門檻", () => {
+  assert.equal(LAYOUT.oldVillage.portGate.x, 76);
+  assert.equal(LAYOUT.port.oldVillageGate.x, 0);
+  assert.equal(LAYOUT.oldVillage.portGate.height, LAYOUT.port.oldVillageGate.height);
+  for (let z = 30; z <= 47; z++) {
+    assert.equal(MAPS.oldVillage.tiles[z][76], 3, `oldVillage (76,${z})`);
+    assert.equal(MAPS.port.tiles[z][0], 3, `port (0,${z})`);
+    assert.equal(MAPS.oldVillage.tiles[z][75], 8, `oldVillage 抵達格 (75,${z})`);
+    assert.equal(MAPS.port.tiles[z][1], 8, `port 抵達格 (1,${z})`);
+  }
+});
+
+test("舊城鎮西南刪除區核心是海，外緣保持不規則", () => {
+  for (let z = 38; z < MAPS.oldVillage.tiles.length; z++) {
+    for (let x = 11; x <= 16; x++)
+      assert.equal(MAPS.oldVillage.tiles[z][x], 9, `上段核心 (${x},${z})`);
+    if (z >= 45)
+      for (let x = 17; x <= 29; x++)
+        assert.equal(MAPS.oldVillage.tiles[z][x], 9, `下段核心 (${x},${z})`);
+  }
+  const edges = new Set(
+    Array.from({ length: MAPS.oldVillage.tiles.length - 38 }, (_, i) =>
+      oldVillageSouthwestSeaEndX(38 + i),
+    ),
+  );
+  assert.ok(edges.size > 2, "海岸外緣不能是筆直方框");
 });
