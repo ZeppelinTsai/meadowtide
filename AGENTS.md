@@ -78,6 +78,11 @@
   `homeGate.x - 1` 或其他寫死座標推算。調整山腰輪廓後必須執行
   `npm run map-debug -- --map=mountain --legend`，確認 `homeArrival` 仍在可走格、
   與右側門檻連通，否則舊存檔或主角家傳送會把玩家送進岩壁。
+- 生活區西側通往山區的外接石梯由 `LAYOUT.mountainGateway.visualBottomX`、
+  `visualMinZ`、`visualMaxZ` 控制樓底落點，`makeMountainGateway()` 必須由這三個
+  欄位推導樓梯方向、中心與寬度，扶手則沿用 `makeSteepStoneStairs()` 同步
+  生成。目前樓底朝右、對準世界座標 `x=-1,z=16~19`；邏輯門檻仍只能放在
+  合法的 tile `x=0`，不得為了視覺對齊把負索引寫進地圖陣列。
 - **搬遷一個區域時，一定要把舊位置清回 `0`**，不是只在新位置寫值——這個
   專案裡已經因為忘記清舊位置留過兩次死資料殘留（湖、舊農田），靠除錯工具
   才抓到。

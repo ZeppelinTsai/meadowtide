@@ -82,10 +82,14 @@ import { shiftMapLayout } from "./map-shift";
           steps: 4,
           risePerStep: 0.2,
           width: 1.65,
+          // 生活區西側外接石梯的視覺落點：最後一階（樓底）朝右並對準
+          // x=-1、z=16~19。邏輯門檻仍在合法的 x=0，不把負座標寫進 tile 陣列。
+          visualBottomX: -1,
+          visualMinZ: 16,
+          visualMaxZ: 19,
           visualSteps: 10,
-          visualRun: 0.12,
+          visualRun: 0.62,
           visualDropPerStep: 1.35,
-          visualWidth: 1.45,
         },
         oldVillage: {
           width: 77,

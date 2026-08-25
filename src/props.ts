@@ -3302,16 +3302,18 @@ export function makeWoodPlankTexture({
 
       export function makeMountainGateway() {
         const gateway = LAYOUT.mountainGateway;
+        const visualTopX =
+          gateway.visualBottomX - gateway.visualRun * (gateway.visualSteps - 1);
         return makeSteepStoneStairs({
-          x: gateway.startX - (gateway.steps - 1),
-          z: gateway.startZ - (gateway.steps - 1),
+          x: visualTopX,
+          z: (gateway.visualMinZ + gateway.visualMaxZ) / 2,
           y: PLATEAU_Y + 0.08,
-          directionX: -1,
+          directionX: 1,
           directionZ: 0,
           steps: gateway.visualSteps,
           run: gateway.visualRun,
           dropPerStep: gateway.visualDropPerStep,
-          width: gateway.visualWidth,
+          width: gateway.visualMaxZ - gateway.visualMinZ + 1,
         });
       }
 
