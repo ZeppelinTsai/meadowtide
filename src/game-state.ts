@@ -118,6 +118,11 @@ export const gameState = {
   // 離開地圖不重置，下次從舊城鎮洞口走進去才會強制設回 1(見 mine.ts
   // 的 regenerateMineFloor 呼叫點)。
   mineFloor: 1,
+  // 山之洞(往上爬版本)目前所在樓層——跟 mineFloor 是完全獨立的計數，
+  // 兩個洞窟可以各自停在不同樓層互不影響，只有在 mountainCave 地圖裡
+  // 有意義。同樣不會因為離開地圖被重置，下次從山區洞口走進去才會強制
+  // 設回 1(見 mine.ts 的 regenerateMountainMineFloor 呼叫點)。
+  mountainMineFloor: 1,
 };
 
 export const inventory = {
@@ -744,4 +749,3 @@ export function cookMeal(): Recipe | null {
   };
   return recipe;
 }
-

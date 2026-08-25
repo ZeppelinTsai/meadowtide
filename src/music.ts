@@ -37,6 +37,9 @@ export const SEASON_MUSIC_KEYS = [
 // 確定，在這裡補一行就會自動生效，不用動 updateMusic()。
 export const LOCATION_MUSIC_KEYS: Record<string, string> = {
   stalactiteCave: "seaCaveAmbient",
+  // 山之洞地圖系統做出來了(mountainCave)，補上原本就準備好的
+  // mountainCaveAmbient——不用碰 updateMusic()，查表就自動生效。
+  mountainCave: "mountainCaveAmbient",
 };
 export const MELODY_VOLUME = 0.32,
   WEATHER_VOLUME = 0.2;

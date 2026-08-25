@@ -27,7 +27,12 @@ import {
   cookMeal,
 } from "./game-state";
 import { updateSeasonAndDate } from "./game-clock";
-import { ORE_NODES, harvestOreNode } from "./mine";
+import {
+  ORE_NODES,
+  harvestOreNode,
+  MOUNTAIN_ORE_NODES,
+  harvestMountainOreNode,
+} from "./mine";
 import {
   playRandomSfx,
   CHOP_WOOD_SFX,
@@ -112,6 +117,10 @@ export function saveGame(slot = "default") {
     // build-map.ts)，這裡不用另外存 tiles。
     mineFloor: gameState.mineFloor,
     oreNodes: JSON.parse(JSON.stringify(ORE_NODES)),
+    // 山之洞是完全獨立的一組狀態(見 mine.ts 該段開頭註解)，樓層/礦點
+    // 分開存，互不影響鐘乳石洞窟那份。
+    mountainMineFloor: gameState.mountainMineFloor,
+    mountainOreNodes: JSON.parse(JSON.stringify(MOUNTAIN_ORE_NODES)),
   };
   localStorage.setItem(SAVE_KEY_PREFIX + slot, JSON.stringify(data));
   return data;
@@ -180,6 +189,16 @@ export function loadGame(slot = "default") {
   gameState.mineFloor = Number.isFinite(data.mineFloor) ? data.mineFloor : 1;
   if (Array.isArray(data.oreNodes)) {
     ORE_NODES.splice(0, ORE_NODES.length, ...data.oreNodes);
+  }
+  gameState.mountainMineFloor = Number.isFinite(data.mountainMineFloor)
+    ? data.mountainMineFloor
+    : 1;
+  if (Array.isArray(data.mountainOreNodes)) {
+    MOUNTAIN_ORE_NODES.splice(
+      0,
+      MOUNTAIN_ORE_NODES.length,
+      ...data.mountainOreNodes,
+    );
   }
   if (data.player) {
     const targetMap = data.currentMapName || "livingArea";
@@ -494,6 +513,43 @@ addEventListener("keydown", (e) => {
     );
     if (oreNode) {
       const result = harvestOreNode(oreNode.x, oreNode.z);
+      if (result.amount > 0 && result.tier) {
+        playRandomSfx(MINE_ORE_SFX);
+        const meshEntry = oreNodeMeshes.find(
+          (entry) => entry.nodeId === oreNode.id,
+        );
+        if (meshEntry) meshEntry.group.visible = false;
+        for (let i = 0; i < 3; i++) {
+          const chip = makeOreChipDebris(result.tier.accentColor, Math.random());
+          chip.position.set(
+            oreNode.x + (Math.random() - 0.5) * 0.3,
+            gameState.player.position.y + 0.3,
+            oreNode.z + (Math.random() - 0.5) * 0.3,
+          );
+          scene.add(chip);
+          gameState.gatherChipAnims.push({
+            mesh: chip,
+            vx: (Math.random() - 0.5) * 1.4,
+            vy: 1.6 + Math.random() * 0.6,
+            vz: (Math.random() - 0.5) * 1.4,
+            start: gameState.elapsed,
+            duration: 0.6,
+          });
+        }
+      }
+      return;
+    }
+  }
+
+  // 山之洞礦石——跟鐘乳石洞窟同一套鄰接判定，只是換一份獨立的節點
+  // 清單/採收函式(mine.ts)，兩個洞窟的礦點/收成互不影響。
+  if (gameState.currentMapName === "mountainCave") {
+    const { x: mx, z: mz } = gameState.playerGridPos;
+    const oreNode = MOUNTAIN_ORE_NODES.find(
+      (n) => !n.collected && Math.abs(n.x - mx) + Math.abs(n.z - mz) <= 1,
+    );
+    if (oreNode) {
+      const result = harvestMountainOreNode(oreNode.x, oreNode.z);
       if (result.amount > 0 && result.tier) {
         playRandomSfx(MINE_ORE_SFX);
         const meshEntry = oreNodeMeshes.find(

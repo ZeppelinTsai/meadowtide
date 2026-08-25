@@ -2813,8 +2813,21 @@ export function makeWoodPlankTexture({
         return g;
       }
 
-      export function makeOldVillageStalactiteCaveEntrance() {
-        const cave = LAYOUT.oldVillage.stalactiteCave;
+      // 2026-08-25：從 makeOldVillageStalactiteCaveEntrance() 抽出來的通用
+      // 版本，改吃 cave 參數(不再寫死 LAYOUT.oldVillage.stalactiteCave)，
+      // 讓山之洞的入口(LAYOUT.mountain.cave)可以直接共用同一份「平台邊緣
+      // 嵌入岩塊、南向拱門開口、地面石筍+苔蘚」模板(2026-08-25 拿掉了原本拱門
+      // 「先套用同樣模板就好」，兩個洞窟的視覺先 100% 一致，之後真的要讓
+      // 山之洞長得不一樣(比如換成沒有鐘乳石的乾燥岩壁)再另外分家。
+      export function makeCaveRockEntrance(cave: {
+        x: number;
+        z: number;
+        width: number;
+        depth: number;
+        entranceX: number;
+        entranceWidth: number;
+        entranceStartZ: number;
+      }) {
         const group = new THREE.Group();
         const rockMat = new THREE.MeshStandardMaterial({
           color: 0x59615b,
@@ -2979,32 +2992,9 @@ export function makeWoodPlankTexture({
         innerFloor.renderOrder = 4;
         group.add(innerFloor);
 
-        // 垂吊鐘乳石：數量隨入口寬度增減，兩端短、中間長，弧線比固定三根
-        // 更自然。
-        const stalactiteCount = Math.max(3, cave.entranceWidth + 1);
-        for (let i = 0; i < stalactiteCount; i++) {
-          const t = stalactiteCount === 1 ? 0.5 : i / (stalactiteCount - 1);
-          const offset = (t - 0.5) * (cave.entranceWidth - 0.3);
-          const centerBias = 1 - Math.abs(t - 0.5) * 2;
-          const seed = hash2(i * 3.3, cave.entranceWidth * 1.7);
-          const length = 0.34 + centerBias * 0.44 + hash2(seed, i) * 0.12;
-          const stalactite = new THREE.Mesh(
-            new THREE.ConeGeometry(0.09 + centerBias * 0.05, length, 6),
-            darkRockMat,
-          );
-          stalactite.rotation.z = Math.PI;
-          stalactite.position.set(
-            entranceCenterX + offset,
-            1.93 - length / 2 - Math.abs(offset) * 0.15,
-            entranceZ + 0.035 + hash2(i, 6.6) * 0.25,
-          );
-          stalactite.castShadow = true;
-          stalactite.renderOrder = 5;
-          group.add(stalactite);
-        }
-
-        // 地面石筍跟垂吊鐘乳石錯開位置，呼應「鐘乳石洞窟」的名字不能只有
-        // 天花板那一半；刻意矮一截、留在入口兩側，不擋視線也不擋走路動線。
+        // 2026-08-25：拱門口上方原本垂吊的鐘乳石(約 3 根)玩家反饋不要了，
+        // 兩個洞窟(共用這個模板)都拿掉——只留下面的地面石筍跟苔蘚。
+        // 地面石筍——刻意矮一截、留在入口兩側，不擋視線也不擋走路動線。
         [-halfEntrance - 0.3, halfEntrance + 0.3].forEach((offset, i) => {
           const height = 0.55 + hash2(i * 5.5, cave.width) * 0.3;
           const stalagmite = new THREE.Mesh(
@@ -3044,6 +3034,17 @@ export function makeWoodPlankTexture({
         }
 
         return group;
+      }
+
+      export function makeOldVillageStalactiteCaveEntrance() {
+        return makeCaveRockEntrance(LAYOUT.oldVillage.stalactiteCave);
+      }
+
+      // 山之洞入口(2026-08-25)——跟 makeOldVillageStalactiteCaveEntrance()
+      // 共用同一個 makeCaveRockEntrance() 模板，只是餵進 LAYOUT.mountain.cave
+      // 這份座標，位置在山腳平台(foot)最北緣，見 layout-maps.ts 該處註解。
+      export function makeMountainCaveEntrance() {
+        return makeCaveRockEntrance(LAYOUT.mountain.cave);
       }
 
       export function makeWesternMountainTerrain(rows) {

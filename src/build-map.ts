@@ -89,6 +89,13 @@ import {
   mineStairRotation,
   regenerateMineFloor,
   regenerateMineFloorTiles,
+  MOUNTAIN_MINE_SIZE,
+  MOUNTAIN_MINE_FLOOR_MAX,
+  MOUNTAIN_ORE_NODES,
+  mountainMineUpStairs,
+  mountainMineDownStairs,
+  regenerateMountainMineFloor,
+  regenerateMountainMineFloorTiles,
 } from "./mine";
 import {
   npcGroup,
@@ -136,6 +143,7 @@ import {
   makeRedWindmill,
   makeMountain,
   makeOldVillageStalactiteCaveEntrance,
+  makeMountainCaveEntrance,
   makeWesternMountainTerrain,
   makeMountainGateway,
   makeSteepStoneStairs,
@@ -789,6 +797,70 @@ export function buildMap(mapName) {
           roughness: 1,
         });
       }
+    } else if (mapName === "mountainCave") {
+      // 山之洞內部地板——跟鐘乳石洞窟同一套「不登記進 seasonalGroundMaterials
+      // +依樓層礦石階層混色」寫法，唯一差別是挖空的那一格改成
+      // mountainMineDownStairs()(山之洞的「淺處/出口」方向，模組配置見
+      // mine.ts 山之洞那段開頭的長註解)，不是 mineDownStairs()。這個函式
+      // 永遠有值(山之洞的出口方向樓梯每層都存在，包含第 1 層跟頂層)，
+      // 下面的 else 分支理論上摸不到，保留只是跟鐘乳石洞窟同一套模板、
+      // 不特別精簡。
+      const mountainFloorTier =
+        ORE_TIERS[mineTierForFloor(gameState.mountainMineFloor) - 1];
+      const mountainFloorColor = new THREE.Color(0x3a3d38).lerp(
+        new THREE.Color(mountainFloorTier.color),
+        0.16,
+      );
+      const mountainPit = mountainMineDownStairs(gameState.mountainMineFloor);
+      if (mountainPit) {
+        if (mountainPit.z > 0) {
+          addMapFloorPatch({
+            x: 0,
+            z: 0,
+            width: cols,
+            depth: mountainPit.z,
+            color: mountainFloorColor,
+            roughness: 1,
+          });
+        }
+        if (mountainPit.z < rows - 1) {
+          addMapFloorPatch({
+            x: 0,
+            z: mountainPit.z + 1,
+            width: cols,
+            depth: rows - mountainPit.z - 1,
+            color: mountainFloorColor,
+            roughness: 1,
+          });
+        }
+        if (mountainPit.x > 0) {
+          addMapFloorPatch({
+            x: 0,
+            z: mountainPit.z,
+            width: mountainPit.x,
+            depth: 1,
+            color: mountainFloorColor,
+            roughness: 1,
+          });
+        }
+        if (mountainPit.x < cols - 1) {
+          addMapFloorPatch({
+            x: mountainPit.x + 1,
+            z: mountainPit.z,
+            width: cols - mountainPit.x - 1,
+            depth: 1,
+            color: mountainFloorColor,
+            roughness: 1,
+          });
+        }
+      } else {
+        addMapFloorPatch({
+          width: cols,
+          depth: rows,
+          color: mountainFloorColor,
+          roughness: 1,
+        });
+      }
     } else if (mapName !== "mountain") {
       const groundMat = addMapFloorPatch({
         width: cols,
@@ -1176,6 +1248,7 @@ export function buildMap(mapName) {
       }
     } else if (mapName === "mountain") {
       const mountain = LAYOUT.mountain;
+      plateauGroup.add(makeMountainCaveEntrance());
       const cliffMat = new THREE.MeshStandardMaterial({
         color: 0x514a3f,
         roughness: 1,
@@ -2281,6 +2354,89 @@ export function buildMap(mapName) {
       plateauGroup.add(stalactite);
     }
   }
+  if (mapName === "mountainCave") {
+    // 山之洞採礦系統(mine.ts)——跟鐘乳石洞窟同一套渲染邏輯，只是換成
+    // gameState.mountainMineFloor/mountainMineUpStairs/
+    // mountainMineDownStairs/MOUNTAIN_ORE_NODES 這組獨立狀態。上/下樓梯
+    // 造型分派(makeMineStaircase("up",…)疊箱子、"down"+挖坑)完全沒改，
+    // 「模組對調」是靠 mountainMineUpStairs()/mountainMineDownStairs()
+    // 的角落公式互換角色達成的(見 mine.ts 山之洞那段開頭的長註解)——這
+    // 裡上樓梯(疊箱子)現在對應「往深處/山頂」，跟鐘乳石洞窟上樓梯對應
+    // 「往淺處/出口」正好相反；下樓梯(挖坑)現在對應「往淺處/出口」。
+    const mountainFloor = gameState.mountainMineFloor;
+    const mountainTier = ORE_TIERS[mineTierForFloor(mountainFloor) - 1];
+
+    // 頂層(MOUNTAIN_MINE_FLOOR_MAX)沒有更深了，跟 tile 資料(mine.ts 的
+    // makeMountainMineFloorTiles())用同一個 mountainMineUpStairs() 判斷。
+    const mountainUp = mountainMineUpStairs(mountainFloor);
+    if (mountainUp) {
+      const upStair = makeMineStaircase("up", mountainTier.accentColor);
+      upStair.position.set(mountainUp.x, 0, mountainUp.z);
+      upStair.rotation.y = mineStairRotation("up");
+      plateauGroup.add(upStair);
+    }
+    // 出口方向永遠存在(包含第 1 層，用來走出洞口)，不像上樓梯要判斷
+    // 頂層，這裡不用 if 包起來。
+    const mountainDown = mountainMineDownStairs(mountainFloor);
+    const pitRockColor = new THREE.Color(0x2a2c27).lerp(
+      new THREE.Color(mountainTier.color),
+      0.12,
+    );
+    const pit = makeMinePitRecess(pitRockColor);
+    pit.position.set(mountainDown.x, 0, mountainDown.z);
+    plateauGroup.add(pit);
+    const downStair = makeMineStaircase("down", mountainTier.color);
+    downStair.position.set(mountainDown.x, 0, mountainDown.z);
+    downStair.rotation.y = mineStairRotation("down");
+    plateauGroup.add(downStair);
+
+    // 礦石節點——跟鐘乳石洞窟同一套「靠近按 E 就沒了」的採集慣例，登記進
+    // 同一份 oreNodeMeshes(nodeId 前綴不同，見 mine.ts，不會跟鐘乳石洞窟
+    // 的節點撞名)。
+    MOUNTAIN_ORE_NODES.forEach((n) => {
+      const node = makeOreNode(
+        n.x,
+        n.z,
+        mountainTier.color,
+        mountainTier.accentColor,
+        n.colorSeed,
+      );
+      node.visible = !n.collected;
+      plateauGroup.add(node);
+      oreNodeMeshes.push({ group: node, nodeId: n.id });
+    });
+
+    // 天花板垂幾根鐘乳石當氣氛裝飾——「先套用同樣模板就好」，先不因為是
+    // 「山之洞」就換一套裝飾，跟鐘乳石洞窟同一份決定性灑點寫法，種子
+    // 位移錯開(+190/+70)避免跟鐘乳石洞窟同樓層數字灑出同一批座標。
+    const mountainDecorRockMat = new THREE.MeshStandardMaterial({
+      color: 0x33362f,
+      roughness: 1,
+      flatShading: true,
+    });
+    for (let i = 0; i < 26; i++) {
+      const nx = hash2(mountainFloor * 9.3 + i * 4.1 + 190, i * 2.2);
+      const nz = hash2(i * 6.7 + 70, mountainFloor * 5.1 + i * 1.3);
+      const x = 3 + Math.floor(nx * (MOUNTAIN_MINE_SIZE - 6));
+      const z = 3 + Math.floor(nz * (MOUNTAIN_MINE_SIZE - 6));
+      if (
+        mountainUp &&
+        Math.abs(x - mountainUp.x) + Math.abs(z - mountainUp.z) < 3
+      )
+        continue;
+      if (Math.abs(x - mountainDown.x) + Math.abs(z - mountainDown.z) < 3)
+        continue;
+      const len = 0.5 + hash2(x, z) * 0.6;
+      const stalactite = new THREE.Mesh(
+        new THREE.ConeGeometry(0.12 + hash2(z, x) * 0.05, len, 6),
+        mountainDecorRockMat,
+      );
+      stalactite.rotation.z = Math.PI;
+      stalactite.position.set(x, 2.3 - len / 2, z);
+      stalactite.castShadow = true;
+      plateauGroup.add(stalactite);
+    }
+  }
   if (mapName === "oldVillage") {
     // 廣場(LAYOUT.oldVillage.plaza：x=22~32,z=4~25)裡放兩盞路燈、兩張
     // 長椅，位置刻意離廣場邊界(x=22/33、跟港口門的垂直通道)有一段
@@ -2473,6 +2629,27 @@ export function buildMap(mapName) {
           new THREE.BoxGeometry(TILE * 0.98, 2.3, TILE * 0.98),
           new THREE.MeshStandardMaterial({
             color: mineWallColor,
+            roughness: 1,
+            flatShading: true,
+          }),
+        );
+        wall.position.set(x, 1.15, z);
+        wall.castShadow = true;
+        wall.receiveShadow = true;
+        plateauGroup.add(wall);
+      } else if (tile === 1 && mapName === "mountainCave") {
+        // 山之洞牆體——跟鐘乳石洞窟同一套「純方塊+粗糙岩灰材質」寫法，
+        // 只是牆色改混當層(gameState.mountainMineFloor)的礦石階層色。
+        const mountainWallTier =
+          ORE_TIERS[mineTierForFloor(gameState.mountainMineFloor) - 1];
+        const mountainWallColor = new THREE.Color(0x4a4d47).lerp(
+          new THREE.Color(mountainWallTier.color),
+          0.22,
+        );
+        const wall = new THREE.Mesh(
+          new THREE.BoxGeometry(TILE * 0.98, 2.3, TILE * 0.98),
+          new THREE.MeshStandardMaterial({
+            color: mountainWallColor,
             roughness: 1,
             flatShading: true,
           }),
@@ -3274,6 +3451,10 @@ export function loadMap(mapName, startPos) {
     // 多算一次同樣的結果，不會有副作用。
     if (mapName === "stalactiteCave")
       regenerateMineFloorTiles(gameState.mineFloor);
+    // 山之洞同一份保險：見上面鐘乳石洞窟那則註解，道理一樣，只是換成
+    // 獨立的 mountainMineFloor/mountainCave 那組狀態。
+    if (mapName === "mountainCave")
+      regenerateMountainMineFloorTiles(gameState.mountainMineFloor);
     buildMap(mapName);
     const requestedPos = startPos || MAPS[mapName].playerStart;
     const isSafePlayerPosition = (x: number, z: number) =>
@@ -3444,6 +3625,63 @@ function mineGoDown() {
   loadMap("stalactiteCave", mineUpStairs(gameState.mineFloor));
 }
 
+// 山之洞(向上爬版本)進出/換樓——跟鐘乳石洞窟那三個手寫 action 同一個
+// 角色(進洞口重置樓層、踩樓梯依樓層決定換樓層或離開)，只是「往上」跟
+// 「往下」的行為整個對調：這裡踩上樓梯(mountainMineUpStairs，疊箱子
+// 造型)是純樓層前進(往深處/山頂，沒有提示)，踩下樓梯
+// (mountainMineDownStairs，挖坑造型)才會問要不要直接回鎮上——跟鐘乳石
+// 洞窟正好相反，原因見 mine.ts 山之洞那段開頭的長註解。
+function enterMountainMine() {
+  regenerateMountainMineFloor(1);
+  loadMap("mountainCave", mountainMineDownStairs(1));
+}
+function goToTownFromMountainMine() {
+  const cave = LAYOUT.mountain.cave;
+  const mouthZ = cave.z + cave.depth - 1;
+  loadMap("mountain", {
+    x: cave.entranceX + Math.floor((cave.entranceWidth - 1) / 2),
+    z: mouthZ + 1,
+  });
+}
+// 純樓層前進，踩了就走，不彈提示——對應鐘乳石洞窟的 mineGoDown()，但
+// 綁在 mountainMineUpStairs()(往深處/山頂)而不是 mineDownStairs()。
+function mountainMineGoUp() {
+  if (gameState.mountainMineFloor >= MOUNTAIN_MINE_FLOOR_MAX) return;
+  regenerateMountainMineFloor(gameState.mountainMineFloor + 1);
+  loadMap("mountainCave", mountainMineDownStairs(gameState.mountainMineFloor));
+}
+// 每層都問一次要不要直接回鎮上——對應鐘乳石洞窟的 mineGoUp()，但綁在
+// mountainMineDownStairs()(往淺處/出口)而不是 mineUpStairs()，這正是
+// 玩家要求的「對話選項邏輯要換」。
+function mountainMineGoDown() {
+  const atSurface = gameState.mountainMineFloor <= 1;
+  showChoice(
+    "要直接下山回鎮上嗎？",
+    atSurface
+      ? [
+          { label: "回鎮上", value: "town" },
+          { label: "繼續往上爬", value: "stay" },
+        ]
+      : [
+          { label: "回鎮上", value: "town" },
+          { label: "下一層", value: "step" },
+        ],
+    (choice) => {
+      if (choice === "stay") return;
+      if (choice === "town") {
+        goToTownFromMountainMine();
+        return;
+      }
+      regenerateMountainMineFloor(gameState.mountainMineFloor - 1);
+      loadMap(
+        "mountainCave",
+        mountainMineUpStairs(gameState.mountainMineFloor) ||
+          mountainMineDownStairs(gameState.mountainMineFloor),
+      );
+    },
+  );
+}
+
 export const events = [
   ...worldTransitionEvents,
   // 洞口(entranceX~entranceX+entranceWidth)沿線 3 格都能走進去，座標用
@@ -3483,6 +3721,44 @@ export const events = [
     },
     trigger: "touch",
     action: () => mineGoDown(),
+  },
+  // 山之洞洞口——跟鐘乳石洞窟同一套「沿入口寬度整排都能走進去」寫法，
+  // 座標用 LAYOUT.mountain.cave 現值推導。
+  ...Array.from(
+    { length: LAYOUT.mountain.cave.entranceWidth },
+    (_, i) => ({
+      map: "mountain",
+      x: LAYOUT.mountain.cave.entranceX + i,
+      z: LAYOUT.mountain.cave.z + LAYOUT.mountain.cave.depth - 1,
+      trigger: "touch",
+      action: () => enterMountainMine(),
+    }),
+  ),
+  {
+    // 上樓梯(疊箱子，往深處/山頂)——山之洞這裡可能不存在(頂層之後沒有
+    // 更深了)，所以跟鐘乳石洞窟的下樓梯事件一樣用 ?? -1 安全預設。
+    map: "mountainCave",
+    get x() {
+      return mountainMineUpStairs(gameState.mountainMineFloor)?.x ?? -1;
+    },
+    get z() {
+      return mountainMineUpStairs(gameState.mountainMineFloor)?.z ?? -1;
+    },
+    trigger: "touch",
+    action: () => mountainMineGoUp(),
+  },
+  {
+    // 下樓梯(挖坑，往淺處/出口)——每層都存在(包含第 1 層，用來走出洞口)，
+    // 不用 optional chaining，跟鐘乳石洞窟的上樓梯事件一樣。
+    map: "mountainCave",
+    get x() {
+      return mountainMineDownStairs(gameState.mountainMineFloor).x;
+    },
+    get z() {
+      return mountainMineDownStairs(gameState.mountainMineFloor).z;
+    },
+    trigger: "touch",
+    action: () => mountainMineGoDown(),
   },
   {
     map: "livingArea",

@@ -275,6 +275,22 @@ import { shiftMapLayout } from "./map-shift";
             width: 1.85,
           },
           foot: { x: 4, z: 49, width: 27, depth: 19, elevation: 0 },
+          // 山之洞入口(2026-08-25，2026-08-25 二次調整往上收 5 格+縮小
+          // 岩堆)——原本整組(x=10~19,z=49~54)貼在山腳平台(foot)最北緣，
+          // 玩家反饋「視覺占比有點太大」，整組往上(z 變小)移 5 格到
+          // z=44~49，落進 waist(z 到 43 為止)跟 foot(z 從 49 開始)中間
+          // 那段沒有被 path()/plazas 畫到的空隙——這段空隙預設就是
+          // tile=1(擋路)，平常由背景山壁(cliffMat)那片視覺蓋著，把洞口
+          // 搬進來等於「岩堆順勢埋進既有山壁裡，只有拱門口洞露出來」，
+          // 不用額外處理高度：mountainGroundY() 對這段空隙一樣回傳 0
+          // (沒有落在 waist/summit/樓梯的判斷範圍內)，跟 foot 同一個
+          // 基準，道具不用另外墊高。同時把 width 從 10 收到 6(x=12~17，
+          // entranceX=14~15 保持置中，兩側各留 2 格岩塊緩衝，不是原本的
+          // 4 格)——fillRows/rockCount 兩個岩堆迴圈(props.ts 的
+          // makeCaveRockEntrance())都是依 cave.width 算範圍，縮小這個
+          // 數字岩堆自動跟著變小變密，不用改渲染函式本身。depth 維持 6、
+          // entranceStartZ 維持「cave.z+3」這個相對關係(=47)。
+          cave: { x: 12, z: 44, width: 6, depth: 6, entranceX: 14, entranceWidth: 2, entranceStartZ: 47 },
           waist: { x: 7, z: 26, width: 27, depth: 18, elevation: 3.2 },
           summit: { x: 11, z: 3, width: 19, depth: 16, elevation: 6.5 },
           // 長方形觀景台，南緣(z=summitLookout.z+depth-1=2)直接跟山頂平台北緣
@@ -477,6 +493,23 @@ import { shiftMapLayout } from "./map-shift";
           );
           if (tiles[z]?.[x] === 0 && !insideClearing) tiles[z][x] = 2;
         });
+        // 山之洞入口鏤空——放在樹木灑點/手動樹木清單之後，確保入口跟
+        // 岩塊範圍一定淨空，不會被隨機或手動的樹覆蓋掉(不需要另外登記
+        // protectedClearings，這裡是最後一步、無條件覆寫)。實心岩塊段
+        // 用 tile=1(擋路，跟其他地圖的牆同一個值)；入口走廊段用 tile=0
+        // (跟平台本身的草地同一個值——不是舊城鎮鐘乳石洞窟那邊沿用的
+        // 沙灘 tile=8，那裡是因為周圍本來就是沙灘，這裡周圍是草地，走廊
+        // 要跟著環境走)。外觀岩堆由 props.ts 的 makeMountainCaveEntrance()
+        // 另外疊上去，這裡只負責碰撞用的 tile 值。
+        {
+          const cave = mountain.cave;
+          for (let z = cave.z; z < cave.z + cave.depth - 1; z++)
+            for (let x = cave.x; x < cave.x + cave.width; x++)
+              if (tiles[z]?.[x] !== undefined) tiles[z][x] = 1;
+          for (let z = cave.entranceStartZ; z < cave.z + cave.depth; z++)
+            for (let x = cave.entranceX; x < cave.entranceX + cave.entranceWidth; x++)
+              if (tiles[z]?.[x] !== undefined) tiles[z][x] = 0;
+        }
         return tiles;
       }
 
@@ -1156,6 +1189,23 @@ import { shiftMapLayout } from "./map-shift";
         // 落在門正北一格；四周牆體用 tile=1 純擋路，視覺上的岩壁另外在
         // build-map.ts 用簡單方塊+吊石筍做，不用真的蓋房子牆模型。
         stalactiteCave: {
+          tiles: [
+            [1, 1, 1, 1, 1, 1, 1, 1, 1],
+            [1, 0, 0, 0, 0, 0, 0, 0, 1],
+            [1, 0, 0, 0, 0, 0, 0, 0, 1],
+            [1, 0, 0, 0, 0, 0, 0, 0, 1],
+            [1, 0, 0, 0, 0, 0, 0, 0, 1],
+            [1, 0, 0, 0, 0, 0, 0, 0, 1],
+            [1, 1, 1, 3, 3, 3, 1, 1, 1],
+          ],
+          playerStart: { x: 4, z: 5 },
+        },
+        // 山之洞內部——先套用鐘乳石洞窟同一份「進得去、有地方站」佔位房間
+        // 模板，一字不改；tiles/playerStart 進洞窟當下就會被
+        // mine.ts 的 regenerateMountainMineFloor() 整個覆寫成當層 50x50
+        // 的洞窟房間，這裡只是 loadMap() 第一次讀到 MAPS.mountainCave 時
+        // 的保底佔位，跟 stalactiteCave 這格的角色完全一樣。
+        mountainCave: {
           tiles: [
             [1, 1, 1, 1, 1, 1, 1, 1, 1],
             [1, 0, 0, 0, 0, 0, 0, 0, 1],
