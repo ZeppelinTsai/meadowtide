@@ -430,6 +430,32 @@ meadowtideI18n.locales           // 列出支援的語言代碼 ["zh","en","ja"]
   修改天氣機率、保護日或極端天氣規則後必須執行 `npm run test:weather`，測試
   若發現流星雨日非晴天、過渡日錯誤或極端天氣超量，會以非零退出碼失敗。
 
+### BGM 優先序（2026-08-25 已實作地域這層）
+
+播放哪一首曲目由高到低分五層：**特殊事件 BGM > 通用事件 BGM > 地域 BGM >
+天氣 BGM > 季節 BGM**。目前只有「地域／天氣／季節」三層有實作，
+「特殊事件」跟「通用事件」對應的遊戲系統（劇情節點、突發事件之類）還
+沒做，先只是把優先序的位置定下來，之後真的要做時直接在
+`updateMusic()` 裡的 `desiredKey` 判斷式插在 `locationKey` 之前即可，不
+用重寫淡入淡出/單軌切換那套機制。
+
+- **地域 BGM**（`src/music.ts` 的 `LOCATION_MUSIC_KEYS`，依
+  `gameState.currentMapName` 查表）：特定地圖固定配一首常駐曲，蓋過天氣
+  跟季節——玩家在洞窟裡不管外面在下雨還是下雪，一律播洞窟自己的曲子，
+  離開地圖後才交還給天氣/季節那套邏輯。音量沿用 `MELODY_VOLUME`（不是
+  `WEATHER_VOLUME`），因為地域常駐曲是氛圍旋律，不是要蓋過去強調的層。
+  目前只有鐘乳石洞窟（向下的海之洞）配好了：`stalactiteCave` →
+  `seaCaveAmbient`（*Moonlit Sirens Of Atlantis*，harp、mystical，呼應
+  「亞特蘭提斯水晶層」跟女神領域的設定）。山之洞（向上、山神領域）的曲
+  子也已經選好放進 `BGM_TRACKS`（`mountainCaveAmbient`，*Celestial Ice
+  Cave Echoes*，harp、introspective，呼應雲頂/山神），但地圖系統還沒做，
+  所以先不放進 `LOCATION_MUSIC_KEYS`——之後山之洞的地圖 key 一旦定案，
+  在 `LOCATION_MUSIC_KEYS` 補一行 `山之洞map名: "mountainCaveAmbient"`
+  就會自動生效，不用碰 `updateMusic()`。
+- 新增其他地域曲時比照這個模式：MP3 丟進
+  `public/assets/audio/bgm/`、在 `BGM_TRACKS` 加一筆、在
+  `LOCATION_MUSIC_KEYS` 對應地圖 key 補一行即可。
+
 **還沒選、之後可能需要的分類**（使用者提過，還沒動手找）：慶典、房內、
 戀愛事件、搞笑事件——這些是「特定場景觸發」的配樂，跟上面「環境常駐」
 的音樂是不同層級，等對應的遊戲系統（節慶活動、室內場景、好感度/戀愛
