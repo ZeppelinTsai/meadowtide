@@ -17,6 +17,13 @@ import {
   OYSTER_RACK_TILES,
   oysterRackState,
   harvestOysterRack,
+  FEEDER_VISUAL,
+  FEEDER_CAPACITY,
+  refillFeeder,
+  WOOD_NODES,
+  STONE_NODES,
+  harvestGatherNode,
+  refreshGatherNodes,
 } from "./game-state";
 import { updateSeasonAndDate } from "./game-clock";
 import {
@@ -44,6 +51,7 @@ import {
   updateSeasonalGroundColors,
   makeBobber,
   makeFishProp,
+  makeChipDebris,
 } from "./props";
 import { syncFarmVisuals } from "./farm-visuals";
 import {
@@ -56,12 +64,12 @@ import {
   getMeteorShowerHudLabel,
   groundY,
 } from "./scene-sky";
-import { setThresholdMarkersVisible } from "./scene-registries";
+import { gatherNodeMeshes, setThresholdMarkersVisible } from "./scene-registries";
 
 export const SAVE_KEY_PREFIX = "meadowtide.save.";
 export function saveGame(slot = "default") {
   const data = {
-    version: 3,
+    version: 4,
     elapsed: gameState.elapsed,
     currentDay: gameState.currentDay,
     currentPhase: gameState.currentPhase,
@@ -82,6 +90,9 @@ export function saveGame(slot = "default") {
     npcMemory: npcs.map((npc) => ({ id: npc.id, memory: npc.memory })),
     carpenterQuest: { ...carpenterQuest },
     oysterRackState: JSON.parse(JSON.stringify(oysterRackState)),
+    gatherSpawnSlot: gameState.gatherSpawnSlot,
+    woodNodes: JSON.parse(JSON.stringify(WOOD_NODES)),
+    stoneNodes: JSON.parse(JSON.stringify(STONE_NODES)),
   };
   localStorage.setItem(SAVE_KEY_PREFIX + slot, JSON.stringify(data));
   return data;
@@ -140,6 +151,13 @@ export function loadGame(slot = "default") {
   }
   Object.keys(oysterRackState).forEach((key) => delete oysterRackState[key]);
   Object.assign(oysterRackState, data.oysterRackState || {});
+  if (Array.isArray(data.woodNodes) && Array.isArray(data.stoneNodes)) {
+    gameState.gatherSpawnSlot = Number(data.gatherSpawnSlot);
+    WOOD_NODES.splice(0, WOOD_NODES.length, ...data.woodNodes);
+    STONE_NODES.splice(0, STONE_NODES.length, ...data.stoneNodes);
+  } else {
+    refreshGatherNodes(true);
+  }
   if (data.player) {
     const targetMap = data.currentMapName || "livingArea";
     if (targetMap !== gameState.currentMapName) {
@@ -345,6 +363,80 @@ addEventListener("keydown", (e) => {
     );
     if (onOysterRack) {
       harvestOysterRack(oysterX, oysterZ);
+      return;
+    }
+  }
+
+  // 動物投餵機——半徑判定跟休息椅同一招(1.5 格內即可，不用逼玩家精確
+  // 站上哪一格)；免費補滿(補料的資源成本之後有經濟系統再設計)。
+  if (
+    gameState.currentMapName === "livingArea" &&
+    Math.hypot(
+      gameState.player.position.x - FEEDER_VISUAL.x,
+      gameState.player.position.z - FEEDER_VISUAL.z,
+    ) <= 1.5
+  ) {
+    const added = refillFeeder();
+    gameState.harvestFeedback =
+      added > 0
+        ? {
+            kind: "success",
+            title: "投餵機",
+            text: `已補滿：${gameState.feederUnits}／${FEEDER_CAPACITY}`,
+            until: gameState.elapsed + 2.6,
+          }
+        : {
+            kind: "empty",
+            title: "投餵機",
+            text: `已經是滿的：${gameState.feederUnits}／${FEEDER_CAPACITY}`,
+            until: gameState.elapsed + 2.6,
+          };
+    return;
+  }
+
+  // 木材/石頭採集點——玩家預設已經拿到斧頭，站在採集點旁邊(曼哈頓距離
+  // <=1，跟上面 scripted interact events 同一種判定)按 E 就會揮斧採集。
+  // 兩種資源座標清單分開存，但共用同一套「今天採過了嗎」邏輯
+  // (harvestGatherNode)，採集成功會順便丟出幾片木屑/碎石飛散演出。
+  if (
+    gameState.currentMapName === "mountain" ||
+    gameState.currentMapName === "livingArea"
+  ) {
+    const { x: gx, z: gz } = gameState.playerGridPos;
+    const nearNode = (n: { x: number; z: number; map: string; collected?: boolean }) =>
+      n.map === gameState.currentMapName &&
+      !n.collected &&
+      Math.abs(n.x - gx) + Math.abs(n.z - gz) <= 1;
+    const woodNode = WOOD_NODES.find(nearNode);
+    const stoneNode = !woodNode && STONE_NODES.find(nearNode);
+    const gatherNode = woodNode || stoneNode;
+    if (gatherNode) {
+      const kind = woodNode ? "wood" : "stone";
+      const granted = harvestGatherNode(kind, gatherNode.x, gatherNode.z);
+      if (granted > 0) {
+        const harvestedNode = woodNode || stoneNode;
+        const meshEntry = gatherNodeMeshes.find(
+          (entry) => entry.nodeId === harvestedNode.id,
+        );
+        if (meshEntry) meshEntry.group.visible = false;
+        for (let i = 0; i < 3; i++) {
+          const chip = makeChipDebris(kind, Math.random());
+          chip.position.set(
+            gatherNode.x + (Math.random() - 0.5) * 0.3,
+            gameState.player.position.y + 0.3,
+            gatherNode.z + (Math.random() - 0.5) * 0.3,
+          );
+          scene.add(chip);
+          gameState.gatherChipAnims.push({
+            mesh: chip,
+            vx: (Math.random() - 0.5) * 1.4,
+            vy: 1.6 + Math.random() * 0.6,
+            vz: (Math.random() - 0.5) * 1.4,
+            start: gameState.elapsed,
+            duration: 0.6,
+          });
+        }
+      }
       return;
     }
   }

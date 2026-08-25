@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import { hash2 } from "./utils";
 import { LAYOUT, MAPS, isInsideLakeShape } from "./layout-maps";
-import { npcs } from "./npc-runtime";
+import { npcs, hasPastureGrassAt } from "./npc-runtime";
 import { syncFarmVisuals } from "./farm-visuals";
 import { createWeatherSchedule } from "./weather-schedule";
 export { MAX_EXTREME_WEATHER_PER_SEASON } from "./weather-schedule";
@@ -81,6 +81,27 @@ export const gameState = {
   animationFrameCount: 0,
   grassAnimationAccumulator: 0,
   hudUpdateAccumulator: 0,
+  // 動物投餵機（放養式簡化模型，規格見 task.md）：早上放牧、傍晚投餵，
+  // 一天各結算一次；兩個 SettledDay 記錄「這天有沒有結算過」，避免同一
+  // 天內每一幀都重複結算。pastureGrazedToday 是給傍晚判斷用的「今天有
+  // 沒有真的吃到放牧的草」，不是「今天有沒有結算過」。
+  feederUnits: 20,
+  pastureGrazeSettledDay: -1,
+  pastureGrazedToday: false,
+  feederSettledDay: -1,
+  // 採集點（木材/石頭）跟牡蠣架共用同一顆 harvestFeedback 就好，不用
+  // 另外開一個欄位——UI 只認 kind/title/text，來源是哪個系統不重要。
+  // 這裡另外存一份「正在播放砍取動畫」的木屑/碎石清單，game-loop.ts
+  // 逐幀更新位置、input-save.ts 負責在採集成功時建立。
+  gatherChipAnims: [] as {
+    mesh: THREE.Object3D;
+    vx: number;
+    vy: number;
+    vz: number;
+    start: number;
+    duration: number;
+  }[],
+  gatherSpawnSlot: Number.MIN_SAFE_INTEGER,
 };
 
 export const inventory = {
@@ -432,3 +453,182 @@ export function isOysterRackReady() {
     return true;
   return rackState.harvestsToday < OYSTER_HARVESTS_PER_DAY;
 }
+
+// ==============================================================
+// 動物投餵機——放養式簡化模型，規格來源 task.md：
+// - 最多存放 FEEDER_CAPACITY 單位，每單位不論動物數量都能餵一天。
+// - 安全天氣時動物早上自己出去吃草（見 game-loop.ts 的
+//   animalsShouldBeHome，沿用同一顆 isUnsafeAnimalWeather()）；早上 8 點
+//   結算「今天吃到了嗎」：安全天氣就從還沒被吃過(或已經過了
+//   FEEDER_REGRAZE_DAYS 天)的牧草格裡隨機挑一格標記「今天吃掉」，這一步
+//   完全不動投餵機存量；天氣不好則整天不結算放牧，settlePastureGrazing()
+//   直接回傳 false。
+// - 傍晚 18 點結算：今天如果沒吃到放牧的草，才消耗一單位投餵機餵食
+//   （出外吃草那天不消耗投餵機，兩種結算互斥、不疊加）。
+// - 牧草格用「座標 -> 被吃掉的遊戲天數」這份純資料模擬，跟
+//   pastureGrassBlades 那套 32 秒即時循環的裝飾動畫是兩個不同時間尺度，
+//   故意不耦合——玩家看到的草叢搖擺/變短是純演出，格子「還能不能被
+//   放牧吃到」是這裡另外算的天數制。
+// ==============================================================
+// 放在牧場邊、穀倉門口(BARN_DOOR)西側，跟穀倉保持距離，不擋動物早晚
+// 進出的門口空地——座標選在生活區西側開闊草地，已用 map-debug 確認是
+// 平坦草地(tile===0)、不在任何建築/牧草禁區範圍內。
+export const FEEDER_VISUAL = { x: 21, z: 1 };
+export const FEEDER_CAPACITY = 99;
+export const FEEDER_REGRAZE_DAYS = 3;
+export const pastureDepletedTiles: Record<string, number> = {};
+
+function pastureCandidateTiles(day: number) {
+  const p = LAYOUT.pasture;
+  const candidates: { x: number; z: number }[] = [];
+  for (let z = p.z; z < p.z + p.height; z++) {
+    for (let x = p.x; x < p.x + p.width; x++) {
+      if (!hasPastureGrassAt(x, z)) continue;
+      const eatenDay = pastureDepletedTiles[`${x},${z}`];
+      if (eatenDay !== undefined && day - eatenDay < FEEDER_REGRAZE_DAYS)
+        continue;
+      candidates.push({ x, z });
+    }
+  }
+  return candidates;
+}
+
+// 早上 8 點呼叫一次。天氣不好就整天不結算，回傳 false；安全天氣但剛好
+// 找不到候選格（理論上不會發生，牧草格遠多於 99）也回傳 false。回傳值
+// 只給傍晚的 settleFeederConsumption() 判斷要不要改吃投餵機用。
+export function settlePastureGrazing(day = gameState.currentDay) {
+  if (isUnsafeAnimalWeather()) return false;
+  const candidates = pastureCandidateTiles(day);
+  if (candidates.length === 0) return false;
+  const pick = candidates[Math.floor(Math.random() * candidates.length)];
+  pastureDepletedTiles[`${pick.x},${pick.z}`] = day;
+  return true;
+}
+
+// 傍晚 18 點呼叫一次（只在今天沒吃到放牧的草時呼叫）。回傳有沒有成功
+// 消耗到投餵機（false 代表投餵機也是空的）。
+export function settleFeederConsumption() {
+  if (gameState.feederUnits <= 0) return false;
+  gameState.feederUnits -= 1;
+  return true;
+}
+
+// 補料——目前免費全部補滿，補多少單位、要不要消耗其他資源之後有經濟
+// 系統再另外設計；先讓機制本身能測試。回傳實際補了多少單位。
+export function refillFeeder() {
+  const added = FEEDER_CAPACITY - gameState.feederUnits;
+  gameState.feederUnits = FEEDER_CAPACITY;
+  return added;
+}
+
+// ==============================================================
+// 採集點（木材/石頭）——每天 06:00、18:00 各刷新一次；每個節點只能採一次，
+// 採完立即消失，下個刷新時段重新隨機分布。
+// 玩家預設已經拿到斧頭，兩種資源現階段都用同一把斧頭簡化採集，之後
+// 「採礦(鐘乳石洞跟山洞)」是完全不同的系統，不是這裡的石頭採集點升級。
+// ==============================================================
+export type GatherKind = "wood" | "stone";
+export const GATHER_YIELD_MIN = 3,
+  GATHER_YIELD_MAX = 5;
+export interface GatherNode {
+  id: string;
+  kind: GatherKind;
+  map: "livingArea" | "mountain";
+  zone: "mountainSide" | "foot" | "waist";
+  x: number;
+  z: number;
+  collected: boolean;
+}
+export const WOOD_NODES: GatherNode[] = [];
+export const STONE_NODES: GatherNode[] = [];
+
+export function getGatherSpawnSlot(
+  day = gameState.currentDay,
+  phase = gameState.currentPhase,
+) {
+  const hour = phase * TIME_CONFIG.gameHoursPerDay;
+  return day * 2 + (hour >= 18 ? 1 : hour >= 6 ? 0 : -1);
+}
+
+function gatherCandidates(zone: GatherNode["zone"]) {
+  const mapName = zone === "mountainSide" ? "livingArea" : "mountain";
+  const tiles = MAPS[mapName].tiles;
+  const bounds =
+    zone === "mountainSide"
+      ? { x: 1, z: 1, width: 6, depth: tiles.length - 2 }
+      : LAYOUT.mountain[zone];
+  const cells: { x: number; z: number }[] = [];
+  for (let z = bounds.z; z < bounds.z + bounds.depth; z++) {
+    for (let x = bounds.x; x < bounds.x + bounds.width; x++) {
+      if (tiles[z]?.[x] === 0) cells.push({ x, z });
+    }
+  }
+  return cells;
+}
+
+function shuffled<T>(values: T[]) {
+  const result = values.slice();
+  for (let i = result.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [result[i], result[j]] = [result[j], result[i]];
+  }
+  return result;
+}
+
+export function refreshGatherNodes(force = false) {
+  const slot = getGatherSpawnSlot();
+  if (!force && gameState.gatherSpawnSlot === slot) return false;
+  gameState.gatherSpawnSlot = slot;
+  WOOD_NODES.length = 0;
+  STONE_NODES.length = 0;
+  const usedByMap = new Map<string, { x: number; z: number }[]>();
+  const zones: GatherNode["zone"][] = ["mountainSide", "foot", "waist"];
+  for (const zone of zones) {
+    const map = zone === "mountainSide" ? "livingArea" : "mountain";
+    const used = usedByMap.get(map) || [];
+    usedByMap.set(map, used);
+    const candidates = shuffled(gatherCandidates(zone));
+    for (const kind of ["wood", "stone"] as const) {
+      for (let index = 0; index < 5; index++) {
+        const pickIndex = candidates.findIndex((cell) =>
+          used.every((taken) => Math.abs(taken.x - cell.x) + Math.abs(taken.z - cell.z) >= 2),
+        );
+        if (pickIndex < 0) throw new Error(`採集點候選格不足：${zone}/${kind}`);
+        const [cell] = candidates.splice(pickIndex, 1);
+        used.push(cell);
+        (kind === "wood" ? WOOD_NODES : STONE_NODES).push({
+          id: `${zone}-${kind}-${index}`,
+          kind,
+          map,
+          zone,
+          ...cell,
+          collected: false,
+        });
+      }
+    }
+  }
+  return true;
+}
+
+export function harvestGatherNode(kind: GatherKind, x: number, z: number) {
+  const label = kind === "wood" ? "木材" : "石頭";
+  const node = (kind === "wood" ? WOOD_NODES : STONE_NODES).find(
+    (candidate) => candidate.x === x && candidate.z === z && !candidate.collected,
+  );
+  if (!node) return 0;
+  const amount =
+    GATHER_YIELD_MIN +
+    Math.floor(Math.random() * (GATHER_YIELD_MAX - GATHER_YIELD_MIN + 1));
+  if (kind === "wood") inventory.wood += amount;
+  else inventory.stone += amount;
+  node.collected = true;
+  gameState.harvestFeedback = {
+    kind: "success",
+    title: kind === "wood" ? "揮斧砍柴" : "揮斧敲石",
+    text: `${label} ×${amount}`,
+    count: amount,
+    until: gameState.elapsed + 2.6,
+  };
+  return amount;
+}
+refreshGatherNodes();

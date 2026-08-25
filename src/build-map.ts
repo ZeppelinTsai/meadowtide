@@ -67,6 +67,7 @@ import {
   NORTHEAST_SEA_WAVE_DIRECTION,
   thresholdMarkerMeshes,
   thresholdMarkersVisible,
+  gatherNodeMeshes,
 } from "./scene-registries";
 import {
   npcGroup,
@@ -124,9 +125,18 @@ import {
   makeEasel,
   makeShipWheelEmblem,
   makeHangingSignboard,
+  makeWoodPile,
+  makeStonePile,
+  makeAnimalFeeder,
 } from "./props";
 import { syncFarmVisuals } from "./farm-visuals";
-import { OYSTER_RACK_VISUAL } from "./game-state";
+import {
+  OYSTER_RACK_VISUAL,
+  WOOD_NODES,
+  STONE_NODES,
+  FEEDER_VISUAL,
+  refreshGatherNodes,
+} from "./game-state";
 
 // 地圖底板，可選「星空穿透」寫法：transparent+opacity:1+depthWrite:false，
 // 不是只關掉 depthWrite。純關 depthWrite（保留 opaque）會讓地板完全不擋深度，
@@ -189,6 +199,8 @@ export function buildMap(mapName) {
   seasonalGroundMaterials.length = 0;
   mountainSeasonalMaterials.length = 0;
   thresholdMarkerMeshes.length = 0;
+  gatherNodeMeshes.length = 0;
+  refreshGatherNodes();
 
   const map = MAPS[mapName];
   const rows = map.tiles.length,
@@ -1861,6 +1873,23 @@ export function buildMap(mapName) {
         mountain.townGate.z - 3,
       );
       gameState.mapGroup.add(signpost);
+
+      // 木材/石頭採集點——放在山腳既有樹叢邊緣，呼應「山上樹木邊緣」的
+      // 需求；跟生活區那批(見上面 livingArea 分支)共用同一套資料/邏輯。
+      WOOD_NODES.filter((n) => n.map === "mountain").forEach((n) => {
+        const pile = makeWoodPile(n.x, n.z);
+        pile.position.y = mountainGroundY(n.x, n.z);
+        pile.visible = !n.collected;
+        gameState.mapGroup.add(pile);
+        gatherNodeMeshes.push({ group: pile, nodeId: n.id, map: "mountain" });
+      });
+      STONE_NODES.filter((n) => n.map === "mountain").forEach((n) => {
+        const pile = makeStonePile(n.x, n.z);
+        pile.position.y = mountainGroundY(n.x, n.z);
+        pile.visible = !n.collected;
+        gameState.mapGroup.add(pile);
+        gatherNodeMeshes.push({ group: pile, nodeId: n.id, map: "mountain" });
+      });
     }
   }
 
@@ -2551,6 +2580,24 @@ export function buildMap(mapName) {
       }
     }
     plateauGroup.add(makeRedWindmill(LAYOUT.windmill));
+
+    // 動物投餵機——放在牧場邊、穀倉門口西側，跟穀倉保持一點距離，不擋
+    // 動物早晚進出的三格門口空地(見 npc-runtime.ts 的 hasPastureGrassAt)。
+    plateauGroup.add(makeAnimalFeeder(FEEDER_VISUAL.x, FEEDER_VISUAL.z));
+
+    // 生活區採集點：靠西側山景的開闊草地，每個半日批次各 5 木、5 石。
+    WOOD_NODES.filter((n) => n.map === "livingArea").forEach((n) => {
+      const pile = makeWoodPile(n.x, n.z);
+      pile.visible = !n.collected;
+      plateauGroup.add(pile);
+      gatherNodeMeshes.push({ group: pile, nodeId: n.id, map: "livingArea" });
+    });
+    STONE_NODES.filter((n) => n.map === "livingArea").forEach((n) => {
+      const pile = makeStonePile(n.x, n.z);
+      pile.visible = !n.collected;
+      plateauGroup.add(pile);
+      gatherNodeMeshes.push({ group: pile, nodeId: n.id, map: "livingArea" });
+    });
 
     // 瀑布——湖西側邊緣，靜態占位，還沒做真的水流動畫
     plateauGroup.add(

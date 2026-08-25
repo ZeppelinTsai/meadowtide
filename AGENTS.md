@@ -416,3 +416,9 @@ meadowtideI18n.locales           // 列出支援的語言代碼 ["zh","en","ja"]
 - 流星由 `METEOR_CONFIG`、`METEOR_SHOWER_SCHEDULE` 管理；第 11～14 日為
   流星雨，第 13 日高峰。`meteorPool` 固定最多 16 個物件；室內、白天或
   不可見天氣會清空活動狀態，不會累積 geometry/material。
+- 木材／石頭採集點每天 06:00、18:00 各刷新一次；採集後整個模型立即消失，
+  不使用 emissive 發光提示。每批生活區西側為 5 木＋5 石；山區山腳與山腰
+  各為 5 木＋5 石，山頂不生成。隨機座標必須從 `MAPS` 的可走草地與
+  `LAYOUT.mountain.foot/waist` 推導，木石不得共用座標；修改後執行
+  `npm run map-debug -- --map=livingArea --legend`、
+  `npm run map-debug -- --map=mountain --legend` 與 `npm run build`。

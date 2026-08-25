@@ -7,6 +7,13 @@ export const waterSkyUnderlayMaterials: import("three").MeshStandardMaterial[] =
       // 之後不用重新整理地圖也能一次切換全部標記的顯示/隱藏(見 build-map.ts
       // 的 setThresholdMarkersVisible)。
       export const thresholdMarkerMeshes = [];
+      // buildMap() 建立目前地圖的採集物件後登記在這裡；刷新時會原地搬到
+      // 新的隨機座標，採完則把整個 group 隱藏。
+      export const gatherNodeMeshes: {
+        group: import("three").Group;
+        nodeId: string;
+        map: "livingArea" | "mountain";
+      }[] = [];
       const THRESHOLD_VISIBLE_KEY = "meadowtide.debug.thresholdMarkersVisible";
       // 開發模式下記住這個開關：Vite 幾乎每次存檔都會整頁重新載入(見
       // chef-quest.ts 對同一個現象的說明)，沒有這段的話每次改完程式碼

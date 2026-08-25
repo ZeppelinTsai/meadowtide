@@ -8,6 +8,11 @@ import {
   isUnsafeAnimalWeather,
   nearWater,
   isOysterRackReady,
+  WOOD_NODES,
+  STONE_NODES,
+  refreshGatherNodes,
+  settlePastureGrazing,
+  settleFeederConsumption,
 } from "./game-state";
 import { isGameTimePaused, updateGameClock } from "./game-clock";
 import {
@@ -82,6 +87,7 @@ import {
   windmillRotors,
   fishSchool,
   pastureGrassBlades,
+  gatherNodeMeshes,
   GRASS_GROWTH_SECONDS,
   EAST_SEA_WAVE,
   NORTH_SEA_WAVE,
@@ -416,6 +422,27 @@ export function animate(now) {
     }
   }
 
+  // 木材/石頭採集點的木屑/碎石飛散：跟上面 catchAnim 同一種「拋物線+旋轉+
+  // 縮小後消失」演出，差別是這裡一次可能好幾片同時飛，用陣列+filter 逐幀
+  // 更新／回收，不用像 catchAnim 只認一個 in-flight 物件。
+  if (gameState.gatherChipAnims.length) {
+    gameState.gatherChipAnims = gameState.gatherChipAnims.filter((chip) => {
+      const t = (gameState.elapsed - chip.start) / chip.duration;
+      if (t >= 1) {
+        scene.remove(chip.mesh);
+        return false;
+      }
+      chip.mesh.position.x += chip.vx * dt;
+      chip.mesh.position.z += chip.vz * dt;
+      chip.vy -= 3.2 * dt; // 簡單重力，不用真的物理系統
+      chip.mesh.position.y += chip.vy * dt;
+      chip.mesh.rotation.x += dt * 9;
+      chip.mesh.rotation.y += dt * 6;
+      chip.mesh.scale.setScalar(1 - t * 0.6);
+      return true;
+    });
+  }
+
   // --- 釣魚狀態機推進：casting 計時到了就進 biting，biting 逾時沒按 E 就跑掉 ---
   const fishHintEl =
     (window as any).__fishHintEl ||
@@ -523,6 +550,23 @@ export function animate(now) {
       ? 0.45 + Math.sin(gameState.elapsed * 2.4) * 0.3
       : 0;
   }
+
+  // 06:00／18:00 換一批隨機採集點；既有 group 原地搬動，不必重建地圖。
+  refreshGatherNodes();
+  const gatherNodes = [...WOOD_NODES, ...STONE_NODES];
+  gatherNodeMeshes.forEach((entry) => {
+    const node = gatherNodes.find((candidate) => candidate.id === entry.nodeId);
+    if (!node) {
+      entry.group.visible = false;
+      return;
+    }
+    entry.group.position.set(
+      node.x,
+      entry.map === "mountain" ? mountainGroundY(node.x, node.z) : 0,
+      node.z,
+    );
+    entry.group.visible = !node.collected;
+  });
 
   // 格子座標現在只是「玩家四捨五入後大概在哪一格」，給種田/撿種子/開門這些
   // 本來就是格子概念的系統用，跟移動本身脫鉤
@@ -697,6 +741,24 @@ export function animate(now) {
   const gameHour = phase * TIME_CONFIG.gameHoursPerDay;
   const animalsShouldBeHome =
     gameHour < 6 || gameHour >= 18 || isUnsafeAnimalWeather();
+
+  // --- 動物投餵機／放牧結算：早上 8 點結算放牧，傍晚 18 點結算投餵機。---
+  // 用 SettledDay 記錄「這天結算過了嗎」，避免同一天內每一幀都重算；
+  // 跟 beginNewDay() 那套「跨日事件」不同層級，這裡是同一天內的鐘點事件，
+  // 快轉跳過整天時可能漏掉中間天數的結算，跟 animalsShouldBeHome 一樣
+  // 只認目前這一刻的 gameHour，是同一種簡化(見 AGENTS.md 對這塊的說明)。
+  if (
+    gameHour >= 8 &&
+    gameState.pastureGrazeSettledDay !== gameState.currentDay
+  ) {
+    gameState.pastureGrazeSettledDay = gameState.currentDay;
+    gameState.pastureGrazedToday = settlePastureGrazing(gameState.currentDay);
+  }
+  if (gameHour >= 18 && gameState.feederSettledDay !== gameState.currentDay) {
+    gameState.feederSettledDay = gameState.currentDay;
+    if (!gameState.pastureGrazedToday) settleFeederConsumption();
+  }
+
   animals.forEach((a) => {
     let moving = false;
     if (animalsShouldBeHome) {

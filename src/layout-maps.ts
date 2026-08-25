@@ -212,9 +212,9 @@ import { repaintRegion } from "./region-paint";
         mountain: {
           width: 38,
           height: 68,
-          townGate: { x: 5, z: 67 },
+          townGate: { x: 22, z: 67 },
           homeGate: { x: 32, z: 34 },
-          townArrival: { x: 5, z: 65 },
+          townArrival: { x: 22, z: 65 },
           homeArrival: { x: 30, z: 34 },
           homeStoneStairs: {
             x: 31.65,
@@ -319,11 +319,15 @@ import { repaintRegion } from "./region-paint";
           mountain.summitLookout.width,
           mountain.summitLookout.depth,
         );
-        // 山腳先沿平台內側來回折返，再接第一段長階梯；避免入口到階梯只剩一條直角走廊。
-        path(mountain.townGate.x - 1, mountain.foot.z + 12, 3, 7);
-        path(mountain.townGate.x - 1, mountain.foot.z + 11, 11, 3);
-        path(mountain.townGate.x + 8, mountain.foot.z + 7, 3, 6);
-        path(mountain.townGate.x + 8, mountain.foot.z + 6, mountain.lowerStair.x - mountain.townGate.x - 5, 3);
+        // 新入口(22,67)幾乎跟 lowerStair(x=21) 同一條 x 上，不像舊入口(x=5)
+        // 那樣需要先往東橫越大半個山腳平台——直接鋪一條連到樓梯基座的
+        // 直向步道即可，寬度沿用 lowerStair.width 讓入口本身落在步道範圍內。
+        path(
+          mountain.lowerStair.x,
+          mountain.foot.z + 8,
+          mountain.lowerStair.width,
+          mountain.townGate.z - (mountain.foot.z + 8) + 1,
+        );
         path(mountain.lowerStair.x, mountain.foot.z + 2, 3, 6);
         path(mountain.lowerStair.x, mountain.lowerStair.fromZ, mountain.lowerStair.width, mountain.lowerStair.toZ - mountain.lowerStair.fromZ + 1);
         // 山腰的路往右繞過賞櫻平台，再折回左側的第二段階梯。

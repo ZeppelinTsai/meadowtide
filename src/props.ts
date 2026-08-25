@@ -2138,6 +2138,132 @@ export function makeWoodPlankTexture({
         return stone;
       }
 
+      // 木材採集點——簡單的一小堆剛砍下的原木，交叉疊放。
+      export function makeWoodPile(x, z) {
+        const group = new THREE.Group();
+        const barkMat = new THREE.MeshStandardMaterial({
+          color: 0x6b4a30,
+          flatShading: true,
+          roughness: 0.92,
+        });
+        const logs = [
+          { x: -0.13, y: 0.09, z: 0.02, rotY: 0.18, len: 0.56, r: 0.09, mat: barkMat },
+          { x: 0.11, y: 0.09, z: -0.04, rotY: -0.12, len: 0.5, r: 0.085, mat: barkMat },
+          { x: -0.03, y: 0.09, z: 0.16, rotY: 1.35, len: 0.42, r: 0.08, mat: barkMat },
+        ];
+        logs.forEach((l) => {
+          const log = new THREE.Mesh(
+            new THREE.CylinderGeometry(l.r, l.r * 0.92, l.len, 7),
+            l.mat,
+          );
+          log.rotation.z = Math.PI / 2;
+          log.rotation.y = l.rotY;
+          log.position.set(l.x, l.y, l.z);
+          log.castShadow = true;
+          log.receiveShadow = true;
+          group.add(log);
+        });
+        group.position.set(x, 0, z);
+        return group;
+      }
+
+      // 石頭採集點——一小叢裸露的岩石，比崖邊裝飾用的 makeStone() 大一圈、
+      // 堆成一叢方便一眼看出是採集點，不另外加發光提示。
+      export function makeStonePile(x, z) {
+        const group = new THREE.Group();
+        const rockMat = new THREE.MeshStandardMaterial({
+          color: 0x8a8a86,
+          flatShading: true,
+          roughness: 0.95,
+        });
+        const lightRockMat = new THREE.MeshStandardMaterial({
+          color: 0xb9c4c9,
+          flatShading: true,
+          roughness: 0.88,
+        });
+        const rocks = [
+          { x: -0.1, z: 0.06, r: 0.17, seed: 0.3, mat: rockMat },
+          { x: 0.13, z: -0.04, r: 0.15, seed: 0.7, mat: rockMat },
+          { x: -0.02, z: 0.16, r: 0.12, seed: 1.1, mat: rockMat },
+          { x: 0.03, z: -0.02, r: 0.19, seed: 1.6, mat: lightRockMat },
+        ];
+        rocks.forEach((r) => {
+          const mesh = new THREE.Mesh(new THREE.IcosahedronGeometry(r.r, 0), r.mat);
+          mesh.position.set(r.x, r.r * 0.72, r.z);
+          mesh.rotation.set(r.seed * 5, r.seed * 3, r.seed * 2);
+          mesh.castShadow = true;
+          mesh.receiveShadow = true;
+          group.add(mesh);
+        });
+        group.position.set(x, 0, z);
+        return group;
+      }
+
+      // 採集成功時飛出去的小木屑/碎石——跟 makeFishProp() 那顆「飛向玩家」
+      // 的魚同等級的簡單一次性演出道具，input-save.ts 建立、丟進
+      // gameState.gatherChipAnims，game-loop.ts 逐幀更新拋物線再移除。
+      export function makeChipDebris(kind, seed) {
+        const mat = new THREE.MeshStandardMaterial({
+          color: kind === "wood" ? 0x8a6440 : 0x9a9a94,
+          flatShading: true,
+        });
+        const chip = new THREE.Mesh(
+          kind === "wood"
+            ? new THREE.BoxGeometry(0.05, 0.05, 0.12)
+            : new THREE.TetrahedronGeometry(0.06, 0),
+          mat,
+        );
+        chip.rotation.set(seed * 6, seed * 4, seed * 2);
+        chip.castShadow = true;
+        return chip;
+      }
+
+      // 動物投餵機——牧場邊一座簡單的木架漏斗+食槽。
+      export function makeAnimalFeeder(x, z) {
+        const group = new THREE.Group();
+        const legMat = new THREE.MeshStandardMaterial({ color: 0x5c4a36 });
+        const woodMat = new THREE.MeshStandardMaterial({
+          color: 0x9c7a4e,
+          flatShading: true,
+        });
+        const hopperMat = new THREE.MeshStandardMaterial({
+          color: 0x7a8a63,
+          flatShading: true,
+          roughness: 0.85,
+        });
+        [
+          [-0.28, -0.14],
+          [0.28, -0.14],
+          [-0.28, 0.14],
+          [0.28, 0.14],
+        ].forEach(([lx, lz]) => {
+          const leg = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.32, 0.05), legMat);
+          leg.position.set(lx, 0.16, lz);
+          leg.castShadow = true;
+          group.add(leg);
+        });
+        const trough = new THREE.Mesh(
+          new THREE.BoxGeometry(0.7, 0.14, 0.34),
+          woodMat,
+        );
+        trough.position.y = 0.36;
+        trough.castShadow = true;
+        trough.receiveShadow = true;
+        group.add(trough);
+        const hopper = new THREE.Mesh(new THREE.ConeGeometry(0.26, 0.5, 4), hopperMat);
+        hopper.rotation.y = Math.PI / 4;
+        hopper.position.y = 0.78;
+        hopper.castShadow = true;
+        group.add(hopper);
+        const roof = new THREE.Mesh(new THREE.ConeGeometry(0.34, 0.16, 4), woodMat);
+        roof.rotation.y = Math.PI / 4;
+        roof.position.y = 1.08;
+        roof.castShadow = true;
+        group.add(roof);
+        group.position.set(x, 0, z);
+        return group;
+      }
+
       export function makeBasaltHeadland(originX, originZ) {
         const group = new THREE.Group();
         const heightScale = 1.742;
