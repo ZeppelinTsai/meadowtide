@@ -588,6 +588,7 @@ export interface GatherNode {
 }
 export const WOOD_NODES: GatherNode[] = [];
 export const STONE_NODES: GatherNode[] = [];
+export const GATHER_NODES_PER_KIND = 3;
 
 export function getGatherSpawnSlot(
   day = gameState.currentDay,
@@ -652,7 +653,7 @@ export function refreshGatherNodes(force = false) {
     usedByMap.set(map, used);
     const candidates = shuffled(gatherCandidates(zone));
     for (const kind of ["wood", "stone"] as const) {
-      for (let index = 0; index < 5; index++) {
+      for (let index = 0; index < GATHER_NODES_PER_KIND; index++) {
         const pickIndex = candidates.findIndex((cell) =>
           used.every((taken) => Math.abs(taken.x - cell.x) + Math.abs(taken.z - cell.z) >= 2),
         );

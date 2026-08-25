@@ -544,8 +544,9 @@ meadowtideI18n.locales           // 列出支援的語言代碼 ["zh","en","ja"]
   流星雨，第 13 日高峰。`meteorPool` 固定最多 16 個物件；室內、白天或
   不可見天氣會清空活動狀態，不會累積 geometry/material。
 - 木材／石頭採集點每天 06:00、18:00 各刷新一次；採集後整個模型立即消失，
-  不使用 emissive 發光提示。每批生活區西側為 5 木＋5 石；山區山腳與山腰
-  各為 5 木＋5 石，山頂不生成。隨機座標必須從 `MAPS` 的可走草地與
+  不使用 emissive 發光提示。每區、每批的數量以 `src/game-state.ts` 的
+  `GATHER_NODES_PER_KIND` 為單一資料源，目前生活區西側、山區山腳與山腰
+  都各為 3 木＋3 石，山頂不生成。隨機座標必須從 `MAPS` 的可走草地與
   `LAYOUT.mountain.foot/waist` 推導；山腳／山腰只可生成在各層
   `LAYOUT.mountain.plazas` 的平地上，且須靠近 `LAYOUT.mountain.trees` 的
   既有樹木，避免散落到玩家難以搜尋的平台角落。木石不得共用座標；修改後執行
