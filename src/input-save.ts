@@ -29,6 +29,13 @@ import {
 import { updateSeasonAndDate } from "./game-clock";
 import { ORE_NODES, harvestOreNode } from "./mine";
 import {
+  playRandomSfx,
+  CHOP_WOOD_SFX,
+  MINE_ORE_SFX,
+  FISH_CAST_SFX,
+  FISH_REEL_SFX,
+} from "./sfx";
+import {
   carpenterQuest,
   POUCH_POS,
   FARMLAND_TILES,
@@ -45,6 +52,8 @@ import {
   showDialog,
   showDialogSequence,
   dialogEl,
+  activeChoice,
+  handleChoiceDigitKey,
 } from "./dialogue";
 import { loadMap, isBlocked, events } from "./build-map";
 import {
@@ -241,6 +250,11 @@ addEventListener("keydown", (event) => {
 export const keys = {};
 addEventListener("keydown", (e) => (keys[e.key.toLowerCase()] = true));
 addEventListener("keyup", (e) => (keys[e.key.toLowerCase()] = false));
+// 二選一提示的數字鍵選擇——跟上面 E 鍵/WASD 分開一個監聽，純粹只在
+// activeChoice 有值時吃鍵，其他時候完全不影響移動/互動。
+addEventListener("keydown", (e) => {
+  if (handleChoiceDigitKey(e.key)) e.preventDefault();
+});
 function setCameraZoom(zoom) {
   const maxZoom = gameState.currentMapName === "port" ? 20 : 18;
   gameState.zoom = Math.max(2, Math.min(maxZoom, zoom));
@@ -288,6 +302,11 @@ renderer.domElement.addEventListener("touchcancel", endPinch);
 addEventListener("keydown", (e) => {
   if (e.key.toLowerCase() !== "e" || gameState.ePressed) return;
   gameState.ePressed = true;
+
+  // 選項提示開著的時候 E 鍵完全不處理——只認數字鍵/滑鼠點擊(見下面另一
+  // 個 keydown 監聽)，不然 E 會被底下的 dialogQueue 判斷或其他互動邏輯
+  // 接手，玩家可能還沒選就誤觸別的東西。
+  if (activeChoice) return;
 
   // 對話正在進行中：E 只用來往下推句子，不觸發任何其他動作
   if (dialogQueue.length) {
@@ -427,6 +446,7 @@ addEventListener("keydown", (e) => {
       const kind = woodNode ? "wood" : "stone";
       const granted = harvestGatherNode(kind, gatherNode.x, gatherNode.z);
       if (granted > 0) {
+        if (kind === "wood") playRandomSfx(CHOP_WOOD_SFX);
         const harvestedNode = woodNode || stoneNode;
         const meshEntry = gatherNodeMeshes.find(
           (entry) => entry.nodeId === harvestedNode.id,
@@ -465,6 +485,7 @@ addEventListener("keydown", (e) => {
     if (oreNode) {
       const result = harvestOreNode(oreNode.x, oreNode.z);
       if (result.amount > 0 && result.tier) {
+        playRandomSfx(MINE_ORE_SFX);
         const meshEntry = oreNodeMeshes.find(
           (entry) => entry.nodeId === oreNode.id,
         );
@@ -506,6 +527,7 @@ addEventListener("keydown", (e) => {
 
   if (gameState.currentMapName === "livingArea" && nearWater()) {
     if (gameState.fishingState === "idle") {
+      playRandomSfx(FISH_CAST_SFX);
       gameState.fishingState = "casting";
       gameState.fishingTimer = 0;
       gameState.biteWaitTime = 1.4 + Math.random() * 2.6;
@@ -514,6 +536,7 @@ addEventListener("keydown", (e) => {
       gameState.castAnimEnd = gameState.elapsed + CAST_ANIM_DURATION;
       if (gameState.player.parts.rod) gameState.player.parts.rod.visible = true;
     } else if (gameState.fishingState === "biting") {
+      playRandomSfx(FISH_REEL_SFX);
       inventory.fish++;
       gameState.fishingState = "idle";
       const catchFrom = gameState.bobberMesh

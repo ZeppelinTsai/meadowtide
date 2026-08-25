@@ -490,3 +490,31 @@ meadowtideI18n.locales           // 列出支援的語言代碼 ["zh","en","ja"]
 - 修改傳送或平移邏輯後必跑 `npm run test:map-tools`。測試會檢查端點不漏移、
   不雙重位移，並以 BFS 驗證山區／舊城鎮／兩側南灘的抵達點到門檻之間仍有
   連續可走地磚，防止 `path()` 對零或負寬度靜默不畫。
+
+## 二選一提示 UI：`showChoice()`（2026-08-25 已實作）
+
+- `src/dialogue.ts` 的 `showChoice(text, options, onSelect)` 是給「玩家要在
+  文字提示下做一個真的有分支的決定」用的通用小工具，第一個用例是鐘乳石
+  洞窟上樓梯「要不要直接回鎮上」的提示（`build-map.ts` 的 `mineGoUp()`）。
+  之後任何場景需要 Yes/No 或多選提示，直接呼叫這個，不要另外發明
+  `window.confirm()` 或新的彈窗——原本上樓梯是用瀏覽器原生 `confirm()`
+  頂著用，玩家反饋這是「導入選項 UI 的時機」才換成這套。
+- 跟連續對話（`showDialogSequence`/`dialogQueue`）共用同一個 `#dialog` 框、
+  同一套文字渲染（`renderDialogLine`），但底下換成一排選項按鈕
+  （`#dialogChoices` / `.dialogChoiceBtn`），取代「按 E 繼續」的提示。故意
+  **不**塞進 `dialogQueue`——E 鍵在 `input-save.ts` 看到 `dialogQueue.length`
+  就會直接呼叫 `advanceDialogSequence()`，那是「純文字往下推」的語意，跟
+  「做決定」不一樣，混在一起容易誤觸。選項提示用獨立狀態
+  `activeChoice`，E 鍵在 `activeChoice` 有值時整個略過（見 `input-save.ts`
+  的 E 鍵處理最前面那個 `if (activeChoice) return;`），玩家只能用數字鍵
+  1/2/3…（對應 `options` 陣列索引，`handleChoiceDigitKey()`）或滑鼠點擊
+  選項按鈕來決定，選完呼叫 `onSelect(value)`、收掉對話框。
+- `options` 是 `{ label, value }` 陣列，`value` 可以是任意型別（目前用字串
+  常數，例如 `"town"`/`"step"`/`"stay"`），`onSelect` 收到選到的那個
+  `value` 自行 `switch`/`if` 分支，不用侷限在二選一。
+- 顯示中的選項提示會讓 `#dialog` 保持可見，`isGameTimePaused()`（見
+  `game-clock.ts`）因此自動連帶凍結玩家移動與遊戲時間，不用額外處理。
+- 這套機制刻意做成跟「上樓梯是哪個角落／哪個造型」無關的通用層——之後
+  如果要做另一個「往上爬」的洞窟/塔，一樣直接呼叫 `showChoice()`，不用
+  重寫互動與鍵盤處理，只要在對應的樓層轉換函式裡换一套 `options`/
+  `onSelect` 邏輯即可。

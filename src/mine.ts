@@ -59,20 +59,41 @@ export function mineOreForFloor(floor: number): OreTier {
   return ORE_TIERS[mineTierForFloor(floor) - 1];
 }
 
-// 樓梯座標固定在房間對角兩側(跟樓層無關)：上樓梯(回上一層/出洞口)在
-// 西南角，下樓梯(往下一層，最底層沒有)在東北角，兩者距離夠遠，中間
-// 隨機礦點怎麼灑都不會擋住任一邊。
-export function mineUpStairs() {
-  // 原本 z=MINE_SIZE-4；往畫面上方(-Z)移三格，地磚、事件與抵達點同步。
-  return { x: 4, z: MINE_SIZE - 7 };
+// 樓梯固定在房間對角兩側的兩個點，但「哪個點是上樓梯/哪個是下樓梯」
+// 依樓層奇偶交替，不是死死釘住某個角落——玩家反饋：原本上下樓梯的模型
+// 放反了(該用凹陷造型的位置放了疊高造型，反之亦然)，且方向要轉 180
+// 度；同時想通了「相鄰樓層的上下樓梯位置要對得上」才不會出現「明明是
+// 順著同一組樓梯上下、畫面卻瞬間跳到對角」的違和感：第 1 層(奇數)從
+// 西南角(A)進來、東北角(B)往下；第 2 層(偶數)理當從 B 進來(跟第 1 層
+// 往下的落點對齊)、再從 A 往下(對齊第 3 層又是從 A 進來)，兩個點的角色
+// 每層對調一次。
+const MINE_STAIR_A = { x: 4, z: MINE_SIZE - 7 }; // 西南角
+const MINE_STAIR_B = { x: MINE_SIZE - 5, z: 3 }; // 東北角
+
+export function mineUpStairs(floor: number) {
+  return floor % 2 === 1 ? MINE_STAIR_A : MINE_STAIR_B;
 }
 export function mineDownStairs(floor: number) {
-  return floor < MINE_FLOOR_MAX ? { x: MINE_SIZE - 5, z: 3 } : null;
+  if (floor >= MINE_FLOOR_MAX) return null;
+  return floor % 2 === 1 ? MINE_STAIR_B : MINE_STAIR_A;
 }
 
 export function mineStairRotation(direction: "up" | "down") {
-  // 朝向調整套在下樓梯；上樓梯維持原模型方向。
-  return direction === "down" ? Math.PI : 0;
+  // 曾經改成跟座落的角落綁在一起(哪個角落固定用哪個朝向)，但玩家後續
+  // 反饋：雙數樓換到東北角的上樓梯(疊高箱子那顆)方向還是不對，要再轉
+  // 180 度——代表朝向其實跟「這是上樓梯還是下樓梯造型」綁在一起才對，
+  // 跟座落哪個角落無關(疊高箱子固定 PI、凹陷坑洞固定 0，兩種角落都一
+  // 樣)，之前改成跟角落綁死是修正過頭了，這裡改回跟 direction 掛勾。
+  return direction === "up" ? Math.PI : 0;
+}
+
+// 玩家重生點要落在樓梯「往房間內」那一格，不能直接站在樓梯上——西南角
+// 房間在北側(z 變小方向)，東北角房間在南側(z 變大方向)，兩者往內的
+// 方向相反。
+function mineEntrancePoint(pos: { x: number; z: number }) {
+  return pos.z < MINE_SIZE / 2
+    ? { x: pos.x, z: pos.z + 1 }
+    : { x: pos.x, z: pos.z - 1 };
 }
 
 // tile 值延用 build-map.ts 既有圖例，4/7 之前完全沒用過：
@@ -90,7 +111,7 @@ export function makeMineFloorTiles(floor: number) {
     tiles[z][0] = 1;
     tiles[z][size - 1] = 1;
   }
-  const up = mineUpStairs();
+  const up = mineUpStairs(floor);
   tiles[up.z][up.x] = 7;
   const down = mineDownStairs(floor);
   if (down) tiles[down.z][down.x] = 4;
@@ -123,7 +144,7 @@ export function regenerateMineFloorTiles(floor: number) {
   const clampedFloor = Math.max(1, Math.min(MINE_FLOOR_MAX, floor));
   gameState.mineFloor = clampedFloor;
   MAPS.stalactiteCave.tiles = makeMineFloorTiles(clampedFloor);
-  MAPS.stalactiteCave.playerStart = { ...mineUpStairs(), z: mineUpStairs().z - 1 };
+  MAPS.stalactiteCave.playerStart = mineEntrancePoint(mineUpStairs(clampedFloor));
   return clampedFloor;
 }
 
@@ -139,7 +160,7 @@ export function regenerateMineFloor(floor: number) {
 
   ORE_NODES.length = 0;
   const tier = mineOreForFloor(clampedFloor);
-  const up = mineUpStairs();
+  const up = mineUpStairs(clampedFloor);
   const down = mineDownStairs(clampedFloor);
   const taken: { x: number; z: number }[] = [up, ...(down ? [down] : [])];
   let placed = 0;

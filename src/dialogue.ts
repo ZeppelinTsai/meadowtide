@@ -151,3 +151,61 @@ export const dialogEl = document.getElementById("dialog");
         }
         renderDialogLine(dialogQueue[dialogIndex]);
       }
+
+      // ==============================================================
+      // 二選一(或多選)提示——跟連續對話(dialogQueue)共用同一個 #dialog
+      // 框、同一套文字渲染(renderDialogLine)，但底下換成一排選項按鈕，
+      // 不是「按 E 一句句往下推」。故意不塞進 dialogQueue，是因為 E 鍵
+      // 的處理邏輯(input-save.ts)看到 dialogQueue.length 就會直接呼叫
+      // advanceDialogSequence()，那是「純文字往下推」的語意，跟「玩家
+      // 要做一個真的有分支的決定」不一樣，混在一起容易誤觸——所以選項
+      // 提示用另一個獨立狀態(activeChoice)，E 鍵在有 activeChoice 時直接
+      // 忽略，只認數字鍵/滑鼠點擊(見 input-save.ts)。
+      // 這是為了「上樓要不要直接回城鎮」這個需求做的通用小工具，之後
+      // 任何「玩家要在文字提示下做選擇」的場景(包含之後想做的另一個
+      // 「往上爬」洞窟)都可以直接呼叫 showChoice()，不用再各自發明一套。
+      // ==============================================================
+      export const dialogChoicesEl = document.getElementById("dialogChoices");
+      export const dialogContinueEl = document.getElementById("dialogContinue");
+      export let activeChoice: {
+        options: { label: string; value: any }[];
+        onSelect: (value: any) => void;
+      } | null = null;
+
+      export function showChoice(text, options, onSelect) {
+        renderDialogLine(normalizeDialogLine(text));
+        dialogEl.style.display = "flex";
+        if (dialogContinueEl) dialogContinueEl.style.display = "none";
+        activeChoice = { options, onSelect };
+        dialogChoicesEl.innerHTML = "";
+        options.forEach((opt, i) => {
+          const btn = document.createElement("button");
+          btn.className = "dialogChoiceBtn";
+          btn.textContent = `${i + 1}. ${opt.label}`;
+          btn.onclick = () => resolveChoice(opt.value);
+          dialogChoicesEl.appendChild(btn);
+        });
+        dialogChoicesEl.style.display = "flex";
+      }
+
+      export function resolveChoice(value) {
+        if (!activeChoice) return;
+        const { onSelect } = activeChoice;
+        activeChoice = null;
+        dialogChoicesEl.style.display = "none";
+        if (dialogContinueEl) dialogContinueEl.style.display = "";
+        closeDialogUi();
+        onSelect(value);
+      }
+
+      // 數字鍵 1~9 對應目前選項清單索引，鍵盤事件統一集中在
+      // input-save.ts 處理(既有慣例)，這裡只暴露一個純函式讓它呼叫；
+      // 回傳有沒有真的吃掉這個按鍵，方便呼叫端決定要不要 preventDefault。
+      export function handleChoiceDigitKey(key: string): boolean {
+        if (!activeChoice) return false;
+        const index = Number(key) - 1;
+        const opt = activeChoice.options[index];
+        if (!opt) return false;
+        resolveChoice(opt.value);
+        return true;
+      }

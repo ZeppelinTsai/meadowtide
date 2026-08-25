@@ -89,6 +89,16 @@ import {
   PASTURE,
   hasPastureGrassAt,
 } from "./npc-runtime";
+// 這個 import 刻意放在 scene-sky/npc-runtime 之後：build-map.ts 是
+// main.ts 第一個載入的模組，dialogue.ts 會 import npc-runtime.ts，
+// npc-runtime.ts 又會在模組頂層讀 scene-sky.ts 的 scene/PLATEAU_Y——
+// 如果這行排在 scene-sky 的 import 之前，就會搶先透過 dialogue.ts 把
+// npc-runtime.ts 拉進來，早於 scene-sky.ts 本身被求值，导致
+// farm-visuals.ts/npc-runtime.ts 模組頂層讀到的 scene/PLATEAU_Y 還在
+// TDZ，丟出「Cannot access 'PLATEAU_Y' before initialization」(實測
+// 撞過一次)。排在這裡確保 scene-sky.ts 早就由上面幾個 import 完整求值
+// 過，不會再繞回循環。
+import { showChoice } from "./dialogue";
 import { makeHeroPlayer, makeMountainGuardian } from "./humanoid";
 import { isPointBlockedByScaledBuilding } from "./building-scale";
 import {
@@ -144,6 +154,7 @@ import {
   makeAnimalFeeder,
   makeOreNode,
   makeMineStaircase,
+  makeMinePitRecess,
 } from "./props";
 import { syncFarmVisuals } from "./farm-visuals";
 import {
@@ -709,12 +720,61 @@ export function buildMap(mapName) {
         new THREE.Color(mineFloorTier.color),
         0.16,
       );
-      addMapFloorPatch({
-        width: cols,
-        depth: rows,
-        color: mineFloorColor,
-        roughness: 1,
-      });
+      // 玩家又反饋一次：搞錯方向，其實是要往下爬，模組改回原樣——下樓梯
+      // 那一格真的挖空(makeMinePitRecess 補洞壁/坑底)，上樓梯改回疊高
+      // 箱子(不挖地板)。地板拆成「洞口那一整排」+「其餘兩排」三塊拼接，
+      // 跟舊城鎮沙灘/海分三塊蓋同一種手法(見 addMapFloorPatch 開頭註解)；
+      // 最底層(第 25 層)沒有下樓梯，照舊整片鋪。
+      const mineDownPit = mineDownStairs(gameState.mineFloor);
+      if (mineDownPit) {
+        if (mineDownPit.z > 0) {
+          addMapFloorPatch({
+            x: 0,
+            z: 0,
+            width: cols,
+            depth: mineDownPit.z,
+            color: mineFloorColor,
+            roughness: 1,
+          });
+        }
+        if (mineDownPit.z < rows - 1) {
+          addMapFloorPatch({
+            x: 0,
+            z: mineDownPit.z + 1,
+            width: cols,
+            depth: rows - mineDownPit.z - 1,
+            color: mineFloorColor,
+            roughness: 1,
+          });
+        }
+        if (mineDownPit.x > 0) {
+          addMapFloorPatch({
+            x: 0,
+            z: mineDownPit.z,
+            width: mineDownPit.x,
+            depth: 1,
+            color: mineFloorColor,
+            roughness: 1,
+          });
+        }
+        if (mineDownPit.x < cols - 1) {
+          addMapFloorPatch({
+            x: mineDownPit.x + 1,
+            z: mineDownPit.z,
+            width: cols - mineDownPit.x - 1,
+            depth: 1,
+            color: mineFloorColor,
+            roughness: 1,
+          });
+        }
+      } else {
+        addMapFloorPatch({
+          width: cols,
+          depth: rows,
+          color: mineFloorColor,
+          roughness: 1,
+        });
+      }
     } else if (mapName !== "mountain") {
       const groundMat = addMapFloorPatch({
         width: cols,
@@ -2049,13 +2109,24 @@ export function buildMap(mapName) {
     // events 表的 mineGoUp() 判斷樓層再決定要不要真的換地圖)；下樓在
     // MINE_FLOOR_MAX 不存在，這裡跟 tile 資料(mine.ts 的
     // makeMineFloorTiles())用同一個 mineDownStairs() 判斷，不會兜不攏。
-    const up = mineUpStairs();
+    // 玩家反饋來回調整過兩次，最後確認：上樓梯用疊高箱子造型(不挖地板)，
+    // 下樓梯用凹陷坑洞造型(direction="down"，配合上面地板挖空的同一格)。
+    const up = mineUpStairs(mineFloor);
     const upStair = makeMineStaircase("up", tier.accentColor);
     upStair.position.set(up.x, 0, up.z);
     upStair.rotation.y = mineStairRotation("up");
     plateauGroup.add(upStair);
     const down = mineDownStairs(mineFloor);
     if (down) {
+      // 坑洞本體(洞壁+坑底)先擺，樓梯模型疊在上面同一個位置——對應
+      // 上面地板拆成三塊拼接時挖空的同一格。
+      const pitRockColor = new THREE.Color(0x2a2c27).lerp(
+        new THREE.Color(tier.color),
+        0.12,
+      );
+      const pit = makeMinePitRecess(pitRockColor);
+      pit.position.set(down.x, 0, down.z);
+      plateauGroup.add(pit);
       const downStair = makeMineStaircase("down", tier.color);
       downStair.position.set(down.x, 0, down.z);
       downStair.rotation.y = mineStairRotation("down");
@@ -3204,25 +3275,54 @@ const worldTransitionEvents = createTransitionEvents(
 // loadMap() 之前就準備好，buildMap() 讀到的永遠是當前樓層該有的內容。
 function enterMine() {
   regenerateMineFloor(1);
-  loadMap("stalactiteCave", mineUpStairs());
+  loadMap("stalactiteCave", mineUpStairs(1));
 }
+function goToTownFromMine() {
+  const cave = LAYOUT.oldVillage.stalactiteCave;
+  const mouthZ = cave.z + cave.depth - 1;
+  loadMap("oldVillage", {
+    x: cave.entranceX + Math.floor((cave.entranceWidth - 1) / 2),
+    z: mouthZ + 1,
+  });
+}
+// 不管在第幾層，踩上樓梯都先問一次要不要直接回鎮上——touch 事件只在
+// 玩家剛好踩進這一格的那一幀觸發一次(見 game-loop.ts 的
+// roundedX/roundedZ 沒變就不重觸發)，不會因為玩家站著不動而連續彈窗。
+// 原本只有第 1 層(唯一真正「離開洞窟」的樓層)會問，玩家反饋每一層都
+// 該問，改成用 showChoice()(見 dialogue.ts)取代原生 confirm()——順便
+// 是「選項 UI」的第一個實際用例，之後想做的另一個「往上爬」洞窟一樣
+// 能直接沿用同一個 showChoice()，不用另外發明。
 function mineGoUp() {
-  if (gameState.mineFloor <= 1) {
-    const cave = LAYOUT.oldVillage.stalactiteCave;
-    const mouthZ = cave.z + cave.depth - 1;
-    loadMap("oldVillage", {
-      x: cave.entranceX + Math.floor((cave.entranceWidth - 1) / 2),
-      z: mouthZ + 1,
-    });
-    return;
-  }
-  regenerateMineFloor(gameState.mineFloor - 1);
-  loadMap("stalactiteCave", mineDownStairs(gameState.mineFloor) || mineUpStairs());
+  const atSurface = gameState.mineFloor <= 1;
+  showChoice(
+    "要直接回鎮上嗎？",
+    atSurface
+      ? [
+          { label: "回鎮上", value: "town" },
+          { label: "繼續挖礦", value: "stay" },
+        ]
+      : [
+          { label: "回鎮上", value: "town" },
+          { label: "往上一層", value: "step" },
+        ],
+    (choice) => {
+      if (choice === "stay") return;
+      if (choice === "town") {
+        goToTownFromMine();
+        return;
+      }
+      regenerateMineFloor(gameState.mineFloor - 1);
+      loadMap(
+        "stalactiteCave",
+        mineDownStairs(gameState.mineFloor) || mineUpStairs(gameState.mineFloor),
+      );
+    },
+  );
 }
 function mineGoDown() {
   if (gameState.mineFloor >= MINE_FLOOR_MAX) return;
   regenerateMineFloor(gameState.mineFloor + 1);
-  loadMap("stalactiteCave", mineUpStairs());
+  loadMap("stalactiteCave", mineUpStairs(gameState.mineFloor));
 }
 
 export const events = [
@@ -3246,10 +3346,10 @@ export const events = [
   {
     map: "stalactiteCave",
     get x() {
-      return mineUpStairs().x;
+      return mineUpStairs(gameState.mineFloor).x;
     },
     get z() {
-      return mineUpStairs().z;
+      return mineUpStairs(gameState.mineFloor).z;
     },
     trigger: "touch",
     action: () => mineGoUp(),

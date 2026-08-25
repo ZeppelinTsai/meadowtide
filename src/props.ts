@@ -4016,64 +4016,143 @@ export function makeWoodPlankTexture({
         return chip;
       }
 
-      // 洞窟樓梯——上/下樓都用真的階梯造型(側邊矮牆+頂/底端一塊指示色
-      // 平台)，刻意不做牧場物語那種「地上一個方洞」的樣式；平台顏色用
-      // 當層礦石階層色，一眼就能對到牆體/地板同一組配色，沒有用
-      // emissive(理由跟洞口拱門的石框一樣：純靜態對比色提示，不暗示
-      // 「這裡可以互動」)。
+      // 洞窟樓梯——v1(疊箱子+扶手+平台)玩家反應看不出方向；v2(踏面/豎板
+      // 對比+凹陷平面)玩家反應還是像一塊匾額、不像樓梯。這版不再自己
+      // 發明造型，直接照抄舊城鎮 plazaStairs/westStairs 那套已經驗證能讀
+      // 出「這是樓梯」的手法(build-map.ts 裡 LAYOUT.oldVillage.plazaStairs
+      // .forEach 那段)：一階一顆疊高的箱子、底部貼平、高度依階數遞增、
+      // 頂面用淺色(跟石地板同一組米灰色)、側面用深色，天然靠輪廓讀出
+      // 階梯，不用扶手/招牌之類額外道具硬湊。這裡只是把「橫跨整片地形
+      // 的長樓梯」壓成「一格 tile 內」的迷你版。
+      //
+      // 上樓：箱體底部貼平所在樓層地板(baseY=0)往上疊，Z 對稱分布在
+      // 0 兩側，不再像 v1/v2 那樣手動位移——玩家要求「Z對準0即可」。
+      // 下樓：箱體底部貼平 build-map.ts 額外挖出的 1×1×1 坑洞底部
+      // (baseY=-1)，離坑口最近的一階最高、貼齊地板(order 跟 up 相反)，
+      // 越往深處階梯越矮越暗，看起來就是「地板破了個洞、洞裡有階梯往
+      // 下」，不是貼一張黑色平面騙深度；坑洞本體(洞壁+坑底)是另一個函式
+      // makeMinePitRecess，由 build-map.ts 一起擺在同一個位置。
       export function makeMineStaircase(direction, tierColor) {
         const group = new THREE.Group();
-        const stoneMat = new THREE.MeshStandardMaterial({
-          color: 0x54564f,
-          flatShading: true,
-          roughness: 0.95,
-        });
-        const darkStoneMat = new THREE.MeshStandardMaterial({
-          color: 0x2f302b,
-          flatShading: true,
-          roughness: 0.95,
+        const stairTopMats = [0xcdbf9d, 0x918472].map(
+          (color) =>
+            new THREE.MeshStandardMaterial({ color, roughness: 0.96 }),
+        );
+        const stairSideMat = new THREE.MeshStandardMaterial({
+          color: 0x625b54,
+          roughness: 1,
         });
         const accentMat = new THREE.MeshStandardMaterial({
           color: tierColor,
           flatShading: true,
           roughness: 0.5,
-          metalness: 0.15,
+          metalness: 0.2,
         });
-        const sign = direction === "up" ? 1 : -1;
-        const stepCount = 5;
+
+        const stepCount = 4;
+        const stepWidth = 0.7;
+        const totalRun = 0.8;
+        const totalRise = 0.8;
+        const stepDepth = totalRun / stepCount;
+        const baseY = direction === "up" ? 0 : -1;
+
         for (let i = 0; i < stepCount; i++) {
-          const y = sign * i * 0.16;
-          const zOff = -0.34 + i * 0.17;
+          const order = direction === "up" ? i : stepCount - 1 - i;
+          const height = ((order + 1) / stepCount) * totalRise;
+          const topMat = stairTopMats[i % stairTopMats.length];
           const step = new THREE.Mesh(
-            new THREE.BoxGeometry(0.86, 0.14, 0.2),
-            i === stepCount - 1 ? accentMat : stoneMat,
+            new THREE.BoxGeometry(stepWidth, height, stepDepth),
+            [
+              stairSideMat,
+              stairSideMat,
+              topMat,
+              stairSideMat,
+              stairSideMat,
+              stairSideMat,
+            ],
           );
-          step.position.set(0, y, zOff);
+          const z = -totalRun / 2 + (i + 0.5) * stepDepth;
+          step.position.set(0, baseY + height / 2, z);
           step.castShadow = true;
           step.receiveShadow = true;
           group.add(step);
         }
-        [-0.46, 0.46].forEach((xSide) => {
-          const rail = new THREE.Mesh(
-            new THREE.BoxGeometry(0.08, 0.5, 0.9),
-            darkStoneMat,
+
+        if (direction === "up") {
+          // 最高一階頂端貼一條階層色，暗示「往上還有」，跟牆體/地板同一
+          // 組配色系統對齊。
+          const rim = new THREE.Mesh(
+            new THREE.BoxGeometry(stepWidth + 0.06, 0.03, stepDepth + 0.02),
+            accentMat,
           );
-          rail.position.set(xSide, sign * 0.16, 0.1);
-          rail.castShadow = true;
-          rail.receiveShadow = true;
-          group.add(rail);
+          rim.position.set(0, totalRise + 0.02, totalRun / 2 - stepDepth / 2);
+          rim.castShadow = true;
+          rim.receiveShadow = true;
+          group.add(rim);
+        } else {
+          // 下樓在坑口邊緣描一圈細框標出洞口輪廓(四段細長條拼成方框)，
+          // 不是整片實心板蓋住洞口——真正的洞由 makeMinePitRecess 挖出來。
+          const frameThickness = 0.07;
+          [
+            { w: 1.0, d: frameThickness, x: 0, z: -0.465 },
+            { w: 1.0, d: frameThickness, x: 0, z: 0.465 },
+            { w: frameThickness, d: 1.0, x: -0.465, z: 0 },
+            { w: frameThickness, d: 1.0, x: 0.465, z: 0 },
+          ].forEach((seg) => {
+            const bar = new THREE.Mesh(
+              new THREE.BoxGeometry(seg.w, 0.05, seg.d),
+              accentMat,
+            );
+            bar.position.set(seg.x, 0.015, seg.z);
+            bar.castShadow = true;
+            bar.receiveShadow = true;
+            group.add(bar);
+          });
+        }
+
+        return group;
+      }
+
+      // 下樓梯挖出的 1×1×1 坑洞本體——四片洞壁+坑底，配合 build-map.ts
+      // 把該格地板拆成「洞口以外」三塊拼接(picture-frame 分割，跟舊城鎮
+      // 沙灘/海三塊拼接同一種手法，見 addMapFloorPatch 開頭註解)，是真的
+      // 挖空一格，不是貼一張黑色平面騙深度。
+      export function makeMinePitRecess(rockColor) {
+        const group = new THREE.Group();
+        const base = new THREE.Color(rockColor);
+        const wallMat = new THREE.MeshStandardMaterial({
+          color: base,
+          flatShading: true,
+          roughness: 0.95,
         });
-        const landing = new THREE.Mesh(
-          new THREE.BoxGeometry(0.9, 0.06, 0.5),
-          direction === "up" ? accentMat : darkStoneMat,
+        const floorMat = new THREE.MeshStandardMaterial({
+          color: base.clone().multiplyScalar(0.55),
+          flatShading: true,
+          roughness: 1,
+        });
+        const wallThickness = 0.08;
+        const pitFloor = new THREE.Mesh(
+          new THREE.BoxGeometry(1 - wallThickness, 0.06, 1 - wallThickness),
+          floorMat,
         );
-        landing.position.set(
-          0,
-          sign * 0.16 * (stepCount - 1) + sign * 0.05,
-          -0.34 + stepCount * 0.17,
-        );
-        landing.receiveShadow = true;
-        group.add(landing);
+        pitFloor.position.set(0, -0.97, 0);
+        pitFloor.receiveShadow = true;
+        group.add(pitFloor);
+        [
+          { w: 1, d: wallThickness, x: 0, z: -0.46 },
+          { w: 1, d: wallThickness, x: 0, z: 0.46 },
+          { w: wallThickness, d: 1 - wallThickness * 2, x: -0.46, z: 0 },
+          { w: wallThickness, d: 1 - wallThickness * 2, x: 0.46, z: 0 },
+        ].forEach((seg) => {
+          const wall = new THREE.Mesh(
+            new THREE.BoxGeometry(seg.w, 1, seg.d),
+            wallMat,
+          );
+          wall.position.set(seg.x, -0.5, seg.z);
+          wall.castShadow = true;
+          wall.receiveShadow = true;
+          group.add(wall);
+        });
         return group;
       }
 

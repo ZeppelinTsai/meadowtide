@@ -102,6 +102,17 @@ export const gameState = {
     start: number;
     duration: number;
   }[],
+  // 砍木材的短暫動作狀態。effectElapsed 讓揮斧不受遊戲時間快轉影響；
+  // 木材要等到 impacted 的命中幀才真正採收並隱藏。
+  woodChopAnim: null as null | {
+    nodeId: string;
+    x: number;
+    z: number;
+    start: number;
+    duration: number;
+    impactAt: number;
+    impacted: boolean;
+  },
   gatherSpawnSlot: Number.MIN_SAFE_INTEGER,
   // 鐘乳石洞窟目前所在樓層(1~25)，只有在 stalactiteCave 地圖裡有意義；
   // 離開地圖不重置，下次從舊城鎮洞口走進去才會強制設回 1(見 mine.ts
