@@ -125,6 +125,10 @@
 
 ## 採集點延後刷新與多 agent 提交
 
+- 多 agent 同時操作 Git 時，若發現 `.git/index.lock`，先確認目前沒有仍在
+  執行的 Git 程序；若鎖檔確為 **0-byte**，即可視為中斷後留下的殘留鎖，
+  agent 應直接刪除該精確檔案後繼續，不必再向使用者詢問。非 0-byte、仍有
+  Git 程序，或無法確認鎖檔身分時不得刪除，以免破壞正在進行的索引操作。
 - 木材／石頭的 06:00、18:00 只產生新的刷新時段；留在原地時不得在玩家
   眼前重生或搬動。只有 `loadMap()` 發現目標 map name 與目前地圖不同時，
   才呼叫 `refreshGatherNodes()` 套用最新時段；洞窟同地圖換樓不算換圖。
@@ -542,7 +546,9 @@ meadowtideI18n.locales           // 列出支援的語言代碼 ["zh","en","ja"]
 - 木材／石頭採集點每天 06:00、18:00 各刷新一次；採集後整個模型立即消失，
   不使用 emissive 發光提示。每批生活區西側為 5 木＋5 石；山區山腳與山腰
   各為 5 木＋5 石，山頂不生成。隨機座標必須從 `MAPS` 的可走草地與
-  `LAYOUT.mountain.foot/waist` 推導，木石不得共用座標；修改後執行
+  `LAYOUT.mountain.foot/waist` 推導；山腳／山腰只可生成在各層
+  `LAYOUT.mountain.plazas` 的平地上，且須靠近 `LAYOUT.mountain.trees` 的
+  既有樹木，避免散落到玩家難以搜尋的平台角落。木石不得共用座標；修改後執行
   `npm run map-debug -- --map=livingArea --legend`、
   `npm run map-debug -- --map=mountain --legend` 與 `npm run build`。
 - 生活區採集點只可在西側 `x=0～3` 的可走草地生成。魚池左上岸的六棵遮陽樹

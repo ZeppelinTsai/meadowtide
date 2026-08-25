@@ -607,7 +607,23 @@ function gatherCandidates(zone: GatherNode["zone"]) {
   const cells: { x: number; z: number }[] = [];
   for (let z = bounds.z; z < bounds.z + bounds.depth; z++) {
     for (let x = bounds.x; x < bounds.x + bounds.width; x++) {
-      if (tiles[z]?.[x] === 0) cells.push({ x, z });
+      const tile = tiles[z]?.[x];
+      if (tile !== 0 && !(zone !== "mountainSide" && tile === 5)) continue;
+      if (zone !== "mountainSide") {
+        const plazas = LAYOUT.mountain.plazas[zone];
+        const onPlaza = plazas.some(
+          (plaza) =>
+            x >= plaza.x &&
+            x < plaza.x + plaza.width &&
+            z >= plaza.z &&
+            z < plaza.z + plaza.depth,
+        );
+        const nearTree = LAYOUT.mountain.trees.some(
+          ([treeX, treeZ]) => Math.abs(treeX - x) + Math.abs(treeZ - z) <= 4,
+        );
+        if (!onPlaza || !nearTree) continue;
+      }
+      cells.push({ x, z });
     }
   }
   return cells;
