@@ -54,6 +54,7 @@ import {
   dialogEl,
   activeChoice,
   handleChoiceDigitKey,
+  advanceChoicePage,
 } from "./dialogue";
 import { loadMap, isBlocked, events } from "./build-map";
 import {
@@ -250,10 +251,19 @@ addEventListener("keydown", (event) => {
 export const keys = {};
 addEventListener("keydown", (e) => (keys[e.key.toLowerCase()] = true));
 addEventListener("keyup", (e) => (keys[e.key.toLowerCase()] = false));
-// 二選一提示的數字鍵選擇——跟上面 E 鍵/WASD 分開一個監聽，純粹只在
-// activeChoice 有值時吃鍵，其他時候完全不影響移動/互動。
+// 二選一提示的數字鍵選擇/翻頁——跟上面 E 鍵/WASD 分開一個監聽，純粹只
+// 在 activeChoice 有值時吃鍵，其他時候完全不影響移動/互動。數字鍵選當前
+// 頁看到的選項；選項超過一頁(CHOICE_PAGE_SIZE=3)時 Tab 鍵循環翻頁——
+// preventDefault 是因為 Tab 預設會把瀏覽器焦點移出畫布，會讓後續鍵盤
+// 輸入吃不到。
 addEventListener("keydown", (e) => {
-  if (handleChoiceDigitKey(e.key)) e.preventDefault();
+  if (handleChoiceDigitKey(e.key)) {
+    e.preventDefault();
+    return;
+  }
+  if (e.key === "Tab" && activeChoice) {
+    if (advanceChoicePage()) e.preventDefault();
+  }
 });
 function setCameraZoom(zoom) {
   const maxZoom = gameState.currentMapName === "port" ? 20 : 18;

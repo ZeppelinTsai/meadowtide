@@ -157,10 +157,7 @@ import {
   makeMinePitRecess,
 } from "./props";
 import { syncFarmVisuals } from "./farm-visuals";
-import {
-  createTransitionEvents,
-  type TransitionLink,
-} from "./map-transitions";
+import { createTransitionEvents, type TransitionLink } from "./map-transitions";
 import {
   OYSTER_RACK_VISUAL,
   WOOD_NODES,
@@ -681,7 +678,8 @@ export function buildMap(mapName) {
       // 全部歸西沙灘那塊(含西南角，跟南沙灘接壤的部分)，城鎮本體/南沙灘
       // 只需要再依 beachZ 切一刀，三塊剛好無縫拼滿整張地圖，互不重疊。
       const beachZ = LAYOUT.oldVillage.southBeach.z;
-      const townWestX = LAYOUT.oldVillage.westBeach.x + LAYOUT.oldVillage.westBeach.width;
+      const townWestX =
+        LAYOUT.oldVillage.westBeach.x + LAYOUT.oldVillage.westBeach.width;
       const groundColor = getSeasonGrassTone().ground;
       const townFloorMat = addMapFloorPatch({
         x: townWestX,
@@ -709,13 +707,18 @@ export function buildMap(mapName) {
       // 之前這片地板沒登記進 seasonalGroundMaterials，導致舊城鎮/藝術村這類
       // 地圖的草地永遠停在建圖當下那個季節色，換季也不會跟著變——跟
       // livingArea 共用同一份季節色表跟登記表，才不會兩邊各自維護一份判斷。
-      seasonalGroundMaterials.push(townFloorMat, seaFloorMat, westBeachFloorMat);
+      seasonalGroundMaterials.push(
+        townFloorMat,
+        seaFloorMat,
+        westBeachFloorMat,
+      );
     } else if (mapName === "stalactiteCave") {
       // 洞窟內部地板刻意不登記進 seasonalGroundMaterials——室內看不到
       // 天空，不該跟著戶外季節變色。改用當前樓層的礦石階層色跟基底岩灰
       // 混一點，樓層越深地板越偏該階層色，是「往下走氣氛在變」的其中
       // 一個線索(另外兩個是牆體色跟樓梯平台色，見下面對應位置)。
-      const mineFloorTier = ORE_TIERS[mineTierForFloor(gameState.mineFloor) - 1];
+      const mineFloorTier =
+        ORE_TIERS[mineTierForFloor(gameState.mineFloor) - 1];
       const mineFloorColor = new THREE.Color(0x3a3d38).lerp(
         new THREE.Color(mineFloorTier.color),
         0.16,
@@ -821,7 +824,8 @@ export function buildMap(mapName) {
       // 原本這裡一路寫死的 0/3 這幾個西緣魔術數字全部不再等於地圖真正的
       // 西界，改成從 westBeach 推導，才不會跟沙灘重疊蓋出一塊浮在海面上
       // 的台地方塊。
-      const townWestX = LAYOUT.oldVillage.westBeach.x + LAYOUT.oldVillage.westBeach.width;
+      const townWestX =
+        LAYOUT.oldVillage.westBeach.x + LAYOUT.oldVillage.westBeach.width;
       addTerrace(
         0,
         10,
@@ -860,8 +864,20 @@ export function buildMap(mapName) {
         plazaStairsEndX,
         LAYOUT.oldVillage.width - plazaStairsEndX,
       );
-      addTerrace(20, 7, groundElevation, townWestX + 3, LAYOUT.oldVillage.width - (townWestX + 3));
-      addTerrace(27, 3, groundElevation, townWestX, LAYOUT.oldVillage.width - townWestX);
+      addTerrace(
+        20,
+        7,
+        groundElevation,
+        townWestX + 3,
+        LAYOUT.oldVillage.width - (townWestX + 3),
+      );
+      addTerrace(
+        27,
+        3,
+        groundElevation,
+        townWestX,
+        LAYOUT.oldVillage.width - townWestX,
+      );
       const mountainLanding = LAYOUT.oldVillage.mountainLanding;
       const mountainLandingMesh = new THREE.Mesh(
         new THREE.BoxGeometry(
@@ -2137,7 +2153,13 @@ export function buildMap(mapName) {
     // oreNodeMeshes 讓 input-save.ts 採集成功時可以直接把對應的 group
     // 藏起來，不用整層重建。
     ORE_NODES.forEach((n) => {
-      const node = makeOreNode(n.x, n.z, tier.color, tier.accentColor, n.colorSeed);
+      const node = makeOreNode(
+        n.x,
+        n.z,
+        tier.color,
+        tier.accentColor,
+        n.colorSeed,
+      );
       node.visible = !n.collected;
       plateauGroup.add(node);
       oreNodeMeshes.push({ group: node, nodeId: n.id });
@@ -2350,7 +2372,8 @@ export function buildMap(mapName) {
         // 純方塊+粗糙岩灰材質，跟外面洞口(makeOldVillageStalactiteCaveEntrance)
         // 同一色系但不共用材質實例(那邊有窗戶/發光邏輯，這裡不需要)。牆色
         // 也混一點當層礦石階層色，跟地板呼應。
-        const mineWallTier = ORE_TIERS[mineTierForFloor(gameState.mineFloor) - 1];
+        const mineWallTier =
+          ORE_TIERS[mineTierForFloor(gameState.mineFloor) - 1];
         const mineWallColor = new THREE.Color(0x4a4d47).lerp(
           new THREE.Color(mineWallTier.color),
           0.22,
@@ -2374,7 +2397,9 @@ export function buildMap(mapName) {
         // 看起來是賞櫻、秋天自然變成賞楓，比寫死單一顏色更合理。
         const isLakeShadeTree =
           mapName === "livingArea" &&
-          LAKE_SHADE_TREE_TILES.some(([treeX, treeZ]) => treeX === x && treeZ === z);
+          LAKE_SHADE_TREE_TILES.some(
+            ([treeX, treeZ]) => treeX === x && treeZ === z,
+          );
         const m =
           mapName === "mountain" ||
           (mapName === "livingArea" &&
@@ -3314,7 +3339,8 @@ function mineGoUp() {
       regenerateMineFloor(gameState.mineFloor - 1);
       loadMap(
         "stalactiteCave",
-        mineDownStairs(gameState.mineFloor) || mineUpStairs(gameState.mineFloor),
+        mineDownStairs(gameState.mineFloor) ||
+          mineUpStairs(gameState.mineFloor),
       );
     },
   );

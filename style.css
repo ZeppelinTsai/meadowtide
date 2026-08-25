@@ -143,30 +143,68 @@ body {
   color: rgba(255, 255, 255, 0.5);
   z-index: 2;
 }
-/* 二選一提示——跟連續對話共用同一個 #dialog 框，只是底下多一排選項
-   按鈕，取代「按 E 繼續」的提示(#dialogContinue 顯示這個時會被 JS 藏
-   起來，見 dialogue.ts 的 showChoice/resolveChoice)。滑鼠點擊或數字鍵
-   1/2/3...都能選，樣式沿用對話框同一組金色邊框，維持同一個視覺語言。 */
+/* 二選一提示(FGO 風格，2026-08-25 改版)——不再塞在 #dialog 內部右下角
+   (那樣容易被立繪/長文字蓋到)，改成獨立浮動在對話框「正上方」的一組
+   寬版堆疊按鈕，取代「按 E 繼續」的提示(#dialogContinue 顯示這個時會
+   被 JS 藏起來，見 dialogue.ts 的 showChoice/resolveChoice)。
+   position 用 fixed，但 bottom 的實際數值不是寫死在這裡，是每次開啟/
+   換頁時由 dialogue.ts 的 positionChoicePanel 依 #dialog 當下實際渲染
+   高度即時算出來塞進 inline style，這樣長短不同的提示文字都能讓面板
+   剛好貼齊對話框上緣，這就是「自適應」的意思。寬度跟 #dialog 對齊、
+   置中，樣式沿用同一組金色邊框+深色半透明底，維持同一個視覺語言，只
+   是形狀從小按鈕換成大圓角長條(FGO 的選項條那種)。最多同時顯示三個
+   (CHOICE_PAGE_SIZE)，超過的話最下面補一條較小的「換下一頁」列。 */
 #dialogChoices {
-  position: absolute;
-  right: 18px;
-  bottom: 8px;
-  z-index: 2;
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 80vw;
+  max-width: 1980px;
+  z-index: 16;
   display: none;
-  gap: 10px;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 15px;
+  box-sizing: border-box;
 }
 .dialogChoiceBtn {
   font: inherit;
-  font-size: 20px;
+  font-size: 22px;
   color: #f5c542;
-  background: rgba(15, 15, 20, 0.92);
+  background: rgba(15, 15, 20, 0.88);
   border: 2px solid #f5c542;
-  border-radius: 6px;
-  padding: 6px 16px;
+  border-radius: 5px;
+  padding: 12px 28px;
+  text-align: center;
   cursor: pointer;
+  box-shadow:
+    0 0 0 1px rgba(245, 197, 66, 0.25) inset,
+    0 4px 10px rgba(0, 0, 0, 0.35);
+  transition:
+    background 0.15s ease,
+    transform 0.1s ease;
 }
 .dialogChoiceBtn:hover {
   background: rgba(245, 197, 66, 0.18);
+  transform: translateY(-1px);
+}
+.dialogChoiceBtn:active {
+  transform: translateY(0);
+}
+.dialogChoiceNextBtn {
+  font: inherit;
+  font-size: 16px;
+  color: rgba(245, 197, 66, 0.75);
+  background: rgba(15, 15, 20, 0.7);
+  border: 1px solid rgba(245, 197, 66, 0.5);
+  border-radius: 999px;
+  padding: 6px 20px;
+  align-self: center;
+  cursor: pointer;
+}
+.dialogChoiceNextBtn:hover {
+  color: #f5c542;
+  border-color: #f5c542;
 }
 /* CG 全螢幕層：只有少數關鍵劇情節點會用到，平常對話走 #dialogPortrait
    的中小立繪、3D 世界維持可見。淡入淡出用 opacity transition，不要

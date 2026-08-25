@@ -27,8 +27,12 @@
       <div id="dialogPortraitPlaceholder"></div>
       <div id="dialogText"></div>
       <div id="dialogContinue">按 E 繼續 ▾</div>
-      <div id="dialogChoices"></div>
     </div>
+    <!-- 選項面板獨立在 #dialog 外面(不是內部子元素)：#dialog 有 transform，
+         會讓內部 position:fixed 子元素的定位基準變成 #dialog 的 box 而不是
+         viewport，搬出來才能單純用 JS 算「貼在對話框正上方」的絕對位置
+         (見 dialogue.ts 的 positionChoicePanel)。 -->
+    <div id="dialogChoices"></div>
     <div id="fishHint"></div>
     <div id="harvestToast">
       <div id="harvestToastIcon">
