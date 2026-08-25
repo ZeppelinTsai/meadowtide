@@ -138,6 +138,7 @@ import {
   makeConstructionSign,
   makeStone,
   makeBasaltHeadland,
+  makeBasaltRockCluster,
   makeSand,
   makeFoam,
   makeRedWindmill,
@@ -1014,6 +1015,50 @@ export function buildMap(mapName) {
       mountainLandingMesh.castShadow = true;
       mountainLandingMesh.renderOrder = 1;
       gameState.mapGroup.add(mountainLandingMesh);
+
+      // 海邊祭壇平台本體——跟其他 terraces 同一套 addTerrace()，跟樓梯
+      // 頂端(westStairs 最後一段 fromZ=30)同高、無縫銜接。
+      const seasideAltar = LAYOUT.oldVillage.seasideAltar;
+      addTerrace(
+        seasideAltar.z,
+        seasideAltar.depth,
+        seasideAltar.elevation,
+        seasideAltar.x,
+        seasideAltar.width,
+      );
+      // 平台南側(面樓梯/沙灘)、東側(面外海、貼齊新東緣)散放玄武岩柱群，
+      // 做出「蓋在礁石上」的觀感，呼應生活區東北玄武岩岬角同一種造型
+      // 語彙；西側/北側緊接一般地面，不需要礁石。鳥居立在樓梯頂端剛
+      // 進平台處，仿波上宮沿石梯而上先過鳥居的動線。祭壇本身(正殿/
+      // 狛犬)之後再蓋，這裡先把地形/礁石/鳥居做出來。
+      {
+        const southEdgeSeeds = [11.3, 24.7, 37.1, 49.5];
+        southEdgeSeeds.forEach((s, i) => {
+          const cx =
+            seasideAltar.x +
+            2 +
+            (i * (seasideAltar.width - 4)) / (southEdgeSeeds.length - 1);
+          const cz = seasideAltar.z + seasideAltar.depth - 1;
+          const cluster = makeBasaltRockCluster(cx, cz, s);
+          cluster.position.y = oldVillageGroundY(cx, cz);
+          gameState.mapGroup.add(cluster);
+        });
+        const eastEdgeSeeds = [8.2, 62.9, 71.4];
+        eastEdgeSeeds.forEach((s, i) => {
+          const cx = seasideAltar.x + seasideAltar.width - 1;
+          const cz =
+            seasideAltar.z +
+            2 +
+            (i * (seasideAltar.depth - 4)) / (eastEdgeSeeds.length - 1);
+          const cluster = makeBasaltRockCluster(cx, cz, s);
+          cluster.position.y = oldVillageGroundY(cx, cz);
+          gameState.mapGroup.add(cluster);
+        });
+        const altarTorii = makeToriiGate();
+        const toriiZ = seasideAltar.z + seasideAltar.depth - 3;
+        altarTorii.position.set(100, oldVillageGroundY(100, toriiZ), toriiZ);
+        gameState.mapGroup.add(altarTorii);
+      }
 
       const stairTopMats = [0xcdbf9d, 0x918472].map(
         (color) =>

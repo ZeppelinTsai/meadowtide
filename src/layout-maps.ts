@@ -159,7 +159,7 @@ export const LAYOUT = {
     visualRun: 0.5,
   },
   oldVillage: {
-    width: 77,
+    width: 106,
     // 整個城鎮(除了南側新沙灘)統一墊高 1(mountainLanding/upper/middle/
     // 廣場預設地面 groundElevation 全部各自 +1)，保留原本的三層地形
     // 相對關係，不是把 middle 跟廣場拉平到同一層——第一版誤把兩者拉
@@ -180,7 +180,17 @@ export const LAYOUT = {
     // makeSand()/水面貼圖寫死的海平面基準一致。
     height: 64,
     groundElevation: 1,
-    southBeach: { x: 30, z: 30, width: 47, depth: 30 },
+    // 2026-08-26 東側加寬到 106，把南沙灘一路蓋到新的東緣，沿用同一套
+    // 鋸齒岸線公式(oldVillageSouthBeachEndZ 純看 x，不用另外處理東側)。
+    southBeach: { x: 30, z: 30, width: 76, depth: 30 },
+    // 海邊祭壇(仿波上宮，蓋在玄武岩礁石平台上)：入口在南側沙灘
+    // (100,37)，寬 3 的樓梯往北爬上這塊平台(見 westStairs 最後一段)，
+    // 平台本身抬到 elevation=3，跟樓梯頂端(z=30)無縫銜接。平台範圍
+    // z=8~29、x=86~105(貼齊新東緣)，南/東側邊緣散放玄武岩柱群
+    // (makeBasaltRockCluster，見 build-map.ts)，呼應生活區東北玄武岩
+    // 岬角同一種造型語彙。祭壇本身(鳥居/正殿/狛犬)之後再蓋，這裡先
+    // 把地形/樓梯/礁石做出來。
+    seasideAltar: { x: 86, z: 8, width: 20, depth: 22, elevation: 3 },
     // 西側新沙灘——跟南側新沙灘同一套「先鋪滿整段海，再依座標算
     // 鋸齒岸線疊沙」寫法（見 makeOldVillageTiles()/
     // oldVillageWestBeachStartX()），只是換成沿 z 逐排、往東(靠近
@@ -315,6 +325,19 @@ export const LAYOUT = {
         baseElevation: 0,
         elevation: 1,
         steps: 6,
+      },
+      // 海邊祭壇的進場樓梯——入口(100,37)在沙灘(elevation 0)，往北爬到
+      // 祭壇平台(elevation 3，見 seasideAltar)。同一套陣列/公式自動帶出
+      // 左右扶手(OLD_VILLAGE_RAILS)跟樓梯視覺方塊(build-map.ts 的
+      // westStairs.forEach)，不用另外寫。
+      {
+        x: 99,
+        width: 3,
+        fromZ: 30,
+        toZ: 37,
+        baseElevation: 0,
+        elevation: 3,
+        steps: 7,
       },
     ],
     carpenterHouse: { x: 36, z: 13, d: 3, doorX: 37 },
@@ -980,6 +1003,17 @@ export function oldVillageGroundY(x: number, z: number) {
   // 不用 -0.5 容許值，因為西邊第一段樓梯緊接在 x=village.westBeach
   // .width(30)之後，跟南側樓梯緊接 southBeach.z 是同一種邊界寫法。
   if (x < village.westBeach.x + village.westBeach.width) return 0;
+  // 海邊祭壇平台：固定 elevation=3，跟樓梯頂端(westStairs 最後一段的
+  // fromZ=30)同高、無縫銜接。要放在 westEdge/terraces 判斷之前，不然
+  // 這塊地會被 x>westEdge 那條規則攔截、錯誤地退回 groundElevation。
+  const altar = village.seasideAltar;
+  if (
+    x >= altar.x - 0.5 &&
+    x <= altar.x + altar.width - 0.5 &&
+    z >= altar.z - 0.5 &&
+    z <= altar.z + altar.depth - 0.5
+  )
+    return altar.elevation;
   // 廣場/南側預設地面墊高跟 middle 台地同高(groundElevation)，整個
   // 城鎮除了沙灘都在同一個抬高的地基上，才會有「平台」的觀感——這也是
   // middle.elevation 現在剛好等於 groundElevation 的原因，兩者本來就
@@ -1275,6 +1309,14 @@ function makeOldVillageTiles() {
     24,
     village.mountainRoad.width,
     6,
+  );
+  // 海邊祭壇平台——走路用的石質地面，實際的礁石造景由 build-map.ts
+  // 另外散置 makeBasaltRockCluster 裝飾，不影響這塊 tile 的可走性。
+  paint(
+    village.seasideAltar.x,
+    village.seasideAltar.z,
+    village.seasideAltar.width,
+    village.seasideAltar.depth,
   );
 
   for (let x = 0; x < village.livingGate.width; x++)
