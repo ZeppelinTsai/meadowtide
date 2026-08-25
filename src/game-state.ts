@@ -1,6 +1,11 @@
 import * as THREE from "three";
 import { hash2 } from "./utils";
-import { LAYOUT, MAPS, isInsideLakeShape } from "./layout-maps";
+import {
+  LAYOUT,
+  MAPS,
+  MOUNTAIN_GATE_BLOCKER,
+  isInsideLakeShape,
+} from "./layout-maps";
 import { npcs, hasPastureGrassAt } from "./npc-runtime";
 import { syncFarmVisuals } from "./farm-visuals";
 import { createWeatherSchedule } from "./weather-schedule";
@@ -603,13 +608,20 @@ function gatherCandidates(zone: GatherNode["zone"]) {
   const tiles = MAPS[mapName].tiles;
   const bounds =
     zone === "mountainSide"
-      ? { x: 0, z: 1, width: 4, depth: tiles.length - 2 }
+      ? LAYOUT.livingArea.gatherZone
       : LAYOUT.mountain[zone];
   const cells: { x: number; z: number }[] = [];
   for (let z = bounds.z; z < bounds.z + bounds.depth; z++) {
     for (let x = bounds.x; x < bounds.x + bounds.width; x++) {
       const tile = tiles[z]?.[x];
       if (tile !== 0 && !(zone !== "mountainSide" && tile === 5)) continue;
+      if (
+        zone === "mountainSide" &&
+        Math.abs(x - MOUNTAIN_GATE_BLOCKER.x) +
+          Math.abs(z - MOUNTAIN_GATE_BLOCKER.z) <=
+          LAYOUT.livingArea.gatherZone.mountainGateClearance
+      )
+        continue;
       if (zone !== "mountainSide") {
         const plazas = LAYOUT.mountain.plazas[zone];
         const onPlaza = plazas.some(

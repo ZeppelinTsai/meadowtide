@@ -557,7 +557,9 @@ meadowtideI18n.locales           // 列出支援的語言代碼 ["zh","en","ja"]
   既有樹木，避免散落到玩家難以搜尋的平台角落。木石不得共用座標；修改後執行
   `npm run map-debug -- --map=livingArea --legend`、
   `npm run map-debug -- --map=mountain --legend` 與 `npm run build`。
-- 生活區採集點只可在西側 `x=0～3` 的可走草地生成。魚池左上岸的六棵遮陽樹
+- 生活區採集點只可在 `LAYOUT.livingArea.gatherZone` 定義的西側範圍生成，
+  目前為 `x=0～2、z=3～36`；並須依同一物件的 `mountainGateClearance`，排除
+  `MOUNTAIN_GATE_BLOCKER` 周邊，避免木石掉在山區傳送點附近。魚池左上岸的六棵遮陽樹
   由 `LAYOUT.lake.shadeTreeOffsets` 定位，碰撞 tile 與季節變色樹模型都從這份
   資料推導；移動魚池時不可另留寫死的樹座標。
 - 生活區西側背景山坡的基準角度由 `LAYOUT.mountainBand.slopeDegrees` 控制，
