@@ -204,10 +204,21 @@ npm run building-debug
   當初就是這樣手刻的）。往南／東擴張時既有內容座標不變；往北／西擴張會讓
   既有內容整批位移，回傳值是實際位移量（收縮會被夾住，不等於輸入值）。
   搭配 **`shiftCoordinates(targets, dx, dz)`／`shiftCoordinatesDeep(target, dx, dz)`**
-  批次位移一批帶座標的物件（只認 `x/z/x1/z1/x2/z2/fromX/fromZ/toX/toZ` 這幾組
-  鍵名，其他鍵不動）；往北擴張對應 `dz`、往西擴張對應 `dx`，只傳「這次真的
-  要一起搬」的那個 `LAYOUT` 子物件（例如只傳 `LAYOUT.oldVillage`），不要整包
-  `LAYOUT` 一起丟，否則會搬到不相干地圖的座標。
+  批次位移一批帶座標的物件：除 `x/z/x1/z1/x2/z2/fromX/fromZ/toX/toZ` 外，
+  也會移動語意明確的單軸世界座標（`doorX`、`entranceX`、`upperCoreEndX`、
+  `deepCoreEndX`、`westEdge`、`rampX`、`startX/Z`、`visualX/Z`、
+  `entranceStartZ`、`deepStartZ`、`beachStartZ/EndZ`、`minZ/maxZ`）；
+  `width/height/spacing/offset` 等尺寸或相對偏移不動。往北擴張對應 `dz`、往西
+  擴張對應 `dx`，只傳「這次真的要一起搬」的那個 `LAYOUT` 子物件（例如只傳
+  `LAYOUT.oldVillage`），不要整包 `LAYOUT` 一起丟，否則會搬到不相干地圖的座標。
+  舊城鎮目前由 `OLD_VILLAGE_OCEAN_EXPANSION` 在西側與南側各加 100 格海面；
+  西擴的座標根節點必須包含 `OLD_VILLAGE_RAILS`，擴充後 `LAYOUT.oldVillage.width/
+  height` 必須以實際 tile grid 回填。`npm run test:map-tools` 會驗證新增區域全為
+  tile `9`、洞口／房門等單軸座標有同步移動、港口傳送仍連通。
+  港口東側則由 `PORT_OCEAN_EXPANSION.east=50` 透過 `shiftMapLayout(..., "east",
+  fillValue: 9)` 追加外海；東擴不得平移既有座標，完成後必須用 tile grid 實際寬度
+  回填 `LAYOUT.port.width`。同一組測試會確認新增 50 欄全為 tile `9`、玩家起點與
+  舊城鎮傳送端點未移動。
 - **`scripts/audit-raw-coordinates.ts`**：風險清單產生器，不是自動修復或
   pass/fail 檢查（找到的項目不是 bug，只是「平移工具碰不到、要人工判斷」的
   提醒，所以刻意不用非零退出碼失敗，跟本節下面「應以非零退出碼失敗」的
@@ -391,8 +402,14 @@ meadowtideI18n.locales           // 列出支援的語言代碼 ["zh","en","ja"]
   每 3 天換季；正式版暫定改為 21 天。`rollWeatherForSeason()`
   依季節限制每日天氣（含晴、陰、雨、颱風、暴風雨、雪、暴風雪），`beginNewDay()`
   在 `currentDay` 改變時抽取新天氣。`updateWeatherEffects()` 驅動固定在場景世界座標的
-  低成本雨線、雪片與春季櫻花粒子（不可掛在相機下，否則會像跟著主角移動）；
-  春季晴／陰不分日夜都會飄花瓣，暴風雨另有閃電。
+  低成本雨線、雪片、春季櫻花瓣與秋葉；粒子不可掛在相機下，否則會像跟著主角移動。
+  所有戶外粒子的 X/Z 範圍必須由 `getTileGridWorldBounds(MAPS[currentMap].tiles,
+  WEATHER_PADDING)` 取得，禁止再寫固定 `WEATHER_BOUNDS` 絕對座標；切換地圖時
+  `syncWeatherBoundsToCurrentMap()` 必須重新分布雨、雪、花瓣與秋葉。粒子容量與有效
+  draw range 由 `scaleCountForWorldBounds()` 依地圖面積同步縮放，讓俯視縮遠或地圖擴建後
+  仍維持近似密度。`INDOOR_MAPS` 是室內天氣遮蔽的單一資料源，房屋與鐘乳石洞窟
+  不渲染戶外粒子。修改粒子範圍、地圖尺寸或室內清單後執行 `npm run test:map-tools`
+  與 `npm run build`；春季晴／陰不分日夜都會飄花瓣，暴風雨另有閃電。
 - `initializeMusic()` 在第一次鍵盤／滑鼠操作時建立 Web Audio API 音訊圖，
   避開瀏覽器自動播放限制。`updateMusic()` 以 `nightFactor` 選擇季節日曲或
   夜曲；陰天沿用季節曲，其他惡劣天氣選天氣曲取代旋律（暴風雨沿用颱風曲）。

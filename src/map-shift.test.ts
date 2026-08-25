@@ -2,6 +2,8 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   expandTileGrid,
+  getTileGridWorldBounds,
+  scaleCountForWorldBounds,
   shiftCoordinates,
   shiftCoordinatesDeep,
   shiftMapLayout,
@@ -12,6 +14,18 @@ function makeGrid(rows: number, cols: number, fillValue = 0): number[][] {
   return Array.from({ length: rows }, () => new Array(cols).fill(fillValue));
 }
 
+test("tile grid 世界範圍與粒子數量會跟著地圖尺寸擴張", () => {
+  const original = getTileGridWorldBounds(makeGrid(64, 77), 10);
+  const expanded = getTileGridWorldBounds(makeGrid(164, 177), 10);
+  assert.deepEqual(
+    { minX: expanded.minX, maxX: expanded.maxX, minZ: expanded.minZ, maxZ: expanded.maxZ },
+    { minX: -10, maxX: 186, minZ: -10, maxZ: 173 },
+  );
+  assert.ok(
+    scaleCountForWorldBounds(360, expanded, 95 * 120) >
+      scaleCountForWorldBounds(360, original, 95 * 120),
+  );
+});
 test("往北擴張：新增列在陣列前端，原本的內容整個往後推", () => {
   const tiles = [[1, 2], [3, 4]];
   const moved = expandTileGrid(tiles, "north", 2, 0);
@@ -93,6 +107,25 @@ test("shiftCoordinates：不認得的鍵完全不動，可以放心混著丟", (
   assert.deepEqual(objs[0], { width: 3, elevation: 2, seed: 0.5 });
 });
 
+test("shiftCoordinates：單軸世界座標會移動，尺寸與偏移量不動", () => {
+  const obj = {
+    doorX: 12,
+    entranceX: 20,
+    entranceStartZ: 3,
+    westEdge: 57.5,
+    width: 10,
+    spacingX: 2,
+    offsetX: -0.5,
+  };
+  shiftCoordinates([obj], 100, 40);
+  assert.equal(obj.doorX, 112);
+  assert.equal(obj.entranceX, 120);
+  assert.equal(obj.entranceStartZ, 43);
+  assert.equal(obj.westEdge, 157.5);
+  assert.equal(obj.width, 10);
+  assert.equal(obj.spacingX, 2);
+  assert.equal(obj.offsetX, -0.5);
+});
 test("shiftCoordinatesDeep：巢狀物件跟陣列裡的座標都會被找到並位移——對照 LAYOUT.oldVillage.houses 這種形狀", () => {
   const region = {
     livingGate: { x: 33, z: 0, width: 3 },

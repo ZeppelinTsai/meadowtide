@@ -1,5 +1,6 @@
 import { hash2 } from "./utils";
 import { repaintRegion } from "./region-paint";
+import { shiftMapLayout } from "./map-shift";
 
 // ==============================================================
       // 統一佈局設定 —— 之後要調哪個區域的位置/大小，改這裡就好，不要再
@@ -708,7 +709,7 @@ import { repaintRegion } from "./region-paint";
         const townEdgeX = beach.x + beach.width - 1;
         const generatedStartX = Math.max(beach.x + 1, townEdgeX - 14 + offset);
         // z=37 的沙舌由原本 x=12 一路向左延伸到地圖邊界 x=0。
-        return z === 37 ? 0 : generatedStartX;
+        return z === 37 ? beach.x : generatedStartX;
       }
 
       /** 西南刪除區每列海水向東延伸到哪一格；核心範圍外再做不規則岸線。 */
@@ -1157,6 +1158,39 @@ import { repaintRegion } from "./region-paint";
         },
       };
 
+      // 舊城鎮外海擴充：西側插入 100 欄海、南側追加 100 列海。
+      // 西擴會同步平移 LAYOUT、護欄、建築與玩家起點；南擴不改既有座標。
+      export const OLD_VILLAGE_OCEAN_EXPANSION = { west: 100, south: 100 };
+      shiftMapLayout({
+        tiles: MAPS.oldVillage.tiles,
+        direction: "west",
+        amount: OLD_VILLAGE_OCEAN_EXPANSION.west,
+        fillValue: 9,
+        coordinateRoots: [LAYOUT.oldVillage, OLD_VILLAGE_RAILS],
+        playerStart: MAPS.oldVillage.playerStart,
+      });
+      shiftMapLayout({
+        tiles: MAPS.oldVillage.tiles,
+        direction: "south",
+        amount: OLD_VILLAGE_OCEAN_EXPANSION.south,
+        fillValue: 9,
+        coordinateRoots: [LAYOUT.oldVillage, OLD_VILLAGE_RAILS],
+        playerStart: MAPS.oldVillage.playerStart,
+      });
+      LAYOUT.oldVillage.width = MAPS.oldVillage.tiles[0].length;
+      LAYOUT.oldVillage.height = MAPS.oldVillage.tiles.length;
+
+      // 港口東側外海擴充：往陣列尾端追加海面，既有建築、事件與傳送點座標不變。
+      export const PORT_OCEAN_EXPANSION = { east: 50 };
+      shiftMapLayout({
+        tiles: MAPS.port.tiles,
+        direction: "east",
+        amount: PORT_OCEAN_EXPANSION.east,
+        fillValue: 9,
+        coordinateRoots: [LAYOUT.port],
+        playerStart: MAPS.port.playerStart,
+      });
+      LAYOUT.port.width = MAPS.port.tiles[0].length;
       // 舊城鎮擴高：從 12 排(z=0~11)往南加 3 排到 15 排(z=0~14)，讓它可以
       // 跟港口(16 排，z=0~15)的西側整條邊界對齊、逐排走過去——不是單一
       // 傳送點，是連續多格都能互通。新加的三排目前只是空地，之後有內容
@@ -1749,7 +1783,7 @@ import { repaintRegion } from "./region-paint";
         },
         oldVillage: {
           tiles: MAPS.oldVillage.tiles,
-          coordinateRoots: [LAYOUT.oldVillage, MAPS.oldVillage.placeholders],
+          coordinateRoots: [LAYOUT.oldVillage, OLD_VILLAGE_RAILS, MAPS.oldVillage.placeholders],
           playerStart: MAPS.oldVillage.playerStart,
         },
         port: {

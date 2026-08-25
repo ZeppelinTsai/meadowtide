@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { LAYOUT, MAPS, oldVillageSouthwestSeaEndX } from "./layout-maps";
+import { LAYOUT, MAPS, OLD_VILLAGE_OCEAN_EXPANSION, PORT_OCEAN_EXPANSION, oldVillageSouthwestSeaEndX } from "./layout-maps";
 import { createTransitionEvents } from "./map-transitions";
 
 function hasWalkableRoute(
@@ -82,13 +82,13 @@ test("正式地圖的傳送抵達點到門檻之間都有連續可走地磚", ()
 });
 
 test("舊城鎮與港口 z=30~47 邊界都是雙向傳送用黃色門檻", () => {
-  assert.equal(LAYOUT.oldVillage.portGate.x, 76);
+  assert.equal(LAYOUT.oldVillage.portGate.x, MAPS.oldVillage.tiles[0].length - 1);
   assert.equal(LAYOUT.port.oldVillageGate.x, 0);
   assert.equal(LAYOUT.oldVillage.portGate.height, LAYOUT.port.oldVillageGate.height);
   for (let z = 30; z <= 47; z++) {
-    assert.equal(MAPS.oldVillage.tiles[z][76], 3, `oldVillage (76,${z})`);
+    assert.equal(MAPS.oldVillage.tiles[z][LAYOUT.oldVillage.portGate.x], 3, `oldVillage (${LAYOUT.oldVillage.portGate.x},${z})`);
     assert.equal(MAPS.port.tiles[z][0], 3, `port (0,${z})`);
-    assert.equal(MAPS.oldVillage.tiles[z][75], 8, `oldVillage 抵達格 (75,${z})`);
+    assert.equal(MAPS.oldVillage.tiles[z][LAYOUT.oldVillage.portGate.x - 1], 8, `oldVillage 抵達格 (${LAYOUT.oldVillage.portGate.x - 1},${z})`);
     assert.equal(MAPS.port.tiles[z][1], 8, `port 抵達格 (1,${z})`);
   }
 });
@@ -115,4 +115,27 @@ test("舊城鎮鐘乳石洞窟山體有碰撞，中央入口保持可走", () =>
   for (let z = cave.entranceStartZ; z < cave.z + cave.depth; z++)
     for (let x = cave.entranceX; x < cave.entranceX + cave.entranceWidth; x++)
       assert.equal(MAPS.oldVillage.tiles[z][x], 8, `洞口 (${x},${z})`);
+});
+test("舊城鎮西側與南側各擴充 100 格海面", () => {
+  const tiles = MAPS.oldVillage.tiles;
+  assert.equal(tiles[0].length, 77 + OLD_VILLAGE_OCEAN_EXPANSION.west);
+  assert.equal(tiles.length, 64 + OLD_VILLAGE_OCEAN_EXPANSION.south);
+  for (let z = 0; z < 64; z++)
+    for (let x = 0; x < OLD_VILLAGE_OCEAN_EXPANSION.west; x++)
+      assert.equal(tiles[z][x], 9, `西側新增海面 (${x},${z})`);
+  for (let z = 64; z < tiles.length; z++)
+    for (let x = 0; x < tiles[z].length; x++)
+      assert.equal(tiles[z][x], 9, `南側新增海面 (${x},${z})`);
+  assert.equal(LAYOUT.oldVillage.stalactiteCave.x, 120);
+  assert.equal(LAYOUT.oldVillage.stalactiteCave.entranceX, 124);
+  assert.equal(LAYOUT.oldVillage.houses[0].doorX, 136.5);
+});
+test("港口東側擴充 50 格外海且既有座標不移動", () => {
+  const tiles = MAPS.port.tiles;
+  assert.equal(tiles[0].length, 34 + PORT_OCEAN_EXPANSION.east);
+  assert.equal(LAYOUT.port.width, tiles[0].length);
+  assert.deepEqual(MAPS.port.playerStart, LAYOUT.port.playerArrival);
+  for (const row of tiles)
+    for (let x = row.length - PORT_OCEAN_EXPANSION.east; x < row.length; x++)
+      assert.equal(row[x], 9, `port east ocean x=${x}`);
 });

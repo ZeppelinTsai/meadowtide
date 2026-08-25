@@ -23,6 +23,47 @@
 export type TileGrid = number[][];
 export type ShiftDirection = "north" | "south" | "east" | "west";
 
+export interface TileGridWorldBounds {
+  minX: number;
+  maxX: number;
+  minY: number;
+  maxY: number;
+  minZ: number;
+  maxZ: number;
+}
+
+/** 從實際 tile grid 推導完整世界範圍；地圖擴張後所有全圖特效共用這份結果。 */
+export function getTileGridWorldBounds(
+  tiles: TileGrid,
+  padding = 0,
+  minY = 0.4,
+  maxY = 14,
+): TileGridWorldBounds {
+  const width = tiles[0]?.length ?? 0;
+  const height = tiles.length;
+  return {
+    minX: -padding,
+    maxX: Math.max(-padding, width - 1 + padding),
+    minY,
+    maxY,
+    minZ: -padding,
+    maxZ: Math.max(-padding, height - 1 + padding),
+  };
+}
+
+/** 依世界 X/Z 面積維持粒子密度，避免擴圖後天氣只剩局部或整體過稀。 */
+export function scaleCountForWorldBounds(
+  baseCount: number,
+  bounds: TileGridWorldBounds,
+  baseArea: number,
+  maxScale = 4,
+): number {
+  const area = Math.max(1, bounds.maxX - bounds.minX) *
+    Math.max(1, bounds.maxZ - bounds.minZ);
+  const scale = Math.max(1, Math.min(maxScale, area / Math.max(1, baseArea)));
+  return Math.ceil(baseCount * scale);
+}
+
 /**
  * 在 tiles 陣列的某一邊擴張（或收縮，amount 傳負數）。
  * north/west 擴張後，回傳這次實際位移量，方便呼叫端接著用在
@@ -88,6 +129,15 @@ const XZ_KEY_PAIRS: Array<[string, string]> = [
   ["fromX", "fromZ"], // 你的 westStairs/plazaStairs 用這組命名
   ["toX", "toZ"],
 ];
+// 不成對但語意明確是世界座標的欄位。spacing/offset/width 等尺寸不可列入。
+const X_COORDINATE_KEYS = [
+  "doorX", "entranceX", "upperCoreEndX", "deepCoreEndX",
+  "westEdge", "rampX", "startX", "visualX",
+];
+const Z_COORDINATE_KEYS = [
+  "entranceStartZ", "deepStartZ", "beachStartZ", "beachEndZ",
+  "minZ", "maxZ", "startZ", "visualZ",
+];
 
 /**
  * 批次位移一組帶座標的物件（LAYOUT 子物件、events 陣列項目、rail 線段…）。
@@ -110,6 +160,10 @@ export function shiftCoordinates(
       if (typeof obj[xKey] === "number") (obj[xKey] as number) += dx;
       if (typeof obj[zKey] === "number") (obj[zKey] as number) += dz;
     }
+    for (const key of X_COORDINATE_KEYS)
+      if (typeof obj[key] === "number") (obj[key] as number) += dx;
+    for (const key of Z_COORDINATE_KEYS)
+      if (typeof obj[key] === "number") (obj[key] as number) += dz;
   }
 }
 

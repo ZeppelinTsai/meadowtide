@@ -2,7 +2,13 @@ import * as THREE from "three";
 import { hash2 } from "./utils";
 import { scene } from "./scene-sky";
 import { gameState, weatherTransitionRamp } from "./game-state";
-import { isOutdoorMap } from "./environment";
+import { INDOOR_MAPS, isOutdoorMap } from "./environment";
+import { MAPS } from "./layout-maps";
+import {
+  getTileGridWorldBounds,
+  scaleCountForWorldBounds,
+  type TileGridWorldBounds,
+} from "./map-shift";
 
 // 5.4) 低成本天氣粒子：雨線、雪片、春季櫻花，以及暴風雨閃電
       // ==============================================================
@@ -82,18 +88,36 @@ import { isOutdoorMap } from "./environment";
         }
         return texture;
       }
-      export const WEATHER_BOUNDS = {
-        minX: -10,
-        maxX: 85,
-        minY: 0.4,
-        maxY: 14,
-        minZ: -10,
-        maxZ: 110,
-      };
+      export const WEATHER_PADDING = 10;
+      export const BASE_WEATHER_AREA = 95 * 120;
+      const outdoorMapNames = (Object.keys(MAPS) as Array<keyof typeof MAPS>).filter(
+        (mapName) => !INDOOR_MAPS.has(mapName),
+      );
+      export function weatherBoundsForMap(mapName = gameState.currentMapName) {
+        const map = MAPS[mapName] ?? MAPS.livingArea;
+        return getTileGridWorldBounds(map.tiles, WEATHER_PADDING);
+      }
+      export const WEATHER_BOUNDS: TileGridWorldBounds = weatherBoundsForMap();
+      const maxWeatherParticleCapacity = (baseCount: number) =>
+        Math.max(
+          ...outdoorMapNames.map((mapName) =>
+            scaleCountForWorldBounds(
+              baseCount,
+              weatherBoundsForMap(mapName),
+              BASE_WEATHER_AREA,
+            ),
+          ),
+        );
+      const activeWeatherParticleCount = (baseCount: number) =>
+        scaleCountForWorldBounds(
+          baseCount,
+          WEATHER_BOUNDS,
+          BASE_WEATHER_AREA,
+        );
       export const weatherEffectGroup = new THREE.Group();
       scene.add(weatherEffectGroup);
 
-      export const MAX_RAIN_DROPS = 360;
+      export const MAX_RAIN_DROPS = maxWeatherParticleCapacity(360);
       export const rainPositions = new Float32Array(MAX_RAIN_DROPS * 6);
       export const rainSeeds = new Float32Array(MAX_RAIN_DROPS);
       for (let i = 0; i < MAX_RAIN_DROPS; i++) {
@@ -235,16 +259,24 @@ import { isOutdoorMap } from "./environment";
         weatherEffectGroup.add(points);
         return { points, geometry, material, positions, seeds, count };
       }
+      const SNOW_BASE_COUNT = 260;
+      const PETAL_BASE_COUNTS = [360, 140] as const;
+      const AUTUMN_LEAF_BASE_COUNTS = [210, 75] as const;
       export const snowEffect = makeWeatherPointLayer(
-        260,
+        maxWeatherParticleCapacity(SNOW_BASE_COUNT),
         0xf4f8ff,
         6.5,
         makeSoftParticleTexture(),
       );
       export const petalTexture = makeSoftParticleTexture("petal");
-      export const petalEffect = makePetalLayer(360, 0xfffbfd, 13.5, petalTexture);
+      export const petalEffect = makePetalLayer(
+        maxWeatherParticleCapacity(PETAL_BASE_COUNTS[0]),
+        0xfffbfd,
+        13.5,
+        petalTexture,
+      );
       export const petalForegroundEffect = makePetalLayer(
-        140,
+        maxWeatherParticleCapacity(PETAL_BASE_COUNTS[1]),
         0xffedf4,
         20,
         petalTexture,
@@ -253,19 +285,60 @@ import { isOutdoorMap } from "./environment";
       // 每片楓葉在這兩個色號之間隨機取色(靠 petalSeed)，同一批飄落的葉子
       // 才會有金黃到棕紅的深淺差異，不是全部同一個顏色。
       export const autumnLeafEffect = makePetalLayer(
-        210,
+        maxWeatherParticleCapacity(AUTUMN_LEAF_BASE_COUNTS[0]),
         0xffd27a,
         12.5,
         autumnLeafTexture,
         0xb8452e,
       );
       export const autumnLeafForegroundEffect = makePetalLayer(
-        75,
+        maxWeatherParticleCapacity(AUTUMN_LEAF_BASE_COUNTS[1]),
         0xffab5c,
         18,
         autumnLeafTexture,
         0x8f3323,
       );
+      let weatherBoundsKey = "";
+      function distributeRainAcrossBounds(bounds: TileGridWorldBounds) {
+        for (let i = 0; i < MAX_RAIN_DROPS; i++) {
+          const base = i * 6;
+          const x = bounds.minX + hash2(i, 2.1) * (bounds.maxX - bounds.minX);
+          const y = bounds.minY + hash2(i, 7.9) * (bounds.maxY - bounds.minY);
+          const z = bounds.minZ + hash2(i, 12.3) * (bounds.maxZ - bounds.minZ);
+          rainPositions[base] = rainPositions[base + 3] = x;
+          rainPositions[base + 1] = y;
+          rainPositions[base + 4] = y - 0.65;
+          rainPositions[base + 2] = rainPositions[base + 5] = z;
+        }
+        rainGeometry.attributes.position.needsUpdate = true;
+      }
+      function distributePointLayerAcrossBounds(layer, bounds: TileGridWorldBounds) {
+        for (let i = 0; i < layer.count; i++) {
+          const base = i * 3;
+          layer.positions[base] =
+            bounds.minX + hash2(i, 1.7) * (bounds.maxX - bounds.minX);
+          layer.positions[base + 1] =
+            bounds.minY + hash2(i, 6.4) * (bounds.maxY - bounds.minY);
+          layer.positions[base + 2] =
+            bounds.minZ + hash2(i, 11.8) * (bounds.maxZ - bounds.minZ);
+        }
+        layer.geometry.attributes.position.needsUpdate = true;
+      }
+      export function syncWeatherBoundsToCurrentMap(force = false) {
+        const map = MAPS[gameState.currentMapName] ?? MAPS.livingArea;
+        const key = `${gameState.currentMapName}:${map.tiles[0]?.length ?? 0}x${map.tiles.length}`;
+        if (!force && key === weatherBoundsKey) return;
+        Object.assign(WEATHER_BOUNDS, weatherBoundsForMap(gameState.currentMapName));
+        distributeRainAcrossBounds(WEATHER_BOUNDS);
+        [
+          snowEffect,
+          petalEffect,
+          petalForegroundEffect,
+          autumnLeafEffect,
+          autumnLeafForegroundEffect,
+        ].forEach((layer) => distributePointLayerAcrossBounds(layer, WEATHER_BOUNDS));
+        weatherBoundsKey = key;
+      }
       export const weatherFlashLight = new THREE.HemisphereLight(
         0xeaf3ff,
         0x65758b,
@@ -280,6 +353,7 @@ import { isOutdoorMap } from "./environment";
       }
       export function updateWeatherEffects(dt, nightFactor) {
         const outside = isOutdoorMap();
+        if (outside) syncWeatherBoundsToCurrentMap();
         weatherEffectGroup.visible = outside;
         if (!outside) {
           weatherFlashLight.intensity = 0;
@@ -289,7 +363,7 @@ import { isOutdoorMap } from "./environment";
           gameState.currentWeather === "rain" ||
           gameState.currentWeather === "typhoon" ||
           gameState.currentWeather === "storm";
-        const rainCount =
+        const rainBaseCount =
           gameState.currentWeather === "rain"
             ? 190
             : gameState.currentWeather === "typhoon"
@@ -297,6 +371,7 @@ import { isOutdoorMap } from "./environment";
               : gameState.currentWeather === "storm"
                 ? 300
                 : 0;
+        const rainCount = activeWeatherParticleCount(rainBaseCount);
         const rainDrift =
           gameState.currentWeather === "typhoon"
             ? 13
@@ -338,11 +413,13 @@ import { isOutdoorMap } from "./environment";
           gameState.currentWeather === "snow" || gameState.currentWeather === "blizzard";
         snowEffect.points.visible = snowMode;
         if (snowMode) {
+          const snowCount = activeWeatherParticleCount(SNOW_BASE_COUNT);
+          snowEffect.geometry.setDrawRange(0, snowCount);
           snowEffect.material.opacity =
             (gameState.currentWeather === "blizzard" ? 0.9 : 0.72) *
             weatherTransitionRamp();
           snowEffect.material.size = gameState.currentWeather === "blizzard" ? 7.5 : 6.5;
-          for (let i = 0; i < snowEffect.count; i++) {
+          for (let i = 0; i < snowCount; i++) {
             const base = i * 3,
               seed = snowEffect.seeds[i];
             snowEffect.positions[base] = wrapWeatherParticle(
@@ -374,8 +451,10 @@ import { isOutdoorMap } from "./environment";
           petalForegroundEffect.material.uniforms.opacity.value =
             gameState.currentWeather === "cloudy" ? 0.7 : 0.86;
           [petalEffect, petalForegroundEffect].forEach((layer, layerIndex) => {
+            const layerCount = activeWeatherParticleCount(PETAL_BASE_COUNTS[layerIndex]);
+            layer.geometry.setDrawRange(0, layerCount);
             layer.material.uniforms.time.value = gameState.effectElapsed;
-            for (let i = 0; i < layer.count; i++) {
+            for (let i = 0; i < layerCount; i++) {
               const base = i * 3,
                 seed = layer.seeds[i];
               const swirl =
@@ -416,8 +495,12 @@ import { isOutdoorMap } from "./environment";
             gameState.currentWeather === "cloudy" ? 0.66 : 0.82;
           [autumnLeafEffect, autumnLeafForegroundEffect].forEach(
             (layer, layerIndex) => {
+              const layerCount = activeWeatherParticleCount(
+                AUTUMN_LEAF_BASE_COUNTS[layerIndex],
+              );
+              layer.geometry.setDrawRange(0, layerCount);
               layer.material.uniforms.time.value = gameState.effectElapsed * 0.86;
-              for (let i = 0; i < layer.count; i++) {
+              for (let i = 0; i < layerCount; i++) {
                 const base = i * 3,
                   seed = layer.seeds[i];
                 const gust =
