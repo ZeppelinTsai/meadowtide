@@ -126,12 +126,15 @@ import { repaintRegion } from "./region-paint";
           // 調整，這個工具目前不會幫忙掃到那些。
           westBeach: { x: 0, z: 0, width: 30, height: 64 },
           stalactiteCave: {
+            // 擴展到 x=29，剛好貼齊 westBeach(x:0~29)的東緣，跟乾地交界
+            // 不留縫；入口跟著洞窟拓寬——從 22-23 移到 24-26，往東挪一點
+            // 並加寬，配合新洞口尺寸重新調整過的石頭群(見 props.ts)。
             x: 20,
             z: 0,
-            width: 6,
+            width: 10,
             depth: 6,
-            entranceX: 22,
-            entranceWidth: 2,
+            entranceX: 24,
+            entranceWidth: 3,
             entranceStartZ: 3,
           },
           southwestSeaCutout: {
@@ -170,7 +173,7 @@ import { repaintRegion } from "./region-paint";
           // middle(2)→廣場(1)：落差 1，跟統一 +1 之前一樣。
           plazaStairs: [
             { z: 7, width: 3, fromX: 55, toX: 58, baseElevation: 1, elevation: 2, steps: 6 },
-            { z: 16, width: 3, fromX: 55, toX: 58, baseElevation: 1, elevation: 1, steps: 6 },
+            { z: 16, width: 4, fromX: 55, toX: 58, baseElevation: 1, elevation: 1, steps: 6 },
           ],
           westStairs: [
             { x: 30, width: 3, fromZ: 2, toZ: 7, baseElevation: 3, elevation: 1, steps: 6 },
@@ -703,7 +706,9 @@ import { repaintRegion } from "./region-paint";
         const noise = (hash2(z * 1.73, 46.7) - 0.5) * 2.8;
         const offset = Math.max(-4, Math.min(4, Math.round(wave + noise)));
         const townEdgeX = beach.x + beach.width - 1;
-        return Math.max(beach.x + 1, townEdgeX - 14 + offset);
+        const generatedStartX = Math.max(beach.x + 1, townEdgeX - 14 + offset);
+        // z=37 的沙舌由原本 x=12 一路向左延伸到地圖邊界 x=0。
+        return z === 37 ? 0 : generatedStartX;
       }
 
       /** 西南刪除區每列海水向東延伸到哪一格；核心範圍外再做不規則岸線。 */
@@ -1132,6 +1137,23 @@ import { repaintRegion } from "./region-paint";
             [0, 0, 0, 0, 3, 0, 0, 0],
           ],
           playerStart: { x: 4, z: 4 },
+        },
+        // 鐘乳石洞窟內部——先求「進得去、有地方站」的簡易版本，跟 shrine
+        // 同等級：純平地小房間，沒有內裝/機關。門(3 格寬，x=3~5，跟洞口
+        // entranceWidth 對齊)開在南牆，玩家從舊城鎮西北沙灘的洞口走進來，
+        // 落在門正北一格；四周牆體用 tile=1 純擋路，視覺上的岩壁另外在
+        // build-map.ts 用簡單方塊+吊石筍做，不用真的蓋房子牆模型。
+        stalactiteCave: {
+          tiles: [
+            [1, 1, 1, 1, 1, 1, 1, 1, 1],
+            [1, 0, 0, 0, 0, 0, 0, 0, 1],
+            [1, 0, 0, 0, 0, 0, 0, 0, 1],
+            [1, 0, 0, 0, 0, 0, 0, 0, 1],
+            [1, 0, 0, 0, 0, 0, 0, 0, 1],
+            [1, 0, 0, 0, 0, 0, 0, 0, 1],
+            [1, 1, 1, 3, 3, 3, 1, 1, 1],
+          ],
+          playerStart: { x: 4, z: 5 },
         },
       };
 

@@ -683,6 +683,15 @@ export function buildMap(mapName) {
       // 地圖的草地永遠停在建圖當下那個季節色，換季也不會跟著變——跟
       // livingArea 共用同一份季節色表跟登記表，才不會兩邊各自維護一份判斷。
       seasonalGroundMaterials.push(townFloorMat, seaFloorMat, westBeachFloorMat);
+    } else if (mapName === "stalactiteCave") {
+      // 洞窟內部地板刻意不登記進 seasonalGroundMaterials——室內看不到
+      // 天空，不該跟著戶外季節變色，顏色固定用偏冷的岩灰色。
+      addMapFloorPatch({
+        width: cols,
+        depth: rows,
+        color: 0x3a3d38,
+        roughness: 1,
+      });
     } else if (mapName !== "mountain") {
       const groundMat = addMapFloorPatch({
         width: cols,
@@ -2005,6 +2014,50 @@ export function buildMap(mapName) {
     torii.position.set(4, 0, 3);
     plateauGroup.add(torii);
   }
+  if (mapName === "stalactiteCave") {
+    // 簡易版內裝：天花板垂幾根鐘乳石、地上散幾顆石頭，純氣氛裝飾，
+    // 不互動、不擋路(擋路已經由牆體 tile=1 處理)。座標是房間自己的
+    // 本地格子(0~8 x 0~6)，跟舊城鎮那邊的洞口座標無關。
+    const caveRockMat = new THREE.MeshStandardMaterial({
+      color: 0x54584f,
+      roughness: 1,
+      flatShading: true,
+    });
+    const caveDarkRockMat = new THREE.MeshStandardMaterial({
+      color: 0x33362f,
+      roughness: 1,
+      flatShading: true,
+    });
+    [
+      { x: 2, z: 2, len: 0.6 },
+      { x: 5.5, z: 1.6, len: 0.85 },
+      { x: 6.6, z: 3.4, len: 0.5 },
+      { x: 3, z: 4.2, len: 0.65 },
+    ].forEach(({ x, z, len }, i) => {
+      const stalactite = new THREE.Mesh(
+        new THREE.ConeGeometry(0.13 + (i % 2) * 0.03, len, 6),
+        caveDarkRockMat,
+      );
+      stalactite.rotation.z = Math.PI;
+      stalactite.position.set(x, 2.3 - len / 2, z);
+      stalactite.castShadow = true;
+      plateauGroup.add(stalactite);
+    });
+    [
+      { x: 1.4, z: 4.6, r: 0.42 },
+      { x: 6.8, z: 1.2, r: 0.36 },
+    ].forEach(({ x, z, r }, i) => {
+      const rock = new THREE.Mesh(
+        new THREE.DodecahedronGeometry(r, 0),
+        i === 0 ? caveRockMat : caveDarkRockMat,
+      );
+      rock.position.set(x, r * 0.6, z);
+      rock.rotation.set(i, i * 2.1, i * 0.4);
+      rock.castShadow = true;
+      rock.receiveShadow = true;
+      plateauGroup.add(rock);
+    });
+  }
   if (mapName === "oldVillage") {
     // 廣場(LAYOUT.oldVillage.plaza：x=22~32,z=4~25)裡放兩盞路燈、兩張
     // 長椅，位置刻意離廣場邊界(x=22/33、跟港口門的垂直通道)有一段
@@ -2182,6 +2235,22 @@ export function buildMap(mapName) {
         plateauGroup.add(
           makeInteriorWall(x, z, winEntry ? winEntry.side : null),
         );
+      } else if (tile === 1 && mapName === "stalactiteCave") {
+        // 洞窟牆體只求「看起來是石壁」，不像 house 那樣做門窗開口——
+        // 純方塊+粗糙岩灰材質，跟外面洞口(makeOldVillageStalactiteCaveEntrance)
+        // 同一色系但不共用材質實例(那邊有窗戶/發光邏輯，這裡不需要)。
+        const wall = new THREE.Mesh(
+          new THREE.BoxGeometry(TILE * 0.98, 2.3, TILE * 0.98),
+          new THREE.MeshStandardMaterial({
+            color: 0x4a4d47,
+            roughness: 1,
+            flatShading: true,
+          }),
+        );
+        wall.position.set(x, 1.15, z);
+        wall.castShadow = true;
+        wall.receiveShadow = true;
+        plateauGroup.add(wall);
       } else if (tile === 2) {
         // 山腰平台(waist)這幾棵改用行道樹(makeAvenueTree)——那個模型
         // 本來就跟著季節變色(春粉紅/夏綠/秋橙紅/冬白)，剛好對應概念圖
@@ -3067,6 +3136,35 @@ const WORLD_MAP_TRANSITIONS: TransitionLink[] = [
       map: "mountain",
       triggerAt: () => LAYOUT.mountain.townGate,
       arrivalAt: () => LAYOUT.mountain.townArrival,
+    },
+  },
+  // 鐘乳石洞窟——洞口(entranceX~entranceX+entranceWidth)沿線 3 格都能走
+  // 進去，跟內部房間門(x=3~5)逐格對齊；觸發點/門都用 LAYOUT.oldVillage.
+  // stalactiteCave 現值推導，洞窟之後再拓寬/搬動也不用回來改這裡。
+  {
+    id: "old-village-stalactite-cave",
+    a: {
+      map: "oldVillage",
+      count: LAYOUT.oldVillage.stalactiteCave.entranceWidth,
+      triggerAt: (i) => ({
+        x: LAYOUT.oldVillage.stalactiteCave.entranceX + i,
+        z:
+          LAYOUT.oldVillage.stalactiteCave.z +
+          LAYOUT.oldVillage.stalactiteCave.depth -
+          1,
+      }),
+      arrivalAt: (i) => ({ x: 3 + i, z: 5 }),
+    },
+    b: {
+      map: "stalactiteCave",
+      count: LAYOUT.oldVillage.stalactiteCave.entranceWidth,
+      triggerAt: (i) => ({ x: 3 + i, z: 6 }),
+      arrivalAt: (i) => ({
+        x: LAYOUT.oldVillage.stalactiteCave.entranceX + i,
+        z:
+          LAYOUT.oldVillage.stalactiteCave.z +
+          LAYOUT.oldVillage.stalactiteCave.depth,
+      }),
     },
   },
 ];

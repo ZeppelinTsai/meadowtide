@@ -2789,15 +2789,18 @@ export function makeWoodPlankTexture({
           roughness: 1,
           flatShading: true,
         });
+        const mossRockMat = new THREE.MeshStandardMaterial({
+          color: 0x4d5a3f,
+          roughness: 1,
+          flatShading: true,
+        });
         const openingMat = new THREE.MeshBasicMaterial({
           color: 0x090d0d,
           side: THREE.DoubleSide,
         });
         const addRock = (x, y, z, radius, sx, sy, sz, seed) => {
-          const rock = new THREE.Mesh(
-            new THREE.DodecahedronGeometry(radius, 0),
-            seed > 0.55 ? darkRockMat : rockMat,
-          );
+          const mat = seed > 0.72 ? mossRockMat : seed > 0.5 ? darkRockMat : rockMat;
+          const rock = new THREE.Mesh(new THREE.DodecahedronGeometry(radius, 0), mat);
           rock.position.set(x, y, z);
           rock.scale.set(sx, sy, sz);
           rock.rotation.set(seed * 0.25, seed * Math.PI, seed * 0.16);
@@ -2806,23 +2809,127 @@ export function makeWoodPlankTexture({
           group.add(rock);
         };
 
-        const centerX = cave.x + (cave.width - 1) / 2;
         const entranceZ = cave.z + cave.depth - 0.35;
-        addRock(cave.x + 0.8, 1.25, cave.z + 2.1, 1.55, 1.15, 1.05, 1.35, 0.21);
-        addRock(cave.x + cave.width - 1.8, 1.35, cave.z + 2, 1.65, 1.2, 1.1, 1.3, 0.73);
-        addRock(centerX, 2.15, cave.z + 1.7, 1.75, 1.55, 0.75, 1.25, 0.46);
-        addRock(cave.x + 0.45, 0.8, cave.z + 4.25, 1.15, 0.9, 1.15, 0.8, 0.34);
-        addRock(cave.x + cave.width - 1.45, 0.82, cave.z + 4.2, 1.18, 0.95, 1.18, 0.82, 0.82);
+        const entranceCenterX = cave.entranceX + (cave.entranceWidth - 1) / 2;
+        // 入口正前方留空，堆石時繞開，避免擋住玩家視線/走位。
+        const halfEntrance = cave.entranceWidth / 2 + 0.55;
 
+        // 以交錯的低模岩塊填滿山腳量體；只有入口前方的實際可走走廊留空。
+        // 後排仍可鋪石，會被洞口的黑色遮罩擋在內部，不會蓋住入口輪廓。
+        const fillSpacingX = 1.25;
+        const fillRows = [0.55, 1.75, 2.95, 4.05];
+        fillRows.forEach((localZ, row) => {
+          const columns = Math.ceil(cave.width / fillSpacingX);
+          for (let column = 0; column <= columns; column++) {
+            const x =
+              cave.x +
+              Math.min(
+                cave.width - 0.35,
+                0.35 + column * fillSpacingX + (row % 2) * fillSpacingX * 0.5,
+              );
+            const inEntranceLane = Math.abs(x - entranceCenterX) < halfEntrance;
+            const inEntranceForeground = localZ >= cave.entranceStartZ - cave.z - 0.2;
+            if (inEntranceLane && inEntranceForeground) continue;
+            const seed = hash2(x * 4.7 + row, localZ * 6.3 + column);
+            const radius = 0.82 + seed * 0.38;
+            addRock(
+              x,
+              radius * (0.72 + hash2(column, row + 2.1) * 0.22),
+              cave.z + localZ,
+              radius,
+              0.92 + hash2(seed, 1.7) * 0.3,
+              0.85 + hash2(seed, 3.4) * 0.35,
+              0.9 + hash2(seed, 5.1) * 0.3,
+              seed,
+            );
+          }
+        });
+
+        // 崖面用 hash2 決定性灑石頭，數量隨洞窟寬度(現在 x=20~29，比原本
+        // 寬)縮放；越靠洞窟兩端(接乾地/沙灘)堆得越高越密，做出實心山壁的
+        // 量體感，中央入口附近則稀疏、矮，讓拱門輪廓不被埋掉。
+        const rockCount = Math.max(6, Math.round(cave.width * 1.1));
+        for (let i = 0; i < rockCount; i++) {
+          const seed = hash2(cave.x * 3.1 + i * 5.7, cave.z * 2.3 + i * 1.9);
+          const spread = hash2(i * 7.1, cave.width + i);
+          const x = cave.x + spread * (cave.width - 1);
+          if (Math.abs(x - entranceCenterX) < halfEntrance) continue;
+          const nearEdge = Math.min(x - cave.x, cave.x + cave.width - 1 - x);
+          const edgeBoost = Math.max(0, 1 - nearEdge / 3) * 0.9;
+          const radius = 0.95 + hash2(seed * 4.2, i) * 0.75 + edgeBoost;
+          const y = radius * (0.55 + hash2(i, seed * 3.3) * 0.3);
+          const zJitter = hash2(seed * 9.1, i * 2.7) * 1.6;
+          addRock(
+            x,
+            y,
+            cave.z + 1.4 + zJitter,
+            radius,
+            0.85 + hash2(i, 4.4) * 0.5,
+            0.7 + hash2(i, 8.1) * 0.45,
+            0.85 + hash2(i, 1.6) * 0.5,
+            seed,
+          );
+        }
+
+        // 入口兩側/上方另外手動放三顆石頭收邊——灑點迴圈因淨空區會跳過
+        // 這一段，單靠隨機不保證每次都有石頭把拱頂包住。刻意跟原本
+        // (擴建前)同一套「深度」寫法——z 用 cave.z 往南偏移幾格，不是貼著
+        // entranceZ——石頭才會退到洞口後方當背景，不會整顆懸在拱門正前方
+        // 把黑色洞口整個蓋住(這正是拓寬後第一版美化「洞窟被岩石擋住」的
+        // 成因：那版把收邊石頭搬到太靠近 entranceZ 的地方，一顆大石頭疊在
+        // 拱門正上方，比拱門本身還寬)。
+        addRock(cave.entranceX - 0.6, 1.3, cave.z + 2.1, 1.55, 1.1, 1.0, 1.3, 0.21);
+        addRock(
+          cave.entranceX + cave.entranceWidth + 0.5,
+          1.35,
+          cave.z + 2,
+          1.65,
+          1.15,
+          1.05,
+          1.3,
+          0.73,
+        );
+        // 頂石縮小＋墊高，退到明顯比拱頂(y=2.2)還高的位置當「過梁」，
+        // 不會把整個拱門罩住。
+        addRock(entranceCenterX, 2.7, cave.z + 1.7, 1.15, 1.3, 0.6, 1.1, 0.46);
+
+        // 拱門形狀改用 cave.entranceWidth 推導半寬，洞口變寬/變窄時跟著縮放，
+        // 不再是寫死的 ±1.05；拱高從 2.2 加到 2.5，洞口本身更明顯一點。
+        const archHalfWidth = cave.entranceWidth / 2 + 0.05;
         const arch = new THREE.Shape();
-        arch.moveTo(-1.05, 0);
-        arch.lineTo(-1.05, 0.85);
-        arch.quadraticCurveTo(-0.9, 2.05, 0, 2.2);
-        arch.quadraticCurveTo(0.9, 2.05, 1.05, 0.85);
-        arch.lineTo(1.05, 0);
+        arch.moveTo(-archHalfWidth, 0);
+        arch.lineTo(-archHalfWidth, 0.85);
+        arch.quadraticCurveTo(-archHalfWidth * 0.86, 2.3, 0, 2.5);
+        arch.quadraticCurveTo(archHalfWidth * 0.86, 2.3, archHalfWidth, 0.85);
+        arch.lineTo(archHalfWidth, 0);
         arch.closePath();
+
+        // 拱門外圍加一圈比周邊岩石淺、比洞口本身暖的石框(比黑洞口寬/高
+        // 各多一截，貼在洞口正後方一點點露出邊緣)，純粹是「洞口在哪」的
+        // 視覺提示——石堆跟黑洞口本身的顏色都偏冷灰/純黑，中間差一層
+        // 對比色，洞口才不會被周圍的石頭淹沒。靜態材質，沒有 emissive。
+        const frameHalfWidth = archHalfWidth + 0.35;
+        const frame = new THREE.Shape();
+        frame.moveTo(-frameHalfWidth, 0);
+        frame.lineTo(-frameHalfWidth, 0.85);
+        frame.quadraticCurveTo(-frameHalfWidth * 0.86, 2.55, 0, 2.8);
+        frame.quadraticCurveTo(frameHalfWidth * 0.86, 2.55, frameHalfWidth, 0.85);
+        frame.lineTo(frameHalfWidth, 0);
+        frame.closePath();
+        const frameMat = new THREE.MeshStandardMaterial({
+          color: 0x726c5c,
+          roughness: 0.95,
+          flatShading: true,
+        });
+        const frameMesh = new THREE.Mesh(new THREE.ShapeGeometry(frame), frameMat);
+        frameMesh.position.set(entranceCenterX, 0.02, entranceZ - 0.05);
+        frameMesh.castShadow = true;
+        frameMesh.receiveShadow = true;
+        frameMesh.renderOrder = 3;
+        group.add(frameMesh);
+
         const opening = new THREE.Mesh(new THREE.ShapeGeometry(arch), openingMat);
-        opening.position.set(centerX, 0.03, entranceZ);
+        opening.position.set(entranceCenterX, 0.03, entranceZ);
         opening.renderOrder = 4;
         group.add(opening);
 
@@ -2831,26 +2938,74 @@ export function makeWoodPlankTexture({
           openingMat,
         );
         innerFloor.rotation.x = -Math.PI / 2;
-        innerFloor.position.set(centerX, 0.035, entranceZ - 1.15);
+        innerFloor.position.set(entranceCenterX, 0.035, entranceZ - 1.15);
         innerFloor.renderOrder = 4;
         group.add(innerFloor);
 
-        [-0.58, 0, 0.55].forEach((offset, index) => {
-          const length = [0.48, 0.72, 0.42][index];
+        // 垂吊鐘乳石：數量隨入口寬度增減，兩端短、中間長，弧線比固定三根
+        // 更自然。
+        const stalactiteCount = Math.max(3, cave.entranceWidth + 1);
+        for (let i = 0; i < stalactiteCount; i++) {
+          const t = stalactiteCount === 1 ? 0.5 : i / (stalactiteCount - 1);
+          const offset = (t - 0.5) * (cave.entranceWidth - 0.3);
+          const centerBias = 1 - Math.abs(t - 0.5) * 2;
+          const seed = hash2(i * 3.3, cave.entranceWidth * 1.7);
+          const length = 0.34 + centerBias * 0.44 + hash2(seed, i) * 0.12;
           const stalactite = new THREE.Mesh(
-            new THREE.ConeGeometry(0.1 + index * 0.015, length, 6),
+            new THREE.ConeGeometry(0.09 + centerBias * 0.05, length, 6),
             darkRockMat,
           );
           stalactite.rotation.z = Math.PI;
           stalactite.position.set(
-            centerX + offset,
+            entranceCenterX + offset,
             1.93 - length / 2 - Math.abs(offset) * 0.15,
-            entranceZ + 0.035,
+            entranceZ + 0.035 + hash2(i, 6.6) * 0.25,
           );
           stalactite.castShadow = true;
           stalactite.renderOrder = 5;
           group.add(stalactite);
+        }
+
+        // 地面石筍跟垂吊鐘乳石錯開位置，呼應「鐘乳石洞窟」的名字不能只有
+        // 天花板那一半；刻意矮一截、留在入口兩側，不擋視線也不擋走路動線。
+        [-halfEntrance - 0.3, halfEntrance + 0.3].forEach((offset, i) => {
+          const height = 0.55 + hash2(i * 5.5, cave.width) * 0.3;
+          const stalagmite = new THREE.Mesh(
+            new THREE.ConeGeometry(0.14 + i * 0.02, height, 6),
+            i % 2 === 0 ? darkRockMat : rockMat,
+          );
+          stalagmite.position.set(
+            entranceCenterX + offset,
+            height / 2,
+            entranceZ - 0.6 - i * 0.3,
+          );
+          stalagmite.castShadow = true;
+          stalagmite.renderOrder = 4;
+          group.add(stalagmite);
         });
+
+        // 崖面上幾叢苔蘚，扁平球體貼著石頭表面，純靜態不發光——洞口本身
+        // 不能觸發互動，套可拿取道具那套 emissive 呼吸光效果會誤導玩家
+        // 以為這裡能拿東西。
+        for (let i = 0; i < 4; i++) {
+          const seed = hash2(i * 11.3, cave.width + 2.2);
+          const x = cave.x + 1 + seed * (cave.width - 2);
+          if (Math.abs(x - entranceCenterX) < halfEntrance + 0.4) continue;
+          const moss = new THREE.Mesh(
+            new THREE.IcosahedronGeometry(0.28 + hash2(i, seed) * 0.16, 0),
+            mossRockMat,
+          );
+          moss.scale.set(1, 0.4, 1);
+          moss.position.set(
+            x,
+            0.35 + hash2(seed, i * 2) * 0.6,
+            cave.z + 0.6 + hash2(i, 3.3) * 1.4,
+          );
+          moss.rotation.y = seed * Math.PI;
+          moss.receiveShadow = true;
+          group.add(moss);
+        }
+
         return group;
       }
 
