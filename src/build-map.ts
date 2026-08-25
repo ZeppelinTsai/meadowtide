@@ -132,6 +132,10 @@ import {
 } from "./props";
 import { syncFarmVisuals } from "./farm-visuals";
 import {
+  createTransitionEvents,
+  type TransitionLink,
+} from "./map-transitions";
+import {
   OYSTER_RACK_VISUAL,
   WOOD_NODES,
   STONE_NODES,
@@ -3015,13 +3019,47 @@ export function fadeIn() {
 // handleCarpenterDockTouch/handleCarpenterDoorstepTouch 可以直接引用，
 // 保持 layout-maps.ts 是純資料（不牽動 THREE.WebGLRenderer／DOM），
 // map-debug.ts 才能單獨 import LAYOUT/MAPS 不必啟動整個渲染管線。
+const WORLD_MAP_TRANSITIONS: TransitionLink[] = [
+  {
+    id: "old-village-mountain",
+    a: {
+      map: "oldVillage",
+      triggerAt: () => LAYOUT.oldVillage.mountainGate,
+      arrivalAt: () => LAYOUT.oldVillage.mountainArrival,
+    },
+    b: {
+      map: "mountain",
+      triggerAt: () => LAYOUT.mountain.townGate,
+      arrivalAt: () => LAYOUT.mountain.townArrival,
+    },
+  },
+  {
+    id: "old-village-port-south-beach",
+    a: {
+      map: "oldVillage",
+      triggerAt: () => LAYOUT.oldVillage.southBeachGate,
+      arrivalAt: () => LAYOUT.oldVillage.southBeachArrival,
+    },
+    b: {
+      map: "port",
+      triggerAt: () => LAYOUT.port.southBeachGate,
+      arrivalAt: () => LAYOUT.port.southBeachArrival,
+    },
+  },
+];
+const worldTransitionEvents = createTransitionEvents(
+  WORLD_MAP_TRANSITIONS,
+  (map, arrival) => loadMap(map, { ...arrival }),
+);
+
 export const events = [
+  ...worldTransitionEvents,
   {
     map: "livingArea",
     x: LAYOUT.house.doorX,
     z: LAYOUT.house.z + LAYOUT.house.d,
     trigger: "touch",
-    action: () => loadMap("house", { x: 3, z: 5 }),
+    action: () => loadMap("house", { ...MAPS.house.playerStart }),
   },
   {
     map: "house",
@@ -3049,10 +3087,10 @@ export const events = [
   // (碼頭附近)——z=37~42 這段南側延伸地形已經在 layout-maps.ts 補上
   // 真的沙灘/海資料(coastShoreJitter 那段)，不再是純視覺蓋住的假
   // 草地，可以放回原本要求的最南端。
-  ...Array.from({ length: LAYOUT.port.livingAreaGate.width }, (_, i) => ({
+  ...Array.from({ length: LAYOUT.livingArea.portGate.width }, (_, i) => ({
     map: "livingArea",
-    x: LAYOUT.port.livingAreaGate.x + i,
-    z: LAYOUT.port.livingAreaGate.z,
+    x: LAYOUT.livingArea.portGate.x + i,
+    z: LAYOUT.livingArea.portGate.z,
     trigger: "touch",
     action: () =>
       loadMap("port", {
@@ -3067,8 +3105,8 @@ export const events = [
     trigger: "touch",
     action: () =>
       loadMap("livingArea", {
-        x: LAYOUT.port.livingAreaGate.x + i,
-        z: LAYOUT.port.livingAreaGate.z - 1,
+        x: LAYOUT.livingArea.portGate.x + i,
+        z: LAYOUT.livingArea.portGate.z - 1,
       }),
   })),
   // 港口<->舊城鎮的直接連通已經拆掉：舊城鎮現在改從生活區南側直接
@@ -3095,7 +3133,7 @@ export const events = [
     x: SHRINE_PATH_START_X + SHRINE_PATH_LENGTH - 1,
     z,
     trigger: "touch",
-    action: () => loadMap("shrine", { x: 4, z: 4 }),
+    action: () => loadMap("shrine", { ...MAPS.shrine.playerStart }),
   })),
   {
     map: "shrine",
@@ -3117,10 +3155,10 @@ export const events = [
   // 不再通往港口。門檻放回 z=42(生活區最南端)：這個 x 範圍離海很遠，
   // 沒有港口那組「海面網格視覺延伸蓋住草地」的問題，不用像港口那組
   // 挪到 z=36。
-  ...Array.from({ length: LAYOUT.oldVillage.livingAreaGate.width }, (_, i) => ({
+  ...Array.from({ length: LAYOUT.livingArea.oldVillageGate.width }, (_, i) => ({
     map: "livingArea",
-    x: LAYOUT.oldVillage.livingAreaGate.x + i,
-    z: LAYOUT.oldVillage.livingAreaGate.z,
+    x: LAYOUT.livingArea.oldVillageGate.x + i,
+    z: LAYOUT.livingArea.oldVillageGate.z,
     trigger: "touch",
     action: () =>
       loadMap("oldVillage", {
@@ -3137,24 +3175,10 @@ export const events = [
     // 觸發格本身不會立刻反彈，所以往返可以共用同一個(7,0)。
     action: () =>
       loadMap("livingArea", {
-        x: LAYOUT.oldVillage.livingAreaGate.x + i,
-        z: LAYOUT.oldVillage.livingAreaGate.z - 1,
+        x: LAYOUT.livingArea.oldVillageGate.x + i,
+        z: LAYOUT.livingArea.oldVillageGate.z - 1,
       }),
   })),
-  {
-    map: "oldVillage",
-    x: LAYOUT.oldVillage.mountainGate.x,
-    z: LAYOUT.oldVillage.mountainGate.z,
-    trigger: "touch",
-    action: () => loadMap("mountain", { ...LAYOUT.mountain.townArrival }),
-  },
-  {
-    map: "mountain",
-    x: LAYOUT.mountain.townGate.x,
-    z: LAYOUT.mountain.townGate.z,
-    trigger: "touch",
-    action: () => loadMap("oldVillage", { x: 1, z: 1 }),
-  },
   {
     map: "livingArea",
     x: MOUNTAIN_GATE_BLOCKER.x,
@@ -3184,22 +3208,22 @@ export const events = [
     trigger: "touch",
     action: () =>
       loadMap("port", {
-        x: LAYOUT.oldVillage.portGate.portX + 1,
-        z: LAYOUT.oldVillage.portGate.portZ + i,
+        x: LAYOUT.port.oldVillageGate.x + 1,
+        z: LAYOUT.port.oldVillageGate.z + i,
       }),
   })),
-  ...Array.from({ length: LAYOUT.oldVillage.portGate.portHeight }, (_, i) => i)
+  ...Array.from({ length: LAYOUT.port.oldVillageGate.height }, (_, i) => i)
     .filter(
       (i) =>
         !(
-          LAYOUT.oldVillage.portGate.portX === LAYOUT.port.livingGate.x &&
-          LAYOUT.oldVillage.portGate.portZ + i === LAYOUT.port.livingGate.z
+          LAYOUT.port.oldVillageGate.x === LAYOUT.port.livingGate.x &&
+          LAYOUT.port.oldVillageGate.z + i === LAYOUT.port.livingGate.z
         ),
     )
     .map((i) => ({
       map: "port",
-      x: LAYOUT.oldVillage.portGate.portX,
-      z: LAYOUT.oldVillage.portGate.portZ + i,
+      x: LAYOUT.port.oldVillageGate.x,
+      z: LAYOUT.port.oldVillageGate.z + i,
       trigger: "touch",
       action: () =>
         loadMap("oldVillage", {
@@ -3207,23 +3231,4 @@ export const events = [
           z: LAYOUT.oldVillage.portGate.z + i,
         }),
     })),
-  // 城鎮南沙灘 <-> 港口南沙灘：兩邊 southBeach.depth 現在都是 30，這裡另外
-  // 加一組雙向點對點傳送，讓兩片沙灘實際連通，不只是風格一致。z 挑在
-  // oldVillageSouthBeachEndZ()/portSouthBeachEndZ() 公式的保底沙地範圍內
-  // (兩邊鋸齒海岸線不管 x 抖到哪裡，這個 z 之前一定是沙)，避開最南側的
-  // 保底外海，觸發點才不會剛好卡進海裡走不動。
-  {
-    map: "oldVillage",
-    x: 23,
-    z: 36,
-    trigger: "touch",
-    action: () => loadMap("port", { x: 10, z: 34 }),
-  },
-  {
-    map: "port",
-    x: 10,
-    z: 36,
-    trigger: "touch",
-    action: () => loadMap("oldVillage", { x: 23, z: 34 }),
-  },
 ];

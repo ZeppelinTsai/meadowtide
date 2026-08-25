@@ -1,6 +1,12 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { expandTileGrid, shiftCoordinates, shiftCoordinatesDeep } from "./map-shift";
+import {
+  expandTileGrid,
+  shiftCoordinates,
+  shiftCoordinatesDeep,
+  shiftMapLayout,
+  shiftRegisteredMap,
+} from "./map-shift";
 
 function makeGrid(rows: number, cols: number, fillValue = 0): number[][] {
   return Array.from({ length: rows }, () => new Array(cols).fill(fillValue));
@@ -114,4 +120,62 @@ test("shiftCoordinatesDeep：只傳單一地圖的 LAYOUT 子物件，不會動�
   shiftCoordinatesDeep(layout.oldVillage, 10, 0);
   assert.equal(layout.oldVillage.livingGate.x, 43);
   assert.equal(layout.house.x, 20, "house 不該被 oldVillage 的搬移影響");
+});
+
+test("shiftMapLayout：往西搬圖會同步門檻、抵達點與 playerStart，且道路仍連通", () => {
+  const tiles = [
+    [1, 1, 1, 1],
+    [0, 5, 5, 3],
+    [1, 1, 1, 1],
+  ];
+  const layout = {
+    gate: { x: 3, z: 1 },
+    arrival: { x: 2, z: 1 },
+    building: { x: 1, z: 2 },
+  };
+  const playerStart = { x: 0, z: 1 };
+  const result = shiftMapLayout({
+    tiles,
+    direction: "west",
+    amount: 2,
+    coordinateRoots: [layout],
+    playerStart,
+  });
+  assert.deepEqual(result, { moved: 2, dx: 2, dz: 0 });
+  assert.deepEqual(layout.gate, { x: 5, z: 1 });
+  assert.deepEqual(layout.arrival, { x: 4, z: 1 });
+  assert.deepEqual(playerStart, { x: 2, z: 1 });
+  assert.equal(layout.building.x, 3, "建築包含在 mapLayout 時也要一起搬");
+  for (let x = playerStart.x; x <= layout.gate.x; x++)
+    assert.notEqual(tiles[1][x], 1, `道路在 x=${x} 必須連續可走`);
+});
+
+test("shiftMapLayout：往東／南擴張不搬既有世界座標", () => {
+  const tiles = makeGrid(2, 2);
+  const layout = { gate: { x: 1, z: 1 }, arrival: { x: 0, z: 1 } };
+  const playerStart = { x: 0, z: 0 };
+  shiftMapLayout({ tiles, direction: "east", amount: 3, coordinateRoots: [layout], playerStart });
+  assert.deepEqual(layout.gate, { x: 1, z: 1 });
+  assert.deepEqual(playerStart, { x: 0, z: 0 });
+});
+
+test("shiftRegisteredMap：只搬指定地圖及其所屬傳送端點", () => {
+  const mapAEndpoint = { x: 1, z: 1 };
+  const mapBEndpoint = { x: 8, z: 8 };
+  const registry = {
+    mapA: {
+      tiles: makeGrid(2, 2),
+      coordinateRoots: [{ gate: mapAEndpoint }],
+      playerStart: { x: 0, z: 0 },
+    },
+    mapB: {
+      tiles: makeGrid(2, 2),
+      coordinateRoots: [{ gate: mapBEndpoint }],
+      playerStart: { x: 1, z: 1 },
+    },
+  };
+
+  shiftRegisteredMap(registry, "mapA", "north", 3);
+  assert.deepEqual(mapAEndpoint, { x: 1, z: 4 });
+  assert.deepEqual(mapBEndpoint, { x: 8, z: 8 });
 });

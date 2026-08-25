@@ -205,10 +205,9 @@ npm run building-debug
 
   對 `layout-maps.ts`／`build-map.ts` 掃過一次的已知需複查項目：
   `build-map.ts` 裡 `northSeaWestX`/`northCliffStartX`/`plazaStairsEndX` 等
-  程序化地形邊界常數、`events` 陣列裡舊城鎮南沙灘⇄港口南沙灘傳送點
-  （約 3148～3158 行，`x:23,z:36` / `x:10,z:34`）、主屋門口出口座標
-  （約 2955～2971 行）。這些搬家時不會自動跟著動，改動相關區域前先看一眼
-  這份清單。
+  程序化地形邊界常數，以及主屋／祠堂內部地圖的固定格子。世界地圖之間的
+  傳送點已集中到 `LAYOUT` 與 `src/map-transitions.ts`，不應再出現在這份
+  寫死座標清單；內部地圖格子不隨外部建築位置平移。
 
   測試：
 
@@ -428,3 +427,21 @@ meadowtideI18n.locales           // 列出支援的語言代碼 ["zh","en","ja"]
 - 生活區西側背景山坡的基準角度由 `LAYOUT.mountainBand.slopeDegrees` 控制，
   目前為 30°；`makeWesternMountainTerrain()` 必須從這個角度計算線性抬升，
   不可另寫非線性高牆公式。修改後執行 `npm run build`。
+
+## 傳送點與整張地圖平移（2026-08-25 已實作）
+
+- `src/map-transitions.ts` 的 `createTransitionEvents()` 是世界地圖雙向連線的
+  共同產生器；event 的門檻與抵達點在觸發當下讀取 `LAYOUT`，不複製座標。
+- 傳送端點由它實際所在的地圖持有。例如生活區端點在
+  `LAYOUT.livingArea`，港口端點在 `LAYOUT.port`。禁止把兩張地圖的端點塞進
+  同一物件，否則只搬一張地圖時會誤搬另一側。
+- `src/layout-maps.ts` 的 `MAP_SHIFT_REGISTRY` 是 map id 到地磚、座標根節點、
+  `playerStart` 的所有權清單。整張地圖平移必須呼叫
+  `shiftRegisteredMap(MAP_SHIFT_REGISTRY, mapId, direction, amount)`；北／西擴張
+  會同步平移地磚座標、建築／地形資料、玩家起點與該側傳送端點，南／東擴張
+  不改既有世界座標。
+- 地磚碰撞與縮放建築碰撞仍是兩套系統；哪些建築資料會跟著搬，明確列在該
+  map id 的 `coordinateRoots`，不可假設掃描 tile 就能找到建築。
+- 修改傳送或平移邏輯後必跑 `npm run test:map-tools`。測試會檢查端點不漏移、
+  不雙重位移，並以 BFS 驗證山區／舊城鎮／兩側南灘的抵達點到門檻之間仍有
+  連續可走地磚，防止 `path()` 對零或負寬度靜默不畫。

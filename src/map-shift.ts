@@ -144,3 +144,59 @@ export function shiftCoordinatesDeep(
     if (typeof value === "object") shiftCoordinatesDeep(value, dx, dz, seen);
   }
 }
+
+export interface ShiftMapLayoutOptions {
+  tiles: TileGrid;
+  direction: ShiftDirection;
+  amount: number;
+  coordinateRoots: unknown[];
+  playerStart: Record<string, unknown>;
+  fillValue?: number;
+}
+
+export interface MapShiftEntry {
+  tiles: TileGrid;
+  coordinateRoots: unknown[];
+  playerStart: Record<string, unknown>;
+}
+
+export type MapShiftRegistry = Record<string, MapShiftEntry>;
+
+/**
+ * 擴張／收縮一張地圖，並同步搬動該地圖所有 coordinateRoots 與 playerStart。
+ * 傳送門檻與抵達點必須收在所在地圖的 roots 裡；如此其他地圖連進來時持有
+ * 的是同一端點參照，不需另掃 events，也不會因重複平移兩份座標而搬兩次。
+ * roots 若含建築座標，建築碰撞也會一起搬；兩套碰撞資料的範圍由 registry
+ * 明確列出，不假設 tile 與建築座標能互相推導。
+ */
+export function shiftMapLayout(options: ShiftMapLayoutOptions) {
+  const moved = expandTileGrid(
+    options.tiles,
+    options.direction,
+    options.amount,
+    options.fillValue,
+  );
+  const dx = options.direction === "west" ? moved : 0;
+  const dz = options.direction === "north" ? moved : 0;
+  if (dx !== 0 || dz !== 0) {
+    // 一次走訪所有根節點，重複引用的物件只會平移一次。
+    shiftCoordinatesDeep([...options.coordinateRoots, options.playerStart], dx, dz);
+  }
+  return { moved, dx, dz };
+}
+
+/**
+ * 以 map id 搬移整張地圖。registry 是「哪些座標屬於哪張地圖」的唯一清單；
+ * 傳送端點只要存放在正確地圖的 coordinateRoots 內，就會與地磚同步移動。
+ */
+export function shiftRegisteredMap(
+  registry: MapShiftRegistry,
+  mapId: string,
+  direction: ShiftDirection,
+  amount: number,
+  fillValue = 0,
+) {
+  const entry = registry[mapId];
+  if (!entry) throw new Error(`Unknown map id: ${mapId}`);
+  return shiftMapLayout({ ...entry, direction, amount, fillValue });
+}

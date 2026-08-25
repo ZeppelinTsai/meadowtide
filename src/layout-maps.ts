@@ -9,6 +9,10 @@ import { repaintRegion } from "./region-paint";
       // ==============================================================
       export const NORTH_EXPANSION = 5;
       export const LAYOUT = {
+        livingArea: {
+          oldVillageGate: { x: 20, z: 42, width: 3 },
+          portGate: { x: 34, z: 42, width: 14 },
+        },
         // 北側新增 5 排：動物區留在新空間，其餘舊區域整體往南順延。
         house: { x: 20, z: 9 + NORTH_EXPANSION, w: 3, d: 2, doorX: 21, visualScale: 2, doorWorldHeight: 1.05 },
         barn: { x: 20, z: -2, w: 3, d: 2, doorX: 21, visualScale: 2, doorWorldHeight: 1.05 }, // 整座動物小屋向左移 3 格
@@ -109,17 +113,16 @@ import { repaintRegion } from "./region-paint";
           houseVisualScale: 1.5,
           houseDoorWorldHeight: 1.05,
           livingGate: { x: 33, z: 0, width: 3 },
-          livingAreaGate: { x: 20, z: 42, width: 3 },
           portGate: {
             x: 46,
             z: 4,
             height: 26,
-            portX: 0,
-            portZ: 4,
-            portHeight: 26,
           },
           mountainRoad: { x: 3, z: 29, width: 3 },
           mountainGate: { x: 1, z: 0 },
+          mountainArrival: { x: 1, z: 1 },
+          southBeachGate: { x: 23, z: 36 },
+          southBeachArrival: { x: 23, z: 34 },
           plaza: { x: 28, z: 4, width: 18, height: 22 },
           // 統一 +1：upper 2→3、middle 1→2，跟 mountainLanding(3→4)、
           // groundElevation(=1，廣場預設地面)保持原本一路遞減的相對關係，
@@ -283,10 +286,12 @@ import { repaintRegion } from "./region-paint";
           elevation: 1,
           stairs: { x: 4, z: 8, width: 9, depth: 3 },
           livingGate: { x: 0, z: 0, width: 14 },
-          livingAreaGate: { x: 34, z: 42, width: 14 },
+          oldVillageGate: { x: 0, z: 4, height: 26 },
           playerArrival: { x: 7, z: 11 },
           carpenterMeet: { x: 13, z: 28 },
           townGate: { x: 3, z: 29 },
+          southBeachGate: { x: 10, z: 36 },
+          southBeachArrival: { x: 10, z: 34 },
           shopRoad: { z: 14, height: 5 },
           basin: { x: 6, z: 18, width: 15, height: 9 },
           ferry: { x: 13, z: 22 },
@@ -1002,9 +1007,9 @@ import { repaintRegion } from "./region-paint";
       // 舊城鎮東側(x=13)跟港口西側(x=0)整條邊界都標成門檻(3)，冒出黃色
       // 標記；只對到 z=0~14(舊城鎮的範圍)，港口多出來的最後一排(z=15)
       // 沒有對應的舊城鎮列，不畫。
-      for (let z = 0; z < LAYOUT.oldVillage.portGate.portHeight; z++) {
-        MAPS.port.tiles[LAYOUT.oldVillage.portGate.portZ + z][
-          LAYOUT.oldVillage.portGate.portX
+      for (let z = 0; z < LAYOUT.port.oldVillageGate.height; z++) {
+        MAPS.port.tiles[LAYOUT.port.oldVillageGate.z + z][
+          LAYOUT.port.oldVillageGate.x
         ] = 3;
       }
 
@@ -1385,14 +1390,14 @@ import { repaintRegion } from "./region-paint";
       for (let z = 38; z <= 42; z++) {
         for (let x = 13; x <= 15; x++) MAPS.livingArea.tiles[z][x] = 0;
       }
-      for (let z = 37; z < LAYOUT.oldVillage.livingAreaGate.z; z++) {
-        for (let i = 0; i < LAYOUT.oldVillage.livingAreaGate.width; i++) {
-          MAPS.livingArea.tiles[z][LAYOUT.oldVillage.livingAreaGate.x + i] = 5;
+      for (let z = 37; z < LAYOUT.livingArea.oldVillageGate.z; z++) {
+        for (let i = 0; i < LAYOUT.livingArea.oldVillageGate.width; i++) {
+          MAPS.livingArea.tiles[z][LAYOUT.livingArea.oldVillageGate.x + i] = 5;
         }
       }
-      for (let i = 0; i < LAYOUT.oldVillage.livingAreaGate.width; i++) {
-        MAPS.livingArea.tiles[LAYOUT.oldVillage.livingAreaGate.z][
-          LAYOUT.oldVillage.livingAreaGate.x + i
+      for (let i = 0; i < LAYOUT.livingArea.oldVillageGate.width; i++) {
+        MAPS.livingArea.tiles[LAYOUT.livingArea.oldVillageGate.z][
+          LAYOUT.livingArea.oldVillageGate.x + i
         ] = 3;
       }
 
@@ -1494,11 +1499,11 @@ import { repaintRegion } from "./region-paint";
       // 港口連通點(37~46,42)蓋在剛補上的沙灘資料上面，門檻(3)覆寫掉那幾格
       // 的沙灘值，其餘沙灘/海維持剛算出來的樣子。
       for (
-        let x = LAYOUT.port.livingAreaGate.x;
-        x < LAYOUT.port.livingAreaGate.x + LAYOUT.port.livingAreaGate.width;
+        let x = LAYOUT.livingArea.portGate.x;
+        x < LAYOUT.livingArea.portGate.x + LAYOUT.livingArea.portGate.width;
         x++
       ) {
-        MAPS.livingArea.tiles[LAYOUT.port.livingAreaGate.z][x] = 3;
+        MAPS.livingArea.tiles[LAYOUT.livingArea.portGate.z][x] = 3;
       }
 
       // ==============================================================
@@ -1554,3 +1559,45 @@ import { repaintRegion } from "./region-paint";
         }
         return null; // 找不到路（例如目標被完全封死）
       }
+
+      /**
+       * 整張地圖平移時的座標所有權清單。傳送端點必須登記在它實際所在的地圖，
+       * 不以目的地命名；shiftRegisteredMap() 才能只搬正確的一側。
+       */
+      export const MAP_SHIFT_REGISTRY = {
+        livingArea: {
+          tiles: MAPS.livingArea.tiles,
+          coordinateRoots: [
+            LAYOUT.livingArea,
+            LAYOUT.house,
+            LAYOUT.barn,
+            LAYOUT.pasture,
+            LAYOUT.orchard,
+            LAYOUT.windmill,
+            LAYOUT.restArea,
+            LAYOUT.garden,
+            LAYOUT.farm,
+            LAYOUT.lake,
+            LAYOUT.coast,
+            LAYOUT.mountainBand,
+            LAYOUT.mountainGateway,
+            MAPS.livingArea.buildings,
+          ],
+          playerStart: MAPS.livingArea.playerStart,
+        },
+        oldVillage: {
+          tiles: MAPS.oldVillage.tiles,
+          coordinateRoots: [LAYOUT.oldVillage, MAPS.oldVillage.placeholders],
+          playerStart: MAPS.oldVillage.playerStart,
+        },
+        port: {
+          tiles: MAPS.port.tiles,
+          coordinateRoots: [LAYOUT.port],
+          playerStart: MAPS.port.playerStart,
+        },
+        mountain: {
+          tiles: MAPS.mountain.tiles,
+          coordinateRoots: [LAYOUT.mountain],
+          playerStart: MAPS.mountain.playerStart,
+        },
+      };
