@@ -219,6 +219,9 @@ npm run building-debug
   fillValue: 9)` 追加外海；東擴不得平移既有座標，完成後必須用 tile grid 實際寬度
   回填 `LAYOUT.port.width`。同一組測試會確認新增 50 欄全為 tile `9`、玩家起點與
   舊城鎮傳送端點未移動。
+  `makePortScene()` 的北側港區高台右緣必須使用 `LAYOUT.port.eastOceanCutout.x`，
+  禁止再由擴張後的 `LAYOUT.port.width` 反推；否則港口東擴時高台模型會一起被拉長，
+  即使 tile 已改成海，畫面仍會被高台遮住。
 - **`scripts/audit-raw-coordinates.ts`**：風險清單產生器，不是自動修復或
   pass/fail 檢查（找到的項目不是 bug，只是「平移工具碰不到、要人工判斷」的
   提醒，所以刻意不用非零退出碼失敗，跟本節下面「應以非零退出碼失敗」的
@@ -475,6 +478,15 @@ meadowtideI18n.locales           // 列出支援的語言代碼 ["zh","en","ja"]
   不改既有世界座標。
 - 地磚碰撞與縮放建築碰撞仍是兩套系統；哪些建築資料會跟著搬，明確列在該
   map id 的 `coordinateRoots`，不可假設掃描 tile 就能找到建築。
+- **任何地形切口必須同步修改三層：地磚、碰撞、視覺。** 海岸、湖面、平台、
+  樓梯與洞口等區域，必須先在 `LAYOUT` 建立唯一的具名範圍，再讓 tile 重繪、
+  `isBlocked()`／建築碰撞，以及 `build-map.ts`／`props.ts` 的網格尺寸共同讀取它。
+  禁止只把 tile 改成海或可走格就視為完成：底板、高台或水面若仍使用整張地圖的
+  `width/height`，畫面可能完全不變，碰撞也可能與外觀不一致。修改後除了
+  `npm run test:map-tools` 與 `npm run build`，還必須執行對應地圖的
+  `npm run map-debug -- --map=<map id> --legend`，並實際重建／重進場景檢查視覺切口。
+  港口 `eastOceanCutout` 是標準案例：tile 海面、港區高台右緣與水面起點都必須
+  由同一物件推導。
 - 修改傳送或平移邏輯後必跑 `npm run test:map-tools`。測試會檢查端點不漏移、
   不雙重位移，並以 BFS 驗證山區／舊城鎮／兩側南灘的抵達點到門檻之間仍有
   連續可走地磚，防止 `path()` 對零或負寬度靜默不畫。

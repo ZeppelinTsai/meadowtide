@@ -135,6 +135,9 @@ test("港口東側擴充 50 格外海且既有座標不移動", () => {
   assert.equal(tiles[0].length, 34 + PORT_OCEAN_EXPANSION.east);
   assert.equal(LAYOUT.port.width, tiles[0].length);
   assert.deepEqual(MAPS.port.playerStart, LAYOUT.port.playerArrival);
+  for (let z = LAYOUT.port.eastOceanCutout.z; z < LAYOUT.port.eastOceanCutout.z + LAYOUT.port.eastOceanCutout.height; z++)
+    for (let x = LAYOUT.port.eastOceanCutout.x; x < tiles[z].length; x++)
+      assert.equal(tiles[z][x], 9, `port east cutout (${x},${z})`);
   for (const row of tiles)
     for (let x = row.length - PORT_OCEAN_EXPANSION.east; x < row.length; x++)
       assert.equal(row[x], 9, `port east ocean x=${x}`);

@@ -1683,7 +1683,7 @@ export function makeWoodPlankTexture({
         addPlatform(
           0,
           port.beachDepth + 1,
-          port.width - port.oceanExpansion,
+          port.eastOceanCutout.x,
           port.basin.z - port.beachDepth - 2,
         );
         addPlatform(

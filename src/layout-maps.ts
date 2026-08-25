@@ -336,6 +336,7 @@ import { shiftMapLayout } from "./map-shift";
           townGate: { x: 3, z: 29 },
           shopRoad: { z: 14, height: 5 },
           basin: { x: 6, z: 18, width: 15, height: 9 },
+          eastOceanCutout: { x: 23, z: 11, height: 6 },
           ferry: { x: 13, z: 22 },
           southQuay: { z: 27, height: 3 },
           southBeach: { x: 0, z: 30, width: 21, depth: 30 },
@@ -849,6 +850,16 @@ import { shiftMapLayout } from "./map-shift";
         ) {
           const shoreEndZ = portSouthBeachEndZ(x);
           for (let z = p.southBeach.z; z <= shoreEndZ; z++) tiles[z][x] = 8;
+        }
+
+        // 東側誤延伸的平台清回海面。範圍由 LAYOUT 持有，東擴新增欄會由
+        // PORT_OCEAN_EXPANSION 直接填海，不需要在這裡寫最右 X 座標。
+        for (
+          let z = p.eastOceanCutout.z;
+          z < p.eastOceanCutout.z + p.eastOceanCutout.height;
+          z++
+        ) {
+          for (let x = p.eastOceanCutout.x; x < p.width; x++) tiles[z][x] = 9;
         }
 
         // 中央內港、右側航道與南側外海；石造碼頭保留在四周的 0 格。
