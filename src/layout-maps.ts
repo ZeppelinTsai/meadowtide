@@ -56,6 +56,8 @@ import { repaintRegion } from "./region-paint";
           height: 17,
           // 左上岸六棵遮陽樹；沿湖水外緣排列，用相對座標讓湖搬遷時一起移動。
           shadeTreeOffsets: [[7, 0], [6, 1], [5, 2], [5, 3], [5, 4], [4, 5]],
+          // 最下面一棵維持貼岸，其餘五棵的樹幹視覺稍微往左退。
+          shadeTreeVisualShiftX: -0.5,
         },
         coast: {
           eastExpansion: 5,

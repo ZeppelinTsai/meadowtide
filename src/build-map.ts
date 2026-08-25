@@ -2161,6 +2161,12 @@ export function buildMap(mapName) {
             : mapName === "mountain"
               ? mountainGroundY(x, z)
               : 0;
+        if (isLakeShadeTree) {
+          const bottomTree =
+            LAKE_SHADE_TREE_TILES[LAKE_SHADE_TREE_TILES.length - 1];
+          if (!bottomTree || bottomTree[0] !== x || bottomTree[1] !== z)
+            m.position.x += LAYOUT.lake.shadeTreeVisualShiftX;
+        }
         if (mapName === "mountain" && z <= 5) m.scale.setScalar(1.45);
         // 山頂中央那棵(12,5)是概念圖裡「山頂巨木」的位置，額外放大、
         // 蓋過其他山頂樹，一眼就能認出是地標。
