@@ -11,8 +11,12 @@ build/
 !build/
 build/*
 !build/icon.ico
+
+# Electron 打包輸出
+/release/
+
 .env
 .env.local
-/release/
-# 保留 VSC 的 workspace 設定不忽略，方便共用編輯器設定
+
+# 保留 VS Code 的 workspace 設定，方便共用編輯器設定
 !.vscode/settings.json
