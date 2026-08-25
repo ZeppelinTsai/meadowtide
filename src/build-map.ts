@@ -37,6 +37,8 @@ import {
   SHRINE_PATH_ELEVATION,
   portGroundY,
   oldVillageGroundY,
+  oldVillageSouthBeachEndZ,
+  oldVillageWestBeachStartX,
   mountainGroundY,
   isOnMountainStair,
   MOUNTAIN_GATE_BLOCKER,
@@ -64,12 +66,18 @@ import {
   SEA_FISH_SCALE,
   LAKE_FISH_SCALE,
   EAST_SEA_WAVE_DIRECTION,
+  SOUTH_SEA_WAVE_DIRECTION,
+  WEST_SEA_WAVE_DIRECTION,
   NORTHEAST_SEA_WAVE_DIRECTION,
   thresholdMarkerMeshes,
   thresholdMarkersVisible,
   gatherNodeMeshes,
   oreNodeMeshes,
 } from "./scene-registries";
+import {
+  findSouthernShoreSandZ,
+  findWesternShoreSandX,
+} from "./shore-foam";
 import {
   MINE_SIZE,
   MINE_FLOOR_MAX,
@@ -230,7 +238,6 @@ export function buildMap(mapName) {
   thresholdMarkerMeshes.length = 0;
   gatherNodeMeshes.length = 0;
   oreNodeMeshes.length = 0;
-  refreshGatherNodes();
 
   const map = MAPS[mapName];
   const rows = map.tiles.length,
@@ -1116,6 +1123,52 @@ export function buildMap(mapName) {
           while (x < row.length && row[x] === 9) x++;
           addOldVillageWater(startX, z, x - startX, 1);
         }
+      }
+
+      // 舊城鎮的南岸與西岸共用生活區的「衝上岸→碎開→退回」浪花模型。
+      // 端點只用 LAYOUT 算範圍，真正落點仍從最終 tile 8/9 鄰接邊界取得。
+      const southFoamStartX = oldVillageWestBeachStartX(
+        LAYOUT.oldVillage.westBeach.z + 1,
+      );
+      const southFoamEndX =
+        LAYOUT.oldVillage.southBeach.x +
+        LAYOUT.oldVillage.southBeach.width -
+        2;
+      const southFoamEndZ = oldVillageSouthBeachEndZ(southFoamEndX);
+      for (let x = southFoamStartX; x <= southFoamEndX; x += 2) {
+        const shoreZ = findSouthernShoreSandZ(
+          MAPS.oldVillage.tiles,
+          x,
+          LAYOUT.oldVillage.southBeach.z,
+          southFoamEndZ,
+        );
+        if (shoreZ === null) continue;
+        const foam = makeFoam(x, shoreZ + 0.65, 1200 + x * 1.37, {
+          waveDirection: SOUTH_SEA_WAVE_DIRECTION,
+          rotationY: Math.PI / 2,
+        });
+        foamMeshes.push(foam);
+        gameState.mapGroup.add(foam);
+      }
+      for (
+        let z = LAYOUT.oldVillage.westBeach.z + 1;
+        z <= southFoamEndZ;
+        z += 2
+      ) {
+        const shoreX = findWesternShoreSandX(
+          MAPS.oldVillage.tiles,
+          z,
+          LAYOUT.oldVillage.westBeach.x,
+          LAYOUT.oldVillage.westBeach.x +
+            LAYOUT.oldVillage.westBeach.width -
+            1,
+        );
+        if (shoreX === null) continue;
+        const foam = makeFoam(shoreX - 0.65, z, 1500 + z * 1.37, {
+          waveDirection: WEST_SEA_WAVE_DIRECTION,
+        });
+        foamMeshes.push(foam);
+        gameState.mapGroup.add(foam);
       }
     } else if (mapName === "mountain") {
       const mountain = LAYOUT.mountain;
@@ -3202,6 +3255,9 @@ export function isBlocked(mapName, x, z) {
 export function loadMap(mapName, startPos) {
   gameState.isSitting = false;
   fadeOut(() => {
+    // 06:00／18:00 只代表「下一次換圖可刷新」。必須等目標地圖真的不同才
+    // 套用最新時段，避免採集點在玩家眼前重生；洞窟同 map 換樓也不算換圖。
+    if (mapName !== gameState.currentMapName) refreshGatherNodes();
     gameState.zoom = Math.min(
       gameState.zoom,
       mapName === "port" ? 20 : mapName === "mountain" ? 22 : 18,

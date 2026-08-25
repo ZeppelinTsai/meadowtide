@@ -10,7 +10,6 @@ import {
   isOysterRackReady,
   WOOD_NODES,
   STONE_NODES,
-  refreshGatherNodes,
   settlePastureGrazing,
   settleFeederConsumption,
 } from "./game-state";
@@ -551,8 +550,8 @@ export function animate(now) {
       : 0;
   }
 
-  // 06:00／18:00 換一批隨機採集點；既有 group 原地搬動，不必重建地圖。
-  refreshGatherNodes();
+  // 採集點只在真正切換地圖時刷新；留在原地跨過 06:00／18:00 時，畫面與
+  // 採集狀態都維持不變，避免木材／石頭在玩家眼前突然搬動或重生。
   const gatherNodes = [...WOOD_NODES, ...STONE_NODES];
   gatherNodeMeshes.forEach((entry) => {
     const node = gatherNodes.find((candidate) => candidate.id === entry.nodeId);

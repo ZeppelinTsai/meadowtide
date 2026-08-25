@@ -60,6 +60,8 @@ export const waterSkyUnderlayMaterials: import("three").MeshStandardMaterial[] =
       export const lakeShoreColliders = []; // 湖岸石頭的圓形碰撞，建圖時與石頭位置同步
       export const fishSchool = []; // 每條魚各自保存尺寸、速度、橢圓半徑、游移與深度參數
       export const EAST_SEA_WAVE_DIRECTION = Object.freeze({ x: -1, z: 0 });
+      export const SOUTH_SEA_WAVE_DIRECTION = Object.freeze({ x: 0, z: -1 });
+      export const WEST_SEA_WAVE_DIRECTION = Object.freeze({ x: 1, z: 0 });
       // 東北外海朝西南方推進；sampleDirectedSeaWave 會再次正規化。
       export const NORTHEAST_SEA_WAVE_DIRECTION = Object.freeze({ x: -1, z: 1 });
       export const EAST_SEA_WAVE = Object.freeze({

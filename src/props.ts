@@ -4,12 +4,14 @@ import { gameState, getSeasonGrassTone, mapleAutumnColor } from "./game-state";
 import { TILE, PLATEAU_Y, NORTH_CLIFF_Z, SOUTH_TERRAIN_EXTENSION } from "./scene-sky";
 import {
   LAYOUT,
+  MAPS,
   SHRINE_PATH_START_X,
   SHRINE_PATH_LENGTH,
   SHRINE_PATH_ELEVATION,
   portSouthBeachEndZ,
 } from "./layout-maps";
-import { windowMats, waterSurfaceMaterials, waterSkyUnderlayMaterials, outdoorLampLights, foamMeshes, windmillRotors, pastureGrassBlades, avenueLeafMaterials, seasonalTreeLeafMaterials, seasonalGroundMaterials, mountainSeasonalMaterials, GRASS_STAGE_HEIGHTS, EAST_SEA_WAVE_DIRECTION, gangplankMeshes } from "./scene-registries";
+import { windowMats, waterSurfaceMaterials, waterSkyUnderlayMaterials, outdoorLampLights, foamMeshes, windmillRotors, pastureGrassBlades, avenueLeafMaterials, seasonalTreeLeafMaterials, seasonalGroundMaterials, mountainSeasonalMaterials, GRASS_STAGE_HEIGHTS, EAST_SEA_WAVE_DIRECTION, SOUTH_SEA_WAVE_DIRECTION, gangplankMeshes } from "./scene-registries";
+import { findSouthernShoreSandZ } from "./shore-foam";
 import { randomPasturePoint } from "./npc-runtime";
 
 // 木棧板材質——canvas 現畫木紋貼圖，跟 scene-sky.ts/weather-particles.ts
@@ -1658,6 +1660,27 @@ export function makeWoodPlankTexture({
           foamMeshes.push(foam);
           group.add(foam);
         }
+        // 南側沙灘的浪花直接掃最終 tile 8/9 邊界；從 x=1 開始避開地圖
+        // 西緣，朝北捲上岸。岸線日後重畫時不用再同步另一份視覺座標。
+        for (
+          let x = port.southBeach.x + 1;
+          x < port.southBeach.x + port.southBeach.width;
+          x += 2
+        ) {
+          const shoreZ = findSouthernShoreSandZ(
+            MAPS.port.tiles,
+            x,
+            port.southBeach.z,
+            port.southBeach.z + port.southBeach.depth - 1,
+          );
+          if (shoreZ === null) continue;
+          const foam = makeFoam(x, shoreZ + 0.65, 900 + x * 1.37, {
+            waveDirection: SOUTH_SEA_WAVE_DIRECTION,
+            rotationY: Math.PI / 2,
+          });
+          foamMeshes.push(foam);
+          group.add(foam);
+        }
 
         const addPlatform = (x, z, width, depth) => {
           const slab = new THREE.Mesh(
@@ -2518,7 +2541,20 @@ export function makeWoodPlankTexture({
         group.position.set(centerX, 0, centerZ);
         return group;
       }
-      export function makeFoam(x, z, seed) {
+      export interface FoamOptions {
+        waveDirection?: Readonly<{ x: number; z: number }>;
+        rotationY?: number;
+      }
+
+      export function makeFoam(
+        x,
+        z,
+        seed,
+        {
+          waveDirection = EAST_SEA_WAVE_DIRECTION,
+          rotationY = 0,
+        }: FoamOptions = {},
+      ) {
         // 拍岸浪花做成一個小群組：浪頭捲上岸的前緣、退潮水漬、還有幾顆會滾動碎裂
         // 的低模泡沫顆粒，讓它有「衝上岸→碎開→退回去」的動態，不只是忽明忽暗
         const g = new THREE.Group();
@@ -2585,6 +2621,7 @@ export function makeWoodPlankTexture({
           bumps.push(bump);
         }
         g.position.set(x, 0, z);
+        g.rotation.y = rotationY;
         g.userData = {
           seed,
           crest,
@@ -2592,7 +2629,7 @@ export function makeWoodPlankTexture({
           bumps,
           baseX: x,
           baseZ: z,
-          waveDirection: EAST_SEA_WAVE_DIRECTION,
+          waveDirection,
         };
         return g;
       }

@@ -113,6 +113,20 @@
 - 修改湖岸或海岸後必跑 `npm run map-debug -- --map=<name> --legend`、
   `npm run test:map-tools` 與 `npm run build`，並在實際 3D 畫面確認沒有透明
   重疊色塊、岸線穿插或可走沙地／不可走海面不一致。
+- 拍岸浪花也必須讀最終 tile 的沙地 `8`／海面 `9` 鄰接邊界，不得另抄
+  一份岸線座標。南岸使用 `findSouthernShoreSandZ()`、西岸使用
+  `findWesternShoreSandX()`（`src/shore-foam.ts`）；`makeFoam()` 的
+  `waveDirection` 必須朝陸地，南岸另旋轉 `rotationY=Math.PI/2` 讓浪花沿
+  東西向岸線延伸。修改岸線或浪花範圍後同樣執行上述三個驗證命令。
+
+## 採集點延後刷新與多 agent 提交
+
+- 木材／石頭的 06:00、18:00 只產生新的刷新時段；留在原地時不得在玩家
+  眼前重生或搬動。只有 `loadMap()` 發現目標 map name 與目前地圖不同時，
+  才呼叫 `refreshGatherNodes()` 套用最新時段；洞窟同地圖換樓不算換圖。
+- 多個 agent 同時工作時，各 agent 完成後只記錄、stage、commit、push 自己
+  的變更；不得把工作樹中其他 agent 尚未提交的檔案或 hunk 一起帶進 commit。
+  提交前用 `git diff --cached` 核對 staged diff，並在交付訊息寫明 commit。
 
 ## 朝向/旋轉的慣例 — 這裡出過至少兩次 bug
 
