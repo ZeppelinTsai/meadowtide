@@ -176,6 +176,7 @@ import { repaintRegion } from "./region-paint";
             { x: 30, width: 3, fromZ: 2, toZ: 7, baseElevation: 3, elevation: 1, steps: 6 },
             { x: 30, width: 3, fromZ: 9, toZ: 16, baseElevation: 2, elevation: 1, steps: 7 },
             { x: 30, width: 3, fromZ: 19, toZ: 26, baseElevation: 1, elevation: 1, steps: 7 },
+            { x: 30, width: 3, fromZ: 30, toZ: 33, baseElevation: 0, elevation: 1, steps: 6 },
             // 南側新沙灘的下坡階梯——直接接在墊高後的城鎮地面(groundElevation
             // =1)後面，下到沙灘(0)。沿用同一個陣列/同一套 oldVillageGroundY()
             // 公式(z 越小值越高)，不用另外寫一份。fromZ(30)頂端 1，toZ(33)
@@ -764,12 +765,19 @@ import { repaintRegion } from "./region-paint";
         },
         { x1: LAYOUT.oldVillage.terraces.westEdge, z1: 0, x2: LAYOUT.oldVillage.terraces.westEdge, z2: 6.5 },
         { x1: LAYOUT.oldVillage.terraces.westEdge, z1: 10, x2: LAYOUT.oldVillage.terraces.westEdge, z2: 15.5 },
+        // 西側與南側平台外緣。南側在兩座沙灘樓梯前分段，保留可走缺口。
+        { x1: 29.5, z1: 7, x2: 29.5, z2: 33 },
+        { x1: 32.5, z1: 29.5, x2: 57.5, z2: 29.5, elevation: LAYOUT.oldVillage.groundElevation },
+        { x1: 64.5, z1: 29.5, x2: 76, z2: 29.5, elevation: LAYOUT.oldVillage.groundElevation },
         ...LAYOUT.oldVillage.plazaStairs.flatMap((stair) => [
           { x1: stair.fromX, z1: stair.z - 0.5, x2: stair.toX, z2: stair.z - 0.5 },
           { x1: stair.fromX, z1: stair.z + stair.width - 0.5, x2: stair.toX, z2: stair.z + stair.width - 0.5 },
         ]),
         ...LAYOUT.oldVillage.westStairs.flatMap((stair) => [
-          { x1: stair.x - 0.5, z1: stair.fromZ, x2: stair.x - 0.5, z2: stair.toZ },
+          // x=30 的樓梯左側已由連續的西側平台護欄涵蓋，避免重疊模型。
+          ...(stair.x === 30 && stair.fromZ >= 7
+            ? []
+            : [{ x1: stair.x - 0.5, z1: stair.fromZ, x2: stair.x - 0.5, z2: stair.toZ }]),
           { x1: stair.x + stair.width - 0.5, z1: stair.fromZ, x2: stair.x + stair.width - 0.5, z2: stair.toZ },
         ]),
       ];
