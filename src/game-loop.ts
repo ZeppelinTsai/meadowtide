@@ -7,6 +7,7 @@ import {
   isNightTime,
   isUnsafeAnimalWeather,
   nearWater,
+  isOysterRackReady,
 } from "./game-state";
 import { isGameTimePaused, updateGameClock } from "./game-clock";
 import {
@@ -510,6 +511,17 @@ export function animate(now) {
     harvestToastEl.classList.add("show");
   } else {
     harvestToastEl.classList.remove("show");
+  }
+
+  // 牡蠣架的殼——還沒採的時候用 emissiveIntensity 做一個緩慢的呼吸式發光
+  // (跟窗戶/桌燈那種靠 nightFactor 開關的 emissive 不同，這裡不分晝夜、
+  // 純粹用 elapsed 算正弦波)，提醒玩家「這裡今天還能採」；採完(或還沒
+  // 建好/切到別的地圖時 gameState.oysterGlowMat 是 null)就直接歸零，跟
+  // 其他殼一樣暗下來，一眼能分辨今天巡過了沒。
+  if (gameState.oysterGlowMat) {
+    gameState.oysterGlowMat.emissiveIntensity = isOysterRackReady()
+      ? 0.45 + Math.sin(gameState.elapsed * 2.4) * 0.3
+      : 0;
   }
 
   // 格子座標現在只是「玩家四捨五入後大概在哪一格」，給種田/撿種子/開門這些

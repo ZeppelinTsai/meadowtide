@@ -1041,11 +1041,22 @@ export function makeWoodPlankTexture({
         // 養殖繩＋牡蠣殼——沿著井字的交叉點垂下去，殼故意分成「趴在框上」
         // 跟「垂進水裡」兩層：框上那層從甲板縫隙直接看得到，水裡那層要湊
         // 近或角度夠斜才會露出來，呼應真的蚵架殼堆長在竹枝跟繩子上的樣子。
+        // 框上那層額外用 glowShellMat(emissive 材質，做法跟窗戶/桌燈同招)，
+        // 讓 game-loop.ts 能依照「今天採過了嗎」把它調亮/調暗——還沒採就
+        // 微微發光提醒玩家，採完就跟一般的殼一樣暗下來。水裡那層維持普通
+        // 材質，純粹當作養殖架平常就有牡蠣在長的背景裝飾，不受收成狀態影響。
         const ropeMat = new THREE.MeshStandardMaterial({ color: 0x3a3226 });
         const shellMat = new THREE.MeshStandardMaterial({
           color: 0x8f9188,
           flatShading: true,
           roughness: 0.9,
+        });
+        const glowShellMat = new THREE.MeshStandardMaterial({
+          color: 0xf3e8c8,
+          flatShading: true,
+          roughness: 0.6,
+          emissive: new THREE.Color(0xffe9a8),
+          emissiveIntensity: 0,
         });
         const clusterSpots = [
           [-0.32, -0.32],
@@ -1065,7 +1076,7 @@ export function makeWoodPlankTexture({
           for (let s = 0; s < 2; s++) {
             const shell = new THREE.Mesh(
               new THREE.IcosahedronGeometry(0.06 + hash2(ci, s) * 0.025, 0),
-              shellMat,
+              glowShellMat,
             );
             shell.position.set(
               rx + (hash2(s, ci) - 0.5) * 0.1,
@@ -1102,7 +1113,7 @@ export function makeWoodPlankTexture({
         });
 
         group.position.set(x, 0, z);
-        return group;
+        return { group, glowMat: glowShellMat };
       }
 
       // 休息區野餐組——桌子＋兩張長椅，樹蔭直接借用 makeTree

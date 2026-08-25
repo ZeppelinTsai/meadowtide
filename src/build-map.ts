@@ -585,12 +585,21 @@ export function buildMap(mapName) {
 
     // 牡蠣養殖架——牧場自家海灘，跟沙灘/海一樣是低地(不掛在
     // plateauGroup 下面)，Y 軸用 groundY() 算，跟其他低地裝飾同一套。
-    const oysterRaft = makeOysterRack(
+    // makeOysterRack() 現在回傳 {group, glowMat}(跟 makeLamp() 回傳
+    // {group, light, bulbMat} 同一招)，glowMat 存進 gameState 讓
+    // animate() 依「今天採過了嗎」調亮暗——每次重建地圖都要重設一次，
+    // 不然切地圖再切回來會抓到已經丟棄的舊材質物件。
+    gameState.oysterGlowMat = null;
+    const oysterRack = makeOysterRack(
       OYSTER_RACK_VISUAL.x,
       OYSTER_RACK_VISUAL.z,
     );
-    oysterRaft.position.y = groundY(OYSTER_RACK_VISUAL.x, OYSTER_RACK_VISUAL.z);
-    gameState.mapGroup.add(oysterRaft);
+    oysterRack.group.position.y = groundY(
+      OYSTER_RACK_VISUAL.x,
+      OYSTER_RACK_VISUAL.z,
+    );
+    gameState.mapGroup.add(oysterRack.group);
+    gameState.oysterGlowMat = oysterRack.glowMat;
 
     // 女神祠堂步道——墊高浮出海面的沙洲，不是逐格貼平的沙灘(那段已在
     // 上面的 tile===8 迴圈裡跳過)，這裡一次蓋掉整段。

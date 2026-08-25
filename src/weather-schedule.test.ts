@@ -1,17 +1,31 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
-  createSeasonWeatherSchedule,
+  createWeatherSchedule,
   MAX_EXTREME_WEATHER_PER_SEASON,
-  METEOR_SHOWER_SCHEDULE,
-  TIME_CONFIG,
-} from "./game-state";
+} from "./weather-schedule";
 
 const fixedRandom = () => 0.5;
+const DAYS_PER_SEASON = 21;
+const SEASON_COUNT = 4;
+const METEOR_SHOWER_DAYS = new Set([11, 12, 13, 14]);
+
+function createSchedule(absoluteSeason: number) {
+  const firstAbsoluteDay = absoluteSeason * DAYS_PER_SEASON;
+  return createWeatherSchedule({
+    absoluteSeason,
+    daysPerSeason: DAYS_PER_SEASON,
+    seasonCount: SEASON_COUNT,
+    isProtectedDay: (index) =>
+      (firstAbsoluteDay + index) % 7 === 0 ||
+      METEOR_SHOWER_DAYS.has(index + 1),
+    random: fixedRandom,
+  });
+}
 
 function verifyExtremeTransitions(absoluteSeason: number) {
-  const schedule = createSeasonWeatherSchedule(absoluteSeason, fixedRandom);
-  const seasonIndex = absoluteSeason % TIME_CONFIG.seasons.length;
+  const schedule = createSchedule(absoluteSeason);
+  const seasonIndex = absoluteSeason % SEASON_COUNT;
   const extremeWeather = seasonIndex === 1 ? new Set(["typhoon", "storm"]) : new Set(["blizzard"]);
   const transitionWeather = seasonIndex === 1 ? "rain" : "snow";
   const extremeIndexes = schedule
@@ -27,8 +41,8 @@ function verifyExtremeTransitions(absoluteSeason: number) {
 
 test("meteor shower days are always clear in every season", () => {
   for (let absoluteSeason = 0; absoluteSeason < 8; absoluteSeason++) {
-    const schedule = createSeasonWeatherSchedule(absoluteSeason, fixedRandom);
-    for (const seasonDay of Object.keys(METEOR_SHOWER_SCHEDULE).map(Number)) {
+    const schedule = createSchedule(absoluteSeason);
+    for (const seasonDay of METEOR_SHOWER_DAYS) {
       assert.equal(schedule[seasonDay - 1], "clear");
     }
   }

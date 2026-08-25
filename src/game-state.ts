@@ -3,6 +3,8 @@ import { hash2 } from "./utils";
 import { LAYOUT, MAPS, isInsideLakeShape } from "./layout-maps";
 import { npcs } from "./npc-runtime";
 import { syncFarmVisuals } from "./farm-visuals";
+import { createWeatherSchedule } from "./weather-schedule";
+export { MAX_EXTREME_WEATHER_PER_SEASON } from "./weather-schedule";
 
 // ==============================================================
 // 遷移筆記：這個檔案集中放「會被跨檔案讀寫的可變基本狀態」。原本單一
@@ -39,6 +41,10 @@ export const gameState = {
     count?: number;
     until: number;
   } | null,
+  // 牡蠣架上「還沒收成」那批殼用的共用材質——makeOysterRack() 建好之後把
+  // 材質丟回這裡，animate() 每幀根據 isOysterRackReady() 幫它調
+  // emissiveIntensity，達到「還能採就發光、採完就暗下來」的效果。
+  oysterGlowMat: null as THREE.MeshStandardMaterial | null,
   castAnimEnd: 0,
   catchAnim: null as {
     mesh: THREE.Object3D;
@@ -214,77 +220,24 @@ export function isNightTime() {
   return getNightFactor() >= 0.55;
 }
 
-export const MAX_EXTREME_WEATHER_PER_SEASON = 2;
-
-function rollOrdinaryWeather(seasonIndex: number, random: () => number) {
-  const r = random();
-  if (seasonIndex === 0)
-    return r < 0.55 ? "clear" : r < 0.72 ? "cloudy" : "rain";
-  if (seasonIndex === 1)
-    return r < 0.62 ? "clear" : r < 0.77 ? "cloudy" : "rain";
-  if (seasonIndex === 2)
-    return r < 0.58 ? "clear" : r < 0.76 ? "cloudy" : "rain";
-  return r < 0.53 ? "clear" : r < 0.71 ? "cloudy" : "snow";
-}
-
 export function createSeasonWeatherSchedule(
   absoluteSeason: number,
   random: () => number = Math.random,
 ) {
-  const seasonIndex =
-    ((absoluteSeason % TIME_CONFIG.seasons.length) + TIME_CONFIG.seasons.length) %
-    TIME_CONFIG.seasons.length;
   const firstAbsoluteDay = absoluteSeason * TIME_CONFIG.daysPerSeason;
-  const schedule: string[] = Array.from(
-    { length: TIME_CONFIG.daysPerSeason },
-    () => rollOrdinaryWeather(seasonIndex, random),
-  );
-  const protectedDays = new Set<number>();
-
-  for (let index = 0; index < schedule.length; index++) {
-    const seasonDay = index + 1;
-    const absoluteDay = firstAbsoluteDay + index;
-    if (isSunday(absoluteDay) || METEOR_SHOWER_SCHEDULE[seasonDay]) {
-      schedule[index] = "clear";
-      protectedDays.add(index);
-    }
-  }
-
-  const transitionWeather = seasonIndex === 1 ? "rain" : "snow";
-  if (seasonIndex !== 1 && seasonIndex !== 3) return schedule;
-
-  const candidates = Array.from(
-    { length: Math.max(0, schedule.length - 2) },
-    (_, index) => index + 1,
-  ).filter(
-    (center) =>
-      !protectedDays.has(center - 1) &&
-      !protectedDays.has(center) &&
-      !protectedDays.has(center + 1),
-  );
-
-  // Fisher-Yates 洗牌後依序挑選不重疊的三日區段。
-  for (let index = candidates.length - 1; index > 0; index--) {
-    const swapIndex = Math.floor(random() * (index + 1));
-    [candidates[index], candidates[swapIndex]] = [
-      candidates[swapIndex],
-      candidates[index],
-    ];
-  }
-  const chosenCenters: number[] = [];
-  for (const center of candidates) {
-    if (chosenCenters.some((chosen) => Math.abs(chosen - center) <= 2)) continue;
-    chosenCenters.push(center);
-    if (chosenCenters.length === MAX_EXTREME_WEATHER_PER_SEASON) break;
-  }
-
-  for (const center of chosenCenters) {
-    schedule[center - 1] = transitionWeather;
-    schedule[center] =
-      seasonIndex === 1 ? (random() < 0.62 ? "typhoon" : "storm") : "blizzard";
-    schedule[center + 1] = transitionWeather;
-  }
-  return schedule;
+  return createWeatherSchedule({
+    absoluteSeason,
+    daysPerSeason: TIME_CONFIG.daysPerSeason,
+    seasonCount: TIME_CONFIG.seasons.length,
+    isProtectedDay: (index) => {
+      const seasonDay = index + 1;
+      return (
+        isSunday(firstAbsoluteDay + index) ||
+        Boolean(METEOR_SHOWER_SCHEDULE[seasonDay])
+      );
+    },
+    random,
+  });
 }
 
 export function rollWeatherForSeason(
@@ -432,7 +385,10 @@ export const oysterRackState: Record<
   { harvestsToday: number; lastHarvestDay: number }
 > = {};
 export function harvestOysterRack(x: number, z: number) {
-  const key = `${x},${z}`;
+  // 用浮筏本體的固定座標當這個養殖點的身分證，不要用玩家站的那格——
+  // OYSTER_RACK_TILES 現在有兩格都能觸發收成(44,14 跟 45,14)，兩格其實
+  // 是同一座浮筏，要共用同一份「今天採過了嗎」的狀態，不能各自獨立算。
+  const key = `${OYSTER_RACK_VISUAL.x},${OYSTER_RACK_VISUAL.z}`;
   const rackState =
     oysterRackState[key] ||
     (oysterRackState[key] = { harvestsToday: 0, lastHarvestDay: -1 });
@@ -464,4 +420,15 @@ export function harvestOysterRack(x: number, z: number) {
     count: yieldCount,
     until: gameState.elapsed + 2.6,
   };
+}
+
+// 牡蠣架現在還採不採得到——給 game-loop.ts 的 animate() 用來決定殼要不要
+// 發光。跟 harvestOysterRack() 共用同一把 key，兩邊判斷永遠一致，不會
+// 出現「UI 顯示還在發光，實際按 E 卻說今天採過了」這種對不上的情況。
+export function isOysterRackReady() {
+  const key = `${OYSTER_RACK_VISUAL.x},${OYSTER_RACK_VISUAL.z}`;
+  const rackState = oysterRackState[key];
+  if (!rackState || rackState.lastHarvestDay !== gameState.currentDay)
+    return true;
+  return rackState.harvestsToday < OYSTER_HARVESTS_PER_DAY;
 }
