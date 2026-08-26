@@ -165,6 +165,14 @@
 - 多個 agent 同時工作時，各 agent 完成後只記錄、stage、commit、push 自己
   的變更；不得把工作樹中其他 agent 尚未提交的檔案或 hunk 一起帶進 commit。
   提交前用 `git diff --cached` 核對 staged diff，並在交付訊息寫明 commit。
+- **2026-08-26 跟 Zeppelin 確認的分工**：透過 device-bridge 連進來的
+  Claude session（也就是這份文件所在的這一套環境）本來就沒有 push 權限，
+  之後一律**不執行 `git add`／`commit`／`push`**，只改檔案、跑
+  `tsc --noEmit` 驗證、在交付訊息裡列出改了哪些檔案；實際 commit／push
+  交給另一邊有推送權限的 agent（目前是 Codex）處理。這條是在兩個 session
+  同時共用這份工作目錄、其中一次 commit 意外把對方尚未存檔的修改一起收走
+  之後定的，比上一條「各 commit 各的」更明確：不是「各自 commit」，是
+  「乾脆只有一邊 commit」。
 
 
 ## 朝向/旋轉的慣例 — 這裡出過至少兩次 bug
