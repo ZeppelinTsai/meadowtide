@@ -152,6 +152,7 @@
 - 搖桿輸入與震動 → `docs/decisions/gamepad-input.md`
 - 序幕過場（開場第一天演出）`prologue.ts` → `docs/decisions/prologue-cutscene.md`
 - 開局標題畫面 `title-screen.ts` → `docs/decisions/title-screen.md`
+- 過場鏡頭系統(換位置/焦點/zoom，F4 手動調整模式) `cutscene-camera.ts` → `docs/decisions/cutscene-camera.md`
 
 ## 採集點延後刷新與多 agent 提交
 

@@ -5,6 +5,7 @@ import { showDialogSequence } from "./dialogue";
 import { npcs, npcGroup } from "./npc-runtime";
 import { prologueRefs } from "./scene-registries";
 import { updateCameraFrustum } from "./scene-sky";
+import { isCameraShotsPlaying, isCameraAdjustModeActive } from "./cutscene-camera";
 import { animateWalk } from "./humanoid";
 import { getScheduleTarget } from "./npc-defs";
 
@@ -423,7 +424,15 @@ export function isPrologueShipStage(): boolean {
 export function updatePrologueCutscene(dt: number) {
   if (!gameState.cutsceneActive) return;
   lockPrologueDateTime();
-  lockPrologueZoom();
+  // 2026-08-26 加了過場鏡頭系統(cutscene-camera.ts)之後才發現的衝突：
+  // 這裡原本每幀都無條件把 zoom 釘回 PROLOGUE_ZOOM，開場 startPrologueScene()
+  // 已經鎖過一次「已知距離」，但這裡每幀重覆鎖，會讓 F4 手動調整模式或
+  // playCameraShots() 清單剛改完 zoom、下一幀馬上被這裡蓋回去，鏡頭看起來
+  // 完全「動不了」。改成只在鏡頭系統沒有接管時才每幀重新確認/防守，鏡頭
+  // 系統接管時 zoom 完全交給它決定。
+  if (!isCameraShotsPlaying() && !isCameraAdjustModeActive()) {
+    lockPrologueZoom();
+  }
   const ferry = prologueRefs.ferry;
   const gangplank = prologueRefs.gangplank;
   if (!ferry || !gangplank) return;

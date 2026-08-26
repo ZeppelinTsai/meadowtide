@@ -72,6 +72,12 @@ import {
 import { tryShareChefMeal, mergeChefMealIntoChatLine } from "./chef-quest";
 import { previewPrologue } from "./prologue";
 import { toggleFirstPersonMode } from "./first-person-camera";
+import {
+  beginCameraAdjustMode,
+  endCameraAdjustMode,
+  isCameraAdjustModeActive,
+  recordCameraAdjustShot,
+} from "./cutscene-camera";
 import { npcGroup, npcs } from "./npc-runtime";
 import { npcLine } from "./npc-defs";
 import {
@@ -322,6 +328,23 @@ addEventListener("keydown", (event) => {
     } else {
       previewPrologue();
     }
+  } else if (event.key === "F4") {
+    // 鏡頭調整模式(cutscene-camera.ts)——開發用，方向鍵平移鏡頭焦點、
+    // 滾輪/雙指照舊縮放，C 鍵記一顆鏡頭，再按一次 F4 關閉。搭配 F8
+    // 重播序幕，邊看畫面邊試鏡頭構圖。
+    event.preventDefault();
+    if (!gameState.player) return;
+    if (isCameraAdjustModeActive()) {
+      endCameraAdjustMode();
+    } else {
+      beginCameraAdjustMode(
+        gameState.player.position.x,
+        gameState.player.position.z,
+      );
+    }
+  } else if (event.key.toLowerCase() === "c" && isCameraAdjustModeActive()) {
+    event.preventDefault();
+    recordCameraAdjustShot();
   }
 });
 

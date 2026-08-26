@@ -68,6 +68,7 @@ import { dialogQueue } from "./dialogue";
 import { isBlocked, events } from "./build-map";
 import { collidesAt, keys, updateHud, advanceFishingQte } from "./input-save";
 import { updateMusic } from "./music";
+import { updateCameraShots, updateCameraAdjustMode } from "./cutscene-camera";
 import { updateWeatherEffects } from "./weather-particles";
 import { isOutdoorMap } from "./environment";
 import {
@@ -1162,6 +1163,25 @@ export function animate(now) {
     gameState.houseCeilingLampLight.intensity = nightFactor * 2.2;
   }
 
+  // 過場鏡頭系統(cutscene-camera.ts)：有排定的鏡頭清單在播，或正處於
+  // F4 手動調整模式，這裡回傳的值會取代下面「自動跟玩家/船」的鏡頭
+  // 邏輯；兩者都沒有時回傳 null，本幀鏡頭邏輯完全不受影響(既有行為不變)。
+  const cameraShotOverride = updateCameraShots(dt);
+  const cameraAdjustOverride = cameraShotOverride
+    ? null
+    : updateCameraAdjustMode(
+        dt,
+        !!keys["arrowleft"],
+        !!keys["arrowright"],
+        !!keys["arrowup"],
+        !!keys["arrowdown"],
+      );
+  const cameraOverride = cameraShotOverride ?? cameraAdjustOverride;
+  if (cameraOverride) {
+    gameState.zoom = cameraOverride.zoom;
+    updateCameraFrustum();
+  }
+
   // 正交相機大幅拉遠時也沿原視角後退，避免視窗下緣落到地面以下而看見天空球。
   const camDist = Math.max(16, gameState.zoom * 1.55);
   const camHeight = camDist * Math.cos(TILT_RAD);
@@ -1177,7 +1197,12 @@ export function animate(now) {
     (groundOffset - gameState.player.position.y) * Math.min(1, dt * 10);
   let cameraFocusX = gameState.player.position.x;
   let cameraFocusZ = gameState.player.position.z;
-  if (gameState.currentMapName === "livingArea") {
+  if (cameraOverride) {
+    // 過場鏡頭接管中：直接用鏡頭清單／手動調整算出來的焦點，略過下面
+    // 逐地圖的自動跟隨與邊界夾限(那些是給「正常跟玩家」用的鏡頭邏輯)。
+    cameraFocusX = cameraOverride.focusX;
+    cameraFocusZ = cameraOverride.focusZ;
+  } else if (gameState.currentMapName === "livingArea") {
     const halfViewWidth = camera.right;
     const minFocusX = CAMERA_WORLD_BOUNDS.west + halfViewWidth;
     const maxFocusX = CAMERA_WORLD_BOUNDS.east - halfViewWidth;
