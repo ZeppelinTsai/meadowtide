@@ -14,6 +14,10 @@ import {
   settleFeederConsumption,
 } from "./game-state";
 import { isGameTimePaused, updateGameClock } from "./game-clock";
+import { rollFishTier, COUNTER_DIRECTION } from "./fishing";
+import { pollGamepad } from "./gamepad-input";
+import { vibrateGamepad, FISHING_HAPTICS } from "./gamepad-haptics";
+import { playRandomSfx, FISH_BITE_SFX } from "./sfx";
 import {
   LAYOUT,
   MAPS,
@@ -49,7 +53,7 @@ import {
 } from "./props";
 import { dialogQueue } from "./dialogue";
 import { isBlocked, events } from "./build-map";
-import { collidesAt, keys, updateHud } from "./input-save";
+import { collidesAt, keys, updateHud, advanceFishingQte } from "./input-save";
 import { updateMusic } from "./music";
 import { updateWeatherEffects } from "./weather-particles";
 import { isOutdoorMap } from "./environment";
@@ -95,6 +99,11 @@ import {
   sampleDirectedSeaWave,
   gangplankMeshes,
 } from "./scene-registries";
+
+// 釣魚 QTE 浮動 HUD 用——可重複利用的 Vector3，每幀 project(camera) 前
+// 覆寫座標即可，不用每幀 new，跟 scene-sky.ts 的 SUN_MASK_PROJECTED_POINT
+// 同一個理由(避免每幀配置新物件造成 GC 壓力)。
+const FISH_HUD_PROJECT_VEC = new THREE.Vector3();
 
 function sampleStarlightReflection(
   worldX: number,
@@ -241,6 +250,10 @@ export function animate(now) {
   gameState.animationFrameCount++;
   const updateWaterSurface = gameState.animationFrameCount % 2 === 0; // 水面維持約 30fps，減少大量頂點運算
 
+  // 搖桿輸入：轉成合成鍵盤事件餵給下面的 `keys` map 跟 input-save.ts 的
+  // E 鍵/QTE 監聽，跟玩家實際按鍵盤是同一條路徑(見 gamepad-input.ts)。
+  pollGamepad();
+
   // --- 自由移動：方向鍵給的是速度向量，不是格子跳，可以八方向、可以貼牆滑 ---
   let dx = 0,
     dz = 0;
@@ -248,7 +261,12 @@ export function animate(now) {
   if (keys["s"] || keys["arrowdown"]) dz += 1;
   if (keys["a"] || keys["arrowleft"]) dx -= 1;
   if (keys["d"] || keys["arrowright"]) dx += 1;
-  if (gameState.isSitting) {
+  if (gameState.isSitting || gameState.fishingState !== "idle") {
+    // 2026-08-26 改成整個釣魚期間(casting/biting/reeling)都鎖移動，不是
+    // 只有 reeling：拋竿之後角色本來就該站定等魚，跟現實釣魚一樣；
+    // reeling 期間方向鍵是拉竿抵抗方向的 QTE 輸入(見 input-save.ts 的
+    // 專屬 keydown 監聽)，更不該同時讓角色走位，也避免走出水邊誤觸
+    // 「離開水邊自動取消」。
     dx = 0;
     dz = 0;
   }
@@ -446,9 +464,31 @@ export function animate(now) {
   const fishHintEl =
     (window as any).__fishHintEl ||
     ((window as any).__fishHintEl = document.getElementById("fishHint"));
-  if (!nearWater() && gameState.fishingState !== "idle") {
-    // 走離水邊自動取消，不用特別按什麼鍵收竿
+  const fishActionHudEl =
+    (window as any).__fishActionHudEl ||
+    ((window as any).__fishActionHudEl = document.getElementById(
+      "fishActionHud",
+    ));
+  const fishStaminaFillEl =
+    (window as any).__fishStaminaFillEl ||
+    ((window as any).__fishStaminaFillEl = document.getElementById(
+      "fishStaminaFill",
+    ));
+  const fishActionKeyEl =
+    (window as any).__fishActionKeyEl ||
+    ((window as any).__fishActionKeyEl = document.getElementById(
+      "fishActionKey",
+    ));
+  if (
+    !nearWater() &&
+    (gameState.fishingState === "casting" || gameState.fishingState === "biting")
+  ) {
+    // 走離水邊自動取消——但拉扯期(reeling)不取消，正在跟魚角力時腳下
+    // 站的位置不該影響(而且 reeling 期間移動鍵本身已經被鎖住，走不了)，
+    // 也避免玩家為了瞄魚的逃跑方向按鍵反而誤觸整組作廢。casting/biting
+    // 這兩個「還沒真的上鉤」的階段才需要這條，跟原本行為一致。
     gameState.fishingState = "idle";
+    gameState.pendingFishTier = null;
     if (gameState.bobberMesh) {
       scene.remove(gameState.bobberMesh);
       gameState.bobberMesh = null;
@@ -460,10 +500,21 @@ export function animate(now) {
     if (gameState.fishingTimer >= gameState.biteWaitTime) {
       gameState.fishingState = "biting";
       gameState.biteWindowStart = gameState.elapsed;
+      // 2026-08-26 釣魚 QTE：咬鉤這一刻就把魚階抽出來定案(設計筆記 3.2
+      // 節)，體力則等玩家按 E 決定收竿才扣——兩個時間點刻意分開。
+      gameState.pendingFishTier = rollFishTier();
+      // 2026-08-26 上鉤提示要「大震動大音效」——咬鉤窗只有 1.1 秒，
+      // 用最強的震動強度(見 gamepad-haptics.ts 的 FISHING_HAPTICS.bite)
+      // 搭一顆比拋竿/收竿更突兀的音效(見 sfx.ts 的 FISH_BITE_SFX 註解，
+      // 音量已經是全域最大值 SFX_VOLUME=1.0，靠換音效而不是調音量做到
+      // 「更大聲」)，讓玩家不用盯著螢幕文字也能立刻反應過來。
+      vibrateGamepad(FISHING_HAPTICS.bite);
+      playRandomSfx(FISH_BITE_SFX);
     }
   } else if (gameState.fishingState === "biting") {
     if (gameState.elapsed - gameState.biteWindowStart > 1.1) {
       gameState.fishingState = "idle";
+      gameState.pendingFishTier = null;
       if (gameState.bobberMesh) {
         scene.remove(gameState.bobberMesh);
         gameState.bobberMesh = null;
@@ -475,6 +526,8 @@ export function animate(now) {
         until: gameState.elapsed + 1.2,
       };
     }
+  } else if (gameState.fishingState === "reeling" && gameState.fishingQte) {
+    advanceFishingQte();
   }
   if (gameState.bobberMesh) {
     // 玩家模型正面是本地 -Z；浮標必須沿真正的臉朝向拋出。
@@ -500,11 +553,61 @@ export function animate(now) {
   } else if (gameState.fishingState === "casting") {
     fishHintEl.textContent = "拋竿中……";
     fishHintEl.style.display = "block";
-  } else if (gameState.fishingState === "biting") {
-    fishHintEl.textContent = "上鉤了！快按 E！";
-    fishHintEl.style.display = "block";
   } else {
     fishHintEl.style.display = "none";
+  }
+  // 2026-08-26 釣魚 QTE 浮動 HUD——biting(按 E 收竿)/reeling(方向對抗)這兩個
+  // 「要馬上按鍵」的狀態改成貼在主角頭頂的體力條+單一按鍵提示(取代原本
+  // #fishHint 的整句文字，見 index.html/style.css 的 #fishActionHud 註解)，
+  // 跟上面的 #fishHint 互斥——同一時間只會有一邊在畫面上。
+  if (
+    gameState.fishingState === "biting" ||
+    (gameState.fishingState === "reeling" && gameState.fishingQte)
+  ) {
+    FISH_HUD_PROJECT_VEC.set(
+      gameState.player.position.x,
+      gameState.player.position.y + 1.75,
+      gameState.player.position.z,
+    ).project(camera);
+    const screenX = (FISH_HUD_PROJECT_VEC.x * 0.5 + 0.5) * window.innerWidth;
+    const screenY = (-FISH_HUD_PROJECT_VEC.y * 0.5 + 0.5) * window.innerHeight;
+    fishActionHudEl.style.left = `${screenX}px`;
+    fishActionHudEl.style.top = `${screenY}px`;
+
+    const staminaRatio = Math.max(
+      0,
+      Math.min(1, gameState.stamina / gameState.staminaMax),
+    );
+    fishStaminaFillEl.style.width = `${staminaRatio * 100}%`;
+    fishStaminaFillEl.style.backgroundColor =
+      staminaRatio > 0.5 ? "#7be08a" : staminaRatio > 0.25 ? "#e0c85f" : "#e05f5f";
+
+    if (gameState.fishingState === "biting") {
+      fishActionKeyEl.textContent = "E";
+      fishActionKeyEl.classList.remove("warn");
+    } else {
+      const qte = gameState.fishingQte!;
+      const event = qte.sequence[qte.index];
+      if (event.kind === "rush") {
+        // 暴衝事件正確動作是「別按任何鍵」(見設計筆記 3.5 節)，用警示配色
+        // 的文字取代方向鍵符號，一眼看出跟平常「按對應方向」不一樣。
+        fishActionKeyEl.textContent = "別按！";
+        fishActionKeyEl.classList.add("warn");
+      } else {
+        const ARROW: Record<string, string> = {
+          up: "↑",
+          down: "↓",
+          left: "←",
+          right: "→",
+        };
+        const counterDir = COUNTER_DIRECTION[event.fishDirection!];
+        fishActionKeyEl.textContent = ARROW[counterDir];
+        fishActionKeyEl.classList.remove("warn");
+      }
+    }
+    fishActionHudEl.style.display = "block";
+  } else {
+    fishActionHudEl.style.display = "none";
   }
 
   // --- 牡蠣架收成回饋卡：跟上面 fishHint 同一招，gameState.harvestFeedback

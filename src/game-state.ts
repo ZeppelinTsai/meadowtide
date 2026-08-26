@@ -32,12 +32,44 @@ export const gameState = {
   // 每個 21 天季節預先產生完整天氣，才能保證極端天氣前後的過渡日。
   // key 是從遊戲開局起算的絕對季節編號，不只用 0~3 的季節索引。
   weatherSchedules: {} as Record<string, string[]>,
-  fishingState: "idle" as string,
+  fishingState: "idle" as string, // "idle" | "casting" | "biting" | "reeling"
   fishingTimer: 0,
   biteWaitTime: 0,
   biteWindowStart: 0,
   bobberMesh: null as THREE.Object3D | null,
   fishFeedback: null as { text: string; until: number } | null,
+  // 2026-08-26 釣魚 QTE：竿具等級——每級讓小/中/大魚的 QTE 次數扣 3
+  // (下限 0)，魚霸主/特殊魚下限鎖 1，永遠留一次判定(見 src/fishing.ts
+  // actualQteCount())。目前遊戲裡還沒有升級竿具的管道(商店/工作台之類
+  // 都還沒接)，先給個可以手動調的欄位，介面接上後再串。
+  rodLevel: 0,
+  // 體力——目前遊戲裡沒有既有的體力/能量系統，這是釣魚 QTE 新加的資源，
+  // 只在咬鉤那一刻(biting 按 E)依魚階扣(見設計筆記 3.2 節「體力在這
+  // 一刻扣，不是下竿的時候」)。目前刻意不做「體力不夠不能釣」的硬性
+  // 門檻，扣到 0 就夾住不再往下扣，照樣讓你釣——回血/上限怎麼設計、
+  // 要不要真的擋著不給釣，留給你之後決定，這裡先讓數值看得到、動得了。
+  stamina: 100,
+  staminaMax: 100,
+  // 拉扯期(reeling)的完整 QTE 進行狀態；不在拉扯期時是 null。
+  // sequence 由 buildQteSequence() 產生，index 指向目前正在判定的事件，
+  // windowStart 是目前這個事件的判定窗開始時間(elapsed)，
+  // rushPressed 記錄暴衝事件中玩家是否誤按過。perfectCount 純粹統計
+  // 用，之後可能給「完美收竿」加成/成就用得到。
+  fishingQte: null as {
+    tier: import("./fishing").FishTierDef;
+    sequence: import("./fishing").QteEvent[];
+    index: number;
+    windowStart: number;
+    tension: number;
+    perfectCount: number;
+    rushPressed: boolean;
+    judged: boolean;
+  } | null,
+  // 咬鉤(casting→biting)那一刻就先抽好魚階(設計筆記 3.2 節：「魚的階級
+  // 已經確定」發生在咬鉤，體力則是玩家按 E 決定收竿的那一刻才扣)，
+  // 存在這裡等按 E 的時候用；biting 逾時魚跑掉/離開水邊取消釣魚都要
+  // 記得清掉，不然下一次咬鉤沒重新抽會拿到舊魚階。
+  pendingFishTier: null as import("./fishing").FishTierDef | null,
   // 牡蠣架收成的 UI 回饋——跟 fishFeedback 同一套「elapsed 到期就清掉」
   // 的做法，animate() 每幀讀這個物件去更新 #harvestToast。
   harvestFeedback: null as {
@@ -139,6 +171,19 @@ export const inventory = {
   seeds: 1,
   harvested: 0,
   fish: 0,
+  // 2026-08-26 釣魚 QTE：各魚階累積捕獲數——inventory.fish 這個舊欄位
+  // 繼續當「魚的總數」維持跟 chef-quest.ts 既有消耗邏輯相容(不用改任何
+  // 現有的食譜/烹飪程式碼)，這份只是額外多記一份「哪個階級各釣到幾隻」
+  // 的統計，先把資料存起來，魚圖鑑/稀有魚介面之後要用就不用重新設計
+  // 存檔格式。
+  fishByTier: {
+    trash: 0,
+    small: 0,
+    medium: 0,
+    large: 0,
+    boss: 0,
+    legendary: 0,
+  } as Record<string, number>,
   wood: 10,
   stone: 5,
   oysters: 0,

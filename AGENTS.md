@@ -86,6 +86,28 @@
 - **搬遷一個區域時，一定要把舊位置清回 `0`**，不是只在新位置寫值——這個
   專案裡已經因為忘記清舊位置留過兩次死資料殘留（湖、舊農田），靠除錯工具
   才抓到。
+- **`LAYOUT.oldVillage.width` 不等於「城鎮的東側邊界」，兩者語意不同，
+  不要假設改 `width` 只會影響地圖陣列大小**（2026-08-26 踩過的 bug，
+  根因記錄）：`width` 原本身兼兩職——(a) tiles 陣列實際欄數，(b) 好幾個
+  消費端拿來當「城鎮走得到的東側邊界」用，包括 `build-map.ts` 裡三個
+  `addTerrace()` 地板填補呼叫（用 `width - 某起點X` 算寬度，補平台/階梯
+  底下的實體地板）跟 `game-loop.ts` 鏡頭鎖定（`oldVillage` 分支用
+  `width - 1` 當右邊界，把鏡頭釘在城鎮右上角）。第一次幫海邊新增沙灘/
+  海域測試（往東擴 `width` 從 77→106）時，這兩處消費端**沒被告知**新增的
+  29 格其實是還沒鋪好地板、不該算進城鎮框架的新海域，導致地板填補範圍
+  跟著暴增整片、鏡頭鎖定邊界也跟著跑掉——玩家回報的「城鎮碰撞出問題會
+  撞到樓梯」「房子跟城鎮整個平移、房子往下移動」都是同一個根因。**修法**：
+  新增 `LAYOUT.oldVillage.townEdgeX = 76`（固定常數，**不**從 `width`
+  推導，代表擴張前的城鎮真實邊界），兩個消費端改讀這個常數（terrace 用
+  `townEdgeX + 1`，鏡頭用 `townEdgeX`），`width` 之後可以繼續為了新海域
+  往東擴，不會再牽動這兩處。**之後任何人要再改 `LAYOUT.oldVillage.width`
+  （包括 Codex 或其他 agent）都要記得：新增的範圍預設不算進「城鎮框架」，
+  只有真的要擴大城鎮本體（不是加海/沙灘這種外圍地形）才需要同步調
+  `townEdgeX`，否則地板填補跟鏡頭鎖定會照舊只認到 `townEdgeX` 那條線。**
+  這次做法是新增獨立常數，沒有把 `width` 本身的語意收斂成單一用途——
+  如果之後又冒出第三個消費端誤用 `width` 當邊界，比較徹底的解法是把
+  `width` 改名或加型別註解強制區分「陣列大小」跟「城鎮邊界」兩個概念，
+  目前先用 `townEdgeX` 這個補丁擋住已知的兩處。
 
 ## Tile 數值圖例
 
@@ -726,3 +748,112 @@ if/else 特判，而是讓 `mountainMineUpStairs(floor)`/
 環境/礦物）時，比照這節開頭「先套用同樣模板」的做法：加新常數、新
 `ORE_TIERS`（或另開一份山之洞專用的階層表），不用重寫角落交替/事件
 接線這些結構性邏輯。
+
+
+## 釣魚 QTE 系統：`src/fishing.ts`（2026-08-26 核心邏輯已實作，畫面/演出待設計）
+
+`fishing.ts` 是純資料/邏輯模組，跟 `layout-maps.ts` 同一個原則——不 import
+THREE/DOM，方便之後寫測試或給其他工具共用。六階魚表（垃圾/小/中/大/魚
+霸主/特殊）、竿具等級折扣公式（`max(0 或 1, 基礎QTE − 等級×3)`）、QTE
+序列產生（`buildQteSequence`，direction 事件 + 額外插入不計入額度的
+rush/暴衝事件）、三段式命中判定（完美/成功/方向錯誤/沒按）、張力增減量
+表全部在這裡，數值都是草案（詳見專案文件 `claude/釣魚QTE系統設計筆記
+v1.md`，裡面有完整設計來源、待確認事項、跟每一輪追加功能的實作記錄）。
+
+**串接方式**（刻意的單向依賴，避免循環 import）：`game-state.ts` 只放
+狀態欄位（`fishingState: "idle"|"casting"|"biting"|"reeling"`、
+`stamina`/`staminaMax`、`rodLevel`、`fishingQte`、`pendingFishTier`）；
+`input-save.ts` 擁有全部狀態機轉換邏輯（收竿判定、QTE 按鍵即時判定、
+逐幀超時判定、`resolveFishCatch()` 收穫演出）——原因是它已經有
+`scene`/`makeFishProp`/`playRandomSfx`/`inventory` 這些依賴，而且
+`game-loop.ts` 本來就 import `input-save.ts`，這個方向不能反過來；
+`game-loop.ts` 每幀只呼叫一次 `advanceFishingQte()` 加渲染 UI。
+
+**拉扯期(reeling)方向輸入是獨立的 `keydown` 監聽**（不是 WASD 移動用的
+`keys` held-state 物件）——因為判定要的是「這個判定窗內的第一下按鍵」
+（edge-trigger），跟移動的「現在按著」語意不同，不能共用。`qte.judged`
+旗標防止按鍵判定路徑跟逐幀超時判定路徑重複計算。
+
+**移動鎖定範圍會隨需求擴大過一次**：一開始只鎖 `reeling`（拉扯期），
+2026-08-26 改成整個釣魚期間（`casting`/`biting`/`reeling`，即
+`fishingState !== "idle"`）都鎖住玩家移動（`game-loop.ts`）——拋竿後
+角色就該站定等魚，不是只有拉扯期才鎖。**上鉤前（`casting`）現在可以按
+E 取消**（`input-save.ts`），原本「casting 中途按 E 沒有作用」是刻意
+設計，後來被明確要求改掉，不要誤以為是 bug 復原。
+
+**UI**：`#fishHint`（`index.html`/`style.css`，bottom-center 固定文字框）
+保留給 `casting` 提示跟收穫後的結果通知（釣到了/斷線了/跑掉了）；
+`biting`/`reeling` 這兩個「要馬上按鍵」的狀態改用 `#fishActionHud`
+（貼在主角頭頂正上方，每幀用 `new THREE.Vector3(player.x, player.y+1.75,
+player.z).project(camera)` 算螢幕座標——這是跟著 `scene-sky.ts` 既有的
+`.project(camera)` 太陽/月亮天際遮罩用法抄的技巧，第一次用在 DOM 定位
+上），內含一條體力條 + 一個當下要按的按鍵/方向大字。兩組 UI 互斥顯示。
+
+**已知簡化/未做**（完整清單見專案文件「還沒做」段落，這裡只列會影響
+之後改動的部分）：只有 `livingArea` 地圖能釣魚（`nearWater()` 判斷綁在
+`input-save.ts` 的 E 鍵處理，`currentMapName === "livingArea"` 這個條件
+寫死）；體力扣了不會回、沒有下限門檻；`rodLevel` 有欄位但沒有任何升級
+介面；魚的個性行為模版（快魚/深水魚/跳躍魚…）全部還是同一種隨機方向。
+
+## 搖桿輸入：`src/gamepad-input.ts`（2026-08-26 已實作，**未經實機測試**）
+
+一開始只做了震動輸出（見下一節），Zeppelin 拿 Xbox 360 手把實測時發現
+「按了沒反應」——因為當時搖桿完全沒有接進輸入端，只有 QTE 判定會主動
+去查震動，搖桿本身不會讓角色動或觸發任何互動。這節補的是輸入端。
+
+**做法是把搖桿狀態轉成合成鍵盤事件**（`window.dispatchEvent(new
+KeyboardEvent(...))`），直接餵給 `input-save.ts` 既有的全域
+`keydown`/`keyup` 監聽——`keys[e.key]=true/false` 那兩行、E 鍵那個大型
+`keydown` handler、拉扯期(reeling)方向判定的專屬 `keydown` 監聽，全部
+原封不動繼承，**沒有另外寫一套平行的搖桿專用移動/互動邏輯**，也完全
+沒改 `game-loop.ts` 的移動計算或 `input-save.ts` 的任何互動分支。好處
+是搖桿在系統眼裡就是「一個在按鍵盤的玩家」：WASD 八方向移動、E 鍵所有
+分支（對話/座位/採集/釣魚拋竿收竿…）、釣魚 QTE 拉扯期的方向判定，全部
+自動可以用搖桿操作，包括這次一起追加的「casting 按 E 取消」也是。
+
+- 左搖桿(axes 0/1，死區 0.35)優先，沒推搖桿才看 d-pad(buttons 12–15,
+  標準映射 上/下/左/右)。**只有按下/沒按下兩態**，跟鍵盤語意一致——
+  不支援類比半速移動，這是刻意簡化，不是偵測不到類比值。
+- A 鍵(`buttons[0]`)對應鍵盤 E。
+- 四個方向鍵 + E 各自追蹤上一幀是否按著，只在跨越邊界時才丟合成事件
+  (邊緣觸發)，不是每幀都丟——尤其 E 鍵，每幀重複丟 keydown 會被
+  `gameState.ePressed` 的防重複邏輯擋掉，語意上也該是「按下/放開那一刻」
+  各觸發一次，跟真的按著鍵盤不放一樣。
+- `game-loop.ts` 的 `animate()` 每幀呼叫一次 `pollGamepad()`，不用另外
+  開輪詢或監聽 `gamepadconnected`——反正每幀都在讀，搖桿插上/斷開自然
+  在下一幀生效或停止。
+- **只支援單一搖桿**（讀 `navigator.getGamepads()` 第一個 `connected`
+  的），多人本地共玩不在這次範圍內。
+- 環境限制跟震動那節一樣：搖桿要先被按過一次鍵才會出現在
+  `getGamepads()` 清單裡，純插著線沒按過鍵偵測不到，這不是 bug。
+- **這輪同樣沒有實機驗證**（環境裡沒有搖桿裝置），只過了 `tsc` 型別
+  檢查。麻煩實測：(a) 左搖桿/d-pad 能不能正常八方向移動、(b) A 鍵能不能
+  觸發所有 E 鍵分支(對話/座位/採集/釣魚/牡蠣架/投餵機…)、(c) 拉扯期用
+  搖桿方向判定準不準(死區 0.35 是否需要調整)、(d) 鍵盤/搖桿交替使用會
+  不會互相打架(理論上不會，因為兩者最終都只是寫同一份 `keys` map)。
+
+## 搖桿震動：`src/gamepad-haptics.ts`（2026-08-26 已實作，**未經實機測試**）
+
+包一層 Web Gamepad API 的 `GamepadHapticActuator`，純瀏覽器 API 封裝，
+零 THREE/DOM 依賴，跟 `sfx.ts`「零 import 葉節點模組」同一個理由——之後
+其他系統要用震動直接 `import { vibrateGamepad, FISHING_HAPTICS }`，不用
+重寫偵測邏輯。目前唯一呼叫方是釣魚 QTE（`input-save.ts` 拉扯期的四個
+判定點：逐幀超時 `advanceFishingQte()`、按鍵即時判定 keydown 監聽、斷線
+失敗分支、`resolveFishCatch()` 收穫分支）。
+
+**這輪實作完全沒有搖桿裝置可以驗證**，純照 spec 寫，寫的時候要注意：
+
+- 優先用新版 `vibrationActuator.playEffect("dual-rumble", …)`
+  （Chrome/Edge 支援），沒有的話退而求其次用舊版
+  `hapticActuators[0].pulse(…)`。**Firefox 目前完全不支援這塊 API**——
+  如果開發時用 Firefox 預覽，搖桿方向鍵能動但震動永遠沒反應，不代表
+  程式碼有問題，換 Chrome/Edge 測。
+- 瀏覽器安全限制：搖桿要先被使用者**按過一次任意鍵**，才會出現在
+  `navigator.getGamepads()` 清單裡——單純插著線、完全沒按過鍵的搖桿，
+  `firstConnectedGamepad()` 會偵測不到，這不是 bug。
+- 找不到搖桿、瀏覽器不支援都靜默跳過（不噴錯），呼叫端完全不用檢查
+  環境。
+- 八種強度（`FISHING_HAPTICS`，完美/成功/方向錯誤/沒按超時/暴衝正確
+  放線/暴衝誤觸/收穫成功/斷線失敗）純憑感覺草擬數值，還沒有人拿真的
+  搖桿測過手感，之後實測回報「哪幾種感覺不出差異/太弱/太吵」再回來調
+  這個檔案的 `FISHING_HAPTICS` 物件即可，呼叫端完全不用動。

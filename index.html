@@ -34,6 +34,14 @@
          (見 dialogue.ts 的 positionChoicePanel)。 -->
     <div id="dialogChoices"></div>
     <div id="fishHint"></div>
+    <!-- 釣魚 QTE 浮動提示：跟在主角頭頂正上方，每幀由 game-loop.ts 用
+         .project(camera) 算螢幕座標更新 left/top(見 style.css #fishActionHud
+         註解)。只在 biting/reeling(要馬上按鍵)這兩個狀態顯示，取代原本
+         #fishHint 的整句文字提示。 -->
+    <div id="fishActionHud">
+      <div id="fishStaminaBar"><div id="fishStaminaFill"></div></div>
+      <div id="fishActionKey"></div>
+    </div>
     <div id="harvestToast">
       <div id="harvestToastIcon">
         <svg viewBox="0 0 48 48" width="30" height="30" aria-hidden="true">

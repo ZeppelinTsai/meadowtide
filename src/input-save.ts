@@ -28,6 +28,26 @@ import {
 } from "./game-state";
 import { updateSeasonAndDate } from "./game-clock";
 import {
+  FishTierDef,
+  FishTierKey,
+  FISH_TIERS,
+  actualQteCount,
+  buildQteSequence,
+  judgeDirectionPress,
+  tensionDeltaFor,
+  TENSION_MAX,
+  TENSION_DELTA,
+  QteDirection,
+  QteEvent,
+} from "./fishing";
+import {
+  vibrateGamepad,
+  FISHING_HAPTICS,
+  vibrateFishingHaptic,
+  vibrateDirectionalPull,
+  vibrateRushSpin,
+} from "./gamepad-haptics";
+import {
   ORE_NODES,
   harvestOreNode,
   MOUNTAIN_ORE_NODES,
@@ -601,34 +621,55 @@ addEventListener("keydown", (e) => {
       scene.add(gameState.bobberMesh);
       gameState.castAnimEnd = gameState.elapsed + CAST_ANIM_DURATION;
       if (gameState.player.parts.rod) gameState.player.parts.rod.visible = true;
-    } else if (gameState.fishingState === "biting") {
-      playRandomSfx(FISH_REEL_SFX);
-      inventory.fish++;
+    } else if (gameState.fishingState === "casting") {
+      // 2026-08-26：上鉤前(還在等待期)按 E 可以取消收竿——原本設計是
+      // 「casting 中途按 E 沒有作用，心急沒有用」，Zeppelin 要求改成可
+      // 以隨時反悔，跟走離水邊自動取消(game-loop.ts)是同一套清理動作，
+      // 差別只在這是玩家主動觸發、不用等狀態機判斷。
       gameState.fishingState = "idle";
-      const catchFrom = gameState.bobberMesh
-        ? gameState.bobberMesh.position.clone()
-        : gameState.player.position.clone();
       if (gameState.bobberMesh) {
         scene.remove(gameState.bobberMesh);
         gameState.bobberMesh = null;
       }
       if (gameState.player.parts.rod)
         gameState.player.parts.rod.visible = false;
-      gameState.fishFeedback = {
-        text: "釣到一隻魚！",
-        until: gameState.elapsed + 1.4,
+    } else if (gameState.fishingState === "biting") {
+      // 2026-08-26 釣魚 QTE：魚階在咬鉤那一刻(game-loop.ts 的
+      // casting→biting 轉換)就抽好存在 pendingFishTier，這裡只決定
+      // 「要不要進拉扯期」——體力在這一刻扣(設計筆記 3.2 節)。
+      const tier = gameState.pendingFishTier;
+      gameState.pendingFishTier = null;
+      if (!tier) {
+        // 理論上不該發生(biting 一定先經過咬鉤那一刻)，防禦性處理成
+        // 直接收穫，不要卡死狀態機。
+        resolveFishCatch(FISH_TIERS.trash);
+        return;
+      }
+      gameState.stamina = Math.max(0, gameState.stamina - tier.staminaCost);
+      const qteCount = actualQteCount(tier, gameState.rodLevel);
+      if (qteCount <= 0) {
+        // 竿具等級已經把這個階級「畢業」掉(或本來就是垃圾魚)：跟原本
+        // 行為一樣直接收穫，不進拉扯期。
+        resolveFishCatch(tier);
+        return;
+      }
+      playRandomSfx(FISH_REEL_SFX);
+      gameState.fishingState = "reeling";
+      const sequence = buildQteSequence(tier, qteCount);
+      gameState.fishingQte = {
+        tier,
+        sequence,
+        index: 0,
+        windowStart: gameState.elapsed,
+        tension: 0,
+        perfectCount: 0,
+        rushPressed: false,
+        judged: false,
       };
-      const flyingFish = makeFishProp(Math.random() * 100);
-      flyingFish.scale.setScalar(1.7);
-      scene.add(flyingFish);
-      gameState.catchAnim = {
-        mesh: flyingFish,
-        from: catchFrom,
-        start: gameState.elapsed,
-        duration: 0.7,
-      };
+      // 2026-08-26「往主角反方向拉」手感要求：第一個事件一開始就給一下
+      // 「魚正在拉線」的觸感，不用等玩家按鍵或超時才有反應。
+      triggerFishingEventOnsetHaptic(sequence[0], tier.key);
     }
-    // casting 中途按 E 沒有作用——心急沒有用，這也是釣魚小遊戲的重點
     return;
   }
 
@@ -647,6 +688,171 @@ addEventListener("keydown", (e) => {
 });
 addEventListener("keyup", (e) => {
   if (e.key.toLowerCase() === "e") gameState.ePressed = false;
+});
+
+// ==============================================================
+// 2026-08-26 釣魚 QTE：拉扯期(reeling)核心邏輯——收穫演出抽成
+// resolveFishCatch()(咬鉤直接秒收/QTE 序列跑完都呼叫這個)，方向輸入
+// 走專屬 keydown 監聽(edge-trigger，跟上面 WASD 移動用的 `keys` held-
+// state 分開)，逐幀超時檢查走 advanceFishingQte()(game-loop.ts 每幀
+// 呼叫)。詳細規則見 claude/釣魚QTE系統設計筆記v1.md(專案文件)。
+// ==============================================================
+
+// 每個 QTE 事件「開始」那一刻(不是判定結果出來那一刻)觸發一次震動——
+// 代表魚正在拉線的觸感：direction 事件是「往哪個方向拉」(見
+// vibrateDirectionalPull)，rush 事件是「轉圈亂拉」(見 vibrateRushSpin)。
+// 判定結果(完美/成功/方向錯誤/沒按/暴衝安全/暴衝誤觸)是另一次獨立的
+// 震動，兩次中間那段等待窗刻意不震——安靜的空檔就是「暫停」的觸感，
+// 不是漏寫。呼叫點：fishingQte 剛建立時(第一個事件)、
+// advanceFishingQteAfterJudge() 換下一個事件時。
+function triggerFishingEventOnsetHaptic(
+  event: QteEvent,
+  tierKey: FishTierKey,
+) {
+  if (event.kind === "rush") vibrateRushSpin(tierKey);
+  else vibrateDirectionalPull(event.fishDirection!, tierKey);
+}
+
+// 收穫演出：跟原本「按 E 直接收穫」完全一樣的音效/丟魚簍/拋物線動畫，
+// 抽成獨立函式方便兩個呼叫點共用(竿具等級把 QTE 次數扣到 0 時直接收穫、
+// 或是走完整個拉扯期序列成功時)。
+export function resolveFishCatch(tier: FishTierDef) {
+  playRandomSfx(FISH_REEL_SFX);
+  // 垃圾魚維持原本零反饋(0 體力/0 QTE，本來就是「撿了就走」的等級)，
+  // 真的釣到魚才給一次收穫震動，不然搖桿會震到膩。
+  if (tier.key !== "trash") vibrateFishingHaptic("catchSuccess", tier.key);
+  inventory.fish++;
+  inventory.fishByTier[tier.key] = (inventory.fishByTier[tier.key] || 0) + 1;
+  gameState.fishingState = "idle";
+  const catchFrom = gameState.bobberMesh
+    ? gameState.bobberMesh.position.clone()
+    : gameState.player.position.clone();
+  if (gameState.bobberMesh) {
+    scene.remove(gameState.bobberMesh);
+    gameState.bobberMesh = null;
+  }
+  if (gameState.player.parts.rod) gameState.player.parts.rod.visible = false;
+  gameState.fishFeedback = {
+    text:
+      tier.key === "trash"
+        ? "釣到一些垃圾……"
+        : `釣到一隻魚！（${tier.label}）`,
+    until: gameState.elapsed + 1.4,
+  };
+  const flyingFish = makeFishProp(Math.random() * 100);
+  flyingFish.scale.setScalar(1.7);
+  scene.add(flyingFish);
+  gameState.catchAnim = {
+    mesh: flyingFish,
+    from: catchFrom,
+    start: gameState.elapsed,
+    duration: 0.7,
+  };
+}
+
+function clampTension(t: number): number {
+  return Math.max(0, Math.min(TENSION_MAX, t));
+}
+
+// 一次事件判定完(不管是被按鍵即時判定、還是逐幀超時判定)之後的收尾：
+// 張力爆錶就斷線失敗；序列跑完(index 到底)就收穫；否則開下一個事件的
+// 判定窗。
+function advanceFishingQteAfterJudge() {
+  const qte = gameState.fishingQte;
+  if (!qte) return;
+  if (qte.tension >= TENSION_MAX) {
+    vibrateFishingHaptic("lineBreak", qte.tier.key);
+    gameState.fishingState = "idle";
+    gameState.fishingQte = null;
+    if (gameState.bobberMesh) {
+      scene.remove(gameState.bobberMesh);
+      gameState.bobberMesh = null;
+    }
+    if (gameState.player.parts.rod) gameState.player.parts.rod.visible = false;
+    gameState.fishFeedback = {
+      text: "斷線了……牠掙脫跑了",
+      until: gameState.elapsed + 1.4,
+    };
+    return;
+  }
+  qte.index++;
+  if (qte.index >= qte.sequence.length) {
+    const tier = qte.tier;
+    gameState.fishingQte = null;
+    resolveFishCatch(tier);
+    return;
+  }
+  qte.windowStart = gameState.elapsed;
+  qte.judged = false;
+  qte.rushPressed = false;
+  triggerFishingEventOnsetHaptic(qte.sequence[qte.index], qte.tier.key);
+}
+
+// 逐幀超時檢查——game-loop.ts 的釣魚狀態機推進在 fishingState==="reeling"
+// 時每幀呼叫這個。按鍵即時判定(見下面的專屬 keydown 監聽)已經處理過的
+// 事件(qte.judged===true)這裡直接跳過，等 index 換到下一個事件才會
+// 重新開始算超時。
+export function advanceFishingQte() {
+  const qte = gameState.fishingQte;
+  if (!qte || gameState.fishingState !== "reeling") return;
+  if (qte.judged) return;
+  const event = qte.sequence[qte.index];
+  const windowElapsed = gameState.elapsed - qte.windowStart;
+  if (windowElapsed < event.windowSeconds) return;
+  qte.judged = true;
+  if (event.kind === "rush") {
+    // 暴衝全程沒被按到＝正確放線，張力小降。
+    vibrateFishingHaptic("rushSafe", qte.tier.key);
+    qte.tension = clampTension(qte.tension + TENSION_DELTA.rushSafe);
+  } else {
+    vibrateFishingHaptic("miss", qte.tier.key);
+    qte.tension = clampTension(
+      qte.tension +
+        tensionDeltaFor(judgeDirectionPress(event.fishDirection!, null, 0)),
+    );
+  }
+  advanceFishingQteAfterJudge();
+}
+
+const QTE_KEY_TO_DIRECTION: Record<string, QteDirection> = {
+  w: "up",
+  arrowup: "up",
+  s: "down",
+  arrowdown: "down",
+  a: "left",
+  arrowleft: "left",
+  d: "right",
+  arrowright: "right",
+};
+// 拉扯期方向輸入——跟上面 WASD 移動用的 `keys` held-state 分開監聽，這裡
+// 要的是「這個判定窗內的第一下按鍵」(edge-trigger)，不是「現在按著」，
+// 兩者語意不同不能共用同一份狀態；reeling 以外完全不做事，不影響移動/
+// 其他互動。
+addEventListener("keydown", (e) => {
+  if (gameState.fishingState !== "reeling" || !gameState.fishingQte) return;
+  const qte = gameState.fishingQte;
+  if (qte.judged) return;
+  const dir = QTE_KEY_TO_DIRECTION[e.key.toLowerCase()];
+  if (!dir) return;
+  e.preventDefault();
+  const event = qte.sequence[qte.index];
+  qte.judged = true;
+  if (event.kind === "rush") {
+    // 暴衝正確做法是完全不按——按了任何一個方向鍵就算誤拉，不比對方向。
+    qte.rushPressed = true;
+    vibrateFishingHaptic("rushFail", qte.tier.key);
+    qte.tension = clampTension(qte.tension + TENSION_DELTA.rushFail);
+  } else {
+    const pressRatio = Math.min(
+      1,
+      Math.max(0, (gameState.elapsed - qte.windowStart) / event.windowSeconds),
+    );
+    const judgement = judgeDirectionPress(event.fishDirection!, dir, pressRatio);
+    if (judgement === "perfect") qte.perfectCount++;
+    vibrateFishingHaptic(judgement, qte.tier.key);
+    qte.tension = clampTension(qte.tension + tensionDeltaFor(judgement));
+  }
+  advanceFishingQteAfterJudge();
 });
 
 // 自由移動的碰撞判斷：玩家當成一個小正方形，四個角落分別去查
@@ -715,5 +921,5 @@ export function updateHud() {
   hudEl.dataset.nightFactor = ((window as any).__nightFactor || 0).toFixed(3);
   const meteorShowerLabel = getMeteorShowerHudLabel();
   const weatherLabel = `${WEATHER_NAMES[gameState.currentWeather]}${meteorShowerLabel ? `・<b style="color:#a9d8ff">${meteorShowerLabel}</b>` : ""}`;
-  hudEl.innerHTML = `${SEASON_NAMES[gameState.currentSeason]}季 ・ 第 <b>${getSeasonDay()}</b> 日（${getSeasonPeriod()}）・ ${weatherLabel} ・ ${String(hh).padStart(2, "0")}:${String(mm).padStart(2, "0")}${gameState.musicMuted ? " ・ 靜音" : ""}<br>種子 <b>${inventory.seeds}</b> ・ 收成 <b>${inventory.harvested}</b> ・ 魚 <b>${inventory.fish}</b> ・ 料理 <b>${Object.values(inventory.dishes).reduce((a, b) => a + b, 0)}</b><br>村長印象 <b>${npcs[0].memory}</b> ・ 木匠印象 <b>${npcs[1].memory}</b>`;
+  hudEl.innerHTML = `${SEASON_NAMES[gameState.currentSeason]}季 ・ 第 <b>${getSeasonDay()}</b> 日（${getSeasonPeriod()}）・ ${weatherLabel} ・ ${String(hh).padStart(2, "0")}:${String(mm).padStart(2, "0")}${gameState.musicMuted ? " ・ 靜音" : ""}<br>種子 <b>${inventory.seeds}</b> ・ 收成 <b>${inventory.harvested}</b> ・ 魚 <b>${inventory.fish}</b> ・ 體力 <b>${gameState.stamina}/${gameState.staminaMax}</b> ・ 料理 <b>${Object.values(inventory.dishes).reduce((a, b) => a + b, 0)}</b><br>村長印象 <b>${npcs[0].memory}</b> ・ 木匠印象 <b>${npcs[1].memory}</b>`;
 }
