@@ -98,8 +98,10 @@ export function hasPastureGrassAt(x, z) {
 export const animalGroup = new THREE.Group();
 animalGroup.position.y = PLATEAU_Y; // 牧場整個都在高台範圍內
 scene.add(animalGroup);
-export function randomPasturePoint() {
-  for (let attempt = 0; attempt < 20; attempt++) {
+export function randomPasturePoint(
+  isSafe: (x: number, z: number) => boolean = () => true,
+) {
+  for (let attempt = 0; attempt < 80; attempt++) {
     const point = {
       x: PASTURE.minX + Math.random() * (PASTURE.maxX - PASTURE.minX),
       z: PASTURE.minZ + Math.random() * (PASTURE.maxZ - PASTURE.minZ),
@@ -109,7 +111,11 @@ export function randomPasturePoint() {
       point.x < LAYOUT.windmill.x + LAYOUT.windmill.w + 0.8 &&
       point.z >= LAYOUT.windmill.z - 0.8 &&
       point.z < LAYOUT.windmill.z + LAYOUT.windmill.d + 0.8;
-    if (!isInsideLakeShape(point.x, point.z, -0.2) && !insideWindmill)
+    if (
+      !isInsideLakeShape(point.x, point.z, -0.2) &&
+      !insideWindmill &&
+      isSafe(point.x, point.z)
+    )
       return point;
   }
   return { x: PASTURE.maxX, z: PASTURE.maxZ };

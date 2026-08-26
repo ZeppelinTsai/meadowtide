@@ -68,7 +68,11 @@ import { dialogQueue } from "./dialogue";
 import { isBlocked, events } from "./build-map";
 import { collidesAt, keys, updateHud, advanceFishingQte } from "./input-save";
 import { updateMusic } from "./music";
-import { updateCameraShots, updateCameraAdjustMode } from "./cutscene-camera";
+import {
+  isCameraAdjustModeActive,
+  updateCameraShots,
+  updateCameraAdjustMode,
+} from "./cutscene-camera";
 import { updateWeatherEffects } from "./weather-particles";
 import { isOutdoorMap } from "./environment";
 import {
@@ -294,7 +298,11 @@ export function animate(now) {
   // 不透過 WASD/碰撞這條路(演出路徑是設計好的安全路徑，不需要碰撞判定)。
   let dx = 0,
     dz = 0;
-  if (!gameState.cutsceneActive && !isFirstPersonModeActive()) {
+  if (
+    !gameState.cutsceneActive &&
+    !isFirstPersonModeActive() &&
+    !isCameraAdjustModeActive()
+  ) {
     if (keys["w"] || keys["arrowup"]) dz -= 1;
     if (keys["s"] || keys["arrowdown"]) dz += 1;
     if (keys["a"] || keys["arrowleft"]) dx -= 1;
@@ -943,8 +951,62 @@ export function animate(now) {
     if (!gameState.pastureGrazedToday) settleFeederConsumption();
   }
 
+  const animalRadius = (a) =>
+    a.type === "cow" ? 0.42 : a.type === "sheep" ? 0.36 : 0.24;
+  const isAnimalPositionSafe = (a, x: number, z: number) => {
+    const radius = animalRadius(a);
+    return ![
+      [0, 0],
+      [-radius, -radius],
+      [radius, -radius],
+      [-radius, radius],
+      [radius, radius],
+      [-radius, 0],
+      [radius, 0],
+      [0, -radius],
+      [0, radius],
+    ].some(([dx, dz]) => isBlocked("livingArea", x + dx, z + dz));
+  };
+  const chooseSafeAnimalTarget = (a) =>
+    chooseAnimalPastureTarget(a, (x, z) => isAnimalPositionSafe(a, x, z));
+  const moveAnimalWithCollision = (a, nextX: number, nextZ: number) => {
+    const oldX = a.mesh.position.x;
+    const oldZ = a.mesh.position.z;
+    // 分軸嘗試能讓動物沿牆滑行；兩軸都受阻時本幀不動，下一段邏輯會改目標。
+    if (isAnimalPositionSafe(a, nextX, nextZ)) {
+      a.mesh.position.x = nextX;
+      a.mesh.position.z = nextZ;
+    } else if (isAnimalPositionSafe(a, nextX, oldZ)) {
+      a.mesh.position.x = nextX;
+    } else if (isAnimalPositionSafe(a, oldX, nextZ)) {
+      a.mesh.position.z = nextZ;
+    }
+    return Math.hypot(a.mesh.position.x - oldX, a.mesh.position.z - oldZ) > 1e-6;
+  };
+  const rescueAnimalFromObstacle = (a) => {
+    if (isAnimalPositionSafe(a, a.mesh.position.x, a.mesh.position.z)) return;
+    // 舊存檔或舊亂數可能已把動物放進建築；找最近的安全點救出，避免永遠卡住。
+    const originX = a.mesh.position.x;
+    const originZ = a.mesh.position.z;
+    for (let ring = 1; ring <= 12; ring++) {
+      const radius = ring * 0.25;
+      for (let i = 0; i < 24; i++) {
+        const angle = (i / 24) * Math.PI * 2;
+        const x = originX + Math.cos(angle) * radius;
+        const z = originZ + Math.sin(angle) * radius;
+        if (!isAnimalPositionSafe(a, x, z)) continue;
+        a.mesh.position.x = x;
+        a.mesh.position.z = z;
+        a.target = chooseSafeAnimalTarget(a);
+        a.routeTarget = null;
+        return;
+      }
+    }
+  };
+
   animals.forEach((a) => {
     let moving = false;
+    if (a.state === "out") rescueAnimalFromObstacle(a);
     if (animalsShouldBeHome) {
       if (a.state === "out") {
         // 18:00 後不管原本是否正在休息，都立即往穀倉移動。
@@ -953,10 +1015,12 @@ export function animate(now) {
           dz = BARN_DOOR.z - a.mesh.position.z;
         const dist = Math.hypot(dx, dz);
         if (dist > 0.12) {
-          moving = true;
           const step = Math.min(dist, a.speed * dt);
-          a.mesh.position.x += (dx / dist) * step;
-          a.mesh.position.z += (dz / dist) * step;
+          moving = moveAnimalWithCollision(
+            a,
+            a.mesh.position.x + (dx / dist) * step,
+            a.mesh.position.z + (dz / dist) * step,
+          );
           // 動物模型的頭朝本地 +X，不是跟角色一樣朝 -Z，所以要多轉 -90°，
           // 跟魚的朝向公式是同一個修正（見上面 fishSchool 那段）
           a.mesh.rotation.y = Math.atan2(dx, dz) - Math.PI / 2;
@@ -969,7 +1033,7 @@ export function animate(now) {
       a.state = "out";
       a.mesh.visible = true;
       a.mesh.position.set(BARN_DOOR.x, 0, BARN_DOOR.z);
-      a.target = chooseAnimalPastureTarget(a);
+      a.target = chooseSafeAnimalTarget(a);
       a.wanderState = "walking";
       a.restUntil = 0;
       a.grazeAt = Infinity;
@@ -978,7 +1042,7 @@ export function animate(now) {
       if (a.wanderState === "resting") {
         if (gameState.elapsed >= a.restUntil) {
           a.wanderState = "walking";
-          a.target = chooseAnimalPastureTarget(a);
+          a.target = chooseSafeAnimalTarget(a);
           a.grazeAt = Infinity;
         } else if (gameState.elapsed >= a.grazeAt) {
           tryEatPastureGrass(a);
@@ -1011,7 +1075,6 @@ export function animate(now) {
             Math.random() * (a.restMax - a.restMin);
           a.grazeAt = gameState.elapsed + 0.8;
         } else {
-          moving = true;
           const progress =
             a.routeTotalDist > 0
               ? Math.min(1, Math.max(0, 1 - dist / a.routeTotalDist))
@@ -1024,13 +1087,20 @@ export function animate(now) {
             a.mesh.position.x + dirX * step - dirZ * (bend - (a.prevBend || 0));
           const nz =
             a.mesh.position.z + dirZ * step + dirX * (bend - (a.prevBend || 0));
-          a.prevBend = bend;
-          const rdx = nx - a.mesh.position.x,
-            rdz = nz - a.mesh.position.z;
+          const oldX = a.mesh.position.x,
+            oldZ = a.mesh.position.z;
+          moving = moveAnimalWithCollision(a, nx, nz);
+          const rdx = a.mesh.position.x - oldX,
+            rdz = a.mesh.position.z - oldZ;
           if (Math.abs(rdx) > 1e-6 || Math.abs(rdz) > 1e-6)
             a.mesh.rotation.y = Math.atan2(rdx, rdz) - Math.PI / 2;
-          a.mesh.position.x = nx;
-          a.mesh.position.z = nz;
+          if (moving) {
+            a.prevBend = bend;
+          } else {
+            // 彎曲路徑撞上障礙時直接換安全目標，不讓動物持續頂著牆。
+            a.target = chooseSafeAnimalTarget(a);
+            a.routeTarget = null;
+          }
         }
       }
     }
@@ -1166,15 +1236,17 @@ export function animate(now) {
   // 過場鏡頭系統(cutscene-camera.ts)：有排定的鏡頭清單在播，或正處於
   // F4 手動調整模式，這裡回傳的值會取代下面「自動跟玩家/船」的鏡頭
   // 邏輯；兩者都沒有時回傳 null，本幀鏡頭邏輯完全不受影響(既有行為不變)。
-  const cameraShotOverride = updateCameraShots(dt);
+  // 過場會讓玩法 dt=0；鏡頭仍必須能播放與手動平移，因此使用不受暫停
+  // 影響的 frameDt。滾輪縮放不吃 dt，先前才會出現「能縮放但不能平移」。
+  const cameraShotOverride = updateCameraShots(frameDt);
   const cameraAdjustOverride = cameraShotOverride
     ? null
     : updateCameraAdjustMode(
-        dt,
-        !!keys["arrowleft"],
-        !!keys["arrowright"],
-        !!keys["arrowup"],
-        !!keys["arrowdown"],
+        frameDt,
+        false,
+        false,
+        false,
+        false,
       );
   const cameraOverride = cameraShotOverride ?? cameraAdjustOverride;
   if (cameraOverride) {
@@ -1184,8 +1256,12 @@ export function animate(now) {
 
   // 正交相機大幅拉遠時也沿原視角後退，避免視窗下緣落到地面以下而看見天空球。
   const camDist = Math.max(16, gameState.zoom * 1.55);
-  const camHeight = camDist * Math.cos(TILT_RAD);
-  const camZOffset = camDist * Math.sin(TILT_RAD);
+  const cameraYaw = cameraOverride?.yaw ?? 0;
+  const cameraPitch = cameraOverride?.pitch ?? Math.PI / 2 - TILT_RAD;
+  const camHeight = camDist * Math.sin(cameraPitch);
+  const camHorizontalOffset = camDist * Math.cos(cameraPitch);
+  const camXOffset = Math.sin(cameraYaw) * camHorizontalOffset;
+  const camZOffset = Math.cos(cameraYaw) * camHorizontalOffset;
   let groundOffset = characterGroundY(
     gameState.currentMapName,
     gameState.player.position.x,
@@ -1272,7 +1348,7 @@ export function animate(now) {
     );
   }
   camera.position.set(
-    cameraFocusX,
+    cameraFocusX + camXOffset,
     camHeight + groundOffset,
     cameraFocusZ + camZOffset,
   );

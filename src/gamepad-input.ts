@@ -24,12 +24,18 @@
 // ==============================================================
 
 const STICK_DEADZONE = 0.35;
+let leftStickX = 0;
+let leftStickZ = 0;
 let rightStickX = 0;
 let rightStickY = 0;
 let prevRightStickButton = false;
 
 export function getGamepadLookInput() {
   return { x: rightStickX, y: rightStickY };
+}
+
+export function getGamepadMoveInput() {
+  return { x: leftStickX, z: leftStickZ };
 }
 
 function firstConnectedGamepad(): Gamepad | null {
@@ -86,6 +92,8 @@ export function pollGamepad() {
     else if (pad.buttons[13]?.pressed) dz = 1;
   }
 
+  leftStickX = dx;
+  leftStickZ = dz;
   syncKey("a", dx < 0);
   syncKey("d", dx > 0);
   syncKey("w", dz < 0);

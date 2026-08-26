@@ -829,7 +829,10 @@ export function findLongGrassNear(x, z, maxDistance = Infinity) {
   });
   return best;
 }
-export function chooseAnimalPastureTarget(animal) {
+export function chooseAnimalPastureTarget(
+  animal,
+  isSafe: (x: number, z: number) => boolean = () => true,
+) {
   // 每次挑目標都重擲路徑亂數種子：就算兩次都選到同一叢長草，走去的
   // 路線(彎曲方向、幅度)跟停在草叢周圍的落點也不會一樣。
   animal.pathSeed = Math.random();
@@ -842,13 +845,14 @@ export function chooseAnimalPastureTarget(animal) {
     if (grass) {
       const jitterAngle = Math.random() * Math.PI * 2;
       const jitterRadius = Math.random() * 0.3;
-      return {
+      const target = {
         x: grass.position.x + Math.cos(jitterAngle) * jitterRadius,
         z: grass.position.z + Math.sin(jitterAngle) * jitterRadius,
       };
+      if (isSafe(target.x, target.z)) return target;
     }
   }
-  return randomPasturePoint();
+  return randomPasturePoint(isSafe);
 }
 export function tryEatPastureGrass(animal) {
   if (animal.type === "chicken") return false;
