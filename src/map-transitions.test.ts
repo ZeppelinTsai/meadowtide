@@ -3,6 +3,8 @@ import test from "node:test";
 import { LAYOUT, MAPS, OLD_VILLAGE_OCEAN_EXPANSION, PORT_OCEAN_EXPANSION, oldVillageSouthwestSeaEndX } from "./layout-maps";
 import { createTransitionEvents } from "./map-transitions";
 
+import { OLD_VILLAGE_RAILS } from './layout-maps';
+
 function hasWalkableRoute(
   tiles: number[][],
   start: { x: number; z: number },
@@ -200,6 +202,35 @@ test("舊城鎮西側與南側各擴充 100 格海面", () => {
     { x: 96, z: 27, width: 8, depth: 2 },
     { x: 97, z: 29, width: 7, depth: 3 },
   ]);
+  assert.deepEqual(platform.torii, { x: 100, z: 28, scale: 1.4 });
+  assert.deepEqual(platform.cube, {
+    x: 98,
+    z: 20,
+    width: 5,
+    depth: 6,
+    height: 1.6,
+  });
+  const platformRails = OLD_VILLAGE_RAILS.filter(
+    (rail) => rail.elevation === platform.elevation,
+  );
+  assert.ok(
+    platformRails.some(
+      (rail) =>
+        rail.x1 === 97.5 && rail.z1 === 17.5 && rail.x2 === 102.5 && rail.z2 === 17.5,
+    ),
+  );
+  assert.ok(
+    platformRails.some(
+      (rail) =>
+        rail.x1 === 96.5 && rail.z1 === 31.5 && rail.x2 === 98.5 && rail.z2 === 31.5,
+    ),
+  );
+  assert.ok(
+    platformRails.some(
+      (rail) =>
+        rail.x1 === 101.5 && rail.z1 === 31.5 && rail.x2 === 103.5 && rail.z2 === 31.5,
+    ),
+  );
   const eastFill = LAYOUT.oldVillage.northBeachEastFill;
   assert.deepEqual(eastFill, { x: 105, z: 35, width: 11, height: 2 });
   const eastShelf = LAYOUT.oldVillage.northBeachEastShelf;

@@ -227,6 +227,8 @@ export const LAYOUT = {
         { x: -4, z: 27, width: 8, depth: 2 },
         { x: -3, z: 29, width: 7, depth: 3 },
       ],
+      torii: { x: 0, z: 28, scale: 1.4 },
+      cube: { x: -2, z: 20, width: 5, depth: 6, height: 1.6 },
     },
     // x=95~115 的南岸每欄在 z=35~37 之間小幅進退；固定序列避免載圖漂移。
     northBeachSouthEdge: {
@@ -1136,7 +1138,92 @@ export function isOnOldVillageStair(x: number, z: number) {
 
 // 城鎮露台與樓梯的防墜扶手。線段同時供視覺與碰撞使用；樓梯口刻意
 // 留空，只封住能直接跨越高低差的邊緣。
-export const OLD_VILLAGE_RAILS = [
+function makeNorthBeachPlatformRails() {
+  const platform = LAYOUT.oldVillage.northBeachPlatform;
+  const cells = new Set<string>();
+  platform.segments.forEach((segment) => {
+    for (let z = segment.z; z < segment.z + segment.depth; z++)
+      for (let x = segment.x; x < segment.x + segment.width; x++)
+        cells.add(`${x},${z}`);
+  });
+  const horizontal = new Map<number, number[]>();
+  const vertical = new Map<number, number[]>();
+  const add = (map: Map<number, number[]>, line: number, position: number) => {
+    const positions = map.get(line) ?? [];
+    positions.push(position);
+    map.set(line, positions);
+  };
+  const stair = LAYOUT.oldVillage.westStairs.find(
+    (entry) => entry.baseElevation === 0 && entry.elevation === platform.elevation,
+  );
+  cells.forEach((key) => {
+    const [x, z] = key.split(',').map(Number);
+    if (!cells.has(`${x},${z - 1}`)) add(horizontal, z - 0.5, x);
+    if (
+      !cells.has(`${x},${z + 1}`) &&
+      !(stair && x >= stair.x && x < stair.x + stair.width)
+    )
+      add(horizontal, z + 0.5, x);
+    if (!cells.has(`${x - 1},${z}`)) add(vertical, x - 0.5, z);
+    if (!cells.has(`${x + 1},${z}`)) add(vertical, x + 0.5, z);
+  });
+  const rails: Array<{
+    x1: number;
+    z1: number;
+    x2: number;
+    z2: number;
+    elevation: number;
+  }> = [];
+  const mergeRuns = (
+    entries: Map<number, number[]>,
+    horizontalRun: boolean,
+  ) => {
+    entries.forEach((positions, line) => {
+      const sorted = [...new Set(positions)].sort((a, b) => a - b);
+      let start = sorted[0];
+      let end = sorted[0];
+      const emit = () =>
+        rails.push(
+          horizontalRun
+            ? {
+                x1: start - 0.5,
+                z1: line,
+                x2: end + 0.5,
+                z2: line,
+                elevation: platform.elevation,
+              }
+            : {
+                x1: line,
+                z1: start - 0.5,
+                x2: line,
+                z2: end + 0.5,
+                elevation: platform.elevation,
+              },
+        );
+      for (let index = 1; index < sorted.length; index++) {
+        if (sorted[index] === end + 1) {
+          end = sorted[index];
+          continue;
+        }
+        emit();
+        start = sorted[index];
+        end = sorted[index];
+      }
+      emit();
+    });
+  };
+  mergeRuns(horizontal, true);
+  mergeRuns(vertical, false);
+  return rails;
+}
+
+export const OLD_VILLAGE_RAILS: Array<{
+  x1: number;
+  z1: number;
+  x2: number;
+  z2: number;
+  elevation?: number;
+}> = [
   {
     x1: 33,
     z1: 9.5,
@@ -1207,6 +1294,7 @@ export const OLD_VILLAGE_RAILS = [
       z2: stair.toZ,
     },
   ]),
+  ...makeNorthBeachPlatformRails(),
 ];
 
 export function isBlockedByOldVillageRail(x: number, z: number) {

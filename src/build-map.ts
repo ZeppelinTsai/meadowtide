@@ -1140,6 +1140,36 @@ export function buildMap(mapName) {
         });
       });
       gameState.mapGroup.add(platformBasalt);
+      const platformCube = northPlatform.cube;
+      const platformCubeMesh = new THREE.Mesh(
+        new THREE.BoxGeometry(
+          platformCube.width,
+          platformCube.height,
+          platformCube.depth,
+        ),
+        new THREE.MeshStandardMaterial({
+          color: 0xb99a7a,
+          roughness: 0.96,
+          flatShading: true,
+        }),
+      );
+      platformCubeMesh.position.set(
+        platformCube.x + (platformCube.width - 1) / 2,
+        northPlatform.elevation + platformCube.height / 2,
+        platformCube.z + (platformCube.depth - 1) / 2,
+      );
+      platformCubeMesh.castShadow = true;
+      platformCubeMesh.receiveShadow = true;
+      gameState.mapGroup.add(platformCubeMesh);
+
+      const platformTorii = makeToriiGate();
+      platformTorii.scale.setScalar(northPlatform.torii.scale);
+      platformTorii.position.set(
+        northPlatform.torii.x,
+        northPlatform.elevation,
+        northPlatform.torii.z,
+      );
+      gameState.mapGroup.add(platformTorii);
       const mountainLanding = LAYOUT.oldVillage.mountainLanding;
       const mountainLandingMesh = new THREE.Mesh(
         new THREE.BoxGeometry(
@@ -3579,6 +3609,16 @@ export function isBlocked(mapName, x, z) {
   }
   if (tz < 0 || tz >= map.tiles.length || tx < 0 || tx >= map.tiles[0].length)
     return true;
+  if (mapName === 'oldVillage') {
+    const cube = LAYOUT.oldVillage.northBeachPlatform.cube;
+    if (
+      x >= cube.x - 0.5 &&
+      x <= cube.x + cube.width - 0.5 &&
+      z >= cube.z - 0.5 &&
+      z <= cube.z + cube.depth - 0.5
+    )
+      return true;
+  }
   if (mapName === "oldVillage" && isBlockedByOldVillageRail(x, z)) return true;
   if (mapName === "port" && tz === LAYOUT.port.beachDepth) {
     const stairs = LAYOUT.port.stairs;
