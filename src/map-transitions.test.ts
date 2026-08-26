@@ -156,6 +156,12 @@ test("舊城鎮西側與南側各擴充 100 格海面", () => {
       assert.equal(tiles[z][x], 9, `西側新增海面 (${x},${z})`);
     }
   const northBeach = LAYOUT.oldVillage.northBeach;
+  const eastSeaCutout = LAYOUT.oldVillage.northBeachEastSeaCutout;
+  const isEastSeaCutout = (x: number, z: number) =>
+    x >= eastSeaCutout.x &&
+    x < eastSeaCutout.x + eastSeaCutout.width &&
+    z >= eastSeaCutout.z &&
+    z < eastSeaCutout.z + eastSeaCutout.height;
   for (let z = northBeach.z; z < LAYOUT.oldVillage.northBeachSouthEdge.z - 1; z++)
     for (let x = northBeach.x; x < northBeach.x + northBeach.width; x++)
       assert.equal(tiles[z][x], 8);
@@ -179,7 +185,10 @@ test("舊城鎮西側與南側各擴充 100 格海面", () => {
         const x = side < 0
           ? northBeach.x - offset
           : northBeach.x + northBeach.width - 1 + offset;
-        assert.equal(tiles[northBeach.z + index][x], 8);
+        assert.equal(
+          tiles[northBeach.z + index][x],
+          isEastSeaCutout(x, northBeach.z + index) ? 9 : 8,
+        );
       }
     });
   }
@@ -201,8 +210,15 @@ test("舊城鎮西側與南側各擴充 100 格海面", () => {
     const x = eastShelf.x + index;
     assert.ok(depth >= 1 && depth <= 3);
     for (let z = eastShelf.z - depth + 1; z <= eastShelf.z; z++)
-      assert.equal(tiles[z][x], 8, `北側沙灘不規則延伸 (${x},${z}) 應為沙灘`);
+      assert.equal(
+        tiles[z][x],
+        isEastSeaCutout(x, z) ? 9 : 8,
+        `北側沙灘不規則延伸 (${x},${z}) 應符合最終岸線`,
+      );
   });
+  assert.deepEqual(eastSeaCutout, { x: 107, z: 32, width: 6, height: 1 });
+  for (let x = eastSeaCutout.x; x < eastSeaCutout.x + eastSeaCutout.width; x++)
+    assert.equal(tiles[eastSeaCutout.z][x], 9, `東側切口 (${x},${eastSeaCutout.z}) 應為海`);
   const southEdge = LAYOUT.oldVillage.northBeachSouthEdge;
   assert.equal(southEdge.x, 95);
   southEdge.endOffsets.forEach((offset, index) => {
