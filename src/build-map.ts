@@ -913,15 +913,16 @@ export function buildMap(mapName) {
         depthWrite: false,
       });
       const northPlatformWallMat = new THREE.MeshStandardMaterial({
-        color: 0xc47a52,
-        roughness: 0.92,
+        color: 0x343638,
+        flatShading: true,
+        roughness: 0.98,
       });
       const northPlatformTopMat = new THREE.MeshStandardMaterial({
         color: 0x8f8779,
         roughness: 0.98,
       });
       // BoxGeometry 材質順序：+X, -X, +Y, -Y, +Z, -Z。
-      // 頂面沿用可走台地灰色，只有不可走的垂直牆面與底面使用暖赭色。
+      // 頂面沿用可走台地灰色，垂直牆面則作為玄武岩柱群後方的深色岩芯。
       const northPlatformMaterials = [
         northPlatformWallMat,
         northPlatformWallMat,
@@ -1026,6 +1027,119 @@ export function buildMap(mapName) {
           northPlatformMaterials,
         ),
       );
+      // 參考生活區玄武岩岬角的柱狀節理，沿平台真正外露的格邊生成岩柱。
+      // 由 segments 算輪廓，平台尺寸改動時不必另維護一套牆面座標；南側保留
+      // 現有三格樓梯入口。深色岩芯填住柱縫，碎岩與少量植被則打散方盒輪廓。
+      const platformCells = new Set<string>();
+      northPlatform.segments.forEach((segment) => {
+        for (let z = segment.z; z < segment.z + segment.depth; z++)
+          for (let x = segment.x; x < segment.x + segment.width; x++)
+            platformCells.add(`${x},${z}`);
+      });
+      const platformBasalt = new THREE.Group();
+      const basaltMats = [0x303336, 0x3f3b38, 0x504640, 0x625149].map(
+        (color) =>
+          new THREE.MeshStandardMaterial({
+            color,
+            flatShading: true,
+            roughness: 0.98,
+          }),
+      );
+      const cliffPlantMats = [0x355c37, 0x477444, 0x668653].map(
+        (color) =>
+          new THREE.MeshStandardMaterial({
+            color,
+            flatShading: true,
+            roughness: 1,
+          }),
+      );
+      const platformStair = LAYOUT.oldVillage.westStairs.find(
+        (stair) =>
+          stair.baseElevation === 0 && stair.elevation === northPlatform.elevation,
+      );
+      const edgeDirections = [
+        { dx: 1, dz: 0 },
+        { dx: -1, dz: 0 },
+        { dx: 0, dz: 1 },
+        { dx: 0, dz: -1 },
+      ];
+      let basaltIndex = 0;
+      platformCells.forEach((key) => {
+        const [x, z] = key.split(',').map(Number);
+        edgeDirections.forEach(({ dx, dz }) => {
+          if (platformCells.has(`${x + dx},${z + dz}`)) return;
+          const isStairOpening =
+            dz === 1 &&
+            platformStair &&
+            x >= platformStair.x &&
+            x < platformStair.x + platformStair.width;
+          if (isStairOpening) return;
+          for (let columnIndex = 0; columnIndex < 2; columnIndex++) {
+            const seed = hash2(
+              x * 7.3 + z * 3.1 + basaltIndex,
+              z * 8.7 - x * 2.9 + columnIndex,
+            );
+            const tangentX = dz === 0 ? 0 : columnIndex === 0 ? -0.23 : 0.23;
+            const tangentZ = dx === 0 ? 0 : columnIndex === 0 ? -0.23 : 0.23;
+            const radius = 0.29 + seed * 0.1;
+            const height = northPlatform.elevation * (0.84 + seed * 0.18);
+            const column = new THREE.Mesh(
+              new THREE.CylinderGeometry(
+                radius * (0.84 + seed * 0.08),
+                radius,
+                height,
+                5 + (basaltIndex % 2),
+                1,
+              ),
+              basaltMats[basaltIndex % basaltMats.length],
+            );
+            column.position.set(
+              x + dx * 0.48 + tangentX + (seed - 0.5) * 0.08,
+              height / 2 - 0.03,
+              z + dz * 0.48 + tangentZ + (seed - 0.5) * 0.08,
+            );
+            column.rotation.y = seed * Math.PI;
+            column.rotation.x = (hash2(seed, 2.7) - 0.5) * 0.055;
+            column.rotation.z = (hash2(seed, 6.3) - 0.5) * 0.055;
+            column.castShadow = true;
+            column.receiveShadow = true;
+            platformBasalt.add(column);
+
+            if (basaltIndex % 3 === 0) {
+              const ledge = new THREE.Mesh(
+                new THREE.IcosahedronGeometry(radius * (0.68 + seed * 0.22), 0),
+                basaltMats[(basaltIndex + 1) % basaltMats.length],
+              );
+              ledge.position.set(
+                column.position.x + dx * 0.08,
+                height * (0.62 + seed * 0.24),
+                column.position.z + dz * 0.08,
+              );
+              ledge.scale.y = 0.45 + seed * 0.18;
+              ledge.rotation.set(seed * 0.5, seed * 2.8, seed * 0.35);
+              ledge.castShadow = true;
+              ledge.receiveShadow = true;
+              platformBasalt.add(ledge);
+            }
+            if (basaltIndex % 5 === 0) {
+              const plant = new THREE.Mesh(
+                new THREE.IcosahedronGeometry(0.16 + seed * 0.1, 1),
+                cliffPlantMats[basaltIndex % cliffPlantMats.length],
+              );
+              plant.position.set(
+                column.position.x - dx * 0.04,
+                Math.min(northPlatform.elevation + 0.03, height + 0.05),
+                column.position.z - dz * 0.04,
+              );
+              plant.scale.set(1.25, 0.55, 1.25);
+              plant.castShadow = true;
+              platformBasalt.add(plant);
+            }
+            basaltIndex++;
+          }
+        });
+      });
+      gameState.mapGroup.add(platformBasalt);
       const mountainLanding = LAYOUT.oldVillage.mountainLanding;
       const mountainLandingMesh = new THREE.Mesh(
         new THREE.BoxGeometry(
