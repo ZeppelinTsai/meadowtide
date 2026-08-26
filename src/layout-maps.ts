@@ -260,12 +260,21 @@ export const LAYOUT = {
     // 鳥居之間的廣場空間變大。
     northBeachPlatform: {
       elevation: 3,
+      // 2026-08-26：Zeppelin 回報神社那邊「樓梯平台重疊閃爍」——南端樓梯
+      // (westStairs 最後一段，x:-1,fromZ:31,toZ:34)是刻意設計成「z=31
+      // 頂端切入平台」，樓梯自己的階梯 box 在 z 方向用 fromZ/toZ 當真實
+      // 邊界(沒有 ±0.5 的 tile 緩衝)，物理範圍就是 [31,34]。但下面
+      // {x:-3,z:29,width:7,depth:3} 這塊平台是用一般的「z ± 半格」tile
+      // 慣例算出實際範圍 [28.5,31.5]——兩邊在 z:31~31.5 這 0.5 格內都是
+      // 實心方塊、同一個高度(elevation=3)，疊在同一個位置，這正是
+      // z-fighting 閃爍的成因。depth 從 3 改成 2.5，讓這塊平台的南緣
+      // 精準停在 z=31(樓梯實際幾何的起點)，不再跟樓梯重疊。
       segments: [
         { x: -3, z: 13, width: 7, depth: 8 },
         { x: -3, z: 21, width: 7, depth: 6 },
         { x: 4, z: 21, width: 1, depth: 2 },
         { x: -4, z: 27, width: 8, depth: 2 },
-        { x: -3, z: 29, width: 7, depth: 3 },
+        { x: -3, z: 29, width: 7, depth: 2.5 },
         // 外圈只局部多一格，保留主殿、鳥居與南側樓梯的大結構。
         { x: -4, z: 15, width: 1, depth: 2 },
         { x: 4, z: 18, width: 1, depth: 2 },
@@ -1300,7 +1309,28 @@ export const OLD_VILLAGE_RAILS: Array<{
     z2: 15.5,
   },
   // 西側與南側平台外緣。南側在兩座沙灘樓梯前分段，保留可走缺口。
-  { x1: 29.5, z1: 7, x2: 29.5, z2: 33 },
+  //
+  // 2026-08-26：這條 x=29.5 的西緣扶手原本是單一一段 z:7~33，中間會
+  // 穿過三段 westStairs(z2~7/z9~16/z19~26)，沒指定 elevation，逐點
+  // 呼叫 oldVillageGroundY(29.5,z) 決定高度——樓梯範圍內剛好能查到對應
+  // 階梯高度，看起來是刻意設計成「扶手跟著階梯一起爬升」。但三段樓梯
+  // 之間的平台銜接處(z7~9、z16~19、z26~30)不在任何樓梯的 fromZ~toZ
+  // 範圍內，會落到 oldVillageGroundY() 最前面「x < westBeach.width(30)
+  // → 回傳 0(海平面)」那條早退判斷——x=29.5 剛好卡在西灘/城鎮的邊界
+  // 上，這條判斷本來就沒開 -0.5 容許值(見該函式內註解，是為了南側同款
+  // 判斷特意保留的精準邊界，不能改)。結果扶手在這三段銜接處會整段
+  // 塌到海平面，Zeppelin 回報「扶手貼到外牆了」正是這個。
+  //
+  // 不改 oldVillageGroundY() 本體(牽動範圍太大)，改成在這裡把原本一
+  // 整段拆開：樓梯範圍內維持原樣(不填 elevation，讓扶手繼續逐點跟著
+  // 階梯爬升)，三段銜接處各自明確填對應台地高度(跟兩端階梯在該點算出
+  // 來的高度一致，銜接處不會有高低差)。
+  { x1: 29.5, z1: 7, x2: 29.5, z2: 9, elevation: LAYOUT.oldVillage.terraces.upper.elevation },
+  { x1: 29.5, z1: 9, x2: 29.5, z2: 16 },
+  { x1: 29.5, z1: 16, x2: 29.5, z2: 19, elevation: LAYOUT.oldVillage.terraces.middle.elevation },
+  { x1: 29.5, z1: 19, x2: 29.5, z2: 26 },
+  { x1: 29.5, z1: 26, x2: 29.5, z2: 30, elevation: LAYOUT.oldVillage.groundElevation },
+  { x1: 29.5, z1: 30, x2: 29.5, z2: 33 },
   {
     x1: 32.5,
     z1: 29.5,

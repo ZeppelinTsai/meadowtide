@@ -985,19 +985,55 @@ export function buildMap(mapName) {
       // 的台地方塊。
       const townWestX =
         LAYOUT.oldVillage.westBeach.x + LAYOUT.oldVillage.westBeach.width;
+      // 2026-08-26：上台地/中台地原本整塊鋪到 westEdge+0.5(=58)，但
+      // plazaStairs[0]/[1] 的候選判定範圍是 fromX-0.5~toX+0.5(=54.5~
+      // 58.5)——兩段樓梯的 fromX 都是 55，台地鋪到 58 會整塊蓋過樓梯
+      // fromX(55)到 westEdge(57.5)之間那一大截，把階梯的立體幾何蓋成
+      // 一片同高的平面(Zeppelin 回報「把右側下去到廣場的樓梯蓋住了」)。
+      //
+      // 不能整塊台地都縮寬到 plazaStairsFromX——樓梯只佔自己那幾排 z
+      // (plazaStairs[0] 是 z:6.5~9.5、[1] 是 z:15.5~19.5)，台地在其餘
+      // z 範圍(沒有樓梯)還是要鋪滿到 westEdge，不然又會在樓梯以外的
+      // 地方鏤空。改成各自拆成兩塊：樓梯z範圍以外維持原寬度(鋪到
+      // westEdge)，樓梯z範圍內縮寬到 plazaStairsFromX，跟樓梯本身的
+      // 階梯box在x方向剛好交棒、不重疊。
+      // 2026-08-26 二次修正：上一版把 narrowWidth 對齊到樓梯「候選判定」
+      // 的邊界(fromX-0.5=54.5)，但 plazaStairs 的候選判定刻意比實際階梯
+      // 幾何寬 0.5(給站位判斷用的緩衝)，階梯本身的實心 box 實際只從
+      // fromX(55)開始——對齊候選邊界反而在台地跟階梯之間留了 0.5 格
+      // 真空(Zeppelin：「x到155還是出現縫隙」「可能要用0.5當單位」，
+      // 猜對了方向但這裡少加、不是少減)。narrowWidth 改成對齊階梯實際
+      // 幾何邊界 fromX，不是候選判定邊界 fromX-0.5。
+      const plazaStairsFromX = LAYOUT.oldVillage.plazaStairs[0].fromX;
+      const fullWidth = LAYOUT.oldVillage.terraces.westEdge + 0.5 - townWestX;
+      const narrowWidth = plazaStairsFromX - townWestX + 0.5;
       addTerrace(
         0,
-        10,
+        7,
         LAYOUT.oldVillage.terraces.upper.elevation,
         townWestX,
-        LAYOUT.oldVillage.terraces.westEdge + 0.5 - townWestX,
+        fullWidth,
+      );
+      addTerrace(
+        7,
+        3,
+        LAYOUT.oldVillage.terraces.upper.elevation,
+        townWestX,
+        narrowWidth,
       );
       addTerrace(
         10,
-        10,
+        6,
         LAYOUT.oldVillage.terraces.middle.elevation,
         townWestX,
-        LAYOUT.oldVillage.terraces.westEdge + 0.5 - townWestX,
+        fullWidth,
+      );
+      addTerrace(
+        16,
+        4,
+        LAYOUT.oldVillage.terraces.middle.elevation,
+        townWestX,
+        narrowWidth,
       );
       // 廣場往東(x>westEdge)墊到 groundElevation 之後，跟西側台地一樣需要
       // 一塊實心地基撐住，不然懸空的路面/建築會露出下面的空洞。分三塊蓋，
@@ -1012,16 +1048,48 @@ export function buildMap(mapName) {
       // 三塊都跟 middle 台地同高(groundElevation===middle.elevation)，
       // 接縫處同高、不會露出高低差。
       const groundElevation = LAYOUT.oldVillage.groundElevation;
-      // Box A 西緣改到樓梯本身的終點(跟 plazaStairs.toX 對齊)，不是
-      // westEdge——plazaStairs 最後 0.5 格原本會跟這塊台地重疊，同一種
-      // 問題，一併修掉。
-      const plazaStairsEndX = LAYOUT.oldVillage.plazaStairs[0].toX;
+      // Box A(廣場東側，樓梯以東)。2026-08-26 三次修正：前兩版都把
+      // 整塊 Box A(z:0~20，單一一塊)一起搬西緣，結果只顧到樓梯所在的
+      // z 範圍(6.5~9.5、15.5~19.5)、卻忘了 Box A 其餘 z 範圍(沒有樓梯)
+      // 原本西緣本來就該對齊 westEdge(57.5，跟上面 upper/middle 台地
+      // 的 fullWidth 那兩塊交棒)，不是樓梯的 toX(58)——整塊搬過去反而
+      // 在沒有樓梯的那些 z 範圍多鑿出一條 0.5 格縫(這正是 Zeppelin 這輪
+      // 「x到155還是出現縫隙」的另一半成因，跟 narrowWidth 那個坑是同一
+      // 類但不同位置)。改成比照 upper/middle 台地的拆法，一樣拆四塊：
+      // 沒有樓梯的 z 範圍鋪到 westEdge(跟西側台地同一條交界線)，樓梯
+      // 所在的 z 範圍縮進到 toX(跟樓梯實際幾何交棒)。
+      const plazaStairsToX = LAYOUT.oldVillage.plazaStairs[0].toX;
+      // 左緣 = xParam-0.5，想要左緣落在 westEdge(57.5)，xParam 要
+      // +0.5，不是 +1(+1 會讓左緣多推到 58，等於沒拆這塊)。
+      const westEdgeParam = LAYOUT.oldVillage.terraces.westEdge + 0.5;
+      const stairEdgeParam = plazaStairsToX + 0.5;
       addTerrace(
         0,
-        20,
+        7,
         groundElevation,
-        plazaStairsEndX,
-        LAYOUT.oldVillage.width - plazaStairsEndX,
+        westEdgeParam,
+        LAYOUT.oldVillage.width - westEdgeParam,
+      );
+      addTerrace(
+        7,
+        3,
+        groundElevation,
+        stairEdgeParam,
+        LAYOUT.oldVillage.width - stairEdgeParam,
+      );
+      addTerrace(
+        10,
+        6,
+        groundElevation,
+        westEdgeParam,
+        LAYOUT.oldVillage.width - westEdgeParam,
+      );
+      addTerrace(
+        16,
+        4,
+        groundElevation,
+        stairEdgeParam,
+        LAYOUT.oldVillage.width - stairEdgeParam,
       );
       addTerrace(
         20,
@@ -1030,13 +1098,42 @@ export function buildMap(mapName) {
         townWestX + 3,
         LAYOUT.oldVillage.width - (townWestX + 3),
       );
+      // 2026-08-26：Zeppelin 回報 (129~132,30) 跟 (134~158,30) 都還是有
+      // 縫隙——這塊 Box C 原本 z=27,depth=3，真實範圍只到 [26.5,29.5]。
+      // 但 oldVillageGroundY() 判定「z>=southBeach.z(=30)才算沙灘(回傳
+      // 0)」，也就是說 z 還沒到 30 之前(包含 29.5~30 這 0.5 格)，邏輯
+      // 上仍然是墊高地面(groundElevation)——這半格剛好不在 Box C 的
+      // 涵蓋範圍內，也還沒到沙灘，就是真的鏤空。depth 從 3 改成 3.5，
+      // 涵蓋到 [26.5,30]，剛好跟沙灘判定的邊界(z=30)以及 westStairs 最後
+      // 一段(fromZ=30)無縫交棒，不再多蓋也不再少蓋。
       addTerrace(
         27,
-        3,
+        3.5,
         groundElevation,
         townWestX,
         LAYOUT.oldVillage.width - townWestX,
       );
+      // 2026-08-26：Zeppelin 回報 (130,25) 樓梯底下是空的——上面那塊 Box B
+      // 刻意從 townWestX+3 開始，跳過 westStairs 中間那一段(fromZ19~26)
+      // 佔用的西緣三格，理由是「樓梯自己的階梯 box 已經是實心幾何，這裡
+      // 整塊蓋過去會穿插/蓋住台階」。但階梯每一階的 box 只從
+      // baseElevation(=1，跟這塊廣場同高)往上蓋，baseElevation 本身
+      // 到 y=0 之間完全没有東西填——樓梯正下方那塊被跳過的西緣三格因此
+      // 是真的镂空，不是穿幫。這裡單獨補一塊只墊到 baseElevation 高度
+      // 的實心地基，範圍精確對齊樓梯本身的 x/z。
+      //
+      // 2026-08-26 修正：第一版用 z=20、depth=toZ-20(=6)，算成
+      // addTerrace 的 z/depth 之後，實際涵蓋的是 true z:[19.5,25.5]
+      // (addTerrace 內部跟 x 一樣，中心點是 z+(depth-1)/2，實際左右緣
+      // 是 z-0.5 / z+depth-0.5)，比樓梯自己的候選範圍(toZ=26，即真正
+      // 到 26.5)整整少了最後 1 格，z=26 那一整排还是鏤空——這正是
+      // Zeppelin 抓到「(129,26)底下也是空的」的原因。改成 z=20、
+      // depth=7，真正涵蓋到 [19.5,26.5]，剛好跟上面 middle 台地(到
+      // 19.5)、下面 Box C(z=27，真正從 26.5 開始)無縫交棒。
+      {
+        const midWestStair = LAYOUT.oldVillage.westStairs[2];
+        addTerrace(20, 7, midWestStair.baseElevation, midWestStair.x, midWestStair.width);
+      }
       const northPlatform = LAYOUT.oldVillage.northBeachPlatform;
       northPlatform.segments.forEach((segment) =>
         addTerrace(
@@ -1285,8 +1382,12 @@ export function buildMap(mapName) {
             rail.elevation !== undefined
               ? rail.elevation
               : oldVillageGroundY(x, z);
+          // 柱子中心在 ground+0.43、高 0.7，底面其實停在 ground+0.08，
+          // 沒有真的碰到地面(Zeppelin 回報「所有扶手都懸空沒接地」)。
+          // 中心點跟頂部(接橫桿的位置)不動，只把高度拉到 0.86，底面
+          // 正好落在 ground+0，插進地面看起來才不會浮空。
           const post = new THREE.Mesh(
-            new THREE.CylinderGeometry(0.045, 0.055, 0.7, 6),
+            new THREE.CylinderGeometry(0.045, 0.055, 0.86, 6),
             railPostMat,
           );
           post.position.set(x, ground + 0.43, z);
