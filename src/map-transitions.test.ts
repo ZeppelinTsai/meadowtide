@@ -250,13 +250,23 @@ test("舊城鎮西側與南側各擴充 100 格海面", () => {
   assert.deepEqual(eastSeaCutout, { x: 107, z: 32, width: 6, height: 1 });
   for (let x = eastSeaCutout.x; x < eastSeaCutout.x + eastSeaCutout.width; x++)
     assert.equal(tiles[eastSeaCutout.z][x], 9, `東側切口 (${x},${eastSeaCutout.z}) 應為海`);
+  assert.deepEqual(LAYOUT.oldVillage.northBeachSandCorrections, [
+    { x: 101, z: 36 },
+    { x: 100, z: 34 },
+  ]);
+  for (const cell of LAYOUT.oldVillage.northBeachSandCorrections)
+    assert.equal(tiles[cell.z][cell.x], 8, `沙灘修正 (${cell.x},${cell.z}) 應為沙灘`);
   const southEdge = LAYOUT.oldVillage.northBeachSouthEdge;
   assert.equal(southEdge.x, 95);
   southEdge.endOffsets.forEach((offset, index) => {
     const x = southEdge.x + index;
     const endZ = southEdge.z + offset;
-    for (let z = southEdge.z - 1; z <= southEdge.z + 1; z++)
-      assert.equal(tiles[z][x], z <= endZ ? 8 : 9);
+    for (let z = southEdge.z - 1; z <= southEdge.z + 1; z++) {
+      const correctedToSand = LAYOUT.oldVillage.northBeachSandCorrections.some(
+        (cell) => cell.x === x && cell.z === z,
+      );
+      assert.equal(tiles[z][x], correctedToSand || z <= endZ ? 8 : 9);
+    }
   });
   const platformStair =
     LAYOUT.oldVillage.westStairs[LAYOUT.oldVillage.westStairs.length - 1];

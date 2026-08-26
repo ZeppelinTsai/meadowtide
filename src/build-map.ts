@@ -1257,10 +1257,8 @@ export function buildMap(mapName) {
 
       const railPostMat = new THREE.MeshStandardMaterial({ color: 0x69503a });
       const railBarMat = new THREE.MeshStandardMaterial({ color: 0x8b6846 });
-      // 扶手位於平台切面交界，略抬高並關閉深度測試，避免平台表面因視角
-      // 與浮點誤差把細欄杆吃掉。
-      railPostMat.depthTest = false;
-      railBarMat.depthTest = false;
+      // 扶手必須保留正常深度測試；關閉後，平台後方的欄杆會穿透立方體與
+      // 地形顯示，視覺上像浸入海面。欄杆本身已高於平台，不需要強制置頂。
       OLD_VILLAGE_RAILS.forEach((rail) => {
         const length = Math.hypot(rail.x2 - rail.x1, rail.z2 - rail.z1);
         const segments = Math.max(1, Math.ceil(length / 0.8));

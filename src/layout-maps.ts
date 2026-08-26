@@ -217,6 +217,11 @@ export const LAYOUT = {
     },
     // 西擴後落在 x=107~112、z=32；最後覆寫為海，切開東側沙灘輪廓。
     northBeachEastSeaCutout: { x: 7, z: 32, width: 6, height: 1 },
+    // 西擴後為 (101,36)、(100,34)；在所有岸線規則後最後覆寫為沙灘。
+    northBeachSandCorrections: [
+      { x: 1, z: 36 },
+      { x: 0, z: 34 },
+    ],
     // 平台由四個彼此貼合、正常寫深度的實心方塊組成；輪廓左右只偏 1 格。
     // 最南段仍以 z=31 銜接樓梯頂端，所有段共用同一高度與材質規則。
     northBeachPlatform: {
@@ -1803,6 +1808,9 @@ for (
   )
     if (MAPS.oldVillage.tiles[z]?.[x] !== undefined)
       MAPS.oldVillage.tiles[z][x] = 9;
+for (const cell of LAYOUT.oldVillage.northBeachSandCorrections)
+  if (MAPS.oldVillage.tiles[cell.z]?.[cell.x] !== undefined)
+    MAPS.oldVillage.tiles[cell.z][cell.x] = 8;
 
 // 港口東側外海擴充：往陣列尾端追加海面，既有建築、事件與傳送點座標不變。
 export const PORT_OCEAN_EXPANSION = { east: 50 };
