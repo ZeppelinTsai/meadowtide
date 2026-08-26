@@ -4,6 +4,10 @@ import { LAYOUT, MAPS, OLD_VILLAGE_OCEAN_EXPANSION, PORT_OCEAN_EXPANSION, oldVil
 import { createTransitionEvents } from "./map-transitions";
 
 import { OLD_VILLAGE_RAILS } from './layout-maps';
+import {
+  isBlockedByOldVillageRail,
+  oldVillageNorthPlatformBounds,
+} from './layout-maps';
 
 function hasWalkableRoute(
   tiles: number[][],
@@ -211,7 +215,15 @@ test("舊城鎮西側與南側各擴充 100 格海面", () => {
     { x: 104, z: 21, width: 1, depth: 2 },
     { x: 96, z: 27, width: 8, depth: 2 },
     { x: 97, z: 29, width: 7, depth: 3 },
+    { x: 96, z: 15, width: 1, depth: 2 },
+    { x: 104, z: 18, width: 1, depth: 2 },
+    { x: 96, z: 24, width: 1, depth: 2 },
+    { x: 104, z: 27, width: 1, depth: 1 },
+    { x: 96, z: 30, width: 1, depth: 1 },
   ]);
+  assert.deepEqual(oldVillageNorthPlatformBounds(21), { minX: 97, maxX: 104 });
+  assert.deepEqual(oldVillageNorthPlatformBounds(15), { minX: 96, maxX: 103 });
+  assert.equal(isBlockedByOldVillageRail(104.5, 21), true);
   assert.deepEqual(platform.torii, { x: 100, z: 28, scale: 1.4 });
   assert.deepEqual(platform.cube, {
     x: 98,

@@ -266,6 +266,12 @@ export const LAYOUT = {
         { x: 4, z: 21, width: 1, depth: 2 },
         { x: -4, z: 27, width: 8, depth: 2 },
         { x: -3, z: 29, width: 7, depth: 3 },
+        // 外圈只局部多一格，保留主殿、鳥居與南側樓梯的大結構。
+        { x: -4, z: 15, width: 1, depth: 2 },
+        { x: 4, z: 18, width: 1, depth: 2 },
+        { x: -4, z: 24, width: 1, depth: 2 },
+        { x: 4, z: 27, width: 1, depth: 1 },
+        { x: -4, z: 30, width: 1, depth: 1 },
       ],
       torii: { x: 0, z: 28, scale: 1.4 },
       cube: { x: -2, z: 15, width: 5, depth: 6, height: 1.6 },
@@ -702,10 +708,10 @@ export const LAYOUT = {
     shopRoad: { z: 14, height: 5 },
     basin: { x: 6, z: 18, width: 15, height: 9 },
     eastOceanCutout: { x: 23, z: 11, height: 6 },
-    // 2026-08-26：Zeppelin 反饋登陸艇畫面要往左(靠碼頭方向)移兩格，
-    // 原本 13 改成 11，跳板長度會跟著這個常數自動變短，不用手動改
-    // makePortScene() 那邊的算式。
-    ferry: { x: 11, z: 22 },
+    // 2026-08-26：Zeppelin 反饋登陸艇畫面要往左(靠碼頭方向)移，先改
+    // 13→11，同一天再要求多移一格，11→10。跳板長度會跟著這個常數
+    // 自動變短，不用手動改 makePortScene() 那邊的算式。
+    ferry: { x: 10, z: 22 },
     southQuay: { z: 27, height: 3 },
     southBeach: { x: 0, z: 30, width: 21, depth: 30 },
     southBeachStairs: { x: 7, z: 29, width: 7, depth: 3 },
@@ -1094,13 +1100,13 @@ export function oldVillageGroundY(x: number, z: number) {
 export function oldVillageNorthPlatformBounds(z: number) {
   const village = LAYOUT.oldVillage;
   const platform = village.northBeachPlatform;
-  const segment = platform.segments.find(
+  const segments = platform.segments.filter(
     (entry) => z >= entry.z && z < entry.z + entry.depth,
   );
-  if (!segment) return null;
+  if (segments.length === 0) return null;
   return {
-    minX: segment.x,
-    maxX: segment.x + segment.width - 1,
+    minX: Math.min(...segments.map((segment) => segment.x)),
+    maxX: Math.max(...segments.map((segment) => segment.x + segment.width - 1)),
   };
 }
 // 南沙灘海岸線以 x 為種子產生穩定的鋸齒凹凸，跟 portSouthBeachEndZ()
