@@ -73,6 +73,7 @@ import {
   thresholdMarkersVisible,
   gatherNodeMeshes,
   oreNodeMeshes,
+  celestialSparkleMaterials,
 } from "./scene-registries";
 import {
   findSouthernShoreSandZ,
@@ -96,6 +97,8 @@ import {
   mountainMineDownStairs,
   regenerateMountainMineFloor,
   regenerateMountainMineFloorTiles,
+  MOUNTAIN_STAIR_A,
+  MOUNTAIN_STAIR_B,
 } from "./mine";
 import {
   npcGroup,
@@ -173,6 +176,8 @@ import {
   makeOreNode,
   makeMineStaircase,
   makeMinePitRecess,
+  makeCelestialSpiralStaircase,
+  makeCelestialSparkles,
 } from "./props";
 import { syncFarmVisuals } from "./farm-visuals";
 import { createTransitionEvents, type TransitionLink } from "./map-transitions";
@@ -248,6 +253,7 @@ export function buildMap(mapName) {
   thresholdMarkerMeshes.length = 0;
   gatherNodeMeshes.length = 0;
   oreNodeMeshes.length = 0;
+  celestialSparkleMaterials.length = 0;
   // 場景專屬物件可能在前面的 port／oldVillage 分支建好；動畫登記表必須
   // 在任何場景建置之前清空，不能等到共用海面收尾才清，否則模型看得到、
   // animate() 卻收不到登記項目，浪花會完全靜止。
@@ -2555,6 +2561,77 @@ export function buildMap(mapName) {
       upStair.position.set(mountainUp.x, 0, mountainUp.z);
       upStair.rotation.y = mineStairRotation("up");
       plateauGroup.add(upStair);
+    } else {
+      // 2026-08-26「天梯」：頂層(MOUNTAIN_MINE_FLOOR_MAX=25)本身沒有
+      // 真正的上樓梯(上面 mountainUp 為 null，維持「頂層是死路」的碰撞/
+      // 事件邏輯完全不動)，純視覺放一座 makeCelestialSpiralStaircase()
+      // (transparent、懸空、發七彩光、無扶手，props.ts)在「如果有上樓梯
+      // 會在哪個角落」那個位置——用跟 mountainMineUpStairs() 同一條奇偶
+      // 公式(MOUNTAIN_STAIR_A/B，從 mine.ts 匯出)算角落，不用另外複製
+      // 一份魔術數字。之前 props.ts 的註解誤寫「第30層」，是筆誤，設計
+      // 稿(task.md)寫的是「山之洞第25層的上樓樓梯」——25 正是
+      // MOUNTAIN_MINE_FLOOR_MAX，兩者本來就該是同一個數字。這裡先只是
+      // 純裝飾(暗示「此處通往雲上天宮，但現在還沒開通」)，沒有另外接
+      // 事件觸發——雲上天宮本身還沒建，之後那個任務定案要接通時，再回
+      // 來把 mountainMineUpStairs()/上面的 if(mountainUp) 分支一起改成
+      // 真正可以往上走的邏輯，這裡不用先動。
+      const celestialCorner =
+        mountainFloor % 2 === 1 ? MOUNTAIN_STAIR_B : MOUNTAIN_STAIR_A;
+      // 2026-08-26 玩家實測回報三點：(1) 轉 180 度——原本的朝向從這個
+      // 角落看過去繞錯邊；(2) 階梯密度調高兩倍——每階角度/每階爬升
+      // 同時砍半(角度 40°→20°、爬升 0.3→0.15)，同樣的爬升/角度範圍
+      // 內塞進兩倍階梯，疏密感翻倍，單圈半徑沒變；(3) 往上蓋到玩家
+      // 視線範圍——先試過 70 階(總爬升 10.5，原本 4.2 的 2.5 倍)，
+      // 玩家實機看過回報「改 1.5 倍梯數應該剛剛好」，改成 42 階
+      // (0.15/階 x 42=總爬升 6.3，是原本 4.2 的 1.5 倍——這裡「1.5倍」
+      // 取的是相對『兩倍密度、高度不變』那個中繼版本(28 階)的 1.5 倍，
+      // 不是直接把 70 打 1.5 折，這樣算出來的總高度倍率剛好也是
+      // 1.5 倍，兩種算法在這裡殊途同歸)。
+      // (4) 寬度調整成三倍——加寬的是 treadWidth(每一階踏面沿著行進
+      // 方向的寬度，不是螺旋半徑 radius，半徑維持 0.9 不動)，從預設
+      // 0.62 改成 1.86。密度加倍後每階角度只有 20 度，弧長間距
+      // (radius*angleStepRad≈0.31)遠小於 1.86，踏面彼此會明顯疊在
+      // 一起——這是預期內的，材質本來就是半透明+關閉深度寫入
+      // (上面 stepMats 那段的 depthWrite:false)，就是為了讓一整排疊
+      // 起來的踏面融合成一條連續發光緞帶，不會因為互相遮蔽出現硬邊。
+      // 2026-08-26 第三輪：「效果不錯，現在複製往上延長三倍，然後看
+      // 能不能加點閃耀特效」——「複製」照字面直接做：同一組參數(含
+      // rotationDegrees:180)呼叫 3 次，只有 baseY 往上疊，疊出來是 3
+      // 座完全相同的螺旋堆疊在一起(不是把角度也接續算下去、做成一條
+      // 連續大螺旋)——單座總爬升 6.3，3 座疊起來總高度 18.9。
+      const celestialSegmentRise = 42 * 0.15;
+      const celestialTotalHeight = celestialSegmentRise * 3;
+      for (let segment = 0; segment < 3; segment++) {
+        const { group: celestialStaircase } = makeCelestialSpiralStaircase({
+          x: celestialCorner.x,
+          z: celestialCorner.z,
+          baseY: segment * celestialSegmentRise,
+          steps: 42,
+          radius: 0.9,
+          risePerStep: 0.15,
+          angleStepDegrees: 20,
+          rotationDegrees: 180,
+          treadWidth: 1.86,
+        });
+        plateauGroup.add(celestialStaircase);
+      }
+      // 閃耀特效——散落在整座(3倍高之後)天梯周圍的星點，材質/貼圖沿用
+      // scene-sky.ts 星空那套(makeCelestialSparkles() 內部說明)。
+      // seed 用 celestialCorner.x 讓兩個角落(奇偶樓層)灑出的星點位置不同，
+      // 不會每次都長一樣。材質存進 celestialSparkleMaterials(見
+      // scene-registries.ts)，animate() 逐幀更新 opacity 做出閃爍。
+      const { group: celestialSparkles, materials: celestialSparkleMats } =
+        makeCelestialSparkles({
+          x: celestialCorner.x,
+          z: celestialCorner.z,
+          baseY: 0,
+          height: celestialTotalHeight,
+          radius: 0.9,
+          count: 150,
+          seed: celestialCorner.x,
+        });
+      plateauGroup.add(celestialSparkles);
+      celestialSparkleMaterials.push(...celestialSparkleMats);
     }
     // 出口方向永遠存在(包含第 1 層，用來走出洞口)，不像上樓梯要判斷
     // 頂層，這裡不用 if 包起來。
@@ -4072,6 +4149,26 @@ export const events = [
         x: SHRINE_PATH_START_X + SHRINE_PATH_LENGTH - 1,
         z: 1,
       }),
+  },
+  {
+    // 2026-08-26 暫時的開發用傳送點——task.md「海底龍宮建模」那段要求
+    // 「為了方便先在[shrine] (4,2)加上傳送點直接送過去」，讓測試/後續
+    // 建模海底龍宮時不用每次從舊城鎮沙灘走進鐘乳石洞窟、手動下 25 層。
+    // 直接重生成第 25 層(鐘乳石洞窟目前的最深層，MINE_FLOOR_MAX，見
+    // mine.ts)並落在該層的「上樓梯」位置——跟 mineGoDown() 換樓層時
+    // 的落點規則完全一樣(loadMap("stalactiteCave", mineUpStairs(下一層)))，
+    // 不是另外發明一個「抵達地點」，25 層本身现在還沒有專屬內容，跟其他
+    // 樓層一樣是 regenerateMineFloor() 隨機生成的洞窟房間+礦點。這是
+    // 開發用捷徑，不是正式玩法的一部分，之後龍宮真的做出來、有自己的
+    // 進出方式時可以考慮拿掉或保留當隱藏彩蛋，先不用糾結。
+    map: "shrine",
+    x: 4,
+    z: 2,
+    trigger: "touch",
+    action: () => {
+      regenerateMineFloor(MINE_FLOOR_MAX);
+      loadMap("stalactiteCave", mineUpStairs(MINE_FLOOR_MAX));
+    },
   },
   // 生活區南側路(x=20~22，房子那條南北向大路)<-> 舊城鎮，直接落在
   // 原本「舊城鎮往港口」的那個門檻(7,0)——那條路現在改指向這裡，

@@ -91,6 +91,7 @@ import {
   fishSchool,
   pastureGrassBlades,
   gatherNodeMeshes,
+  celestialSparkleMaterials,
   GRASS_GROWTH_SECONDS,
   EAST_SEA_WAVE,
   NORTH_SEA_WAVE,
@@ -247,6 +248,23 @@ export function animate(now) {
   const dt = isGameTimePaused() ? 0 : frameDt;
   gameState.effectElapsed += frameDt; // 不受暫停影響，純視覺效果一律吃這個
   updateGameClock(dt);
+  // 天梯閃耀星點——跟 foamMeshes/windowMats 這些其他「登記進陣列、
+  // animate() 逐幀處理」的特效同一套慣例。只有站在山之洞第25層時這個
+  // 陣列才會有內容(buildMap() 換地圖時會整批清空重灑，見
+  // scene-registries.ts 的註解)，其他地圖/樓層是空陣列，這裡不用另外
+  // judge currentMapName。每個 phase(材質)各自用不同頻率+相位的
+  // sin 波取正、四次方讓亮暗對比更明顯，做出「不同步」的閃爍感，跟
+  // scene-sky.ts 星空那套 sparkleMaterials 更新是同一條公式。
+  celestialSparkleMaterials.forEach((material, phaseIndex) => {
+    const pulse = Math.max(
+      0,
+      Math.sin(
+        gameState.effectElapsed * (1.6 + (phaseIndex % 3) * 0.23) +
+          (phaseIndex * Math.PI * 2) / celestialSparkleMaterials.length,
+      ),
+    );
+    material.opacity = 0.08 + Math.pow(pulse, 4) * 0.92;
+  });
   gameState.animationFrameCount++;
   const updateWaterSurface = gameState.animationFrameCount % 2 === 0; // 水面維持約 30fps，減少大量頂點運算
 

@@ -59,6 +59,12 @@ export const waterSkyUnderlayMaterials: import("three").MeshStandardMaterial[] =
       export const windmillRotors = [];
       export const lakeShoreColliders = []; // 湖岸石頭的圓形碰撞，建圖時與石頭位置同步
       export const fishSchool = []; // 每條魚各自保存尺寸、速度、橢圓半徑、游移與深度參數
+      // 天梯(makeCelestialSpiralStaircase()/makeCelestialSparkles()，
+      // props.ts)周圍的閃耀星點材質——每次進山之洞第25層由 build-map.ts
+      // 重灑星點時整批清空重建，animate() 逐幀讀這份清單更新每個
+      // PointsMaterial 的 opacity 做出閃爍(跟 foamMeshes/windowMats 這些
+      // 其他「登記進陣列、animate() 逐幀處理」的特效同一套慣例)。
+      export const celestialSparkleMaterials: import("three").PointsMaterial[] = [];
       export const EAST_SEA_WAVE_DIRECTION = Object.freeze({ x: -1, z: 0 });
       export const SOUTH_SEA_WAVE_DIRECTION = Object.freeze({ x: 0, z: -1 });
       export const WEST_SEA_WAVE_DIRECTION = Object.freeze({ x: 1, z: 0 });

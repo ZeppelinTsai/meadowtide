@@ -249,8 +249,14 @@ export function harvestOreNode(x: number, z: number) {
 export const MOUNTAIN_MINE_FLOOR_MAX = 25;
 export const MOUNTAIN_MINE_SIZE = 50;
 
-const MOUNTAIN_STAIR_A = { x: 4, z: MOUNTAIN_MINE_SIZE - 7 }; // 西南角
-const MOUNTAIN_STAIR_B = { x: MOUNTAIN_MINE_SIZE - 5, z: 3 }; // 東北角
+// 2026-08-26 匯出：頂層(MOUNTAIN_MINE_FLOOR_MAX)本身沒有真正的上樓梯
+// (mountainMineUpStairs() 在頂層回傳 null，維持原本「頂層是死路」的
+// 碰撞/事件邏輯不變)，但 build-map.ts 需要算出頂層「如果有上樓梯會在
+// 哪個角落」這個座標，才能在那個位置放一座純視覺裝飾的天梯
+// (makeCelestialSpiralStaircase()，見 props.ts)。匯出這兩個角落常數
+// 讓 build-map.ts 能直接沿用同一個角落公式，不用另外複製一份魔術數字。
+export const MOUNTAIN_STAIR_A = { x: 4, z: MOUNTAIN_MINE_SIZE - 7 }; // 西南角
+export const MOUNTAIN_STAIR_B = { x: MOUNTAIN_MINE_SIZE - 5, z: 3 }; // 東北角
 
 // 深處(樓層+1，往山頂爬)——套用鐘乳石洞窟 mineDownStairs() 同一條公式，
 // 頂層(MOUNTAIN_MINE_FLOOR_MAX)沒有更深了，回傳 null。

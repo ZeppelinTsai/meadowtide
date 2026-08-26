@@ -2,6 +2,7 @@ import * as THREE from "three";
 import { hash2 } from "./utils";
 import { gameState, getSeasonGrassTone, mapleAutumnColor } from "./game-state";
 import { TILE, PLATEAU_Y, NORTH_CLIFF_Z, SOUTH_TERRAIN_EXTENSION } from "./scene-sky";
+import { STAR_SPARKLE_TEXTURE, STAR_SPARKLE_COLORS } from "./scene-sky";
 import {
   LAYOUT,
   MAPS,
@@ -3457,19 +3458,22 @@ export function makeWoodPlankTexture({
         });
       }
 
-      // 天梯——山之洞第30層上樓樓梯的專屬造型(2026-08-26)，跟其他
-      // makeMineStaircase/makeSteepStoneStairs 那套「看起來是實體階梯」
-      // 完全不同調性：玩家要的是「透明懸空發七彩光、無把手」，所以整個
-      // 反著做——沒有扶手(本來就沒有 rail 的迴圈)、沒有支撐柱(懸空，踏
-      // 面本身就是唯一的幾何，底下什麼都不放)、材質是半透明+高強度自發
-      // 光，不是不透光的石材。踏面沿螺旋線一階一階往上疊，色相依階數
-      // 均勻分布一整圈色環(七彩)，不是單一顏色。
+      // 天梯——山之洞第25層(=MOUNTAIN_MINE_FLOOR_MAX)上樓樓梯的專屬
+      // 造型，跟其他 makeMineStaircase/makeSteepStoneStairs 那套「看起來
+      // 是實體階梯」完全不同調性：玩家要的是「透明懸空發七彩光、無把
+      // 手」，所以整個反著做——沒有扶手(本來就沒有 rail 的迴圈)、沒有
+      // 支撐柱(懸空，踏面本身就是唯一的幾何，底下什麼都不放)、材質是
+      // 半透明+高強度自發光，不是不透光的石材。踏面沿螺旋線一階一階往
+      // 上疊，色相依階數均勻分布一整圈色環(七彩)，不是單一顏色。
       //
-      // 目前只是獨立的造型函式，還沒接進實際樓層——山之洞第30層本身還
-      // 沒做(MOUNTAIN_MINE_FLOOR_MAX=25，見 mine.ts；兩個洞穴的分層差異
-      // 化內容還在「延後」清單)，等那邊定案之後再决定實際擺放位置/怎麼
-      // 接進 mountainMineUpStairs 那套換樓邏輯，這裡先把「天梯長什麼樣」
-      // 這件事做完。
+      // 2026-08-25 剛做出這個函式時，這裡的註解誤寫成「第30層」——
+      // Zeppelin 2026-08-26 回報這是筆誤，task.md 的原始設計稿寫的是
+      // 「山之洞第25層的上樓樓梯」，25 正是 MOUNTAIN_MINE_FLOOR_MAX(見
+      // mine.ts)，已經改正並接進 build-map.ts：頂層(mountainMineUpStairs()
+      // 回傳 null 那個分支)改成呼叫這個函式放在原本上樓梯會在的角落
+      // (MOUNTAIN_STAIR_A/B，從 mine.ts 匯出)。目前純視覺，沒有另外接
+      // 事件觸發——那要等「雲上天宮」(task.md 另一項，還沒構思完成)
+      // 定案才會真的變成可以往上走的樓梯。
       export function makeCelestialSpiralStaircase(options: {
         x: number;
         z: number;
@@ -3478,6 +3482,13 @@ export function makeWoodPlankTexture({
         radius: number;
         risePerStep: number;
         angleStepDegrees: number;
+        // 整圈螺旋繞著 (x,z) 這個中心點的起始朝向偏移——每一階的座標
+        // 本來就是直接算成世界座標(不是先建在原點再靠 group.rotation
+        // 轉)，所以「整座天梯轉幾度」沒辦法靠外面對回傳的 group 設
+        // rotation.y 做到(那樣會繞著地圖原點轉，不是繞著天梯自己中心
+        // 轉，整座會飛到別的地方去)，只能在算每一階角度時疊加這個
+        // 偏移量。預設 0，不影響原本沒指定這個參數的呼叫端。
+        rotationDegrees?: number;
         treadWidth?: number;
         treadDepth?: number;
       }) {
@@ -3485,6 +3496,7 @@ export function makeWoodPlankTexture({
         const treadWidth = options.treadWidth ?? 0.62;
         const treadDepth = options.treadDepth ?? 0.34;
         const angleStep = THREE.MathUtils.degToRad(options.angleStepDegrees);
+        const baseAngle = THREE.MathUtils.degToRad(options.rotationDegrees ?? 0);
         const stepMats: THREE.MeshStandardMaterial[] = [];
         for (let i = 0; i < options.steps; i++) {
           // 色相依階數在一整圈(0~1)均勻分布，繞完一圈剛好回到接近起點的
@@ -3507,7 +3519,7 @@ export function makeWoodPlankTexture({
             new THREE.BoxGeometry(treadWidth, 0.05, treadDepth),
             mat,
           );
-          const angle = i * angleStep;
+          const angle = i * angleStep + baseAngle;
           step.position.set(
             options.x + Math.cos(angle) * options.radius,
             options.baseY + i * options.risePerStep,
@@ -3540,6 +3552,93 @@ export function makeWoodPlankTexture({
         // 其他樓梯範本(makeSteepStoneStairs/makeMineStaircase)那套自動
         // 生成扶手的邏輯完全不套用在這裡。
         return { group, stepMats };
+      }
+
+      // 天梯的閃耀特效(2026-08-26，Zeppelin 實測回報「看能不能加點閃耀
+      // 特效」)——散落在天梯螺旋體積周圍的一群發光星點，材質/貼圖直接
+      // 沿用 scene-sky.ts 夜空那套 STAR_SPARKLE_TEXTURE/STAR_SPARKLE_
+      // COLORS(四角十字星芒+柔光暈的貼圖，跟滿天星星同一顆)，維持整
+      // 個場景「星芒」視覺語言一致，不用另外設計一套貼圖。跟星空那套
+      // 不同的是：這裡的點是掛在世界座標(sizeAttenuation: true，會隨
+      // 距離縮放)，不是掛在攝影機上的天空穹頂(那套 sizeAttenuation:
+      // false，因為星星要「無論多遠看起來都一樣大」)——天梯的閃光是
+      // 場景裡的實體特效，應該跟其他道具一樣受景深影響。
+      //
+      // 回傳的 materials 陣列要外部(build-map.ts)存起來，每幀更新
+      // opacity 做出閃爍——這裡只負責建立幾何/材質，不含動畫邏輯，跟
+      // 這個檔案其他 make 開頭函式的分工一致(props.ts 不碰 gameState/
+      // requestAnimationFrame，動畫都由呼叫端在 game-loop.ts 驅動)。
+      export function makeCelestialSparkles(options: {
+        x: number;
+        z: number;
+        baseY: number;
+        height: number;
+        radius: number;
+        count?: number;
+        seed?: number;
+      }) {
+        const group = new THREE.Group();
+        const count = options.count ?? 48;
+        const phaseGroups = 6;
+        const seed = options.seed ?? 0;
+        const groupPositions: number[][] = Array.from(
+          { length: phaseGroups },
+          () => [],
+        );
+        const groupColors: number[][] = Array.from(
+          { length: phaseGroups },
+          () => [],
+        );
+        for (let i = 0; i < count; i++) {
+          // 決定性亂數(hash2)——跟這個檔案其他灑點函式(玄武岩柱群、
+          // 植被)同一套寫法，重算幾次都是同一批位置，不會每次重進地圖
+          // 星點就整批跳動。散落範圍是一個以 (x,z) 為軸心、半徑
+          // options.radius*1.6(比螺旋本體寬一點，星光飄在階梯外圍而不是
+          // 只貼著踏面)、高度從 baseY 到 baseY+height 的圓柱體積。
+          const ra = hash2(seed + i * 3.7, i * 1.9);
+          const rr = hash2(i * 2.3, seed + i * 5.1);
+          const ry = hash2(seed + i * 7.7 + 11, i * 4.3);
+          const angle = ra * Math.PI * 2;
+          const dist = options.radius * (0.35 + rr * 1.25);
+          const px = options.x + Math.cos(angle) * dist;
+          const pz = options.z + Math.sin(angle) * dist;
+          const py = options.baseY + ry * options.height;
+          const phaseGroup = i % phaseGroups;
+          groupPositions[phaseGroup].push(px, py, pz);
+          const color = new THREE.Color(
+            STAR_SPARKLE_COLORS[(i * 3 + seed) % STAR_SPARKLE_COLORS.length],
+          );
+          groupColors[phaseGroup].push(color.r, color.g, color.b);
+        }
+        const materials: THREE.PointsMaterial[] = groupPositions.map(
+          (positions, phaseIndex) => {
+            const geometry = new THREE.BufferGeometry();
+            geometry.setAttribute(
+              "position",
+              new THREE.Float32BufferAttribute(positions, 3),
+            );
+            geometry.setAttribute(
+              "color",
+              new THREE.Float32BufferAttribute(groupColors[phaseIndex], 3),
+            );
+            const material = new THREE.PointsMaterial({
+              color: 0xffffff,
+              vertexColors: true,
+              map: STAR_SPARKLE_TEXTURE,
+              size: 0.32 + (phaseIndex % 3) * 0.05,
+              sizeAttenuation: true,
+              transparent: true,
+              opacity: 0,
+              depthWrite: false,
+              blending: THREE.AdditiveBlending,
+            });
+            const points = new THREE.Points(geometry, material);
+            points.renderOrder = 16;
+            group.add(points);
+            return material;
+          },
+        );
+        return { group, materials };
       }
 
       export function makeFence(minX, maxX, minZ, maxZ) {

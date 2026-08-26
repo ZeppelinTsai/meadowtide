@@ -931,3 +931,132 @@ z 範圍必須保持互不重疊**，這是這份資料結構沒寫在型別裡�
   這個 device_bash 是 Linux，`@rollup/rollup-linux-x64-gnu`/
   `@esbuild/linux-x64` 都缺)，沒辦法在這裡跑起來看畫面，實際效果
   要 Zeppelin 進遊戲看。
+
+## 鐘乳石洞窟第25層開發用傳送點 + 天梯筆誤修正（2026-08-26）
+
+對應 task.md「海底龍宮建模」/「雲上天宮建模」兩段筆記，這輪只做最小
+範圍的兩件事，龍宮/天宮本體建模都還沒開始（那是更大的後續工作）：
+
+1. **`[shrine]` 女神祠堂 (4,2) 新增開發用傳送點**——`女神祠堂`
+   (`MAPS.shrine`，8x6 小房間，跟`北岸波上宮風主殿`是完全不同的兩個
+   東西，別搞混：`shrine` 這個地圖 key 是生活區私人海岸那座女神
+   祠堂)。玩家重生點 (4,4)，鳥居在 (4,3)，既有的回程觸發點在
+   (4,5)。新加的觸發點在 (4,2)——玩家從南邊走進來會先穿過鳥居，
+   再往北兩格就會踩到這個新點。踩上去會 `regenerateMineFloor
+   (MINE_FLOOR_MAX)` 直接重生成鐘乳石洞窟第 25 層(目前的最深層)，
+   再 `loadMap("stalactiteCave", mineUpStairs(MINE_FLOOR_MAX))`——
+   跟 `mineGoDown()` 正常換樓層時的落點規則完全一樣，不是另外發明
+   一套「抵達地點」。25 層本身沒有任何專屬內容，跟其他樓層一樣是
+   隨機生成的洞窟房間+礦點(第 5 階礦，`mineTierForFloor(25)=5`)。
+   這是純開發用的捷徑(方便之後建龍宮/測試不用手動下 25 層)，目前
+   沒有視覺標記(踩到那個 tile 才會觸發)，也還沒決定要不要留到
+   正式版——先能用，之後再看要不要拿掉或包裝成彩蛋。
+
+2. **天梯的樓層筆誤：30 → 25**——`props.ts` 的
+   `makeCelestialSpiralStaircase()`(2026-08-25 做的，透明懸空發七彩
+   光、無扶手的螺旋梯，task.md 原始設計稿：「天梯 山之洞第25層的
+   上樓樓梯」)當時的註解誤寫成「山之洞第30層」，而且只是獨立造型
+   函式，沒有真的接進遊戲。這輪修正：
+   - `mine.ts` 把 `MOUNTAIN_STAIR_A`/`MOUNTAIN_STAIR_B`(山之洞上/下
+     樓梯角落座標常數，本來只在檔案內部用)改成 `export`。
+   - `build-map.ts` 山之洞樓層渲染那段，`mountainMineUpStairs
+     (mountainFloor)` 在頂層(`MOUNTAIN_MINE_FLOOR_MAX=25`)回傳
+     `null` 那個分支(`if (mountainUp) {...}` 的 `else`)，改成放一座
+     `makeCelestialSpiralStaircase()`，位置用
+     `mountainFloor % 2 === 1 ? MOUNTAIN_STAIR_B : MOUNTAIN_STAIR_A`
+     算出「如果有上樓梯會在哪個角落」，跟 `mountainMineUpStairs()`
+     內部同一條奇偶公式，不是另外編一個座標。
+   - **特意沒有動 `mountainMineUpStairs()` 本身的 `null` 回傳**，頂層
+     是死路的碰撞/事件判斷完全沒變——這次只是在原本什麼都不畫的
+     地方擺一座裝飾，暗示「此處通往雲上天宮，但現在還沒開通」。等
+     `雲上天宮`(task.md 另一項，還沒構思完成)定案要接通時，才需要
+     回來改 `mountainMineUpStairs()`/事件表，讓它變成真的可以往上
+     走的樓梯。
+   - `tsc --noEmit` 過關；這個環境跑不了 `vite build`，沒辦法自己
+     看畫面，实際效果(天梯位置/大小/發光有沒有跟山之洞第25層的房間
+     比例搭)要 Zeppelin 進遊戲看。
+
+### 天梯實測回報三點微調（同一天）
+
+Zeppelin 進遊戲看了第25層那座天梯，截圖回報三點，都在
+`makeCelestialSpiralStaircase()`(`props.ts`)跟 `build-map.ts` 的呼叫端
+調整，函式本身的踏面/發光/無扶手設計沒有變動：
+
+1. **轉 180 度**——新增一個 `rotationDegrees?: number` 參數，疊加在
+   每一階的角度計算上(`angle = i * angleStep + baseAngle`)。特意不是
+   讓呼叫端對回傳的 `group` 設 `rotation.y`：這個函式每一階的座標是
+   直接算成世界座標(`options.x + cos(angle)*radius`...)，不是先在
+   原點建好、外面再套 `position`+`rotation`——對 group 設 rotation 會繞
+   著地圖原點轉，不是繞天梯自己的中心，整座會飛到別的地方去。呼叫端
+   現在傳 `rotationDegrees: 180`。
+2. **階梯密度調高兩倍**——`steps`/`risePerStep`/`angleStepDegrees`
+   同時砍半再乘二的關係(從 14/0.3/40° 改成 70 階、每階爬升
+   0.15、每階轉 20°)：單圈半徑(`radius`)沒變，但同樣的爬升/角度
+   範圍內塞進兩倍的階梯數，疏密感確實加倍。
+3. **往上渲染到玩家視線範圍**——光密度加倍不會改變總高度(0.15x70=
+   10.5，剛好是原本 14x0.3=4.2 的 2.5 倍，這個「順便更高」是密度
+   調整的計算副作用，不是另外加的參數)。這個總高度是照 55 度俯角+
+   正交投影(scene-sky.ts 的 TILT_DEG/camera)大概抓的，目的是讓螺旋
+   頂端在畫面上盡量貼近/超出上緣，看起來像「一直往上、看不到底」，
+   沒有精算相機視錐的實際世界座標——這個環境跑不了 vite build，
+   沒辦法自己截圖驗證抓得準不準，如果實際玩起來還是不夠高/太高，
+   直接調 `steps` 這個數字(維持 0.15/20° 那組密度不動)就好，不用
+   連 risePerStep/angleStepDegrees 一起改。
+
+`tsc --noEmit` 過關。
+
+### 天梯第二輪微調：梯數 1.5 倍、寬度 3 倍（同一天）
+
+Zeppelin 回報「改1.5倍梯數應該剛剛好」+「寬度也能調整成三倍嗎?」，
+都在 `build-map.ts` 的呼叫端調整：
+
+- **梯數**：從上一輪的 70 階(2.5倍高)改成 42 階。算法：「1.5倍」取的
+  是相對『兩倍密度、高度不變』那個中繼版本(28 階，risePerStep/
+  angleStepDegrees 砍半但沒加高)的 1.5 倍，42x0.15=總爬升 6.3，正好
+  也是原始 4.2 的 1.5 倍——這裡刻意寫下來是因為「梯數的1.5倍」跟
+  「高度的1.5倍」兩種算法在這組參數下剛好殊途同歸，都是 42，不是
+  巧合湊出來的，之後如果哪個參數又要單獨調，要分清楚是在調哪一個。
+- **寬度**：加寬的是 `treadWidth`(每一階踏面寬度)，不是 `radius`
+  (螺旋半徑，維持 0.9 沒動)——0.62 → 1.86(x3)。這個密度下相鄰兩階
+  的弧長間距只有約 0.31，遠小於 1.86，踏面彼此會明顯重疊，但材質
+  本來就是半透明+`depthWrite:false`(函式裡原本就有的設計，為了讓
+  疊在一起的踏面不會因為互相遮蔽出現硬邊)，所以這裡的重疊預期會
+  融合成一條連續發光緞帶，不是破圖。
+- `tsc --noEmit` 過關。「寬度」跟「梯數」這兩個詞在需求裡本來就有
+  歧義(寬度可能指 radius 也可能指 treadWidth；梯數1.5倍的基準可能
+  是原始14階、目前70階、或中繼28階)，這輪選了上面寫的那組解讀，
+  如果 Zeppelin 進遊戲看了發現猜錯方向，這幾個參數都是獨立數字，
+  直接說要哪個再改就好，不用整個函式重寫。
+
+### 天梯第三輪：複製延長三倍 + 閃耀特效（同一天）
+
+Zeppelin 回報「效果不錯，現在複製往上延長三倍，然後看能不能加點
+閃耀特效」：
+
+- **複製延長三倍**：`build-map.ts` 改成迴圈呼叫 3 次
+  `makeCelestialSpiralStaircase()`，同一組參數(含 `rotationDegrees:
+  180`)，只有 `baseY` 往上疊一個 segment 的總爬升(42x0.15=6.3)——
+  是「複製」的字面意思：3 座完全相同的螺旋直接疊在一起，不是把
+  角度也接著往上算變成一條連續大螺旋。3 座疊起來總高度 18.9。
+- **閃耀特效**：新函式 `makeCelestialSparkles()`(`props.ts`，緊接在
+  `makeCelestialSpiralStaircase()` 後面)——材質/貼圖直接沿用
+  `scene-sky.ts` 星空系統的 `STAR_SPARKLE_TEXTURE`/
+  `STAR_SPARKLE_COLORS`(四角十字星芒的貼圖，跟滿天星星同一顆)，
+  維持場景「星芒」視覺語言一致；差異是 `sizeAttenuation: true`(掛在
+  世界座標、會隨距離縮放，星空那套是掛在攝影機上、故意不隨距離縮放)。
+  星點分 6 個 phase group，各自獨立一份 `PointsMaterial`，散落在整座
+  (3倍高後)天梯周圍的圓柱體積內(半徑 0.9x1.6、高度 0~18.9)，數量
+  150。
+- **動畫走 `scene-registries.ts` 既有慣例**：新增
+  `celestialSparkleMaterials`(`PointsMaterial[]`)登記陣列，`props.ts`
+  只負責建幾何/材質不碰動畫，`build-map.ts` 建圖時把材質
+  push 進這個陣列(`buildMap()` 開頭已經加了
+  `celestialSparkleMaterials.length = 0` 清空，跟 `oreNodeMeshes`
+  等其他登記表同一個模式)，`game-loop.ts` 的 `animate()` 逐幀用
+  sin 波(每個 phase 各自不同頻率/相位，四次方讓亮暗對比更明顯)
+  更新 `opacity`，公式抄 `scene-sky.ts` 的 `updateSeasonalStars()`
+  裡 `sparkleMaterials.forEach` 那段。因為陣列只有進山之洞第25層
+  才會有內容，`animate()` 裡不用另外判斷 `currentMapName`，其他
+  地圖/樓層陣列是空的，`forEach` 自然不會做任何事。
+- `tsc --noEmit` 過關。這個環境跑不了 `vite build`，沒辦法自己看
+  閃爍效果的實際節奏/密度順不順眼，要 Zeppelin 進遊戲看。
