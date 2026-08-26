@@ -2497,66 +2497,6 @@ export function makeWoodPlankTexture({
         group.position.set(originX, 0, originZ);
         return group;
       }
-
-      // 海邊祭壇用的小型玄武岩柱群——跟 makeBasaltHeadland() 同一種
-      // 「深色六角柱、高矮參差、頂端偶爾疊一顆風化圓石」造型語彙，但抽成
-      // 一個可以到處擺的小群組(不是綁死在特定岬角形狀上)，方便沿祭壇
-      // 平台邊緣散置多叢，做出「蓋在海蝕玄武岩礁石上」的觀感。seed 決定
-      // 柱高/柱徑/顏色挑選，同一個 seed 每次呼叫長得一樣，方便微調位置
-      // 時不會每次重新整隊都變形狀。
-      export function makeBasaltRockCluster(x, z, seed = 0) {
-        const group = new THREE.Group();
-        const rockMaterials = [0x3f3b38, 0x504640, 0x625149, 0x393b3d].map(
-          (color) =>
-            new THREE.MeshStandardMaterial({
-              color,
-              flatShading: true,
-              roughness: 0.96,
-            }),
-        );
-        const columnCount = 6 + Math.floor(hash2(seed * 3.7, 1.3) * 4);
-        for (let i = 0; i < columnCount; i++) {
-          const s = hash2(seed * 5.1 + i * 2.3, i * 7.7 + seed);
-          const radius = 0.32 + s * 0.28;
-          const height = 0.6 + s * 1.9;
-          const angle = (i / columnCount) * Math.PI * 2 + s * 0.6;
-          const dist = 0.3 + hash2(i * 3.1, seed * 2.2) * 1.1;
-          const cx = Math.cos(angle) * dist;
-          const cz = Math.sin(angle) * dist;
-          const column = new THREE.Mesh(
-            new THREE.CylinderGeometry(
-              radius * (0.82 + s * 0.12),
-              radius,
-              height,
-              5 + (i % 3),
-              1,
-            ),
-            rockMaterials[i % rockMaterials.length],
-          );
-          column.position.set(cx, height / 2 - 0.02, cz);
-          column.rotation.y = s * Math.PI;
-          column.rotation.x = (hash2(i, seed + 3.9) - 0.5) * 0.09;
-          column.rotation.z = (hash2(i, seed + 8.2) - 0.5) * 0.07;
-          column.castShadow = true;
-          column.receiveShadow = true;
-          group.add(column);
-          if (i % 2 === 0) {
-            const cap = new THREE.Mesh(
-              new THREE.IcosahedronGeometry(radius * (0.55 + s * 0.18), 0),
-              rockMaterials[(i + 1) % rockMaterials.length],
-            );
-            cap.position.set(cx + (s - 0.5) * 0.25, height + radius * 0.1, cz);
-            cap.scale.y = 0.42 + s * 0.18;
-            cap.rotation.set(s * 0.4, s * 2.4, s * 0.25);
-            cap.castShadow = true;
-            cap.receiveShadow = true;
-            group.add(cap);
-          }
-        }
-        group.position.set(x, 0, z);
-        return group;
-      }
-
       export const FLOWER_COLORS = [0xf25f8c, 0xf5c542, 0xffffff, 0x8f6ff5];
       export const SAND_TONES = [0xe8d29a, 0xe3cd93, 0xe6d29c, 0xe0c88e];
       export function makeSand(x, z) {
