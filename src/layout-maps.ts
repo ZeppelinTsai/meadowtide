@@ -197,15 +197,26 @@ export const LAYOUT = {
     // addTerrace 的 xStart、OLD_VILLAGE_RAILS 前兩段)另外手動對應
     // 調整，這個工具目前不會幫忙掃到那些。
     westBeach: { x: 0, z: 0, width: 30, height: 64 },
-    // 位於西北岸、以世界座標 (100,37) 正北側為基準的 11x21 沙灘。
+    // 位於西北岸、以世界座標 (100,37) 正北側為基準的 11x26 沙灘。
     // 這裡先記錄西擴前的 x=-5；下方 OLD_VILLAGE_OCEAN_EXPANSION 會把
-    // LAYOUT.oldVillage 整體 +100，最後落在 x=95~105、z=16~36。
-    northBeach: { x: -5, z: 16, width: 11, height: 21 },
+    // LAYOUT.oldVillage 整體 +100，最後落在 x=95~105、z=11~36。
+    // 2026-08-26：北緣從 z=16 往北(減)推到 z=11，多出來的 5 排是為了
+    // 配合主殿(northBeachPlatform.cube)一起往北移，讓主殿跟鳥居(torii)
+    // 之間的空地變大；南緣(z=36)沒動，東南側 EastFill/EastShelf/
+    // SouthEdge 等南側收尾規則都不受影響。
+    northBeach: { x: -5, z: 11, width: 11, height: 26 },
     // 核心沙灘北／西／東側向外錯落 0~2 格；陣列索引依各邊由小座標往大座標。
+    // westDepths/eastDepths 是以 northBeach.z 為 index 0 的「定位索引」
+    // (z = northBeach.z + index)，不是絕對座標——2026-08-26 把
+    // northBeach.z 往北推 5 之後，兩個陣列各自在最前面「插入」5個新值
+    // (對應新的 z=11~15)，讓原本第 0 項開始對到的 z=16 那些舊資料
+    // 整組往後挪 5 格、繼續對到同樣的 z，南側(z=31~35)原本已經調好的
+    // 鋸齒岸線因此不會被打亂；新插入的 5 個值純粹是延續風格隨手排的
+    // 鋸齒(0~2 之間)，沒有特別的美術依據。
     northBeachOuterFringe: {
       northDepths: [1, 2, 1, 0, 2, 1, 2, 0, 1, 2, 1],
-      westDepths: [1, 2, 1, 0, 2, 1, 2, 1, 0, 1, 2, 1, 0, 2, 1, 2, 0, 1, 2, 1],
-      eastDepths: [2, 1, 0, 1, 2, 1, 0, 2, 1, 2, 1, 0, 1, 2, 1, 0, 2, 1, 2, 1],
+      westDepths: [1, 2, 0, 1, 2, 1, 2, 1, 0, 2, 1, 2, 1, 0, 1, 2, 1, 0, 2, 1, 2, 0, 1, 2, 1],
+      eastDepths: [2, 0, 1, 2, 1, 2, 1, 0, 1, 2, 1, 0, 2, 1, 2, 1, 0, 1, 2, 1, 0, 2, 1, 2, 1],
     },
     // 東南側補沙，西擴後落在指定的 x=105~115、z=35~36。
     northBeachEastFill: { x: 5, z: 35, width: 11, height: 2 },
@@ -224,16 +235,34 @@ export const LAYOUT = {
     ],
     // 平台由四個彼此貼合、正常寫深度的實心方塊組成；輪廓左右只偏 1 格。
     // 最南段仍以 z=31 銜接樓梯頂端，所有段共用同一高度與材質規則。
+    // 2026-08-26：主殿(cube)覺得離鳥居(torii, z=28)太近，整個往北(z
+    // 減 5：20→15)移動；segments[0] 跟著改成 z=13/depth=8，並且寬度從
+    // 5 拓寬成跟 segments[1] 一樣的 7(x:-3, 跟 segments[1] 同一個 x)，
+    // 讓 segments[0]/[1] 在 x 方向完全對齊、z=13~27 連成一塊沒有寬度
+    // 落差的矩形——原本 segments[0] 只有寬 5(跟 cube 同寬)，[1] 寬 7，
+    // 兩段交界(z=21)會有 1 格的「懸崖凸出去」錯位(Zeppelin 回報的
+    // (104,21-22)/(103,21)/(97,21))；玄武岩柱群跟 makeNorthBeachPlatformRails()
+    // 的扶手都是從 segments 動態算輪廓，寬度對齊後兩邊都會自動變乾淨，
+    // 不用另外改。**注意：修這個問題時特意選「拓寬 segments[0]」而不是
+    // 「segments[1] 的 z 往北延伸蓋掉 segments[0] 的範圍」——後者會讓兩段
+    // 在 z 方向重疊，`oldVillageNorthPlatformBounds()` 用 .find() 只抓陣列
+    // 裡第一個 z 命中的 segment，重疊區間會一直吃到 segments[0] 的窄邊界，
+    // 視覺上鋪的是寬台地、站上去卻可能吃到窄邊界外的碰撞判定，人物會在
+    // 看起來明明是平台的地方掉出去/浮空。segments 之間 z 範圍必須保持
+    // 彼此不重疊，這是這個資料結構的硬性前提。
+    // segments[1..3]、torii 都沒動，平台本身仍是 13→32 連續一片，
+    // 玩家從主殿走到鳥居/樓梯的路徑不變，只是主殿視覺上退後了、跟
+    // 鳥居之間的廣場空間變大。
     northBeachPlatform: {
       elevation: 3,
       segments: [
-        { x: -2, z: 18, width: 5, depth: 3 },
+        { x: -3, z: 13, width: 7, depth: 8 },
         { x: -3, z: 21, width: 7, depth: 6 },
         { x: -4, z: 27, width: 8, depth: 2 },
         { x: -3, z: 29, width: 7, depth: 3 },
       ],
       torii: { x: 0, z: 28, scale: 1.4 },
-      cube: { x: -2, z: 20, width: 5, depth: 6, height: 1.6 },
+      cube: { x: -2, z: 15, width: 5, depth: 6, height: 1.6 },
     },
     // x=95~115 的南岸每欄在 z=35~37 之間小幅進退；固定序列避免載圖漂移。
     northBeachSouthEdge: {

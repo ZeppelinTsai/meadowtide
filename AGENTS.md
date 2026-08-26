@@ -877,3 +877,57 @@ depth,height}`)算尺寸位置——**改 LAYOUT 的 cube 座標/大小這裡會
 這裡本來就設定「無法住人的簡化神社」。碰撞判定(`build-map.ts` 裡
 `isBlockedByOldVillageRail` 附近那段直接讀 `cube` 的 x/z/width/depth)
 沒有變，純視覺替換，`tsc` 過關。
+
+**2026-08-26 追加：主殿北移 5 格**——Zeppelin 反饋「主殿離鳥居太近了
+一點」，要求連著平台/沙灘一起往北(z 減)擴充搬移。改動全在
+`layout-maps.ts` 的 `LAYOUT.oldVillage` 字面量，`makeShrineHall()`
+本身完全沒動(如上一段所說，它只是吃 `cube` 算尺寸)：
+- `northBeachPlatform.cube.z`：20→15（主殿本體北移 5）。
+- `northBeachPlatform.segments[0]`：`z:18,depth:3` → `z:13,depth:8`，
+  蓋住新 cube 範圍 `[15,21)` 並在北側留 2 格緩衝(維持原本緩衝量)；
+  `segments[1..3]`、`torii(z:28)` 都沒動——平台仍是 13→32 連續一片，
+  主殿到鳥居/樓梯的路徑沒斷，只是視覺上退後、跟鳥居之間空地變大
+  (原本主殿南緣到鳥居只差 2 格，現在差 7 格)。
+
+**同一天追加修正：`segments[0]` 寬度也要跟著改，不然接縫會凸出一塊
+懸崖。** Zeppelin 截圖回報 `(104,21-22)` 有懸崖凸出去、問
+`(103,21)`/`(97,21)` 是不是也要往北擴 5——這兩點正好是 `segments[1]`
+(`x:-3,width:7`，世界座標 x=97~103)的西/東北角。原因：`segments[0]`
+當時只跟著 `cube` 改寬度(仍是 `x:-2,width:5`，世界 x=98~102)，跟
+`segments[1]` 的寬 7 對不齊，兩段交界(z=21)自然會有 1 格寬度落差，
+讀起來就是一塊懸崖凸出去。修法：把 `segments[0]` 的 `x`/`width` 改成
+跟 `segments[1]` 完全一樣(`x:-3,width:7`)，讓 z=13~27 連成一塊沒有
+寬度落差的矩形；`cube`(主殿本體，寬 5)本來就置中疊在這塊更寬的
+台地上，跟 `segments[1]`/舊 `cube` 原本的「台地比建築寬 1 格」關係
+一致。玄武岩柱群跟 `makeNorthBeachPlatformRails()` 的扶手都是從
+`segments` 動態算輪廓，寬度對齊後兩邊自動變乾淨，不用另外碰。
+
+**踩過的坑，寫下來避免下次重犯：修這個問題時，一開始想過反過來讓
+`segments[1]` 的 `z` 往北延伸去蓋掉 `segments[0]` 的範圍(而不是拓寬
+`segments[0]`)——這個方向是錯的，沒有採用。`oldVillageNorthPlatform
+Bounds()` 用 `.find()` 找 z 命中的 segment，只抓陣列裡**第一個**命中
+的、不會取寬的那個。如果讓 `segments[1]` 的 z 範圍跟 `segments[0]`
+重疊，重疊區間視覺上(`addTerrace` 兩段都各自畫自己的實心方塊，不會
+去重)會鋪出寬台地，但碰撞/站立判定仍然只吃到先命中的 `segments[0]`
+窄邊界，玩家會在看起來是平台的地方掉出去或浮空。**`segments` 之間的
+z 範圍必須保持互不重疊**，這是這份資料結構沒寫在型別裡、但實際上
+必須遵守的硬性前提，之後如果要再調這個平台要記得。
+- `northBeach`(核心沙灘矩形)：`z:16,height:21` → `z:11,height:26`，
+  北緣跟著主殿一起往北推 5，南緣(z=36)不動，東南側 EastFill/
+  EastShelf/SouthEdge/SeaCutout/SandCorrections 等南側收尾規則完全
+  沒碰。
+- `northBeachOuterFringe.westDepths`/`eastDepths`：**這兩個陣列是用
+  `northBeach.z` 當 index 0 的「定位索引」**(`z = northBeach.z +
+  index`)，不是絕對座標——所以單改 `northBeach.z` 而不動陣列內容
+  的話，南側(原本 z=31~35)已經調好的鋸齒岸線會整組錯位、甚至有
+  幾排掉出陣列範圍變成沒有岸線細節。這輪是在兩個陣列**最前面各插入
+  5 個新值**(對應新的 z=11~15)，讓原本第 0 項開始的舊資料整組往後
+  挪 5 格、繼續對到跟以前一樣的 z，南側完全不受影響；新插的 5 個值
+  只是照風格隨手排的鋸齒(0~2 之間)，沒有特別美術依據，畫面上如果
+  覺得這段海岸線不夠自然可以再手動調整這 5 個數字。
+- `oldVillageNorthPlatformBounds()`/`build-map.ts` 裡直接讀 `cube`
+  的碰撞判定都是動態算的，不用另外改。`tsc --noEmit` 過關；這個
+  環境跑不了 `vite build`/`tsx`(node_modules 是 Windows 那邊裝的，
+  這個 device_bash 是 Linux，`@rollup/rollup-linux-x64-gnu`/
+  `@esbuild/linux-x64` 都缺)，沒辦法在這裡跑起來看畫面，實際效果
+  要 Zeppelin 進遊戲看。
