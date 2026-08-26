@@ -5,6 +5,11 @@ import { carpenterQuest, LAYOUT, NORTH_EXPANSION } from "./layout-maps";
 export function pos(x, z) {
   return { x, z };
 }
+// 船長站位錨點——往左(-1)、往上(-1)微調自 LAYOUT.port.basin.x/
+// port.ferry.z，跟跳板/渡輪同一組座標系推導，之後那邊的 LAYOUT
+// 數字再變，這裡不用跟著手動算。
+const CAPTAIN_STAND_X = LAYOUT.port.basin.x - 1;
+const CAPTAIN_STAND_Z = LAYOUT.port.ferry.z - 1;
 export const npcDefs = [
   {
     id: "mayor",
@@ -60,18 +65,22 @@ export const npcDefs = [
     // 所以不像村長/木匠那樣有一整天的散步行程，只在跳板碼頭附近小範圍
     // 走動(檢查貨物/繩索的感覺)，站點都貼著 LAYOUT.port.ferry/basin
     // 算出來的跳板落地座標，不憑空手填數字。
+    //
+    // 2026-08-26：Zeppelin 反饋站位要往左一格、往上一格，加
+    // CAPTAIN_STAND_X/Z 這兩個offset常數(basin.x-1、ferry.z-1)，
+    // 底下 home/schedule 統一改用這兩個算好的錨點，不要各自散著加減。
     id: "captain",
     map: "port",
     name: "船長",
     shirt: 0x1f3a5f,
     hair: 0x3a3a3d,
-    home: { x: LAYOUT.port.basin.x, z: LAYOUT.port.ferry.z },
+    home: { x: CAPTAIN_STAND_X, z: CAPTAIN_STAND_Z },
     schedule: [
-      { t: 0.25, ...pos(LAYOUT.port.basin.x, LAYOUT.port.ferry.z) },
-      { t: 0.4, ...pos(LAYOUT.port.basin.x + 1, LAYOUT.port.ferry.z - 2) },
-      { t: 0.55, ...pos(LAYOUT.port.basin.x, LAYOUT.port.ferry.z) },
-      { t: 0.7, ...pos(LAYOUT.port.basin.x + 1, LAYOUT.port.ferry.z + 2) },
-      { t: 0.9, ...pos(LAYOUT.port.basin.x, LAYOUT.port.ferry.z) },
+      { t: 0.25, ...pos(CAPTAIN_STAND_X, CAPTAIN_STAND_Z) },
+      { t: 0.4, ...pos(CAPTAIN_STAND_X + 1, CAPTAIN_STAND_Z - 2) },
+      { t: 0.55, ...pos(CAPTAIN_STAND_X, CAPTAIN_STAND_Z) },
+      { t: 0.7, ...pos(CAPTAIN_STAND_X + 1, CAPTAIN_STAND_Z + 2) },
+      { t: 0.9, ...pos(CAPTAIN_STAND_X, CAPTAIN_STAND_Z) },
     ],
   },
 ];

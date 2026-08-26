@@ -824,7 +824,18 @@ export function animate(now) {
         n.pathIndex++;
       }
     }
-    if (!moving && gameState.currentMapName === "livingArea") {
+    // 2026-08-26：Zeppelin 反饋船長常常背對鏡頭看不到臉——他的巡邏
+    // 範圍很小(見 npc-defs.ts 的 CAPTAIN_STAND_X/Z)，站定不動時的朝向
+    // 是「上一段走過來的方向」凍結住的，不同時段回到 home 點時朝向會
+    // 不一樣，兩種都可能背對玩家。與其硬轉 180(只解一種情況)，直接把
+    // 這段「玩家靠近時緩慢轉向玩家」的既有邏輯從只認 livingArea 擴大
+    // 到 port 也適用——之後 port 地圖上其他站定的 NPC 一樣受惠，不用
+    // 每個角色各自修。
+    if (
+      !moving &&
+      (gameState.currentMapName === "livingArea" ||
+        gameState.currentMapName === "port")
+    ) {
       const pdx = gameState.player.position.x - n.mesh.position.x,
         pdz = gameState.player.position.z - n.mesh.position.z;
       if (Math.sqrt(pdx * pdx + pdz * pdz) <= 4) {

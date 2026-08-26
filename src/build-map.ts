@@ -4111,14 +4111,25 @@ export const events = [
   })),
   // 港口<->舊城鎮的直接連通已經拆掉：舊城鎮現在改從生活區南側直接
   // 進入（見下面 oldVillage(7,0) 那組），不用再繞經港口。
-  // 木匠抵達事件——港口碼頭見面 + 舊城鎮空屋門口(往返兩段劇情共用同一格)
-  {
-    map: "port",
-    x: LAYOUT.port.carpenterMeet.x,
-    z: LAYOUT.port.carpenterMeet.z,
-    trigger: "touch",
-    action: () => handleCarpenterDockTouch(),
-  },
+  // 木匠抵達事件——港口使用 LAYOUT 定義的矩形觸發區，玩家從碼頭任一側
+  // 靠近都能觸發；stage 仍會阻止同一事件重複播放。
+  ...Array.from(
+    {
+      length:
+        LAYOUT.port.carpenterMeet.width * LAYOUT.port.carpenterMeet.height,
+    },
+    (_, index) => ({
+      map: "port",
+      x:
+        LAYOUT.port.carpenterMeet.x +
+        (index % LAYOUT.port.carpenterMeet.width),
+      z:
+        LAYOUT.port.carpenterMeet.z +
+        Math.floor(index / LAYOUT.port.carpenterMeet.width),
+      trigger: "touch",
+      action: () => handleCarpenterDockTouch(),
+    }),
+  ),
   {
     map: "oldVillage",
     x: CARPENTER_DOORSTEP.x,

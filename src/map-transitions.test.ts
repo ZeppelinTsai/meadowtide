@@ -327,3 +327,14 @@ test("港口東側擴充 50 格外海且既有座標不移動", () => {
     for (let x = row.length - PORT_OCEAN_EXPANSION.east; x < row.length; x++)
       assert.equal(row[x], 9, `port east ocean x=${x}`);
 });
+
+test("木匠港口見面事件使用 3x3 可走觸發區", () => {
+  const meet = LAYOUT.port.carpenterMeet;
+  assert.deepEqual(meet, { x: 3, z: 21, width: 3, height: 3 });
+  for (let z = meet.z; z < meet.z + meet.height; z++)
+    for (let x = meet.x; x < meet.x + meet.width; x++)
+      assert.ok(
+        ![1, 2, 6, 9].includes(MAPS.port.tiles[z][x]),
+        `木匠港口觸發格 (${x},${z}) 必須可走`,
+      );
+});

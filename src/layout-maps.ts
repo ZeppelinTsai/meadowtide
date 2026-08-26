@@ -703,7 +703,7 @@ export const LAYOUT = {
       beachEndZ: 47,
     },
     playerArrival: { x: 7, z: 11 },
-    carpenterMeet: { x: 13, z: 28 },
+    carpenterMeet: { x: 3, z: 21, width: 3, height: 3 },
     townGate: { x: 3, z: 29 },
     shopRoad: { z: 14, height: 5 },
     basin: { x: 6, z: 18, width: 15, height: 9 },
