@@ -417,6 +417,156 @@ export function addDefaultHumanoidSmile(
         return group;
       }
 
+      // 船長——不住島上、每天跑補給船的老船長。灰黑短髮＋灰鬢角、
+      // 卡其船帽(米色帽身＋深藍帽緣)、海軍藍船員外套內搭藍毛衣、
+      // 鏽紅色頸巾、胸前一枚黃銅羅盤吊飾＋小木牌，皮腰帶掛小皮囊，
+      // 卡其工作褲＋深藍雨鞋。雙腳站距加寬、外八，呼應「迎風站穩」的
+      // 站姿設定；兩手姿態刻意不對稱(一手鬆握、一手掌心朝下)，靠
+      // 手臂 pivot 的初始 rotation.z/y 就能做到，animateWalk() 只動
+      // rotation.x，不會洗掉這裡設的姿勢。腰間掛一捆盤起來的麻繩，
+      // 純裝飾道具，不是真的握在手裡。
+      export function makeCaptain() {
+        const group: any = new THREE.Group();
+        const parts: any = {};
+        const mat = (color) => new THREE.MeshStandardMaterial({ color, flatShading: true });
+        const skinMat = mat(0xc4855a), hairMat = mat(0x3a3a3d), sideburnMat = mat(0x74747a);
+        const jacketMat = mat(0x1f3a5f), jacketEdgeMat = mat(0x2c4d78);
+        const sweaterMat = mat(0x3f6ea5);
+        const trouserMat = mat(0xa89468), bootMat = mat(0x1f3a5f), bootTrimMat = mat(0x5a7a9c);
+        const leatherMat = mat(0x56351f), soleMat = mat(0x211b17);
+        const brassMat = mat(0xb27b2d), woodMat = mat(0x6a4228);
+        const capMat = mat(0xcbb693), capTrimMat = mat(0x1f3a5f);
+        const scarfMat = mat(0xb5502a), ropeMat = mat(0xc2a06a);
+
+        const pelvis = new THREE.Mesh(new THREE.CylinderGeometry(0.205, 0.22, 0.18, 8), trouserMat);
+        pelvis.position.y = 0.48; group.add(pelvis);
+        const torso = new THREE.Mesh(new THREE.CylinderGeometry(0.185, 0.225, 0.42, 8), sweaterMat);
+        torso.position.y = 0.76; torso.castShadow = true; group.add(torso);
+
+        // 海軍藍船員外套——敞開式兩片，露出中間藍毛衣，跟木匠的西裝外套
+        // 同款作法但顏色/比例改成較厚實的水手外套感。
+        for (const side of [-1, 1]) {
+          const panel = new THREE.Mesh(new THREE.BoxGeometry(0.155, 0.44, 0.11), jacketMat);
+          panel.position.set(side * 0.135, 0.75, 0.02); panel.rotation.z = side * -0.06;
+          panel.castShadow = true; group.add(panel);
+          const collar = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.09, 0.03), jacketEdgeMat);
+          collar.position.set(side * 0.075, 0.955, -0.09); collar.rotation.z = side * 0.5;
+          group.add(collar);
+          const pocket = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.09, 0.022), jacketEdgeMat);
+          pocket.position.set(side * 0.13, 0.66, -0.115); group.add(pocket);
+          for (let i = 0; i < 2; i++) {
+            const button = new THREE.Mesh(new THREE.CylinderGeometry(0.014, 0.014, 0.012, 7), brassMat);
+            button.rotation.x = Math.PI / 2; button.position.set(side * 0.135, 0.72 - i * 0.11, -0.145);
+            group.add(button);
+          }
+        }
+        // 鏽紅頸巾——脖子下方一圈扁環＋垂下的一角，暖色系呼應鏽紅配色。
+        const scarf = new THREE.Mesh(new THREE.TorusGeometry(0.115, 0.032, 5, 10), scarfMat);
+        scarf.position.set(0, 0.965, 0); scarf.rotation.x = Math.PI / 2; group.add(scarf);
+        const scarfTail = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.14, 0.02), scarfMat);
+        scarfTail.position.set(0.06, 0.87, -0.11); scarfTail.rotation.z = 0.15; group.add(scarfTail);
+
+        // 黃銅羅盤吊飾＋小木牌——沿頸巾垂到胸口，agent.txt 指定的招牌道具。
+        const compassCord = new THREE.Mesh(new THREE.TorusGeometry(0.045, 0.006, 4, 10, Math.PI), brassMat);
+        compassCord.position.set(0, 0.94, -0.13); compassCord.rotation.set(Math.PI / 2, 0, 0); group.add(compassCord);
+        const compass = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.045, 0.018, 10), brassMat);
+        compass.rotation.x = Math.PI / 2; compass.position.set(0, 0.79, -0.155); group.add(compass);
+        const compassFace = new THREE.Mesh(new THREE.CylinderGeometry(0.033, 0.033, 0.008, 10), mat(0xe8dcc0));
+        compassFace.rotation.x = Math.PI / 2; compassFace.position.set(0, 0.79, -0.166); group.add(compassFace);
+        const woodTag = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.04, 0.008), woodMat);
+        woodTag.position.set(0.04, 0.71, -0.16); woodTag.rotation.z = 0.2; group.add(woodTag);
+
+        const belt = new THREE.Mesh(new THREE.CylinderGeometry(0.222, 0.222, 0.07, 8), leatherMat);
+        belt.position.y = 0.535; group.add(belt);
+        const buckle = new THREE.Mesh(new THREE.BoxGeometry(0.085, 0.065, 0.024), brassMat);
+        buckle.position.set(0, 0.535, -0.225); group.add(buckle);
+        const pouch = new THREE.Mesh(new THREE.BoxGeometry(0.115, 0.15, 0.075), leatherMat);
+        pouch.position.set(-0.175, 0.435, -0.11); pouch.rotation.z = -0.08; group.add(pouch);
+
+        // 腰間一捆盤起來的麻繩——疊幾圈扁 Torus 模擬盤繩，掛在腰帶右後方，
+        // 純裝飾道具，不是真的握在手裡（避免手部姿勢跟著繩子綁死）。
+        for (let ring = 0; ring < 3; ring++) {
+          const coil = new THREE.Mesh(new THREE.TorusGeometry(0.075, 0.02, 5, 10), ropeMat);
+          coil.position.set(0.18, 0.43 + ring * 0.012, -0.13);
+          coil.rotation.x = Math.PI / 2 + ring * 0.35;
+          coil.rotation.z = ring * 0.6;
+          group.add(coil);
+        }
+
+        const head = new THREE.Mesh(new THREE.SphereGeometry(0.205, 10, 8), skinMat);
+        head.scale.set(0.92, 1.08, 0.92); head.position.y = 1.105;
+        head.castShadow = true; group.add(head);
+        // 灰黑短髮——只露出後腦杓跟兩側鬢角，頭頂大半被帽子蓋住。
+        const hairCap = new THREE.Mesh(new THREE.SphereGeometry(0.215, 9, 7), hairMat);
+        hairCap.scale.set(1.02, 0.62, 1.0); hairCap.position.set(0, 1.16, 0.01); group.add(hairCap);
+        for (const side of [-1, 1]) {
+          const sideburn = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.09, 0.02), sideburnMat);
+          sideburn.position.set(side * 0.195, 1.06, -0.02); group.add(sideburn);
+        }
+        // 船帽——米色帽身＋深藍帽緣，蓋住大半頭頂。
+        const capBody = new THREE.Mesh(new THREE.SphereGeometry(0.225, 10, 7, 0, Math.PI * 2, 0, Math.PI * 0.62), capMat);
+        capBody.position.set(0, 1.2, 0.005); group.add(capBody);
+        const capBrim = new THREE.Mesh(new THREE.CylinderGeometry(0.235, 0.235, 0.03, 12), capTrimMat);
+        capBrim.position.set(0, 1.19, 0.005); group.add(capBrim);
+        const capButton = new THREE.Mesh(new THREE.SphereGeometry(0.014, 6, 4), brassMat);
+        capButton.position.set(0, 1.3, 0.005); group.add(capButton);
+
+        const nose = new THREE.Mesh(new THREE.ConeGeometry(0.028, 0.062, 5), skinMat);
+        nose.rotation.x = Math.PI / 2; nose.position.set(0, 1.09, -0.195); group.add(nose);
+        for (const side of [-1, 1]) {
+          const eye = new THREE.Mesh(new THREE.SphereGeometry(0.017, 6, 4), mat(0x281d18));
+          eye.scale.set(1, 0.58, 0.35); eye.position.set(side * 0.072, 1.132, -0.188); group.add(eye);
+          const brow = new THREE.Mesh(new THREE.BoxGeometry(0.066, 0.014, 0.012), sideburnMat);
+          brow.position.set(side * 0.072, 1.178, -0.193); brow.rotation.z = side * -0.12; group.add(brow);
+        }
+        addDefaultHumanoidSmile(group, 1.045, -0.2, 0x854b3c);
+
+        // 兩隻手臂——初始 rotation.z/y 刻意不對稱：左手自然半握垂在身側，
+        // 右手手腕外轉、掌心朝下，對應「一手自然半握，另一手掌心向下」
+        // 的站姿設定。animateWalk() 只覆寫 rotation.x，這兩軸的姿勢會
+        // 一直保留著。
+        function makeArm(side) {
+          const pivot: any = new THREE.Group(); pivot.position.set(side * 0.255, 0.91, 0);
+          const sleeve = new THREE.Mesh(new THREE.CylinderGeometry(0.068, 0.058, 0.25, 7), jacketMat);
+          sleeve.position.y = -0.12; pivot.add(sleeve);
+          const cuff = new THREE.Mesh(new THREE.CylinderGeometry(0.062, 0.06, 0.05, 7), jacketEdgeMat);
+          cuff.position.y = -0.25; pivot.add(cuff);
+          const forearm = new THREE.Mesh(new THREE.CylinderGeometry(0.048, 0.043, 0.19, 7), skinMat);
+          forearm.position.y = -0.36; pivot.add(forearm);
+          const hand = new THREE.Mesh(new THREE.SphereGeometry(0.052, 7, 5), skinMat);
+          hand.scale.set(0.85, 1.05, 0.8); hand.position.y = -0.475; pivot.add(hand);
+          if (side === -1) {
+            // 左手：自然半握，稍微內收。
+            pivot.rotation.z = 0.06; pivot.rotation.x = 0.08;
+          } else {
+            // 右手：外轉讓掌心朝下。
+            pivot.rotation.z = -0.1; pivot.rotation.y = 0.3;
+          }
+          group.add(pivot); return pivot;
+        }
+        parts.armL = makeArm(-1); parts.armR = makeArm(1);
+
+        // 雙腳站距加寬、腳掌外八，呼應「雙腳較寬、迎風站穩」。
+        function makeLeg(side) {
+          const pivot = new THREE.Group(); pivot.position.set(side * 0.14, 0.46, 0.01);
+          pivot.rotation.z = side * -0.05;
+          const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.076, 0.07, 0.38, 7), trouserMat);
+          leg.position.y = -0.19; pivot.add(leg);
+          const boot = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.14, 0.225), bootMat);
+          boot.position.set(0, -0.395, -0.04); pivot.add(boot);
+          const bootTrim = new THREE.Mesh(new THREE.BoxGeometry(0.155, 0.03, 0.23), bootTrimMat);
+          bootTrim.position.set(0, -0.335, -0.04); pivot.add(bootTrim);
+          const sole = new THREE.Mesh(new THREE.BoxGeometry(0.165, 0.035, 0.24), soleMat);
+          sole.position.set(0, -0.445, -0.045); pivot.add(sole);
+          group.add(pivot); return pivot;
+        }
+        parts.legL = makeLeg(-1); parts.legR = makeLeg(1);
+
+        group.parts = parts;
+        group.scale.setScalar(humanoidScale(1.34));
+        return group;
+      }
+
       export function makeGirlPlayer({
         skin = 0xffe3c9,
         outfit = 0xff8fab,

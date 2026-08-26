@@ -55,6 +55,25 @@ export const npcDefs = [
       { t: 0.92, ...pos(25, 16 + NORTH_EXPANSION) },
     ],
   },
+  {
+    // 船長——agent.txt：「上班地點:港口，居住地點:不住島上，已固定」，
+    // 所以不像村長/木匠那樣有一整天的散步行程，只在跳板碼頭附近小範圍
+    // 走動(檢查貨物/繩索的感覺)，站點都貼著 LAYOUT.port.ferry/basin
+    // 算出來的跳板落地座標，不憑空手填數字。
+    id: "captain",
+    map: "port",
+    name: "船長",
+    shirt: 0x1f3a5f,
+    hair: 0x3a3a3d,
+    home: { x: LAYOUT.port.basin.x, z: LAYOUT.port.ferry.z },
+    schedule: [
+      { t: 0.25, ...pos(LAYOUT.port.basin.x, LAYOUT.port.ferry.z) },
+      { t: 0.4, ...pos(LAYOUT.port.basin.x + 1, LAYOUT.port.ferry.z - 2) },
+      { t: 0.55, ...pos(LAYOUT.port.basin.x, LAYOUT.port.ferry.z) },
+      { t: 0.7, ...pos(LAYOUT.port.basin.x + 1, LAYOUT.port.ferry.z + 2) },
+      { t: 0.9, ...pos(LAYOUT.port.basin.x, LAYOUT.port.ferry.z) },
+    ],
+  },
 ];
 export function getScheduleTarget(schedule, phase) {
   let target = schedule[schedule.length - 1];

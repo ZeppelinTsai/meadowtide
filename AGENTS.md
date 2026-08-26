@@ -1060,3 +1060,55 @@ Zeppelin 回報「效果不錯，現在複製往上延長三倍，然後看能�
   地圖/樓層陣列是空的，`forEach` 自然不會做任何事。
 - `tsc --noEmit` 過關。這個環境跑不了 `vite build`，沒辦法自己看
   閃爍效果的實際節奏/密度順不順眼，要 Zeppelin 進遊戲看。
+
+## 船長角色建模：`makeCaptain()` + npcDefs/npc-runtime 掛載（2026-08-26）
+
+策略討論後 Zeppelin 指示先做「船長」角色模組，依 agent.txt 的角色設定
+（上班地點:港口，居住地點:不住島上，已固定；灰黑色髮、灰鬢角、船長帽；
+海軍藍＋鏽紅配色；繩索羅盤是招牌道具；站姿「雙腳較寬、迎風站穩，一手
+自然半握、另一手掌心向下」）跟 Zeppelin 提供的參考圖，做出低模角色：
+
+- **`src/humanoid.ts` 新增 `export function makeCaptain()`**，緊接在
+  `makeCarpenter()` 後面、`makeGirlPlayer()` 前面，沿用村長/木匠那套
+  「pelvis/torso 圓柱 + 左右對稱裝飾 + 頭部細節 + arm/leg pivot」的
+  低模寫法，沒有另外發明新架構：
+  - 海軍藍船員外套(敞開兩片，露出中間藍毛衣)、鏽紅頸巾(扁 Torus 環
+    +垂下一角)、黃銅羅盤吊飾+小木牌(胸前，agent.txt 指定的招牌道具)、
+    皮腰帶+皮囊、腰間一捆用 3 層 Torus 疊出來的盤繩(純裝飾，不是真的
+    握在手裡，避免手部姿勢被繩子綁死)。
+  - 頭部：灰黑短髮(只露後腦+兩側鬢角)、船帽(米色帽身+深藍帽緣，蓋住
+    大半頭頂)、`addDefaultHumanoidSmile()` 沿用既有笑容組件。
+  - **不對稱站姿是刻意的**：`makeArm(side)` 裡左手(`side===-1`)只給
+    小角度 `rotation.z/x`，右手(`side===1`)給比較大的 `rotation.z`
+    +`rotation.y=0.3` 做出「掌心朝下」的外轉感——這兩個軸
+    `animateWalk()`/`animateRun()` 都只碰 `rotation.x`，不會被行走
+    動畫洗掉，站定不動時姿勢會一直維持著。雙腳 pivot 的 x 偏移從
+    木匠的 `side*0.105` 加寬到 `side*0.14`，外加 `rotation.z =
+    side*-0.05`，做出「雙腳較寬」的站距。
+  - `group.scale.setScalar(humanoidScale(1.34))`——比照村長/木匠的
+    寫法自訂一個未縮放身高常數，不是量出來的精確值，純粹讓最終
+    世界身高落在跟其他 NPC同一個量級。
+
+- **`src/npc-defs.ts` 新增 `captain` entry**：因為 agent.txt 明講他
+  「不住島上」，不像村長/木匠有一整天的散步行程，所以只給小範圍
+  來回走動(檢查貨物繩索的感覺)，`home`/`schedule` 座標故意寫成
+  `LAYOUT.port.basin.x`/`LAYOUT.port.ferry.z` 這種算出來的參照，
+  對應 `props.ts` 裡渡輪跳板實際落地的位置(`gangplankStartX =
+  port.basin.x - 0.3`)，不是憑空手填的數字——船長站在跳板碼頭旁，
+  跟渡輪/跳板是同一組座標系統，之後 LAYOUT 數字調整不用跟著手動改。
+
+- **`src/npc-runtime.ts`**：import 加 `makeCaptain`，mesh 建構的
+  三元判斷式加一支 `def.id === "captain" ? makeCaptain() : ...`
+  分支，維持既有「重要角色才有專屬模型函式，其餘 fallback 到
+  `makeHumanoid()`」的慣例。沒有加任何可見度/任務階段限制——船長
+  在 agent.txt 裡是「已固定」角色，不像木匠有登場前要隱藏的招募流程，
+  所以從一開始就是常駐可見狀態。
+
+- 刻意沒做的事(留給之後有需要再處理，這輪先求角色模型能進遊戲看)：
+  沒有依白天/夜晚切換船長可見度(雖然渡輪跳板本身會在夜間收起，
+  `ferryDocked = !isNightTime()`)，也沒有任何對話/事件邏輯——目前
+  npc-defs 沒填 `id==="captain"` 專屬的 `npcLine()` 分支，會直接
+  落到 `npcLine()` 最後那組通用好感度台詞，之後有船長專屬事件/
+  對話再另外接。
+- `tsc --noEmit` 過關，這個環境沒辦法自己跑 `vite build` 看實際
+  模型長相，需要 Zeppelin 進遊戲確認比例/配色跟參考圖對不對得上。
