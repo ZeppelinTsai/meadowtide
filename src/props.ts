@@ -1405,16 +1405,12 @@ export function makeWoodPlankTexture({
 
         // ------------------------------------------------------------
         // 船頭(local -X，靠碼頭那端)：寬平船頭牆本身就是 hull 的端面，
-        // 不用另外做尖船首。兩根較矮的轉角柱框出跳板開口的視覺範圍，
-        // 呼應登陸艇「艙門開口」的輪廓，跳板本身由 makePortScene() 用
-        // makeGangplank() 另外接上去，不含在這個函式裡。
+        // 不用另外做尖船首。船頭轉角本身的護欄柱併進下面那組「兩側連續
+        // 護欄」一起產生(見該段落)，這裡不用再重複放一組。跳板本身由
+        // makePortScene() 用 makeGangplank() 另外接上去，不含在這個
+        // 函式裡；跳板放下時整個船頭前緣依然是開放的，護欄只包住左右
+        // 兩側，不會擋到牛羊直進。
         // ------------------------------------------------------------
-        [-1, 1].forEach((side) => {
-          const post = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.3, 6), tealMat);
-          post.position.set(-1.75, hullHeight + 0.15, side * 0.7);
-          post.castShadow = true;
-          group.add(post);
-        });
         // 錨＋錨鏈——掛在船頭一側，垂到接近吃水線，補上「這是一艘真的
         // 出過海的船」的細節。
         const anchorX = -1.75, anchorZ = 0.62;
@@ -1600,20 +1596,29 @@ export function makeWoodPlankTexture({
         });
 
         // ------------------------------------------------------------
-        // 中後段側邊扶手——欄位到駕駛室之間的走道欄杆，欄位自己已經有
-        // 圍欄，跳板開口那段(x < -1.1)刻意不裝，維持開放好讓牛羊直進。
+        // 兩側連續護欄——2026-08-26 Zeppelin 反饋加的，同一天再回報一次
+        // 「上下欄杆延長到船頭」：起點從欄位前緣(penFrontX)再往前推到
+        // railFrontX(貼著船頭轉角，取代原本單獨那兩根轉角柱)，一路接到
+        // 駕駛室牆面(cabinFrontX)，跟欄位自己那圈矮圍欄疊在一起(欄位
+        // 圍欄矮、這條護欄高，內外兩層都看得到)。船頭最前緣(跳板開口
+        // 本身)沒有欄杆——護欄只沿著左右兩側走，不會擋到牛羊直進。上下
+        // 兩條橫桿(0.15/0.32)加柱子，船身左右兩側對稱各一組。
         // ------------------------------------------------------------
+        const railFrontX = -1.75;
         [-1, 1].forEach((side) => {
-          const rail = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, cabinFrontX - penBackX, 6), tealMat);
-          rail.rotation.z = Math.PI / 2;
-          rail.position.set((penBackX + cabinFrontX) / 2, hullHeight + 0.3, side * (hullBeam / 2 - 0.02));
-          rail.castShadow = true;
-          group.add(rail);
-          const postCount = 4;
+          [0.15, 0.32].forEach((railY) => {
+            const rail = new THREE.Mesh(new THREE.CylinderGeometry(0.022, 0.022, cabinFrontX - railFrontX, 6), tealMat);
+            rail.rotation.z = Math.PI / 2;
+            rail.position.set((railFrontX + cabinFrontX) / 2, hullHeight + railY, side * (hullBeam / 2 - 0.02));
+            rail.castShadow = true;
+            group.add(rail);
+          });
+          const postCount = 9;
           for (let i = 0; i <= postCount; i++) {
-            const t = penBackX + (i / postCount) * (cabinFrontX - penBackX);
-            const post = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.018, 0.3, 5), tealMat);
-            post.position.set(t, hullHeight + 0.15, side * (hullBeam / 2 - 0.02));
+            const t = railFrontX + (i / postCount) * (cabinFrontX - railFrontX);
+            const post = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.36, 5), tealMat);
+            post.position.set(t, hullHeight + 0.17, side * (hullBeam / 2 - 0.02));
+            post.castShadow = true;
             group.add(post);
           }
         });
@@ -2106,23 +2111,33 @@ export function makeWoodPlankTexture({
         // LAYOUT 數字之後微調也不用跟著手動改這裡。ferryHullHalfLength
         // 抓的是船 hull 局部半長(見 makeCargoShip 的 hullLength=3.6)
         // 乘上這裡的 scale.x，換算出離碼頭最近那一端(現在是船頭)的世界
-        // 座標。寬度改傳 1.1(對應船頭寬平開口)，不再是舊版小艇跳板的
-        // 0.62窄板，牛羊才能整片走過去不用排隊。靠港時顯示、啟航/行駛
-        // 中收起，由 game-loop.ts 依日夜切換 gangplankMeshes 的
-        // .visible，不用重蓋地圖。
+        // 座標。
+        //
+        // 2026-08-26：Zeppelin 反饋要先看「放下」的樣子，這裡改成不再
+        // push 進 gangplankMeshes——舊版渡輪的跳板會依 game-loop.ts 的
+        // 日夜切換收放(夜間視為已啟航)，但登陸艇改款後這艘船的定位比較
+        // 像固定停靠的交通船，跳板先常駐放下，之後如果要做「收起」的
+        // 狀態(出航動畫之類)再另外接開關，不差這一版。
+        //
+        // 同一天再回報：跳板寬度要再擴張，「90 度收起來的時候才能把船
+        // 綁起來」——暗示之後跳板會做成可以立起來當船頭艙門用，立起時
+        // 要能蓋住整個船頭寬度、順便當繫船的地方，所以寬度不能只對應
+        // 開口本身。1.1 改成 1.6，比船體 hullBeam(1.5) 略寬一點，立起
+        // 來才能整個蓋住船頭而不留縫。這輪還沒做「立起收放」的實際互動
+        // /動畫，純粹是先把寬度留夠，之後真的要做收放開關時尺寸不用
+        // 重算。
         const ferryHullHalfLength = (3.6 / 2) * ferry.scale.x;
         const gangplankStartX = port.basin.x - 0.3;
         const gangplankEndX = port.ferry.x - ferryHullHalfLength;
         const gangplankLength = gangplankEndX - gangplankStartX;
         const gangplankStartY = port.elevation;
         const gangplankEndY = ferry.position.y + 0.5 * ferry.scale.y;
-        const gangplank = makeGangplank(gangplankLength, 1.1);
+        const gangplank = makeGangplank(gangplankLength, 1.6);
         gangplank.rotation.z = Math.atan2(
           gangplankEndY - gangplankStartY,
           gangplankLength,
         );
         gangplank.position.set(gangplankStartX, gangplankStartY, port.ferry.z);
-        gangplankMeshes.push(gangplank);
         group.add(gangplank);
 
         const dock = makeDock();

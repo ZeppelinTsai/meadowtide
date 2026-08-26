@@ -696,7 +696,10 @@ export const LAYOUT = {
     shopRoad: { z: 14, height: 5 },
     basin: { x: 6, z: 18, width: 15, height: 9 },
     eastOceanCutout: { x: 23, z: 11, height: 6 },
-    ferry: { x: 13, z: 22 },
+    // 2026-08-26：Zeppelin 反饋登陸艇畫面要往左(靠碼頭方向)移兩格，
+    // 原本 13 改成 11，跳板長度會跟著這個常數自動變短，不用手動改
+    // makePortScene() 那邊的算式。
+    ferry: { x: 11, z: 22 },
     southQuay: { z: 27, height: 3 },
     southBeach: { x: 0, z: 30, width: 21, depth: 30 },
     southBeachStairs: { x: 7, z: 29, width: 7, depth: 3 },
