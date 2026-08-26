@@ -37,6 +37,7 @@ import {
   SHRINE_PATH_ELEVATION,
   portGroundY,
   oldVillageGroundY,
+  oldVillageNorthPlatformBounds,
   oldVillageSouthBeachEndZ,
   oldVillageWestBeachStartX,
   mountainGroundY,
@@ -996,6 +997,22 @@ export function buildMap(mapName) {
         townWestX,
         LAYOUT.oldVillage.width - townWestX,
       );
+      const northPlatform = LAYOUT.oldVillage.northBeachPlatform;
+      for (
+        let z = northPlatform.z;
+        z < northPlatform.z + northPlatform.depth;
+        z++
+      ) {
+        const bounds = oldVillageNorthPlatformBounds(z);
+        if (!bounds) continue;
+        addTerrace(
+          z,
+          1,
+          northPlatform.elevation,
+          bounds.minX,
+          bounds.maxX - bounds.minX + 1,
+        );
+      }
       const mountainLanding = LAYOUT.oldVillage.mountainLanding;
       const mountainLandingMesh = new THREE.Mesh(
         new THREE.BoxGeometry(

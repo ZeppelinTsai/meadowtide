@@ -197,10 +197,20 @@ export const LAYOUT = {
     // addTerrace 的 xStart、OLD_VILLAGE_RAILS 前兩段)另外手動對應
     // 調整，這個工具目前不會幫忙掃到那些。
     westBeach: { x: 0, z: 0, width: 30, height: 64 },
-    // 位於西北岸、以世界座標 (100,37) 正北側為基準的 11x11 沙灘。
+    // 位於西北岸、以世界座標 (100,37) 正北側為基準的 11x21 沙灘。
     // 這裡先記錄西擴前的 x=-5；下方 OLD_VILLAGE_OCEAN_EXPANSION 會把
-    // LAYOUT.oldVillage 整體 +100，最後落在 x=95~105、z=26~36。
-    northBeach: { x: -5, z: 26, width: 11, height: 11 },
+    // LAYOUT.oldVillage 整體 +100，最後落在 x=95~105、z=16~36。
+    northBeach: { x: -5, z: 16, width: 11, height: 21 },
+    // 平台以擴建後沙灘中心附近 (100,25.5) 為中心，四周保留 1~3 格沙。
+    // rowInsets 是固定種子的輕微參差，不在載圖時重抽，避免碰撞輪廓漂移。
+    northBeachPlatform: {
+      z: 18,
+      depth: 16,
+      elevation: 3,
+      rowInsets: [
+        2, 2, 1, 2, 1, 1, 2, 1, 1, 2, 1, 1, 2, 1, 2, 2,
+      ],
+    },
     stalactiteCave: {
       // 擴展到 x=29，剛好貼齊 westBeach(x:0~29)的東緣，跟乾地交界
       // 不留縫；入口跟著洞窟拓寬——從 22-23 移到 24-26，往東挪一點
@@ -318,6 +328,17 @@ export const LAYOUT = {
         toZ: 33,
         baseElevation: 0,
         elevation: 1,
+        steps: 6,
+      },
+      // 北側平台南端樓梯：西擴前 x=-1，擴張後位於 x=99~101。
+      // z=33 頂端銜接高度 3 的平台，z=36 底端落回海平面沙灘。
+      {
+        x: -1,
+        width: 3,
+        fromZ: 33,
+        toZ: 36,
+        baseElevation: 0,
+        elevation: 3,
         steps: 6,
       },
     ],
@@ -926,6 +947,13 @@ export function portSouthBeachEndZ(x: number) {
 
 export function oldVillageGroundY(x: number, z: number) {
   const village = LAYOUT.oldVillage;
+  const platformBounds = oldVillageNorthPlatformBounds(Math.round(z));
+  if (
+    platformBounds &&
+    x >= platformBounds.minX - 0.5 &&
+    x <= platformBounds.maxX + 0.5
+  )
+    return village.northBeachPlatform.elevation;
   const landing = village.mountainLanding;
   if (
     x >= landing.x - 0.5 &&
@@ -993,6 +1021,18 @@ export function oldVillageGroundY(x: number, z: number) {
   if (z >= village.terraces.middle.minZ && z <= village.terraces.middle.maxZ)
     return village.terraces.middle.elevation;
   return village.groundElevation;
+}
+
+export function oldVillageNorthPlatformBounds(z: number) {
+  const village = LAYOUT.oldVillage;
+  const platform = village.northBeachPlatform;
+  const row = z - platform.z;
+  if (row < 0 || row >= platform.depth) return null;
+  const inset = platform.rowInsets[row];
+  return {
+    minX: village.northBeach.x + inset,
+    maxX: village.northBeach.x + village.northBeach.width - inset - 1,
+  };
 }
 // 南沙灘海岸線以 x 為種子產生穩定的鋸齒凹凸，跟 portSouthBeachEndZ()
 // 同一套公式——地圖、碰撞與水面都呼叫這個函式，沙格彎曲時水面才會

@@ -136,6 +136,23 @@ test("舊城鎮西側與南側各擴充 100 格海面", () => {
   for (let z = northBeach.z; z < northBeach.z + northBeach.height; z++)
     for (let x = northBeach.x; x < northBeach.x + northBeach.width; x++)
       assert.equal(tiles[z][x], 8);
+  assert.deepEqual(northBeach, { x: 95, z: 16, width: 11, height: 21 });
+  const platform = LAYOUT.oldVillage.northBeachPlatform;
+  assert.equal(platform.z + (platform.depth - 1) / 2, 25.5);
+  assert.equal(platform.elevation, LAYOUT.oldVillage.terraces.upper.elevation);
+  assert.equal(platform.rowInsets.length, platform.depth);
+  assert.ok(platform.rowInsets.every((inset) => inset === 1 || inset === 2));
+  const platformStair =
+    LAYOUT.oldVillage.westStairs[LAYOUT.oldVillage.westStairs.length - 1];
+  assert.deepEqual(platformStair, {
+    x: 99,
+    width: 3,
+    fromZ: 33,
+    toZ: 36,
+    baseElevation: 0,
+    elevation: 3,
+    steps: 6,
+  });
   for (let z = 64; z < tiles.length; z++)
     for (let x = 0; x < tiles[z].length; x++)
       assert.equal(tiles[z][x], 9, `南側新增海面 (${x},${z})`);
