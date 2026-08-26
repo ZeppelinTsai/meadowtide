@@ -365,9 +365,24 @@ export function addDefaultHumanoidSmile(
         head.castShadow = true; group.add(head);
         const hairCap = new THREE.Mesh(new THREE.SphereGeometry(0.218, 9, 7), hairMat);
         hairCap.scale.set(1.04, 0.7, 1.03); hairCap.position.set(0, 1.225, 0.005); group.add(hairCap);
-        [[-0.19,1.23,-0.08,-0.58],[-0.13,1.3,-0.11,-0.38],[-0.05,1.34,-0.12,-0.18],[0.04,1.34,-0.11,0.12],[0.12,1.31,-0.1,0.34],[0.19,1.25,-0.07,0.58],[0.18,1.16,-0.11,0.78]].forEach(([x,y,z,r]) => {
-          const tuft = new THREE.Mesh(new THREE.ConeGeometry(0.055, 0.18, 5), hairMat);
-          tuft.position.set(x,y,z); tuft.rotation.z = r; group.add(tuft);
+        // 短亂髮束的圓錐尖端必須由頭皮往外：ConeGeometry 的根部在本地
+        // -Y、尖端在 +Y，因此左側用正 Z 旋轉、右側用負 Z 旋轉。舊版符號
+        // 剛好相反，導致髮尖朝頭內，看起來像刺進腦袋。
+        [
+          [-0.17, 1.245, -0.07, 0.72, -0.24, 0.15],
+          [-0.105, 1.305, -0.09, 0.42, -0.36, 0.16],
+          [-0.025, 1.335, -0.105, 0.14, -0.42, 0.145],
+          [0.055, 1.325, -0.095, -0.2, -0.38, 0.155],
+          [0.13, 1.285, -0.075, -0.48, -0.3, 0.15],
+          [0.185, 1.225, -0.04, -0.72, -0.16, 0.14],
+        ].forEach(([x, y, z, rotationZ, rotationX, length]) => {
+          const tuft = new THREE.Mesh(
+            new THREE.ConeGeometry(0.052, length, 5),
+            hairMat,
+          );
+          tuft.position.set(x, y, z);
+          tuft.rotation.set(rotationX, 0, rotationZ);
+          group.add(tuft);
         });
         const nose = new THREE.Mesh(new THREE.ConeGeometry(0.027, 0.062, 5), skinMat);
         nose.rotation.x = Math.PI / 2; nose.position.set(0, 1.09, -0.195); group.add(nose);
