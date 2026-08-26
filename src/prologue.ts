@@ -1,10 +1,11 @@
 import * as THREE from "three";
-import { gameState } from "./game-state";
+import { dayLength, gameState } from "./game-state";
 import { LAYOUT } from "./layout-maps";
 import { showDialogSequence } from "./dialogue";
 import { npcs, npcGroup } from "./npc-runtime";
 import { prologueRefs } from "./scene-registries";
 import { updateCameraFrustum } from "./scene-sky";
+import { animateWalk } from "./humanoid";
 
 // ==============================================================
 // 序幕：開場第一天演出——主角乘（makePortScene() 裡本來就停在港口的
@@ -54,6 +55,7 @@ type Stage =
   | "approaching"
   | "rampLowering"
   | "walking"
+  | "captainWalking"
   | "greeting"
   | "done";
 
@@ -61,6 +63,8 @@ let stage: Stage = "inactive";
 let stageProgress = 0; // 0~1，每個計時型階段自己歸零重算
 let waypoints: THREE.Vector3[] = [];
 let waypointIndex = 0;
+let captainWaypointIndex = 0;
+let captainWaypoints: THREE.Vector3[] = [];
 let greetingDialogueStarted = false; // 防止 greeting 階段每幀重複呼叫 showDialogSequence
 let hasTouchedDock = false; // 「腳踏上碼頭」的一次性判定，見 walking 階段
 // 2026-08-26 第六輪反饋「主角剛落地是陷進碼頭的」——查出來的真正原因：
@@ -78,6 +82,34 @@ let hasTouchedDock = false; // 「腳踏上碼頭」的一次性判定，見 wal
 let lastPlayerY = 0;
 // 序幕演出用的固定鏡頭縮放——見 startPrologueScene() 內的設定。
 const PROLOGUE_ZOOM = 5;
+const PROLOGUE_MAYOR_X = 3;
+const PROLOGUE_MAYOR_Z = 22;
+const PROLOGUE_CAPTAIN_X = 5;
+const PROLOGUE_CAPTAIN_Z = 21;
+const PROLOGUE_HOUR = 10;
+const PROLOGUE_PHASE = PROLOGUE_HOUR / 24;
+
+function lockPrologueDateTime() {
+  gameState.elapsed = dayLength * PROLOGUE_PHASE;
+  gameState.currentDay = 0;
+  gameState.currentPhase = PROLOGUE_PHASE;
+  gameState.currentSeason = 0;
+}
+
+function lockPrologueZoom() {
+  if (gameState.zoom === PROLOGUE_ZOOM) return;
+  gameState.zoom = PROLOGUE_ZOOM;
+  updateCameraFrustum();
+}
+
+function placePrologueMayor() {
+  const mayor = npcs.find((npc) => npc.id === "mayor");
+  if (!mayor) return;
+  mayor.mesh.visible = true;
+  mayor.mesh.position.set(PROLOGUE_MAYOR_X, LAYOUT.port.elevation, PROLOGUE_MAYOR_Z);
+  // 人形正面是本地 -Z；面向世界 +X（畫面右方）需轉 -90 度。
+  mayor.mesh.rotation.y = -Math.PI / 2;
+}
 
 // 演出參數——先求「有動作、順序對」，實際格數/秒數之後看畫面再調，
 // 都寫成具名常數方便找。
@@ -220,7 +252,14 @@ function computeWaypoints() {
     rampBottom.z,
   );
   waypoints = [onDeck, rampTop, rampBottom, dockGreet];
+  captainWaypoints = [
+    onDeck.clone(),
+    rampTop.clone(),
+    rampBottom.clone(),
+    new THREE.Vector3(PROLOGUE_CAPTAIN_X, LAYOUT.port.elevation, PROLOGUE_CAPTAIN_Z),
+  ];
   waypointIndex = 0;
+  captainWaypointIndex = 0;
   hasTouchedDock = false;
 }
 
@@ -239,18 +278,17 @@ function startWelcomeDialogue() {
     // 船長留在跳板邊——演出設定是他正在把纜繩繫上，這一段沒有真的做
     // 繫繩動畫，用站位暗示就好。
     captain.mesh.visible = true;
-    captain.mesh.position.set(dockRamp.x - 0.3, dockRamp.y, dockRamp.z + 1);
+    captain.mesh.position.set(
+      PROLOGUE_CAPTAIN_X,
+      LAYOUT.port.elevation,
+      PROLOGUE_CAPTAIN_Z,
+    );
   }
   if (mayor) {
     // 村長平常掛在生活區，這場戲直接把她搬到港口——跟木匠事件的
     // startCarpenterDockScene() 是同一招(mayor.mesh.position.set 覆蓋
     // 掉她原本的行程表座標)，演出結束後她會照正常排程走，不用另外復原。
-    mayor.mesh.visible = true;
-    mayor.mesh.position.set(
-      dockRamp.x - 2.4,
-      LAYOUT.port.elevation,
-      dockRamp.z - 1.2,
-    );
+    placePrologueMayor();
   }
   showDialogSequence(
     [
@@ -305,6 +343,8 @@ export function startPrologueScene(opts: { force?: boolean } = {}) {
   }
   const fadeEl = document.getElementById("fade") as HTMLElement;
   gameState.cutsceneActive = true;
+  lockPrologueDateTime();
+  lockPrologueZoom();
   fadeEl.style.opacity = "1";
   setTimeout(() => {
     const ferry = prologueRefs.ferry!;
@@ -317,8 +357,7 @@ export function startPrologueScene(opts: { force?: boolean } = {}) {
     npcGroup.visible = true;
     const captain = npcs.find((n) => n.id === "captain");
     if (captain) captain.mesh.visible = false; // 開船中，先不現身，靠岸繫繩時才出場
-    const mayor = npcs.find((n) => n.id === "mayor");
-    if (mayor) mayor.mesh.visible = false;
+    placePrologueMayor();
     // 2026-08-26 第五輪反饋「不知道為什麼木匠跟著」——木匠本身平常不會
     // 出現在演出設定裡，會被拖上船大機率是 game-loop.ts 的
     // isCarpenterEscortActor 那段邏輯：只要 carpenterQuest.stage 是
@@ -340,8 +379,7 @@ export function startPrologueScene(opts: { force?: boolean } = {}) {
     // 2026-08-26 Zeppelin 反饋「先鎖定事件預設zoom5，演出有需要調整時
     // 我會講」——開演出時直接把鏡頭縮放釘死在這個值，不管玩家(或上次
     // 除錯時)手動滾輪滾到哪個縮放，都從同一個已知距離開始。
-    gameState.zoom = PROLOGUE_ZOOM;
-    updateCameraFrustum();
+    lockPrologueZoom();
     beginStage("atSea");
     fadeEl.style.opacity = "0";
     startShipDialogue();
@@ -369,6 +407,8 @@ export function isPrologueShipStage(): boolean {
 // 時才有事做，其餘時間直接是個 no-op。
 export function updatePrologueCutscene(dt: number) {
   if (!gameState.cutsceneActive) return;
+  lockPrologueDateTime();
+  lockPrologueZoom();
   const ferry = prologueRefs.ferry;
   const gangplank = prologueRefs.gangplank;
   if (!ferry || !gangplank) return;
@@ -458,7 +498,17 @@ export function updatePrologueCutscene(dt: number) {
         console.info("[序幕] 已踏上碼頭");
       }
       waypointIndex++;
-      if (waypointIndex >= waypoints.length) beginStage("greeting");
+      if (waypointIndex >= waypoints.length) {
+        const captain = npcs.find((npc) => npc.id === "captain");
+        if (captain && captainWaypoints.length > 0) {
+          captain.mesh.visible = true;
+          captain.mesh.position.copy(captainWaypoints[0]);
+          captainWaypointIndex = 1;
+          beginStage("captainWalking");
+        } else {
+          beginStage("greeting");
+        }
+      }
     } else {
       const nx = dx / dist,
         nz = dz / dist;
@@ -473,6 +523,41 @@ export function updatePrologueCutscene(dt: number) {
       faceDirection(nx, nz);
     }
     gameState.isMoving = true;
+    return;
+  }
+
+  if (stage === "captainWalking") {
+    gameState.isMoving = false;
+    const captain = npcs.find((npc) => npc.id === "captain");
+    const target = captainWaypoints[captainWaypointIndex];
+    if (!captain || !target) {
+      beginStage("greeting");
+      return;
+    }
+    const dx = target.x - captain.mesh.position.x;
+    const dz = target.z - captain.mesh.position.z;
+    const dist = Math.hypot(dx, dz);
+    const step = WALK_SPEED * dt;
+    if (dist <= Math.max(step, 0.03)) {
+      captain.mesh.position.copy(target);
+      const groundY = captain.mesh.position.y;
+      animateWalk(captain.mesh, false, gameState.effectElapsed);
+      captain.mesh.position.y += groundY;
+      captainWaypointIndex++;
+      if (captainWaypointIndex >= captainWaypoints.length) beginStage("greeting");
+    } else {
+      const nx = dx / dist;
+      const nz = dz / dist;
+      captain.mesh.position.x += nx * step;
+      captain.mesh.position.z += nz * step;
+      captain.mesh.position.y = THREE.MathUtils.lerp(
+        captain.mesh.position.y, target.y, Math.min(1, step / dist),
+      );
+      captain.mesh.rotation.y = Math.atan2(-nx, -nz);
+      const groundY = captain.mesh.position.y;
+      animateWalk(captain.mesh, true, gameState.effectElapsed);
+      captain.mesh.position.y += groundY;
+    }
     return;
   }
 
