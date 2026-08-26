@@ -3490,7 +3490,10 @@ export function buildMap(mapName) {
       );
       lGeo.setIndex(indices);
       lGeo.computeVertexNormals();
-      lGeo.userData = { basePositions: posArray.slice() };
+      lGeo.userData = {
+        basePositions: posArray.slice(),
+        baseColors: new Float32Array(colors),
+      };
 
       gameState.lakeMesh = new THREE.Mesh(
         lGeo,

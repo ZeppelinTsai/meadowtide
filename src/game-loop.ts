@@ -1405,11 +1405,13 @@ export function animate(now) {
     if (gameState.animationFrameCount % 8 === 0)
       gameState.oceanMesh.geometry.computeVertexNormals();
   }
-  // 湖的波紋——幅度只有海的十分之一左右，沒有碎浪、沒有顏色變化，
-  // 純粹是輕輕晃動的水面，配上平滑法線去接收陽光的反光高光
+  // 湖的波紋比海柔和，不做碎浪；夜晚仍依同一套世界座標星光取樣，
+  // 讓第一人稱貼近水面時也能看到隨漣漪閃爍的星光，而不是整片死黑。
   if (gameState.lakeMesh && updateWaterSurface) {
     const lPosAttr = gameState.lakeMesh.geometry.attributes.position;
+    const lColorAttr = gameState.lakeMesh.geometry.attributes.color;
     const lBase = gameState.lakeMesh.geometry.userData.basePositions;
+    const lBaseColors = gameState.lakeMesh.geometry.userData.baseColors;
     const llx = gameState.lakeMesh.position.x,
       llz = gameState.lakeMesh.position.z;
     for (let i = 0; i < lPosAttr.count; i++) {
@@ -1421,8 +1423,24 @@ export function animate(now) {
         Math.sin(wx * 2.4 + gameState.effectElapsed * 1.1) * 0.011 +
         Math.cos(wz * 2.0 + gameState.effectElapsed * 0.85) * 0.009;
       lPosAttr.setY(i, y);
+      const colorOffset = i * 3;
+      setSeaVertexColor(
+        lColorAttr,
+        i,
+        lBaseColors[colorOffset],
+        lBaseColors[colorOffset + 1],
+        lBaseColors[colorOffset + 2],
+        0,
+        sampleStarlightReflection(
+          wx,
+          wz,
+          nightFactor,
+          gameState.effectElapsed,
+        ) * 1.35,
+      );
     }
     lPosAttr.needsUpdate = true;
+    lColorAttr.needsUpdate = true;
     if (gameState.animationFrameCount % 8 === 0)
       gameState.lakeMesh.geometry.computeVertexNormals();
   }

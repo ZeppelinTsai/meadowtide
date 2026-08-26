@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import { gameState } from "./game-state";
 import { getGamepadLookInput } from "./gamepad-input";
-import { renderer } from "./scene-sky";
+import { renderer, scene } from "./scene-sky";
 
 const firstPersonCamera = new THREE.PerspectiveCamera(
   65,
@@ -10,6 +10,9 @@ const firstPersonCamera = new THREE.PerspectiveCamera(
   220,
 );
 firstPersonCamera.rotation.order = "YXZ";
+// 相機本身不必在 scene 裡才能拿來 render，但掛在相機底下的星空／日月／雲
+// 必須由 scene graph 遍歷；否則第一人稱啟用後那些子物件會整組消失。
+scene.add(firstPersonCamera);
 
 const LOOK_SPEED = 1.9;
 const MOUSE_SENSITIVITY = 0.0022;
