@@ -201,8 +201,20 @@ export const LAYOUT = {
     // 這裡先記錄西擴前的 x=-5；下方 OLD_VILLAGE_OCEAN_EXPANSION 會把
     // LAYOUT.oldVillage 整體 +100，最後落在 x=95~105、z=16~36。
     northBeach: { x: -5, z: 16, width: 11, height: 21 },
+    // 核心沙灘北／西／東側向外錯落 0~2 格；陣列索引依各邊由小座標往大座標。
+    northBeachOuterFringe: {
+      northDepths: [1, 2, 1, 0, 2, 1, 2, 0, 1, 2, 1],
+      westDepths: [1, 2, 1, 0, 2, 1, 2, 1, 0, 1, 2, 1, 0, 2, 1, 2, 0, 1, 2, 1],
+      eastDepths: [2, 1, 0, 1, 2, 1, 0, 2, 1, 2, 1, 0, 1, 2, 1, 0, 2, 1, 2, 1],
+    },
     // 東南側補沙，西擴後落在指定的 x=105~115、z=35~36。
     northBeachEastFill: { x: 5, z: 35, width: 11, height: 2 },
+    // 西擴後固定覆蓋 x=105~117、z=34，並向北錯落延伸 0~2 格。
+    northBeachEastShelf: {
+      x: 5,
+      z: 34,
+      northDepths: [1, 2, 1, 3, 2, 1, 2, 3, 1, 2, 1, 3, 2],
+    },
     // 平台由四個彼此貼合、正常寫深度的實心方塊組成；輪廓左右只偏 1 格。
     // 最南段仍以 z=31 銜接樓梯頂端，所有段共用同一高度與材質規則。
     northBeachPlatform: {
@@ -1648,6 +1660,39 @@ for (const sandPatch of [
     }
   }
 }
+const northBeach = LAYOUT.oldVillage.northBeach;
+const northBeachOuterFringe = LAYOUT.oldVillage.northBeachOuterFringe;
+northBeachOuterFringe.northDepths.forEach((depth, index) => {
+  const x = northBeach.x + index;
+  for (let offset = 1; offset <= depth; offset++) {
+    const z = northBeach.z - offset;
+    if (MAPS.oldVillage.tiles[z]?.[x] !== undefined)
+      MAPS.oldVillage.tiles[z][x] = 8;
+  }
+});
+for (const [side, depths] of [
+  [-1, northBeachOuterFringe.westDepths],
+  [1, northBeachOuterFringe.eastDepths],
+] as const) {
+  depths.forEach((depth, index) => {
+    const z = northBeach.z + index;
+    for (let offset = 1; offset <= depth; offset++) {
+      const x = side < 0
+        ? northBeach.x - offset
+        : northBeach.x + northBeach.width - 1 + offset;
+      if (MAPS.oldVillage.tiles[z]?.[x] !== undefined)
+        MAPS.oldVillage.tiles[z][x] = 8;
+    }
+  });
+}
+const northBeachEastShelf = LAYOUT.oldVillage.northBeachEastShelf;
+northBeachEastShelf.northDepths.forEach((depth, index) => {
+  const x = northBeachEastShelf.x + index;
+  for (let z = northBeachEastShelf.z - depth + 1; z <= northBeachEastShelf.z; z++) {
+    if (MAPS.oldVillage.tiles[z]?.[x] !== undefined)
+      MAPS.oldVillage.tiles[z][x] = 8;
+  }
+});
 const northBeachSouthEdge = LAYOUT.oldVillage.northBeachSouthEdge;
 northBeachSouthEdge.endOffsets.forEach((offset, index) => {
   const x = northBeachSouthEdge.x + index;

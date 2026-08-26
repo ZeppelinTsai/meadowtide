@@ -124,18 +124,33 @@ test("舊城鎮西側與南側各擴充 100 格海面", () => {
     for (let x = 0; x < OLD_VILLAGE_OCEAN_EXPANSION.west; x++) {
       const beach = LAYOUT.oldVillage.northBeach;
       const edge = LAYOUT.oldVillage.northBeachSouthEdge;
+      const fringe = LAYOUT.oldVillage.northBeachOuterFringe;
       const edgeIndex = x - edge.x;
       const isSouthEdgeSand =
         edgeIndex >= 0 &&
         edgeIndex < edge.endOffsets.length &&
         z >= edge.z - 1 &&
         z <= edge.z + edge.endOffsets[edgeIndex];
+      const northIndex = x - beach.x;
+      const isNorthFringeSand =
+        northIndex >= 0 &&
+        northIndex < fringe.northDepths.length &&
+        z < beach.z &&
+        z >= beach.z - fringe.northDepths[northIndex];
+      const westIndex = z - beach.z;
+      const isWestFringeSand =
+        westIndex >= 0 &&
+        westIndex < fringe.westDepths.length &&
+        x < beach.x &&
+        x >= beach.x - fringe.westDepths[westIndex];
       if (
         (x >= beach.x &&
           x < beach.x + beach.width &&
           z >= beach.z &&
           z < beach.z + beach.height) ||
-        isSouthEdgeSand
+        isSouthEdgeSand ||
+        isNorthFringeSand ||
+        isWestFringeSand
       )
         continue;
       assert.equal(tiles[z][x], 9, `西側新增海面 (${x},${z})`);
@@ -145,6 +160,29 @@ test("舊城鎮西側與南側各擴充 100 格海面", () => {
     for (let x = northBeach.x; x < northBeach.x + northBeach.width; x++)
       assert.equal(tiles[z][x], 8);
   assert.deepEqual(northBeach, { x: 95, z: 16, width: 11, height: 21 });
+  const outerFringe = LAYOUT.oldVillage.northBeachOuterFringe;
+  assert.equal(outerFringe.northDepths.length, 11);
+  assert.equal(outerFringe.westDepths.length, 20);
+  assert.equal(outerFringe.eastDepths.length, 20);
+  outerFringe.northDepths.forEach((depth, index) => {
+    assert.ok(depth >= 0 && depth <= 2);
+    for (let offset = 1; offset <= depth; offset++)
+      assert.equal(tiles[northBeach.z - offset][northBeach.x + index], 8);
+  });
+  for (const [side, depths] of [
+    [-1, outerFringe.westDepths],
+    [1, outerFringe.eastDepths],
+  ] as const) {
+    depths.forEach((depth, index) => {
+      assert.ok(depth >= 0 && depth <= 2);
+      for (let offset = 1; offset <= depth; offset++) {
+        const x = side < 0
+          ? northBeach.x - offset
+          : northBeach.x + northBeach.width - 1 + offset;
+        assert.equal(tiles[northBeach.z + index][x], 8);
+      }
+    });
+  }
   const platform = LAYOUT.oldVillage.northBeachPlatform;
   assert.equal(platform.elevation, 3);
   assert.deepEqual(platform.segments, [
@@ -155,6 +193,16 @@ test("舊城鎮西側與南側各擴充 100 格海面", () => {
   ]);
   const eastFill = LAYOUT.oldVillage.northBeachEastFill;
   assert.deepEqual(eastFill, { x: 105, z: 35, width: 11, height: 2 });
+  const eastShelf = LAYOUT.oldVillage.northBeachEastShelf;
+  assert.equal(eastShelf.x, 105);
+  assert.equal(eastShelf.z, 34);
+  assert.equal(eastShelf.northDepths.length, 13);
+  eastShelf.northDepths.forEach((depth, index) => {
+    const x = eastShelf.x + index;
+    assert.ok(depth >= 1 && depth <= 3);
+    for (let z = eastShelf.z - depth + 1; z <= eastShelf.z; z++)
+      assert.equal(tiles[z][x], 8, `北側沙灘不規則延伸 (${x},${z}) 應為沙灘`);
+  });
   const southEdge = LAYOUT.oldVillage.northBeachSouthEdge;
   assert.equal(southEdge.x, 95);
   southEdge.endOffsets.forEach((offset, index) => {
