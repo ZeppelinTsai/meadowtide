@@ -98,6 +98,32 @@
         <div id="harvestToastText"></div>
       </div>
     </div>
+    <!-- 開局標題畫面：先「按任意鍵」拿到一次真正的使用者手勢(順便解決
+         BGM 自動播放政策擋掉的問題，見 music.ts/title-screen.ts 的說明)，
+         再進主選單。純白底、不吃任何圖片素材，z-index 特意開最高(100)，
+         蓋過 #fade(20)/#dialog(15) 等既有疊層。 -->
+    <div id="titleScreen" data-step="splash">
+      <div id="titleSplash" class="titleStep">
+        <h1 id="titleLogo">海風牧歌</h1>
+        <p id="titleSubtitle">Meadowtide</p>
+        <p id="titlePrompt">按任意鍵開始</p>
+      </div>
+      <div id="titleMenu" class="titleStep">
+        <h1 id="titleMenuLogo">海風牧歌</h1>
+        <nav id="titleMenuButtons">
+          <button type="button" id="titleNewGameBtn" class="titleMenuBtn">開始新遊戲</button>
+          <button type="button" id="titleContinueBtn" class="titleMenuBtn" hidden>繼續遊戲</button>
+          <button type="button" id="titleSystemBtn" class="titleMenuBtn">系統</button>
+          <button type="button" id="titleQuitBtn" class="titleMenuBtn">結束遊戲</button>
+        </nav>
+        <p id="titleQuitMessage" hidden>感謝遊玩《海風牧歌》，可以安全關閉這個分頁了。</p>
+      </div>
+      <div id="titleSystem" class="titleStep">
+        <h2 id="titleSystemHeading">系統</h2>
+        <button type="button" id="titleMuteBtn" class="titleMenuBtn"></button>
+        <button type="button" id="titleSystemBackBtn" class="titleMenuBtn">返回</button>
+      </div>
+    </div>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

@@ -1705,3 +1705,46 @@ Zeppelin 回報：上岸前(立起貼船頭)扶手方向對了，但靠岸後(�
 根因修法；扶手動態翻面延續 Zeppelin 上一輪指定的做法，只是把「整組
 永久改」換成「按狀態動態改」，理論上更不容易顧此失彼，但兩個狀態
 (尤其立起貼船頭那段)實際畫面還是要進遊戲確認。
+
+## 開局標題畫面（2026-08-26）
+
+Zeppelin 提議先做一個簡單的開局標題畫面(按任意鍵→主選單)，順便討論
+過這跟目前排定的開發軌(角色內容)不衝突——這屬於平行的地基/UX 外殼，
+純白底、不吃圖片素材。選單內容照 Zeppelin 指定：開始新遊戲／繼續遊戲
+(只有偵測到存檔才顯示)／系統／結束遊戲，之後再視需要加「鑑賞」。
+
+- 新增 `src/title-screen.ts`(`initTitleScreen()`)：splash(按任意鍵)→
+  menu→system 三步共用同一個 `#titleScreen` 容器，靠 `data-step`
+  屬性切換可見度(見 `style.css` 對應規則)，z-index 開到 100，蓋過
+  `#fade`(20)等既有最高疊層。
+- **順手把 BGM 自動播放政策的問題連根拔掉**：「按任意鍵」這一下是玩家
+  在這個分頁裡第一次真正的使用者手勢，`enterMenu()` 就地呼叫
+  `initializeMusic()`——比第八輪那個「失敗了讓它可以重試」的治標修法
+  更進一步，直接確保序幕/正常遊戲的 BGM 第一次嘗試播放時政策就已經
+  解鎖，理論上不會再看到 NotAllowedError。
+- **開局分支邏輯搬家**：原本 `main.ts` 自己判斷
+  `shouldPlayPrologueOnBoot()` 決定要不要播序幕，現在改成玩家自己在
+  主選單按「開始新遊戲」(永遠走序幕，等於原本 `shouldPlayPrologueOnBoot()`
+  為真那條分支)或「繼續遊戲」(讀檔進生活區)——後者也是這輪才第一次把
+  `loadGame()` 接進開局流程：原本存檔是要進遊戲後手動按 F9 才會讀，
+  現在「繼續遊戲」按鈕會在 `loadMap("livingArea", undefined)` 之後
+  用 `setTimeout(..., 500)` 銜接呼叫 `loadGame()`(500ms 是抓在
+  `loadMap()` 內部 `fadeOut()→setTimeout(cb,400)` 真正建立
+  `gameState.player` 之後、留 100ms 緩衝，跟 `startPrologueScene()`
+  自己那個 400ms setTimeout 是同一種既有寫法，不是新發明的排程模式)。
+  `main.ts` 因此瘦身成只呼叫 `initTitleScreen()` +
+  `requestAnimationFrame(animate)`，`animate()` 本來就有
+  `if (!gameState.player) return;` 這行(第一行)，所以標題畫面停留
+  多久都不會出事，不用額外處理「還沒建地圖時 animate 在幹嘛」。
+- `prologue.ts` 新增 `hasSaveData()` 匯出(`!shouldPlayPrologueOnBoot()`
+  的語意包裝)，給主選單判斷要不要顯示「繼續遊戲」按鈕用。
+- 「系統」子畫面這輪只放了音樂靜音切換(復用既有的 `setMusicMuted()`)，
+  其餘選項(音量滑桿/語言切換之類)先留白，Zeppelin 之後想好再加。
+- 「結束遊戲」：瀏覽器分頁沒辦法被網頁自己強制關掉(除非分頁本身是用
+  `window.open()` 開的)，做成「盡量嘗試 `window.close()`，不管有沒有
+  成功都顯示一句『感謝遊玩，可以關閉這個分頁了』收尾」，這是先跟
+  Zeppelin 確認過的保底寫法。
+
+`tsc --noEmit` 過關。這輪還沒有實際進遊戲跑過完整的按鍵/滑鼠互動流程
+(splash→menu→開始新遊戲/繼續遊戲/系統/結束遊戲 各自的畫面/行為)，
+需要 Zeppelin 確認視覺跟每個按鈕的實際效果。

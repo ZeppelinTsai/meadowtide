@@ -40,6 +40,14 @@ export function shouldPlayPrologueOnBoot(): boolean {
   }
 }
 
+// 2026-08-26 標題畫面(title-screen.ts)用——跟上面
+// shouldPlayPrologueOnBoot() 邏輯上是同一個判斷的反面(有沒有存檔)，只是
+// 用途不同：這支是給主選單決定要不要顯示「繼續遊戲」按鈕，不是給開局
+// 自動分支用，兩支各自留著語意比較清楚，呼叫端不用自己記得要加驚嘆號。
+export function hasSaveData(): boolean {
+  return !shouldPlayPrologueOnBoot();
+}
+
 type Stage =
   | "inactive"
   | "atSea"
