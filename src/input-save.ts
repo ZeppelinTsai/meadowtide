@@ -71,6 +71,7 @@ import {
 } from "./layout-maps";
 import { tryShareChefMeal, mergeChefMealIntoChatLine } from "./chef-quest";
 import { previewPrologue } from "./prologue";
+import { toggleFirstPersonMode } from "./first-person-camera";
 import { npcGroup, npcs } from "./npc-runtime";
 import { npcLine } from "./npc-defs";
 import {
@@ -301,7 +302,10 @@ export function loadGame(slot = "default") {
 (window as any).saveGame = saveGame;
 (window as any).loadGame = loadGame;
 addEventListener("keydown", (event) => {
-  if (event.key === "F6") {
+  if (event.key === "Tab" && !event.repeat) {
+    event.preventDefault();
+    toggleFirstPersonMode();
+  } else if (event.key === "F6") {
     event.preventDefault();
     saveGame();
     console.info("[存檔] 已儲存 default 欄位");

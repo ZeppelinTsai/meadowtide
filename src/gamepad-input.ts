@@ -24,6 +24,13 @@
 // ==============================================================
 
 const STICK_DEADZONE = 0.35;
+let rightStickX = 0;
+let rightStickY = 0;
+let prevRightStickButton = false;
+
+export function getGamepadLookInput() {
+  return { x: rightStickX, y: rightStickY };
+}
 
 function firstConnectedGamepad(): Gamepad | null {
   if (typeof navigator === "undefined" || !navigator.getGamepads) return null;
@@ -58,6 +65,13 @@ function syncKey(key: keyof typeof prevHeld, held: boolean) {
 export function pollGamepad() {
   const pad = firstConnectedGamepad();
   if (!pad) return;
+
+  rightStickX = Math.abs(pad.axes[2] ?? 0) >= STICK_DEADZONE ? (pad.axes[2] ?? 0) : 0;
+  rightStickY = Math.abs(pad.axes[3] ?? 0) >= STICK_DEADZONE ? (pad.axes[3] ?? 0) : 0;
+  const rightStickButton = !!pad.buttons[11]?.pressed;
+  if (rightStickButton && !prevRightStickButton) dispatchKey("keydown", "Tab");
+  if (!rightStickButton && prevRightStickButton) dispatchKey("keyup", "Tab");
+  prevRightStickButton = rightStickButton;
 
   let dx = pad.axes[0] ?? 0;
   let dz = pad.axes[1] ?? 0;

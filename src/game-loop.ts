@@ -19,6 +19,11 @@ import { isGameplayPaused } from "./time-pause";
 import { isInventoryOpen } from "./inventory-ui";
 import { rollFishTier, COUNTER_DIRECTION } from "./fishing";
 import { pollGamepad } from "./gamepad-input";
+import {
+  getGameplayCamera,
+  isFirstPersonModeActive,
+  updateFirstPersonCamera,
+} from "./first-person-camera";
 import { vibrateGamepad, FISHING_HAPTICS } from "./gamepad-haptics";
 import { playRandomSfx, FISH_BITE_SFX } from "./sfx";
 import {
@@ -288,7 +293,7 @@ export function animate(now) {
   // 不透過 WASD/碰撞這條路(演出路徑是設計好的安全路徑，不需要碰撞判定)。
   let dx = 0,
     dz = 0;
-  if (!gameState.cutsceneActive) {
+  if (!gameState.cutsceneActive && !isFirstPersonModeActive()) {
     if (keys["w"] || keys["arrowup"]) dz -= 1;
     if (keys["s"] || keys["arrowdown"]) dz += 1;
     if (keys["a"] || keys["arrowleft"]) dx -= 1;
@@ -1559,7 +1564,8 @@ export function animate(now) {
     gameState.hudUpdateAccumulator = 0;
     updateHud();
   }
-  renderer.render(scene, camera);
+  updateFirstPersonCamera(frameDt);
+  renderer.render(scene, getGameplayCamera(camera));
 }
 
 addEventListener("resize", () => {
