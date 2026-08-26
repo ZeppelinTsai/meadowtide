@@ -21,7 +21,11 @@ import { rollFishTier, COUNTER_DIRECTION } from "./fishing";
 import { pollGamepad } from "./gamepad-input";
 import { vibrateGamepad, FISHING_HAPTICS } from "./gamepad-haptics";
 import { playRandomSfx, FISH_BITE_SFX } from "./sfx";
-import { updatePrologueCutscene, isPrologueShipStage } from "./prologue";
+import {
+  updatePrologueCutscene,
+  isPrologueShipStage,
+  reapplyProloguePlayerY,
+} from "./prologue";
 import {
   LAYOUT,
   MAPS,
@@ -375,6 +379,13 @@ export function animate(now) {
   }
   if (gameState.isSitting) animateSit(gameState.player);
   else animateRun(gameState.player, gameState.isMoving, gameState.elapsed);
+  // 2026-08-26 第六輪反饋「主角剛落地是陷進碼頭的」——animateRun()/
+  // animateSit() 剛剛那行會直接覆寫 position.y 成走路/待機用的 bob 值，
+  // 序幕在 updatePrologueCutscene() 裡辛苦算出來的甲板/跳板/碼頭高度
+  // 因此每幀都被蓋掉，看起來像整段演出都陷進場景。這裡蓋回去，是
+  // no-op 除非 cutsceneActive 為真，見 prologue.ts 的
+  // reapplyProloguePlayerY() 註解。
+  reapplyProloguePlayerY();
   // 序幕演出期間 Y 高度完全由 updatePrologueCutscene() 自己決定(甲板/
   // 跳板斜度都不是地形高度)，這裡跳過地形疊加，避免被拉回海平面/碼頭高度。
   if (!gameState.cutsceneActive) {

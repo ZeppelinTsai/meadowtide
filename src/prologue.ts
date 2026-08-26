@@ -55,6 +55,19 @@ let waypoints: THREE.Vector3[] = [];
 let waypointIndex = 0;
 let greetingDialogueStarted = false; // 防止 greeting 階段每幀重複呼叫 showDialogSequence
 let hasTouchedDock = false; // 「腳踏上碼頭」的一次性判定，見 walking 階段
+// 2026-08-26 第六輪反饋「主角剛落地是陷進碼頭的」——查出來的真正原因：
+// game-loop.ts 的 animate() 每幀在 updatePrologueCutscene() 之後，
+// 不管 cutsceneActive 是不是 true，都還是會呼叫 animateRun()/
+// animateSit()(見 humanoid.ts)，而這兩個函式會直接「覆寫」
+// gameState.player.position.y 成走路/待機用的小幅 bob 值(0~0.055 或
+// ±0.01)——不是相對疊加，是整個蓋掉。等於這裡辛辛苦苦算出來的甲板/
+// 跳板/碼頭高度，每一幀都會被走路動畫的 bob 蓋成幾乎貼地的數字，看
+// 起來就像角色整段演出都「陷進」場景裡，不是只有最後落地那一刻。用
+// lastPlayerY 記住「這幀真正該有的 Y」，配合下面 syncLastPlayerY()
+// 在每次寫 position.y 之後存一份，game-loop.ts 呼叫完
+// animateRun()/animateSit() 之後再呼叫 reapplyProloguePlayerY() 蓋
+// 回去，兩邊「蓋 Y」的順序反過來，序幕的高度才能是最後贏的那個。
+let lastPlayerY = 0;
 // 序幕演出用的固定鏡頭縮放——見 startPrologueScene() 內的設定。
 const PROLOGUE_ZOOM = 5;
 
@@ -66,6 +79,19 @@ const PROLOGUE_ZOOM = 5;
 const SEA_OFFSET_X = 38; // 演出開場時，船比停靠位再往外海(世界 +X)推幾格
 const APPROACH_SECONDS = 4.5; // 船從外海滑回停靠位的時間
 const RAMP_LOWER_SECONDS = 1.4;
+// 2026-08-26 第五輪把這裡從 +π/2 改成 -π/2，是照 Zeppelin 當時看到的
+// 畫面調的、沒有重新推導；但同一輪其實還修了另一個更根本的 bug
+// (bowWorldPoint() 的 ferry.updateMatrixWorld() 過期矩陣問題)，兩個
+// 改動疊在一起，那次看到的畫面很可能同時被舊 bug 污染，不能單純採信
+// 「-π/2 是對的」這個結論。第六輪反饋「再翻180度」+「變成從下往上
+// 翻」正好對得上：用向量代數重新推一次——局部 (length,0) 這個點繞
+// rotation.z 轉 θ，會落在世界偏移 (length·cosθ, length·sinθ)；跳板
+// 折收貼船頭、封住艙口時，自由端(local x=length)應該指向世界 +Y(往上
+// 收，蓋住開口)，也就是 θ=+π/2；-π/2 會讓它指向世界 -Y(往下、穿過船身
+// /沒入水裡)，放下動畫因此變成從水裡由下往上翻回來，正是「從下往上翻」
+// 那句反饋在講的畫面。改回 +π/2——這次是重新推導出來的，不是單純再翻
+// 一次；如果這輪之後方向還是不對，問題就不是角度正負號，得往
+// GANGPLANK_BOW_LOCAL 選錯邊或旋轉軸本身查。
 const RAMP_RAISED_ROTATION_Z = Math.PI / 2; // 收合貼船頭(90 度)時的角度
 const WALK_SPEED = 2.6; // 格/秒，下船這段用的是自己算的位移，不吃碰撞
 
@@ -91,9 +117,28 @@ const GANGPLANK_BOW_LOCAL = new THREE.Vector3(-1.8, 0.5, 0);
 // ferry.z，不採信 localToWorld() 算出來的 z 分量。
 function bowWorldPoint(localPoint: THREE.Vector3): THREE.Vector3 {
   const ferry = prologueRefs.ferry!;
+  // 2026-08-26 第五輪反饋「初始沒看到主角跟船板，懷疑Z沒有碰撞對到
+  // 船面」——查出來的真正原因：這個專案的 three@0.128.0 版本，
+  // localToWorld() 不會自動重算 matrixWorld(這行為是後來版本才加的)，
+  // 剛改完 ferry.position 就馬上呼叫 localToWorld()，讀到的其實是上
+  // 一幀渲染時的舊矩陣——船從停靠位瞬間跳到外海(SEA_OFFSET_X=38)那
+  // 一瞬間差距最大，算出來的甲板/跳板世界座標會停在「船還沒跳走之前」
+  // 的舊位置，跟已經鎖定到船新位置的鏡頭對不上，人跟跳板因此都落在
+  // 畫面外。強制在這裡先手動刷新一次矩陣，不依賴 renderer 下一輪
+  // render() 才會做的自動更新。
+  ferry.updateMatrixWorld(true);
   const world = ferry.localToWorld(localPoint.clone());
   world.z = LAYOUT.port.ferry.z;
   return world;
+}
+
+// 跟 game-loop.ts 主迴圈的轉向平滑用同一條「走最短路徑」公式，避免
+// 兩個角度端點數值差太遠時，普通線性內插(THREE.MathUtils.lerp)會繞
+// 遠路(例如從 -90 度轉到 200 度，直接內插會經過 0 度整整轉 290 度，
+// 走最短路徑只需要反方向轉 70 度)。
+function lerpAngle(from: number, to: number, t: number): number {
+  const delta = (((to - from) % (Math.PI * 2)) + Math.PI * 3) % (Math.PI * 2) - Math.PI;
+  return from + delta * t;
 }
 
 function faceDirection(dx: number, dz: number) {
@@ -101,6 +146,21 @@ function faceDirection(dx: number, dz: number) {
   // 半圈，見那邊「臉會永遠朝向來時路」的註解。
   if (dx === 0 && dz === 0) return;
   gameState.player.rotation.y = Math.atan2(dx, dz) + Math.PI;
+}
+
+// 見上面 lastPlayerY 的註解——每次寫完 gameState.player.position.y 之後
+// 呼叫，把「這幀真正該有的高度」存起來，給 reapplyProloguePlayerY() 用。
+function syncLastPlayerY() {
+  lastPlayerY = gameState.player.position.y;
+}
+
+// game-loop.ts 在 animateRun()/animateSit() 之後呼叫：那兩個函式的走路
+// /待機 bob 動畫會覆寫 position.y，這裡負責蓋回序幕自己算的高度。非
+// 演出期間(cutsceneActive 為否)整段是 no-op，不影響正常移動的地形/
+// bob 疊加。
+export function reapplyProloguePlayerY() {
+  if (!gameState.cutsceneActive) return;
+  gameState.player.position.y = lastPlayerY;
 }
 
 // 跳板還收在船頭那幾個階段(atSea/approaching)每幀呼叫——不是真的用
@@ -233,6 +293,19 @@ export function startPrologueScene(opts: { force?: boolean } = {}) {
     if (captain) captain.mesh.visible = false; // 開船中，先不現身，靠岸繫繩時才出場
     const mayor = npcs.find((n) => n.id === "mayor");
     if (mayor) mayor.mesh.visible = false;
+    // 2026-08-26 第五輪反饋「不知道為什麼木匠跟著」——木匠本身平常不會
+    // 出現在演出設定裡，會被拖上船大機率是 game-loop.ts 的
+    // isCarpenterEscortActor 那段邏輯：只要 carpenterQuest.stage 是
+    // "escorting"/"village_scene_done"(這輪測試的瀏覽器如果之前手動
+    // 觸發過木匠碼頭事件，這個狀態會留著)，村長/木匠就會不看
+    // .mesh.visible、直接跟著玩家的走位軌跡跑，序幕演出全程都在搬動
+    // 玩家位置，木匠自然被拖上船。這裡先防守性地把他也關掉——如果
+    // carpenterQuest 真的在 escorting 狀態，這行擋得住畫面(该分支不看
+    // visible 就動位置，但 visible=false 至少不會被畫出來)，但沒有處理
+    // 根本的狀態殘留；如果清一次瀏覽器的存檔/重新整理後木匠還是跟著，
+    // 表示不是這個原因，要再往下查。
+    const carpenter = npcs.find((n) => n.id === "carpenter");
+    if (carpenter) carpenter.mesh.visible = false;
     gameState.player.position.copy(bowWorldPoint(PLAYER_BOW_LOCAL));
     gameState.player.visible = true;
     gameState.isMoving = false;
@@ -279,6 +352,7 @@ export function updatePrologueCutscene(dt: number) {
     // 設好，這裡不用再動——單純等 startShipDialogue() 的 onComplete
     // 把 stage 推進到 approaching。
     gameState.player.position.y = bowWorldPoint(PLAYER_BOW_LOCAL).y;
+    syncLastPlayerY();
     return;
   }
 
@@ -294,6 +368,7 @@ export function updatePrologueCutscene(dt: number) {
     // 跳板/主角都還「貼在船上」，跟著船一起平移。
     syncGangplankToBow();
     gameState.player.position.copy(bowWorldPoint(PLAYER_BOW_LOCAL));
+    syncLastPlayerY();
     if (stageProgress >= 1) {
       ferry.position.x = prologueRefs.ferryRestX;
       syncGangplankToBow(); // 船到位那一幀先同步一次，鉸鏈點(船頭)之後就固定了
@@ -318,12 +393,13 @@ export function updatePrologueCutscene(dt: number) {
     // 內部原點定義不同，視覺上完全等價，所以下面 stageProgress>=1 時
     // 直接切回 makePortScene() 原本算好的靜態值，沒有跳動。
     const restAngleFromBow = prologueRefs.gangplankRestRotationZ + Math.PI;
-    gangplank.rotation.z = THREE.MathUtils.lerp(
+    gangplank.rotation.z = lerpAngle(
       RAMP_RAISED_ROTATION_Z,
       restAngleFromBow,
       stageProgress,
     );
     gameState.player.position.copy(bowWorldPoint(PLAYER_BOW_LOCAL));
+    syncLastPlayerY();
     if (stageProgress >= 1) {
       gangplank.position.copy(prologueRefs.gangplankRestPosition!);
       gangplank.rotation.z = prologueRefs.gangplankRestRotationZ;
@@ -347,6 +423,7 @@ export function updatePrologueCutscene(dt: number) {
       gameState.player.position.x = target.x;
       gameState.player.position.z = target.z;
       gameState.player.position.y = target.y;
+      syncLastPlayerY();
       // waypoints[2] 是跳板碼頭端(rampBottom)——腳真正踏上碼頭的判定
       // 點，之後(dockGreet)才是純粹走位，不算「下船」這件事本身。
       if (waypointIndex === 2 && !hasTouchedDock) {
@@ -365,6 +442,7 @@ export function updatePrologueCutscene(dt: number) {
         target.y,
         Math.min(1, step / dist),
       );
+      syncLastPlayerY();
       faceDirection(nx, nz);
     }
     gameState.isMoving = true;
