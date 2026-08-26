@@ -6,6 +6,7 @@ import { npcs, npcGroup } from "./npc-runtime";
 import { prologueRefs } from "./scene-registries";
 import { updateCameraFrustum } from "./scene-sky";
 import { animateWalk } from "./humanoid";
+import { getScheduleTarget } from "./npc-defs";
 
 // ==============================================================
 // 序幕：開場第一天演出——主角乘（makePortScene() 裡本來就停在港口的
@@ -252,10 +253,10 @@ function computeWaypoints() {
     rampBottom.z,
   );
   waypoints = [onDeck, rampTop, rampBottom, dockGreet];
+  // 主角完成下船後，船長只需走碼頭上的最後一格；船上與跳板段不再
+  // 重播，避免模型座標與渡輪局部座標混用而斜切到右上。
   captainWaypoints = [
-    onDeck.clone(),
-    rampTop.clone(),
-    rampBottom.clone(),
+    new THREE.Vector3(PROLOGUE_CAPTAIN_X, LAYOUT.port.elevation, 22),
     new THREE.Vector3(PROLOGUE_CAPTAIN_X, LAYOUT.port.elevation, PROLOGUE_CAPTAIN_Z),
   ];
   waypointIndex = 0;
@@ -283,6 +284,7 @@ function startWelcomeDialogue() {
       LAYOUT.port.elevation,
       PROLOGUE_CAPTAIN_Z,
     );
+    captain.mesh.rotation.y = Math.PI;
   }
   if (mayor) {
     // 村長平常掛在生活區，這場戲直接把她搬到港口——跟木匠事件的
@@ -309,6 +311,19 @@ function startWelcomeDialogue() {
       },
     ],
     () => {
+      const captain = npcs.find((npc) => npc.id === "captain");
+      if (captain) {
+        captain.mesh.position.set(
+          PROLOGUE_CAPTAIN_X,
+          LAYOUT.port.elevation,
+          PROLOGUE_CAPTAIN_Z,
+        );
+        captain.mesh.rotation.y = Math.PI;
+        const scheduleTarget = getScheduleTarget(captain.schedule, gameState.currentPhase);
+        captain.lastTargetKey = scheduleTarget.x + "," + scheduleTarget.z;
+        captain.path = [];
+        captain.pathIndex = 0;
+      }
       beginStage("done");
       gameState.cutsceneActive = false;
     },
@@ -544,7 +559,10 @@ export function updatePrologueCutscene(dt: number) {
       animateWalk(captain.mesh, false, gameState.effectElapsed);
       captain.mesh.position.y += groundY;
       captainWaypointIndex++;
-      if (captainWaypointIndex >= captainWaypoints.length) beginStage("greeting");
+      if (captainWaypointIndex >= captainWaypoints.length) {
+        captain.mesh.rotation.y = Math.PI;
+        beginStage("greeting");
+      }
     } else {
       const nx = dx / dist;
       const nz = dz / dist;

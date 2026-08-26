@@ -1,0 +1,65 @@
+# 開局標題畫面：src/title-screen.ts
+
+> 2026-08-26 新增，架構決策摘要。完整討論脈絡見
+> `docs/history/changelog.md` 最後一節。
+
+## 流程
+
+`splash`（純白底，按任意鍵）→ `menu`（開始新遊戲／繼續遊戲／系統／
+結束遊戲）→（選了「系統」才會進的）`system` 子畫面。三步共用同一個
+`#titleScreen` 容器（`index.html`），用 `data-step` 屬性切換誰可見
+（`style.css`），`z-index: 100`，蓋過 `#fade`（20）等既有最高疊層。
+
+## 「按任意鍵」順手解決 BGM 自動播放政策問題
+
+序幕（開場第一天演出）是開局自動觸發，玩家連一次互動都還沒做，第一次
+嘗試播放 BGM 一定會被瀏覽器的自動播放政策擋下
+（`NotAllowedError`，見 `docs/decisions/audio-system.md` 的
+`ensureMusicTrackPlaying()` 重試修法）。標題畫面的「按任意鍵」這一下
+是玩家在這個分頁裡第一次真正的使用者手勢，`title-screen.ts` 的
+`enterMenu()` 就地呼叫 `initializeMusic()`——比單純讓失敗可以重試更
+進一步，理論上序幕/正常遊戲的 BGM 第一次嘗試播放時政策就已經解鎖。
+
+## 開局分支邏輯搬進按鈕，不再是開局自動判斷
+
+`main.ts` 原本自己判斷 `shouldPlayPrologueOnBoot()`（有沒有存檔）
+決定要不要播序幕。現在改成玩家自己在主選單選：
+
+- **開始新遊戲**：`buildMap("port"); loadMap("port", undefined);
+  startPrologueScene();`——等於原本 `shouldPlayPrologueOnBoot()` 為真
+  那條分支，不檢查是否已有存檔（不刪除既有存檔，只是不管它——舊存檔
+  要到玩家實際按 F6 存檔時才會被覆蓋）。
+- **繼續遊戲**（`hasSaveData()` 為真才顯示這顆按鈕，見
+  `docs/decisions/prologue-cutscene.md` 的 `hasSaveData()` 說明）：
+  `buildMap("livingArea"); loadMap("livingArea", undefined);` 之後用
+  `setTimeout(..., 500)` 銜接呼叫 `loadGame()`——這是這輪才第一次把
+  讀檔接進開局流程，原本存檔要進遊戲後手動按 F9 才會讀。**500ms 的
+  由來**：`loadMap()` 內部是 `fadeOut()→setTimeout(cb,400)` 才真的
+  建立 `gameState.player`，`loadGame()` 會直接讀寫
+  `gameState.player.position`，兩者不能同一個 tick 疊在一起呼叫
+  （player 還不存在）；500ms 留了 100ms 緩衝，跟 `startPrologueScene()`
+  自己那個 400ms `setTimeout` 是同一種「用 `setTimeout` 對齊淡出時機」
+  的既有寫法，不是新發明的排程模式。
+
+`main.ts` 因此瘦身成只呼叫 `initTitleScreen()` +
+`requestAnimationFrame(animate)`。`animate()` 本來就有
+`if (!gameState.player) return;`（第一行），所以標題畫面停留多久都
+不會出事，不用額外處理「還沒建地圖時 animate 在幹嘛」。
+
+## 「系統」子畫面
+
+目前只放了音樂靜音切換（復用既有的 `setMusicMuted()`）。其餘選項
+（音量滑桿、語言切換之類）刻意留白，等 Zeppelin 想好再加——不要自己
+腦補加上去。
+
+## 「結束遊戲」
+
+瀏覽器分頁沒辦法被網頁自己強制關掉（除非分頁本身是用 `window.open()`
+開的）。做法是盡量嘗試 `window.close()`，不管有沒有成功都顯示一句
+「感謝遊玩，可以關閉這個分頁了」收尾訊息——這是先跟 Zeppelin 確認過
+的保底寫法，不是偵測失敗才顯示。
+
+## 狀態
+
+截至 2026-08-26，這套流程還沒有實際跑過完整的按鍵/滑鼠互動測試
+（splash→menu→四顆按鈕各自的畫面/行為），需要 Zeppelin 確認。
