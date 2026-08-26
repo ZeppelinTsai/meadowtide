@@ -1656,3 +1656,52 @@ Zeppelin 附圖回報：「跳板方向再翻180度 但是Z沒有往上調整回
 `tsc --noEmit` 過關。這輪純粹是照 Zeppelin 指示做的實驗，沒有自己重新
 推導對錯——要看下一次進遊戲的畫面回報才知道扶手換面之後，方向問題
 是真的解決了，還是只是換了一種錯法。
+
+## 序幕第八輪：扶手改成動態翻面、木匠範圍觸發補旗標、BGM 自動播放永久停用的 bug（2026-08-26）
+
+Zeppelin 回報：上岸前(立起貼船頭)扶手方向對了，但靠岸後(放下停靠、
+本來就沒壞過的狀態)扶手又反了；另外木匠事件因為只做範圍觸發，序幕
+下船走位經過那個區時被誤觸發；還附了一段 BGM 播不出來的 console log。
+
+- **扶手方向**——上一輪把 `makeGangplank()` 扶手/欄杆柱整組永久改到
+  板子反面(local y 全部乘 -1)，這輪證實是錯的策略：立起貼船頭
+  (`RAMP_RAISED_ROTATION_Z`)跟放下停靠(`gangplankRestRotationZ`)這
+  兩個狀態的 `rotation.z` 本來就不一樣，同一個扶手局部位移在兩種
+  轉角下對應到不同世界方向，永久改一邊必定弄壞另一邊——這次改完
+  「立起」對了，但從沒壞過的「停靠」反而變錯，正好驗證了這個推論。
+  改法：`props.ts` 的扶手/柱子位置改回原樣(蓋在板子上方)，但額外把
+  `gangplankRailBaseY` 存進每個子物件的 `userData`；`prologue.ts`
+  新增 `setGangplankRailFlip(flipped)`，在 `startPrologueScene()`
+  設定「立起貼船頭」的當下呼叫 `true`(扶手搬到反面)，`rampLowering`
+  動畫做完、跳板真正 snap 回 `gangplankRestPosition`/
+  `gangplankRestRotationZ` 的同一刻呼叫 `false`(扶手搬回原本蓋好的
+  那面)。兩個狀態各自要哪面就給哪面，不用整組永久二選一，靜態的
+  「停靠」狀態(平常遊戲時間全程可見)理論上完全不受影響。
+- **木匠事件誤觸發**——`build-map.ts` 的 `carpenterMeet` 矩形跟其他
+  港口地圖事件一樣是 `trigger:"touch"`，只認「玩家格子座標有沒有踏進
+  觸發區」，不管座標是 WASD 走過去的還是序幕自己直接寫 `position`
+  搬過去的；序幕下船走位(甲板→跳板→碼頭)剛好會經過這個觸發格，於是
+  木匠碼頭事件在演出途中被意外觸發，兩段對話疊在一起播。修法：
+  `game-loop.ts` 派發 `touch` 事件那段整段包進
+  `if (!gameState.cutsceneActive) {...}`——跟這個檔案裡其他「演出期間
+  該關掉的正常邏輯」同一支旗標、同一套寫法，之後不管未來再加哪個
+  演出，只要有把 `cutsceneActive` 設成 true，這類地圖 touch 事件就會
+  自動被擋掉，不用每個新演出都個別排除木匠或其他事件。
+- **BGM「開場無法播放」**——這個附帶的 console log 不是序幕邏輯的
+  bug，是 `music.ts` 既有的一個真 bug：`ensureMusicTrackPlaying()`
+  把瀏覽器自動播放政策擋下的 `NotAllowedError`(使用者還沒跟頁面互動
+  過，純粹時機不對)跟真正播不動的錯誤(檔案損毀/404，其實有另一個
+  `"error"` 事件監聽器專門處理)混在一起處理，一律
+  `track.failed = true` 永久停用那首曲子。序幕是開局自動觸發的，
+  玩家連一次互動都還沒做，第一次嘗試播放 100% 會被擋下——結果這首
+  曲子從此再也不會重試，就算玩家後來按 E/WASD 真正跟頁面互動過也一樣
+  沒有聲音。修法：`.catch()` 只在 `error?.name !== "NotAllowedError"`
+  時才設 `track.failed`，讓自動播放政策造成的失敗保持「可重試」，
+  下一次 `updateMusic()` tick 自然會再試一次；配合檔案本來就有的
+  `pointerdown`/`keydown` 監聽器(呼叫 `initializeMusic()`)，玩家一
+  旦真的有過一次使用者手勢，重試就會成功。
+
+`tsc --noEmit` 過關。木匠旗標跟 BGM 重試這兩個是有明確原因、講得通的
+根因修法；扶手動態翻面延續 Zeppelin 上一輪指定的做法，只是把「整組
+永久改」換成「按狀態動態改」，理論上更不容易顧此失彼，但兩個狀態
+(尤其立起貼船頭那段)實際畫面還是要進遊戲確認。

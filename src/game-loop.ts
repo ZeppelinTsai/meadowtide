@@ -736,12 +736,23 @@ export function animate(now) {
       if (import.meta.env.DEV) {
         console.log(`[${gameState.currentMapName}] (${roundedX},${roundedZ})`);
       }
-      events
-        .filter(
-          (ev) => ev.map === gameState.currentMapName && ev.trigger === "touch",
-        )
-        .filter((ev) => ev.x === roundedX && ev.z === roundedZ)
-        .forEach((ev) => ev.action());
+      // 2026-08-26 Zeppelin 反饋「木匠事件因為只做了範圍觸發導致也會
+      // 發生」——木匠碼頭事件(build-map.ts 的 carpenterMeet 矩形區)
+      // 跟其他地圖上的 touch 事件一樣，只認「玩家格子座標有沒有進入
+      // 觸發區」，不管這個座標是 WASD 走過去的還是序幕自己直接寫
+      // position 搬過去的；序幕(第一天演出)下船走位剛好會經過港口的
+      // 觸發格，於是木匠事件在演出途中被意外觸發，兩段對話疊在一起。
+      // 用跟其他地方同一支旗標擋掉：cutsceneActive 為真時，代表玩家
+      // 位置目前是被某段演出(目前只有序幕)直接控制，不該讓任何 touch
+      // 事件跟著誤觸發。
+      if (!gameState.cutsceneActive) {
+        events
+          .filter(
+            (ev) => ev.map === gameState.currentMapName && ev.trigger === "touch",
+          )
+          .filter((ev) => ev.x === roundedX && ev.z === roundedZ)
+          .forEach((ev) => ev.action());
+      }
     }
   }
 

@@ -1763,15 +1763,19 @@ export function makeGangplank(length, width = 0.62) {
   }
   // 兩側扶手：一條橫向欄杆＋等距欄杆柱，只用簡單圓柱堆出來，跟其他
   // 道具(如 makeBench 的椅腳)同一套低多邊形風格。
-  // 2026-08-26 Zeppelin 反饋「跳板方向還是反了」——序幕那邊轉了三輪
-  // rotation.z 正負號還是喬不對(每次畫面回報都跟數學推導對不上，
-  // 懷疑是這個固定視角本身很難光靠正負號判斷「哪一端在動」)。改成
-  // 從模型本身下手：原本扶手一律裝在木板上方(local y=+0.34/+0.17，
-  // 板面本身是 y=0.03)，這裡直接改裝到板子「反面」(local y=
-  // -0.34/-0.17)。這是 Zeppelin 直接要求的實驗性改法，不是重新推導
-  // 出來的正解——如果這樣改完視覺上就對了，代表問題其實出在扶手跟
-  // 板面的相對朝向、不是 rotation.z 的正負號本身；如果還是不對，
-  // 就先把這個線索記著，回頭再查 rotation.z。
+  // 2026-08-26 Zeppelin 反饋「跳板方向還是反了」，第一次試法是把扶手
+  // 整組永久改裝到板子反面(local y 全部乘 -1)。結果證實那樣改是錯的
+  // 方向：序幕「立起貼船頭」跟平常「放下停靠」這兩個狀態的
+  // rotation.z 本來就不一樣(RAMP_RAISED_ROTATION_Z vs
+  // gangplankRestRotationZ)，同一個固定局部位移在兩種轉角下會對應到
+  // 不同的世界方向，永久改一邊等於必定弄壞另一邊(這裡改完的確立起時
+  // 對了，但放下停靠——本來就沒壞過的狀態——反而變錯，證實了這點)。
+  // 改法：扶手/欄杆柱位置照原樣蓋在板子上方(local y=+0.34/+0.17，
+  // 板面本身是 y=0.03)，但額外存一份 gangplankRailBaseY 到
+  // userData，讓 prologue.ts 可以在「立起貼船頭」那幾個階段動態把這些
+  // 特定子物件搬到反面、放下停靠時再搬回來(見 prologue.ts 的
+  // setGangplankRailFlip())，兩種狀態各自要哪面就給哪面，不用整組
+  // 永久二選一。
   const railMat = new THREE.MeshStandardMaterial({ color: 0x5a4632 });
   [-width / 2, width / 2].forEach((zOffset) => {
     const rail = new THREE.Mesh(
@@ -1779,7 +1783,8 @@ export function makeGangplank(length, width = 0.62) {
       railMat,
     );
     rail.rotation.z = Math.PI / 2;
-    rail.position.set(length / 2, -0.34, zOffset);
+    rail.position.set(length / 2, 0.34, zOffset);
+    rail.userData.gangplankRailBaseY = 0.34;
     rail.castShadow = true;
     group.add(rail);
     const postCount = Math.max(2, Math.round(length));
@@ -1788,7 +1793,8 @@ export function makeGangplank(length, width = 0.62) {
         new THREE.CylinderGeometry(0.02, 0.02, 0.34, 5),
         railMat,
       );
-      post.position.set((i / postCount) * length, -0.17, zOffset);
+      post.position.set((i / postCount) * length, 0.17, zOffset);
+      post.userData.gangplankRailBaseY = 0.17;
       post.castShadow = true;
       group.add(post);
     }

@@ -88,7 +88,22 @@ export function ensureMusicTrackPlaying(track, key) {
   track.audio
     .play()
     .catch((error) => {
-      track.failed = true;
+      // 2026-08-26 Zeppelin 反饋「開場無法播放」——查出來是這裡把
+      // NotAllowedError(瀏覽器自動播放政策擋下、使用者還沒跟頁面互動
+      // 過)跟真正播不動的錯誤(檔案損毀/404 之類，交給上面 createMusicTrack
+      // 的 "error" 監聽器處理)混在一起，一律 track.failed=true 永久
+      // 停用。序幕演出是開局自動觸發的，玩家連一次互動都還沒做，第一次
+      // 嘗試播放 100% 會被瀏覽器擋下，結果這首曲子從此再也不會重試，
+      // 就算玩家後來按了 E／WASD 也一樣沒有聲音。NotAllowedError 這種
+      // 純粹「時機不對」的拒絕不該標記成永久失敗——不設 track.failed，
+      // 讓下一次 updateMusic() tick 自然再試一次；一旦玩家有了真正的
+      // 使用者手勢(全域的 pointerdown/keydown 監聽器會呼叫
+      // initializeMusic())，瀏覽器就會放行，之後的重試會成功。其他
+      // 種類的播放錯誤(格式不支援等)才維持原本永久停用，避免無限重試
+      // 洗 console。
+      if (error?.name !== "NotAllowedError") {
+        track.failed = true;
+      }
       console.warn(`[BGM] 跳過無法播放的曲目：${BGM_TRACKS[key]}`, error);
     })
     .finally(() => {

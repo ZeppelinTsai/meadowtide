@@ -176,6 +176,23 @@ function syncGangplankToBow() {
   gangplank.rotation.z = RAMP_RAISED_ROTATION_Z;
 }
 
+// 2026-08-26 第八輪：makeGangplank() 的扶手/欄杆柱子物件都在 userData
+// 存了 gangplankRailBaseY(見 props.ts)。立起貼船頭跟放下停靠這兩個
+// 狀態的 rotation.z 不一樣，同一個扶手局部位移沒辦法兩邊都好看——
+// 這裡動態把扶手搬到反面(flipped=true，立起貼船頭時用)或搬回原本
+// 蓋好的那面(flipped=false，放下停靠時用)，只動這幾個有標記的子物件，
+// 木板本體不受影響。
+function setGangplankRailFlip(flipped: boolean) {
+  const gangplank = prologueRefs.gangplank;
+  if (!gangplank) return;
+  gangplank.traverse((child) => {
+    const baseY = child.userData.gangplankRailBaseY;
+    if (typeof baseY === "number") {
+      child.position.y = flipped ? -baseY : baseY;
+    }
+  });
+}
+
 // 演出用到的所有世界座標，等船真的停到 rest 狀態、跳板也放到底之後才能
 // 算——呼叫時機是 rampLowering 結束、要進 walking 階段前。
 function computeWaypoints() {
@@ -288,6 +305,7 @@ export function startPrologueScene(opts: { force?: boolean } = {}) {
     // syncGangplankToBow() 的註解。
     prologueRefs.gangplank!.visible = true;
     syncGangplankToBow();
+    setGangplankRailFlip(true); // 立起貼船頭：扶手搬到反面，見上面註解
     npcGroup.visible = true;
     const captain = npcs.find((n) => n.id === "captain");
     if (captain) captain.mesh.visible = false; // 開船中，先不現身，靠岸繫繩時才出場
@@ -403,6 +421,7 @@ export function updatePrologueCutscene(dt: number) {
     if (stageProgress >= 1) {
       gangplank.position.copy(prologueRefs.gangplankRestPosition!);
       gangplank.rotation.z = prologueRefs.gangplankRestRotationZ;
+      setGangplankRailFlip(false); // 放下停靠：扶手搬回 makePortScene() 原本蓋好的那面
       computeWaypoints();
       beginStage("walking");
     }
