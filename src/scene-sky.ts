@@ -182,6 +182,9 @@ import {
       );
       skyDome.renderOrder = -1;
       scene.add(skyDome);
+      // 相機空間的天空層必須跟著真正用來 render 的相機；第一人稱使用另一顆
+      // PerspectiveCamera，若仍掛在預設正交相機，星空方向與投影都會錯位。
+      let activeSkyCamera: THREE.Camera = camera;
 
       // 架空北緯 8°海島的四季星空：四季合計涵蓋大部分南北天代表星群。
       export const SEASON_STAR_CONFIGS = [
@@ -842,7 +845,7 @@ import {
           moonWorldX,
           PLATEAU_Y + 0.35,
           northCliffEdgeZ(moonWorldX),
-        ).project(camera);
+        ).project(activeSkyCamera);
         const terrainSkylineY = SUN_MASK_PROJECTED_POINT.y * gameState.zoom;
         const skyOnlyVisibility =
           gameState.currentMapName === "livingArea"
@@ -959,7 +962,7 @@ import {
             sunWorldX,
             PLATEAU_Y + 0.35,
             northCliffEdgeZ(sunWorldX),
-          ).project(camera);
+          ).project(activeSkyCamera);
           const terrainSkylineY = SUN_MASK_PROJECTED_POINT.y * gameState.zoom;
           const skyOnlyVisibility =
             gameState.currentMapName === "livingArea"
@@ -1101,7 +1104,16 @@ import {
           group.rotation.z = starPhase * 0.08 + seasonIndex * 0.012;
         });
       }
-      export function updateSkyDome(nightFactor) {
+      export function updateSkyDome(
+        nightFactor,
+        viewCamera: THREE.Camera = camera,
+      ) {
+        if (activeSkyCamera !== viewCamera) {
+          activeSkyCamera = viewCamera;
+          seasonalStarGroups.forEach((group) => activeSkyCamera.add(group));
+          activeSkyCamera.add(meteorLayer, sunSkyGroup, moonSkyGroup);
+          skyClouds.forEach((cloud) => activeSkyCamera.add(cloud));
+        }
         const outside = isOutdoorMap();
         skyDome.visible = outside;
         if (!outside) {
@@ -1155,7 +1167,7 @@ import {
           );
         }
         skyColorAttr.needsUpdate = true;
-        skyDome.position.copy(camera.position);
+        skyDome.position.copy(activeSkyCamera.position);
         updateSeasonalStars(nightFactor);
         updateSunAndClouds(nightFactor);
         updateMoon();

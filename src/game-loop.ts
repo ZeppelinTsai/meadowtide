@@ -924,7 +924,8 @@ export function animate(now) {
   // 對話開啟時遊戲時鐘跟主角動作凍結，但音樂淡入淡出、流星、天氣粒子
   // 不該跟著卡住，繼續播才像「世界還活著」而不是整個遊戲暫停。
   updateMusic(nightFactor, frameDt);
-  updateSkyDome(nightFactor);
+  // 星空、日月、雲與天空球都要使用最後真正送進 renderer 的相機。
+  updateSkyDome(nightFactor, getGameplayCamera(camera));
   updateMeteors(frameDt);
   updateWeatherEffects(frameDt, nightFactor);
 
