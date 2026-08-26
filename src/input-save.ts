@@ -19,7 +19,8 @@ import {
   harvestOysterRack,
   FEEDER_VISUAL,
   FEEDER_CAPACITY,
-  refillFeeder,
+  harvestPastureGrass,
+  pastureDepletedTiles,
   WOOD_NODES,
   STONE_NODES,
   harvestGatherNode,
@@ -69,6 +70,7 @@ import {
   MAPS,
 } from "./layout-maps";
 import { tryShareChefMeal, mergeChefMealIntoChatLine } from "./chef-quest";
+import { previewPrologue } from "./prologue";
 import { npcGroup, npcs } from "./npc-runtime";
 import { npcLine } from "./npc-defs";
 import {
@@ -82,6 +84,7 @@ import {
   advanceChoicePage,
 } from "./dialogue";
 import { loadMap, isBlocked, events } from "./build-map";
+import { isInventoryOpen } from "./inventory-ui";
 import {
   updateAvenueTreeColors,
   updateSeasonalTreeColors,
@@ -128,6 +131,11 @@ export function saveGame(slot = "default") {
     npcMemory: npcs.map((npc) => ({ id: npc.id, memory: npc.memory })),
     carpenterQuest: { ...carpenterQuest },
     oysterRackState: JSON.parse(JSON.stringify(oysterRackState)),
+    feederUnits: gameState.feederUnits,
+    pastureGrazeSettledDay: gameState.pastureGrazeSettledDay,
+    pastureGrazedToday: gameState.pastureGrazedToday,
+    feederSettledDay: gameState.feederSettledDay,
+    pastureDepletedTiles: { ...pastureDepletedTiles },
     gatherSpawnSlot: gameState.gatherSpawnSlot,
     woodNodes: JSON.parse(JSON.stringify(WOOD_NODES)),
     stoneNodes: JSON.parse(JSON.stringify(STONE_NODES)),
@@ -161,6 +169,22 @@ export function loadGame(slot = "default") {
     ? data.pouchCollectedDay
     : -1;
   Object.assign(inventory, data.inventory || {});
+  gameState.feederUnits = Number.isFinite(data.feederUnits)
+    ? Math.max(0, Math.min(FEEDER_CAPACITY, data.feederUnits))
+    : gameState.feederUnits;
+  gameState.pastureGrazeSettledDay = Number.isFinite(
+    data.pastureGrazeSettledDay,
+  )
+    ? data.pastureGrazeSettledDay
+    : -1;
+  gameState.pastureGrazedToday = Boolean(data.pastureGrazedToday);
+  gameState.feederSettledDay = Number.isFinite(data.feederSettledDay)
+    ? data.feederSettledDay
+    : -1;
+  Object.keys(pastureDepletedTiles).forEach(
+    (key) => delete pastureDepletedTiles[key],
+  );
+  Object.assign(pastureDepletedTiles, data.pastureDepletedTiles || {});
   Object.keys(cropState).forEach((key) => delete cropState[key]);
   Object.assign(cropState, data.crops || {});
   (data.npcMemory || []).forEach((savedNpc) => {
@@ -284,12 +308,57 @@ addEventListener("keydown", (event) => {
   } else if (event.key === "F9") {
     event.preventDefault();
     console.info(loadGame() ? "[讀檔] 已載入 default 欄位" : "[讀檔] 尚無存檔");
+  } else if (event.key === "F8") {
+    // 序幕(開場第一天演出)預覽熱鍵——不清存檔也能重播，見 prologue.ts。
+    // 只能在已經站在港口地圖時使用，因為演出要借用 makePortScene() 蓋
+    // 好的渡輪/跳板參照(prologueRefs)，還沒進過港口地圖就不會有。
+    event.preventDefault();
+    if (gameState.currentMapName !== "port") {
+      console.warn("[序幕預覽] 請先走到港口地圖再按 F8 重播開場");
+    } else {
+      previewPrologue();
+    }
   }
 });
 
 export const keys = {};
 addEventListener("keydown", (e) => (keys[e.key.toLowerCase()] = true));
 addEventListener("keyup", (e) => (keys[e.key.toLowerCase()] = false));
+
+addEventListener("keydown", (event) => {
+  if (
+    event.key.toLowerCase() !== "r" ||
+    event.repeat ||
+    event.ctrlKey ||
+    event.metaKey ||
+    isInventoryOpen() ||
+    dialogQueue.length ||
+    activeChoice ||
+    gameState.currentMapName !== "livingArea"
+  )
+    return;
+  event.preventDefault();
+  const { x, z } = gameState.playerGridPos;
+  const result = harvestPastureGrass(x, z);
+  if (result === "not-grass") return;
+  gameState.harvestFeedback =
+    result === "harvested"
+      ? {
+          kind: "success",
+          title: "收割牧草",
+          text: "投餵機 +1（" + gameState.feederUnits + "／" + FEEDER_CAPACITY + "）",
+          until: gameState.elapsed + 2.6,
+        }
+      : {
+          kind: "empty",
+          title: result === "feeder-full" ? "投餵機已滿" : "牧草生長中",
+          text:
+            result === "feeder-full"
+              ? "目前存量：99／99"
+              : "收割後需要三天長回來",
+          until: gameState.elapsed + 2.6,
+        };
+});
 // 二選一提示的數字鍵選擇/翻頁——跟上面 E 鍵/WASD 分開一個監聽，純粹只
 // 在 activeChoice 有值時吃鍵，其他時候完全不影響移動/互動。數字鍵選當前
 // 頁看到的選項；選項超過一頁(CHOICE_PAGE_SIZE=3)時 Tab 鍵循環翻頁——
@@ -308,6 +377,12 @@ function setCameraZoom(zoom) {
   const maxZoom = gameState.currentMapName === "port" ? 20 : 18;
   gameState.zoom = Math.max(2, Math.min(maxZoom, zoom));
   updateCameraFrustum();
+  // 2026-08-26 Zeppelin 要求：滾輪調 zoom 時印出目前值，方便試序幕
+  // 演出(prologue.ts)該用哪個 zoom 時直接看 console 記下來，不用自己
+  // 心算滾了幾格。開發用途，production build 這個 if 會被靜態消掉。
+  if (import.meta.env.DEV) {
+    console.info(`[zoom] ${gameState.zoom.toFixed(2)}`);
+  }
 }
 addEventListener("wheel", (e) => {
   setCameraZoom(gameState.zoom + e.deltaY * 0.01);
@@ -351,6 +426,8 @@ renderer.domElement.addEventListener("touchcancel", endPinch);
 addEventListener("keydown", (e) => {
   if (e.key.toLowerCase() !== "e" || gameState.ePressed) return;
   gameState.ePressed = true;
+
+  if (isInventoryOpen()) return;
 
   // 選項提示開著的時候 E 鍵完全不處理——只認數字鍵/滑鼠點擊(見下面另一
   // 個 keydown 監聽)，不然 E 會被底下的 dialogQueue 判斷或其他互動邏輯
@@ -448,8 +525,8 @@ addEventListener("keydown", (e) => {
     }
   }
 
-  // 動物投餵機——半徑判定跟休息椅同一招(1.5 格內即可，不用逼玩家精確
-  // 站上哪一格)；免費補滿(補料的資源成本之後有經濟系統再設計)。
+  // 動物投餵機只負責查看存量；牧草必須在牧場格上按 R／手把 B 收割，
+  // 不再保留按 E 免費補滿的測試捷徑。
   if (
     gameState.currentMapName === "livingArea" &&
     Math.hypot(
@@ -457,21 +534,12 @@ addEventListener("keydown", (e) => {
       gameState.player.position.z - FEEDER_VISUAL.z,
     ) <= FEEDER_VISUAL.interactionRadius
   ) {
-    const added = refillFeeder();
-    gameState.harvestFeedback =
-      added > 0
-        ? {
-            kind: "success",
-            title: "投餵機",
-            text: `已補滿：${gameState.feederUnits}／${FEEDER_CAPACITY}`,
-            until: gameState.elapsed + 2.6,
-          }
-        : {
-            kind: "empty",
-            title: "投餵機",
-            text: `已經是滿的：${gameState.feederUnits}／${FEEDER_CAPACITY}`,
-            until: gameState.elapsed + 2.6,
-          };
+    gameState.harvestFeedback = {
+      kind: gameState.feederUnits > 0 ? "success" : "empty",
+      title: "自動投餵機",
+      text: "牧草存量：" + gameState.feederUnits + "／" + FEEDER_CAPACITY,
+      until: gameState.elapsed + 2.6,
+    };
     return;
   }
 

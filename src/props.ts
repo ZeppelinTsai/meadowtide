@@ -39,6 +39,7 @@ import {
   EAST_SEA_WAVE_DIRECTION,
   SOUTH_SEA_WAVE_DIRECTION,
   gangplankMeshes,
+  prologueRefs,
 } from "./scene-registries";
 import { findSouthernShoreSandZ } from "./shore-foam";
 import { randomPasturePoint } from "./npc-runtime";
@@ -2267,6 +2268,15 @@ export function makePortScene() {
     port.ferry.z,
   );
   group.add(gangplank);
+  // 序幕(開場第一天演出)要在遊戲開局操控這艘船跟跳板本身(從外海駛入、
+  // 跳板從立起放下)，這裡把剛蓋好的參照跟這個跳板「本來就該停在」的
+  // 角度存進 prologueRefs(scene-registries.ts)，src/prologue.ts 只讀
+  // 這份、不用自己重新算一次跳板坡度或船隻停靠座標。
+  prologueRefs.ferry = ferry;
+  prologueRefs.gangplank = gangplank;
+  prologueRefs.ferryRestX = ferry.position.x;
+  prologueRefs.gangplankRestRotationZ = gangplank.rotation.z;
+  prologueRefs.gangplankRestPosition = gangplank.position.clone();
 
   const dock = makeDock();
   dock.position.set(port.smallBoatDock.x, 0.13, port.smallBoatDock.z);

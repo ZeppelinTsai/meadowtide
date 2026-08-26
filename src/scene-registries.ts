@@ -54,6 +54,34 @@ export const waterSkyUnderlayMaterials: import("three").MeshStandardMaterial[] =
       // 「buildMap() 清空重建」的登記表同一套，game-loop.ts 只需要逐幀切換
       // .visible，不用重新蓋地圖。
       export const gangplankMeshes = [];
+// 序幕(開場第一天演出，見 src/prologue.ts)要在船隻/跳板都蓋好之後才拿
+// 得到實際的 Object3D 參照跟跳板的「靜止角度」，makePortScene() 建完
+// ferry/gangplank 這兩個 group 就順手填進來。用單一可變物件、不是各自
+// export let，是因為 ES module 的 `let` 綁定從其他檔案 import 進去之後
+// 是唯讀的(不能 `importedLet = x`，只能改物件屬性)，跟 gameState 那個
+// 大物件是同一個理由；gangplankRestRotationZ 是跳板建好當下算出來的
+// 「碼頭端固定、船那端墊船板高度差」那個坡度角，序幕演出時跳板從立起
+// (90 度)降到這個角度，不是重新算一次。
+export const prologueRefs: {
+  ferry: import("three").Group | null;
+  gangplank: import("three").Group | null;
+  ferryRestX: number;
+  gangplankRestRotationZ: number;
+  // 2026-08-26 第二輪：跳板收合狀態(演出中「立起貼在船頭」的那幾秒)
+  // 需要把整個 gangplank 挪到船頭、動畫時再挪回這個原始停靠位置，跟
+  // rotation 一樣要先把「原本蓋出來的樣子」記下來，不能演出跑到一半
+  // 才回頭現算。
+  gangplankRestPosition: import("three").Vector3 | null;
+} = {
+  ferry: null,
+  gangplank: null,
+  ferryRestX: 0,
+  gangplankRestRotationZ: 0,
+  // 跟 ferry/gangplank 一樣先給 null，這個檔案刻意不 import 整個
+  // THREE(上面其他型別都是用 import("three").X 這種型別限定寫法，不
+  // 拉執行期依賴)，makePortScene() 蓋完跳板後才用 .clone() 填進來。
+  gangplankRestPosition: null,
+};
       export const outdoorLampLights = [];
       export const foamMeshes = []; // 沙灘跟海交界的拍岸泡沫，animate() 裡逐幀讓它忽明忽暗
       export const windmillRotors = [];

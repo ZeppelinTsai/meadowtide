@@ -111,6 +111,10 @@ export const gameState = {
   facing: "down",
   isMoving: false,
   isSitting: false,
+  // 開場第一天演出(序幕：主角乘船抵達港口)專用鎖：跟 isSitting/釣魚一樣
+  // 讓 WASD 完全不生效，但刻意不透過 isGameTimePaused()(那個會讓
+  // dt=0，連帶凍結船隻/跳板動畫的補間)，見 src/prologue.ts。
+  cutsceneActive: false,
   houseLampLight: null as THREE.PointLight | null,
   houseLampBulbMat: null as THREE.MeshStandardMaterial | null,
   // 2026-08-26 加的頂燈(makeCeilingLamp)——桌燈(houseLampLight)範圍只有

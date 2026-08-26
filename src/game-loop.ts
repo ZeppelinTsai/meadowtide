@@ -21,6 +21,7 @@ import { rollFishTier, COUNTER_DIRECTION } from "./fishing";
 import { pollGamepad } from "./gamepad-input";
 import { vibrateGamepad, FISHING_HAPTICS } from "./gamepad-haptics";
 import { playRandomSfx, FISH_BITE_SFX } from "./sfx";
+import { updatePrologueCutscene, isPrologueShipStage } from "./prologue";
 import {
   LAYOUT,
   MAPS,
@@ -102,6 +103,7 @@ import {
   NORTHEAST_SEA_WAVE_DIRECTION,
   sampleDirectedSeaWave,
   gangplankMeshes,
+  prologueRefs,
 } from "./scene-registries";
 
 // 釣魚 QTE 浮動 HUD 用——可重複利用的 Vector3，每幀 project(camera) 前
@@ -277,100 +279,111 @@ export function animate(now) {
   pollGamepad();
 
   // --- 自由移動：方向鍵給的是速度向量，不是格子跳，可以八方向、可以貼牆滑 ---
+  // 序幕演出(cutsceneActive)期間整段跳過：船/跳板/下船走位都是
+  // updatePrologueCutscene() 自己直接寫 gameState.player.position，
+  // 不透過 WASD/碰撞這條路(演出路徑是設計好的安全路徑，不需要碰撞判定)。
   let dx = 0,
     dz = 0;
-  if (keys["w"] || keys["arrowup"]) dz -= 1;
-  if (keys["s"] || keys["arrowdown"]) dz += 1;
-  if (keys["a"] || keys["arrowleft"]) dx -= 1;
-  if (keys["d"] || keys["arrowright"]) dx += 1;
-  if (gameState.isSitting || gameState.fishingState !== "idle") {
-    // 2026-08-26 改成整個釣魚期間(casting/biting/reeling)都鎖移動，不是
-    // 只有 reeling：拋竿之後角色本來就該站定等魚，跟現實釣魚一樣；
-    // reeling 期間方向鍵是拉竿抵抗方向的 QTE 輸入(見 input-save.ts 的
-    // 專屬 keydown 監聽)，更不該同時讓角色走位，也避免走出水邊誤觸
-    // 「離開水邊自動取消」。
-    dx = 0;
-    dz = 0;
-  }
-  const inputLen = Math.hypot(dx, dz);
-  // dt===0 代表對話開著／遊戲暫停：主角完全鎖住，不只是不移動位置，
-  // 也不能轉向、不能播走路動畫——不然按方向鍵角色會原地轉圈或踏步。
-  gameState.isMoving = inputLen > 0 && dt > 0;
-  if (inputLen > 0) {
-    dx /= inputLen;
-    dz /= inputLen;
-  }
+  if (!gameState.cutsceneActive) {
+    if (keys["w"] || keys["arrowup"]) dz -= 1;
+    if (keys["s"] || keys["arrowdown"]) dz += 1;
+    if (keys["a"] || keys["arrowleft"]) dx -= 1;
+    if (keys["d"] || keys["arrowright"]) dx += 1;
+    if (gameState.isSitting || gameState.fishingState !== "idle") {
+      // 2026-08-26 改成整個釣魚期間(casting/biting/reeling)都鎖移動，不是
+      // 只有 reeling：拋竿之後角色本來就該站定等魚，跟現實釣魚一樣；
+      // reeling 期間方向鍵是拉竿抵抗方向的 QTE 輸入(見 input-save.ts 的
+      // 專屬 keydown 監聽)，更不該同時讓角色走位，也避免走出水邊誤觸
+      // 「離開水邊自動取消」。
+      dx = 0;
+      dz = 0;
+    }
+    const inputLen = Math.hypot(dx, dz);
+    // dt===0 代表對話開著／遊戲暫停：主角完全鎖住，不只是不移動位置，
+    // 也不能轉向、不能播走路動畫——不然按方向鍵角色會原地轉圈或踏步。
+    gameState.isMoving = inputLen > 0 && dt > 0;
+    if (inputLen > 0) {
+      dx /= inputLen;
+      dz /= inputLen;
+    }
 
-  const moveSpeed = 15; // 格/秒
-  const stepX = dx * moveSpeed * dt,
-    stepZ = dz * moveSpeed * dt;
-  const canTraverseVillageHeight = (fromX, fromZ, toX, toZ) => {
-    if (gameState.currentMapName === "oldVillage")
-      return (
-        Math.abs(
-          oldVillageGroundY(toX, toZ) - oldVillageGroundY(fromX, fromZ),
-        ) <= 0.7
-      );
-    if (gameState.currentMapName === "mountain")
-      return (
-        Math.abs(mountainGroundY(toX, toZ) - mountainGroundY(fromX, fromZ)) <=
-        0.7
-      );
-    if (gameState.currentMapName === "port")
-      return (
-        Math.abs(portGroundY(toX, toZ) - portGroundY(fromX, fromZ)) <= 0.45
-      );
-    return true;
-  };
-  // X / Z 分開檢查碰撞，撞到一個軸還能沿著另一個軸繼續滑，這是「平穩」的關鍵
-  const tryX = gameState.player.position.x + stepX;
-  if (
-    !collidesAt(gameState.currentMapName, tryX, gameState.player.position.z) &&
-    canTraverseVillageHeight(
-      gameState.player.position.x,
-      gameState.player.position.z,
-      tryX,
-      gameState.player.position.z,
+    const moveSpeed = 15; // 格/秒
+    const stepX = dx * moveSpeed * dt,
+      stepZ = dz * moveSpeed * dt;
+    const canTraverseVillageHeight = (fromX, fromZ, toX, toZ) => {
+      if (gameState.currentMapName === "oldVillage")
+        return (
+          Math.abs(
+            oldVillageGroundY(toX, toZ) - oldVillageGroundY(fromX, fromZ),
+          ) <= 0.7
+        );
+      if (gameState.currentMapName === "mountain")
+        return (
+          Math.abs(mountainGroundY(toX, toZ) - mountainGroundY(fromX, fromZ)) <=
+          0.7
+        );
+      if (gameState.currentMapName === "port")
+        return (
+          Math.abs(portGroundY(toX, toZ) - portGroundY(fromX, fromZ)) <= 0.45
+        );
+      return true;
+    };
+    // X / Z 分開檢查碰撞，撞到一個軸還能沿著另一個軸繼續滑，這是「平穩」的關鍵
+    const tryX = gameState.player.position.x + stepX;
+    if (
+      !collidesAt(gameState.currentMapName, tryX, gameState.player.position.z) &&
+      canTraverseVillageHeight(
+        gameState.player.position.x,
+        gameState.player.position.z,
+        tryX,
+        gameState.player.position.z,
+      )
     )
-  )
-    gameState.player.position.x = tryX;
-  const tryZ = gameState.player.position.z + stepZ;
-  if (
-    !collidesAt(gameState.currentMapName, gameState.player.position.x, tryZ) &&
-    canTraverseVillageHeight(
-      gameState.player.position.x,
-      gameState.player.position.z,
-      gameState.player.position.x,
-      tryZ,
+      gameState.player.position.x = tryX;
+    const tryZ = gameState.player.position.z + stepZ;
+    if (
+      !collidesAt(gameState.currentMapName, gameState.player.position.x, tryZ) &&
+      canTraverseVillageHeight(
+        gameState.player.position.x,
+        gameState.player.position.z,
+        gameState.player.position.x,
+        tryZ,
+      )
     )
-  )
-    gameState.player.position.z = tryZ;
+      gameState.player.position.z = tryZ;
 
-  if (gameState.isMoving) {
-    // 角色模型的鼻子／腮紅在本地 -Z 面，因此移動方向要比「+Z 為正面」
-    // 的通用公式多轉半圈；否則臉會永遠朝向來時路。
-    const targetAngle = Math.atan2(dx, dz) + Math.PI;
-    gameState.player.rotation.y +=
-      (((targetAngle - gameState.player.rotation.y + Math.PI * 3) %
-        (Math.PI * 2)) -
-        Math.PI) *
-      0.35;
-    gameState.facing =
-      Math.abs(dx) > Math.abs(dz)
-        ? dx > 0
-          ? "right"
-          : "left"
-        : dz > 0
-          ? "down"
-          : "up";
+    if (gameState.isMoving) {
+      // 角色模型的鼻子／腮紅在本地 -Z 面，因此移動方向要比「+Z 為正面」
+      // 的通用公式多轉半圈；否則臉會永遠朝向來時路。
+      const targetAngle = Math.atan2(dx, dz) + Math.PI;
+      gameState.player.rotation.y +=
+        (((targetAngle - gameState.player.rotation.y + Math.PI * 3) %
+          (Math.PI * 2)) -
+          Math.PI) *
+        0.35;
+      gameState.facing =
+        Math.abs(dx) > Math.abs(dz)
+          ? dx > 0
+            ? "right"
+            : "left"
+          : dz > 0
+            ? "down"
+            : "up";
+    }
+  } else {
+    updatePrologueCutscene(dt);
   }
   if (gameState.isSitting) animateSit(gameState.player);
   else animateRun(gameState.player, gameState.isMoving, gameState.elapsed);
-  gameState.player.position.y += characterGroundY(
-    gameState.currentMapName,
-    gameState.player.position.x,
-    gameState.player.position.z,
-  );
+  // 序幕演出期間 Y 高度完全由 updatePrologueCutscene() 自己決定(甲板/
+  // 跳板斜度都不是地形高度)，這裡跳過地形疊加，避免被拉回海平面/碼頭高度。
+  if (!gameState.cutsceneActive) {
+    gameState.player.position.y += characterGroundY(
+      gameState.currentMapName,
+      gameState.player.position.x,
+      gameState.player.position.z,
+    );
+  }
   const mountainStairVisibilityZone =
     gameState.currentMapName === "mountain" &&
     [LAYOUT.mountain.lowerStair, LAYOUT.mountain.upperStair].some(
@@ -1151,8 +1164,17 @@ export function animate(now) {
     // 港口鏡頭以左上 (0,0) 為硬邊界；縮遠時只向右、向南揭露外海。
     const halfViewWidth = camera.right;
     const halfViewDepth = gameState.zoom / Math.cos(TILT_RAD);
-    cameraFocusX = Math.max(gameState.player.position.x, halfViewWidth);
-    cameraFocusZ = Math.max(gameState.player.position.z, halfViewDepth);
+    // 2026-08-26 序幕演出「外海／靠岸」這幾個階段，鏡頭改成直接鎖定
+    // 船身(prologueRefs.ferry.position)，不是玩家本身的座標——見
+    // prologue.ts 的 isPrologueShipStage() 註解。下船走位／碼頭迎接
+    // 這兩個階段條件不成立，鏡頭照常跟著玩家。
+    const shipLocked =
+      gameState.cutsceneActive && isPrologueShipStage() && prologueRefs.ferry;
+    const focusSource = shipLocked
+      ? prologueRefs.ferry.position
+      : gameState.player.position;
+    cameraFocusX = Math.max(focusSource.x, halfViewWidth);
+    cameraFocusZ = Math.max(focusSource.z, halfViewDepth);
   } else if (gameState.currentMapName === "oldVillage") {
     // 城鎮與港口鏡像：港口鎖左上，城鎮鎖右上。
     const halfViewWidth = camera.right;

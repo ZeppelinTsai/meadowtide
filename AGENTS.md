@@ -1343,3 +1343,206 @@ Zeppelin 反饋「船長是不是應該轉180 我看不到臉」。查了 `game-
 只認 `currentMapName === "livingArea"`，村長/木匠專用)的地圖判斷擴大
 成也認 `"port"`。不是新機制，是重用同一套——之後 port 地圖上其他
 站定的 NPC 一樣受惠，不用每個角色各自修一次。`tsc --noEmit` 過關。
+
+
+## 序幕：開場第一天演出（2026-08-26）
+
+Zeppelin 確認要開始做「主角乘船抵達港口」的開場演出，並回答了三個
+規劃問題定案下面的形狀：
+
+- **畫面**：不是靜態站位，是真的有走位的過場——船從外海(世界 +X，
+  比停靠位再推 `SEA_OFFSET_X=18` 格)滑回停靠位、跳板從立起(90 度)
+  放下、主角從甲板走出來、下跳板、走到碼頭。過程中先播「主角看傳單
+  ＋船長喊快到岸了」的對話，等對話關掉才開始船隻靠岸的動畫。
+- **在場角色**：船長負責「把人載過來」這條線；村長也在碼頭迎接(碼頭
+  上的「三個開局角色」互相牽連的關係網，見更早的筆記)，兩人一起講
+  歡迎詞，不另外拆成村莊那邊的第二場戲。
+- **觸發**：偵測不到存檔(`localStorage["meadowtide.save.default"]`
+  不存在)就自動播一次；另外留一顆 F8 熱鍵可以在已經站在港口地圖時
+  無條件重播，不用清存檔。
+
+**沒有另外蓋第二艘船**——直接借用 `makePortScene()` 裡本來就停在
+碼頭、整場遊戲都在的那艘登陸艇渡輪(`ferry`)跟跳板(`gangplank`)。
+`scene-registries.ts` 新增一個 `prologueRefs`(單一可變物件，理由跟
+`gangplank Meshes` 那批陣列一樣：從其他檔案 import 進去的 `let` 沒辦法
+重新賦值，只能改物件屬性)，`makePortScene()` 蓋完這兩個 Object3D 後
+把參照＋「跳板靜止角度」／「船隻靜止 X 座標」一併存進去。新檔案
+`src/prologue.ts` 演出時把它們暫時搬離停靠狀態(船推到外海、跳板轉成
+90 度立起)，演出結束時兩者都會回到原本蓋出來的靜止狀態——所以這場
+戲對其餘遊戲時間完全沒有副作用，也不用另外處理「演出跑完之後渡輪
+要恢復原狀」這件事，因為根本沒有真的離開過那個狀態機以外的東西。
+
+**移動鎖用新欄位 `gameState.cutsceneActive`，不是 `isGameTimePaused()`
+那條路**——後者會把整個 `dt` 鎖成 0，連我自己要跑的船/跳板補間動畫
+都會一起被凍結。`game-loop.ts` 的「自由移動」那一整塊(WASD 讀取／
+碰撞判定／轉向平滑)包進 `if (!gameState.cutsceneActive) {...} else {
+updatePrologueCutscene(dt); }`，`animateRun`/`animateSit` 呼叫維持在
+外層不動(靠 `prologue.ts` 自己設對 `gameState.isMoving` 就會正常播走
+路動畫)。另外把「主角 Y 疊加地形高度」那一行也包了同樣的條件——序幕
+期間角色站在甲板/跳板斜面上，Y 完全由 `updatePrologueCutscene()` 自己
+算(`ferry.localToWorld()` 讀甲板局部座標)，不能被拉回海平面/碼頭
+高度，這是實作過程中發現、原本沒想到的一個坑，寫成明確註解免得之後
+又被繞過去。
+
+演出內部是一個小狀態機(`atSea → approaching → rampLowering → walking
+→ greeting → done`)，`updatePrologueCutscene(dt)` 每幀跑一次、只在
+`cutsceneActive` 為真時做事，其餘時間是 no-op，掛進 `animate()` 主迴圈
+不影響平常效能。下船走位(`walking` 階段)沒有重用 WASD 那套碰撞判定，
+是自己算好一串安全路徑點(甲板→跳板船頭端→跳板碼頭端→碼頭迎接點)直接
+線性位移＋套用跟主迴圈同一條「模型鼻子朝 -Z，要多轉半圈」的轉向公式，
+因為這條路徑是設計好的、不需要再跑一次通用碰撞檢查。
+
+台詞是純中文字串，沒有走 `i18n.ts` 的 `t()`——照 `i18n.ts` 自己的說明，
+目前只有木匠事件是刻意做多語言的試點，其餘事件(包含 `chef-quest.ts`)
+都是直接寫中文，這裡跟著同一個慣例，之後真的要幫序幕上多語言時再一
+起補。
+
+**已知的簡化、之後可能要調的地方**（先求「有動作、順序對」，實際
+畫面效果要 Zeppelin 進遊戲看過才知道）：
+
+- 跳板立起/放下的旋轉支點目前用的是跳板本身的 `group.position`，也
+  就是碼頭端(`makeGangplank()` 的內部座標系是「原點＝碼頭端」)，不是
+  船頭端。真實的登陸艇艙門通常是船頭端當鉸鏈，這裡為了不動
+  `makeGangplank()`/`makePortScene()` 已經調好的靜態跳板算式，選擇
+  在船還很遠時把跳板整個藏起來(`visible=false`)，只有靠岸後那 1.4 秒
+  的放下動畫看得到旋轉，用「藏起來、只露出最後一小段动畫」蓋掉支點
+  不對的問題。如果放下動畫看起來像「跳板自己在碼頭邊轉」而不是「從
+  船頭掀下來」，之後可以再考慮把跳板拆成獨立的鉸鏈群組。
+- 外海/走位的所有座標(`SEA_OFFSET_X`、甲板局部座標 `(0.3, 0.5, 0)`、
+  跳板船頭端局部座標 `(-1.6, 0.5, 0)`、碼頭迎接點偏移量、船長/村長的
+  站位偏移量)都是憑手算跟既有不變量(甲板高度 Y=0.5、hull 半長 1.8)
+  推出來的估計值，沒有實際進遊戲看過畫面校正——這輪整個環境沒辦法
+  跑 `vite build` 看畫面，這些數字大概率需要 Zeppelin 進遊戲後再回報
+  微調，跟這次船隻建模/跳板那一長串反饋輪是同一個流程。
+- 開局判斷純粹看「有沒有存檔」，遊戲目前還沒有真正的「開新遊戲／繼續
+  遊戲」選單流程(`main.ts` 本來就一直是直接進生活區，沒有標題畫面)，
+  等之後真的做這個流程時，這裡的判斷條件應該會被那套機制取代，不是
+  永久設計。
+- 歡迎對話播完後村長/船長的 `.mesh.visible` 改回 `true`，会重新被
+  `game-loop.ts` 的 NPC 排程邏輯接管(這段邏輯本身有 `if (!n.mesh.
+  visible) return;` 的跳過條件，序幕演出期間他們兩個一直是
+  `visible=false`，所以不會被排程系統搶著移動；解除後才會恢復正常)。
+  沒有特別處理「歡迎完，兩人應該留在原地一下」——理論上是自然接回
+  正常排程，但這段還沒有實際驗證過會不會出現一放開就立刻走掉的觀感
+  問題。
+
+`tsc --noEmit` 過關(每個檔案改完都各自驗證過一次：`game-state.ts`／
+`scene-registries.ts`／`props.ts`／`prologue.ts`(新檔)／`game-loop.ts`／
+`main.ts`／`input-save.ts`)。
+
+
+## 序幕第二輪：外海距離、鏡頭鎖船、主角站船頭（2026-08-26）
+
+Zeppelin 進遊戲看過流程後回報三點：
+
+- 「船開頭再往右20格」——`SEA_OFFSET_X` 從 18 加到 38，外海起始點
+  推得更遠，鏡頭鎖在船上時比較看得出「船正在從遠處開過來」的距離感。
+- 「鎖定鏡頭再船身上」——原本外海／靠岸這幾個階段，鏡頭是透過
+  `gameState.player.position`(主角釘在船頭跟著船一起動)間接跟著船，
+  結果理論上一樣，但改成 `game-loop.ts` 的港口鏡頭邏輯直接讀
+  `prologueRefs.ferry.position`，只在 `isPrologueShipStage()`(atSea／
+  approaching／rampLowering)為真時生效，下船走位／碼頭迎接這兩個
+  階段鏡頭照常跟玩家。更直接，也不怕之後主角站位再調整時鏡頭跟著跑掉。
+- 「把主角模型放到船頭並對著碼頭」——原本站甲板中段(本地 x=0.3，其實
+  偏船尾側)，改到船頭(本地 x=-1.3，卡在動物欄杆前緣 -1.1 跟船體前緣
+  -1.8 之間，不會穿模，也還沒踩到跳板船頭端 -1.6)。面向碼頭那行
+  `faceDirection()` 呼叫本來就有、沒有動，站位挪到船頭之後這個朝向
+  依然成立。
+
+**修的時候順便抓到一個自己踩的坑**：把原本每次呼叫都各自 `new
+THREE.Vector3(0.3, 0.5, 0)` 的五個地方，一開始圖方便直接改成共用同一個
+具名常數 `PLAYER_BOW_LOCAL`——但 `THREE.Object3D.localToWorld(vector)`
+是就地改寫傳進去的那個 Vector3、回傳同一個參照，不是回傳新物件。如果
+五個呼叫點共用同一個常數，第一次呼叫後這個「常數」本身就會被覆寫成
+當下那一刻的世界座標，之後每一幀讀到的都是上一次算出來的世界座標而
+不是船頭的本地座標，位置會整個算錯。修法是每個呼叫點都先
+`PLAYER_BOW_LOCAL.clone()` 再丟進 `localToWorld()`。這輪還沒進遊戲
+驗證這幾個數字實際看起來如何，`tsc --noEmit` 過關。
+
+
+## 序幕第三輪：跳板收合貼船頭、Z 對齊、下船判定、zoom 印值（2026-08-26）
+
+Zeppelin 回報四點：
+
+- 「跳板自己在碼頭邊轉，而不是從船頭掀下來」＋「跳板一開始甚至沒有
+  顯示在船上，他應該有合起來的狀態」——原本的做法是外海階段整個
+  `gangplank.visible = false`，靠岸那 1.4 秒才現身用舊的靜態坡度旋轉
+  補間，等於「憑空冒出來」再「原地怪異地轉」。改成：跳板全程可見，
+  收合狀態(角度立起 `RAMP_RAISED_ROTATION_Z`)貼在船頭局部座標
+  `GANGPLANK_BOW_LOCAL=(-1.78,0.5,0)`，`syncGangplankToBow()` 在
+  atSea/approaching 每幀重新算「此刻船頭在哪」直接把 `gangplank.
+  position` 設過去(不是真的用 `object.add()` 掛成 `ferry` 的子物件，
+  那樣還要另外處理 `ferry.scale` 抵消縮放，反而更麻煩)，看起來就是
+  「跳板收好貼在船頭、跟著船一起開過來」。進入 `rampLowering` 那一刻
+  拍一張快照(`rampLowerFromPosition`)，用 `position.lerpVectors()`
+  把整塊跳板從「貼船頭的收合位置」補間到 `makePortScene()` 原本蓋好
+  的停靠位置(`prologueRefs.gangplankRestPosition`，這輪新增，跟
+  `gangplankRestRotationZ` 存在同一個 `prologueRefs`)，角度也同步補間。
+  這不是嚴謹的單軸鉸鏈旋轉(真正物理正確要鉸鏈永遠固定在船頭端，但
+  `makeGangplank()` 的靜態坡度算式是以碼頭端當局部座標原點，這條算式
+  跟渡輪停靠時的坡度計算共用，沒有動)，是「位置+角度一起補間」的簡化
+  版，但已經沒有「跳板自己在碼頭邊憑空轉」的怪異感，之後如果還想要更
+  精確的鉸鏈動畫，得先讓 `makeGangplank()` 支援船頭端當原點。
+- 「Z不對」——查出來是 `ferry.rotation.y=0.03` 那個小小的偏航角，
+  `localToWorld()` 換算時會讓局部 `z=0` 的點在世界座標混進一點點來自
+  `x` 的分量(旋轉矩陣的關係)，換算下來偏移約 0.1 格，肉眼看不出哪裡
+  歪、但走位跟跳板的 Z 對不齊。跳板本身是直接寫死 `world z=port.
+  ferry.z`(沒有經過旋轉)，所以新增 `bowWorldPoint()` 這個共用函式，
+  統一規則：凡是演出用到的「甲板/船頭」世界座標，`z` 一律強制對齊
+  `LAYOUT.port.ferry.z`，不採信 `localToWorld()` 自己算出來的 z 分量。
+  主角站位/跳板同步全部改走這個函式，不再各自呼叫 `ferry.
+  localToWorld()`。
+- 「應該要有走下去的觸碰跟判定」——這句話比較抽象，我的理解是：下船
+  走位的終點(踩上跳板碼頭端那一步)要是一個明確、有名字的判定點，不是
+  埋在通用的「跟下一個路徑點距離夠近就算到了」邏輯裡看不出來。加了
+  `hasTouchedDock` 這個一次性旗標，`waypoints[2]`(跳板碼頭端/
+  `rampBottom`)被踩到的那一幀印一行 `console.info("[序幕] 已踏上碼頭")`
+  當作明確的判定點。**如果 Zeppelin 原意是別的東西(例如真的要接一個
+  正式的 touch 事件、或要在這個點插音效/鏡頭震動之類)，這輪先按這個
+  理解做，之後看畫面/確認需求再調**——沒有百分之百把握猜對這句的意思，
+  照最保守的字面解讀先做出一個可以看得見效果(console 有印)的版本。
+- 「改zoom的時候打印一下」——`input-save.ts` 的 `setCameraZoom()` 加了
+  `console.info` 印目前 `gameState.zoom`，方便滾滾輪試演出用的鏡頭
+  距離時直接看 console 記下來，`import.meta.env.DEV` 包住，正式版會被
+  靜態消掉。
+
+`tsc --noEmit` 過關(`scene-registries.ts` 多存一份 `gangplankRestPosition`
+／`props.ts` 填值／`prologue.ts` 大改／`input-save.ts` 補 zoom 印值)。
+
+
+## 序幕第四輪：真正的船頭鉸鏈旋轉、鎖定演出用 zoom（2026-08-26）
+
+Zeppelin 附了三張截圖回報：開頭(atSea 階段)完全看不到跳板；行駛
+(approaching 階段)時跳板方向是反的，應該轉 180 度；最後放下來的關節
+還是不對，應該從船頭轉不是從碼頭轉——直接點名要修正上一輪那個「先求
+有、之後再調」留下的簡化版(位置+角度一起補間，不是真正單軸旋轉)。
+
+這輪把 `GANGPLANK_BOW_LOCAL` 的局部座標從隨手內縮的 `-1.78` 改成
+hull 邊緣真正的 `-1.8`(對齊 `makePortScene()` 算跳板船端世界座標用的
+`ferryHullHalfLength`)，把這個點當成真正的旋轉鉸鏈原點，`rampLowering`
+階段整個重寫成單軸旋轉而不是位置補間：
+
+- 船到位那一刻(`approaching` 結束)`syncGangplankToBow()` 把
+  `gangplank.position` 釘死在船頭，之後 `rampLowering` 全程不再動
+  position，只轉 `rotation.z`。
+- 推導出「放下後」的角度不是直接用 `gangplankRestRotationZ`，是
+  `gangplankRestRotationZ + Math.PI`——因為靜態停靠版跳板是以碼頭端
+  當原點、`rotation.z` 是「碼頭端指向船端」的角度；同一條線段，換成
+  以船端當原點反過來看，方向剛好相反，也就是要加一個 π。這剛好對應
+  Zeppelin「方向反了，應該轉180度」那句反饋，不是巧合。
+- 轉到底之後，跟原本以碼頭端為原點的靜態跳板是同一條線段、同一塊
+  板子，只是內部原點定義不同，視覺上完全等價，所以動畫結束時直接切回
+  `prologueRefs.gangplankRestPosition`/`gangplankRestRotationZ` 這兩個
+  `makePortScene()` 算好的原始值，不會有跳動。
+- 順手拿掉了上一輪為了「位置補間」才加的 `rampLowerFromPosition` 快照
+  變數，這版不再需要。
+
+另外「開頭沒看到跳板」大機率跟同一個方向錯誤是同一個成因(舊版角度算
+反，跳板可能整個貼進 hull 裡面被擋住或角度怪異到肉眼看不出是一塊板)，
+這輪的旋轉方向修正後預期會一併解決，但沒有實機驗證，要 Zeppelin 這輪
+再進遊戲確認一次。
+
+最後照 Zeppelin 指示，把演出用的鏡頭縮放釘死成 `PROLOGUE_ZOOM = 5`
+(`startPrologueScene()` 開場時直接設 `gameState.zoom` 並呼叫
+`updateCameraFrustum()`)，不管玩家或上次除錯滾輪停在哪裡，每次演出
+都從同一個已知的鏡頭距離開始。`tsc --noEmit` 過關。
