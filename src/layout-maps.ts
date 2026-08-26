@@ -233,6 +233,11 @@ export const LAYOUT = {
       { x: 1, z: 36 },
       { x: 0, z: 34 },
     ],
+    // 西擴後分別為 x=107,z<=34 與 x=93,z<=33；只把其中原本的沙格退回海。
+    northBeachSeaTrims: [
+      { x: 7, maxZ: 34 },
+      { x: -7, maxZ: 33 },
+    ],
     // 平台由四個彼此貼合、正常寫深度的實心方塊組成；輪廓左右只偏 1 格。
     // 最南段仍以 z=31 銜接樓梯頂端，所有段共用同一高度與材質規則。
     // 2026-08-26：主殿(cube)覺得離鳥居(torii, z=28)太近，整個往北(z
@@ -258,6 +263,7 @@ export const LAYOUT = {
       segments: [
         { x: -3, z: 13, width: 7, depth: 8 },
         { x: -3, z: 21, width: 7, depth: 6 },
+        { x: 4, z: 21, width: 1, depth: 2 },
         { x: -4, z: 27, width: 8, depth: 2 },
         { x: -3, z: 29, width: 7, depth: 3 },
       ],
@@ -1843,6 +1849,10 @@ for (
 for (const cell of LAYOUT.oldVillage.northBeachSandCorrections)
   if (MAPS.oldVillage.tiles[cell.z]?.[cell.x] !== undefined)
     MAPS.oldVillage.tiles[cell.z][cell.x] = 8;
+for (const trim of LAYOUT.oldVillage.northBeachSeaTrims)
+  for (let z = 0; z <= trim.maxZ; z++)
+    if (MAPS.oldVillage.tiles[z]?.[trim.x] === 8)
+      MAPS.oldVillage.tiles[z][trim.x] = 9;
 
 // 港口東側外海擴充：往陣列尾端追加海面，既有建築、事件與傳送點座標不變。
 export const PORT_OCEAN_EXPANSION = { east: 50 };
