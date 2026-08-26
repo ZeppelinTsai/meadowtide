@@ -37,7 +37,6 @@ import {
   SHRINE_PATH_ELEVATION,
   portGroundY,
   oldVillageGroundY,
-  oldVillageNorthPlatformBounds,
   oldVillageSouthBeachEndZ,
   oldVillageWestBeachStartX,
   mountainGroundY,
@@ -913,11 +912,24 @@ export function buildMap(mapName) {
         roughness: 0.98,
         depthWrite: false,
       });
-      const northPlatformMat = new THREE.MeshStandardMaterial({
+      const northPlatformWallMat = new THREE.MeshStandardMaterial({
         color: 0xc47a52,
         roughness: 0.92,
-        depthWrite: false,
       });
+      const northPlatformTopMat = new THREE.MeshStandardMaterial({
+        color: 0x8f8779,
+        roughness: 0.98,
+      });
+      // BoxGeometry 材質順序：+X, -X, +Y, -Y, +Z, -Z。
+      // 頂面沿用可走台地灰色，只有不可走的垂直牆面與底面使用暖赭色。
+      const northPlatformMaterials = [
+        northPlatformWallMat,
+        northPlatformWallMat,
+        northPlatformTopMat,
+        northPlatformWallMat,
+        northPlatformWallMat,
+        northPlatformWallMat,
+      ];
       // 從地面(y=0)一路實心蓋到 elevation，不是只有一片薄薄的頂面——
       // 之前只做 0.18 厚的浮板，頂面高度沒錯，但浮板底下到地面之間
       // 完全沒有東西填滿，鏡頭有角度時會直接看穿那個空隙看到背景，
@@ -929,7 +941,7 @@ export function buildMap(mapName) {
         elevation,
         xStart = 0,
         width = LAYOUT.oldVillage.terraces.westEdge + 0.5,
-        material = terraceMat,
+        material: THREE.Material | THREE.Material[] = terraceMat,
       ) => {
         const terrace = new THREE.Mesh(
           new THREE.BoxGeometry(width, elevation, depth),
@@ -1004,48 +1016,16 @@ export function buildMap(mapName) {
         LAYOUT.oldVillage.width - townWestX,
       );
       const northPlatform = LAYOUT.oldVillage.northBeachPlatform;
-      const northPlatformStair =
-        LAYOUT.oldVillage.westStairs[LAYOUT.oldVillage.westStairs.length - 1];
-      for (
-        let z = northPlatform.z;
-        z < northPlatform.z + northPlatform.depth;
-        z++
-      ) {
-        const bounds = oldVillageNorthPlatformBounds(z);
-        if (!bounds) continue;
-        if (z >= northPlatformStair.fromZ && z < northPlatformStair.toZ) {
-          const leftWidth = northPlatformStair.x - bounds.minX;
-          const rightStart = northPlatformStair.x + northPlatformStair.width;
-          const rightWidth = bounds.maxX - rightStart + 1;
-          if (leftWidth > 0)
-            addTerrace(
-              z,
-              1,
-              northPlatform.elevation,
-              bounds.minX,
-              leftWidth,
-              northPlatformMat,
-            );
-          if (rightWidth > 0)
-            addTerrace(
-              z,
-              1,
-              northPlatform.elevation,
-              rightStart,
-              rightWidth,
-              northPlatformMat,
-            );
-        } else {
-          addTerrace(
-            z,
-            1,
-            northPlatform.elevation,
-            bounds.minX,
-            bounds.maxX - bounds.minX + 1,
-            northPlatformMat,
-          );
-        }
-      }
+      northPlatform.segments.forEach((segment) =>
+        addTerrace(
+          segment.z,
+          segment.depth,
+          northPlatform.elevation,
+          segment.x,
+          segment.width,
+          northPlatformMaterials,
+        ),
+      );
       const mountainLanding = LAYOUT.oldVillage.mountainLanding;
       const mountainLandingMesh = new THREE.Mesh(
         new THREE.BoxGeometry(

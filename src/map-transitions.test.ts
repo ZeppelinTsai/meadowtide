@@ -123,25 +123,46 @@ test("舊城鎮西側與南側各擴充 100 格海面", () => {
   for (let z = 0; z < 64; z++)
     for (let x = 0; x < OLD_VILLAGE_OCEAN_EXPANSION.west; x++) {
       const beach = LAYOUT.oldVillage.northBeach;
+      const edge = LAYOUT.oldVillage.northBeachSouthEdge;
+      const edgeIndex = x - edge.x;
+      const isSouthEdgeSand =
+        edgeIndex >= 0 &&
+        edgeIndex < edge.endOffsets.length &&
+        z >= edge.z - 1 &&
+        z <= edge.z + edge.endOffsets[edgeIndex];
       if (
-        x >= beach.x &&
-        x < beach.x + beach.width &&
-        z >= beach.z &&
-        z < beach.z + beach.height
+        (x >= beach.x &&
+          x < beach.x + beach.width &&
+          z >= beach.z &&
+          z < beach.z + beach.height) ||
+        isSouthEdgeSand
       )
         continue;
       assert.equal(tiles[z][x], 9, `西側新增海面 (${x},${z})`);
     }
   const northBeach = LAYOUT.oldVillage.northBeach;
-  for (let z = northBeach.z; z < northBeach.z + northBeach.height; z++)
+  for (let z = northBeach.z; z < LAYOUT.oldVillage.northBeachSouthEdge.z - 1; z++)
     for (let x = northBeach.x; x < northBeach.x + northBeach.width; x++)
       assert.equal(tiles[z][x], 8);
   assert.deepEqual(northBeach, { x: 95, z: 16, width: 11, height: 21 });
   const platform = LAYOUT.oldVillage.northBeachPlatform;
-  assert.equal(platform.z + (platform.depth - 1) / 2, 25.5);
-  assert.equal(platform.elevation, LAYOUT.oldVillage.terraces.upper.elevation);
-  assert.equal(platform.rowInsets.length, platform.depth);
-  assert.ok(platform.rowInsets.every((inset) => inset === 1 || inset === 2));
+  assert.equal(platform.elevation, 3);
+  assert.deepEqual(platform.segments, [
+    { x: 98, z: 18, width: 5, depth: 3 },
+    { x: 97, z: 21, width: 7, depth: 6 },
+    { x: 96, z: 27, width: 8, depth: 2 },
+    { x: 97, z: 29, width: 7, depth: 3 },
+  ]);
+  const eastFill = LAYOUT.oldVillage.northBeachEastFill;
+  assert.deepEqual(eastFill, { x: 105, z: 35, width: 11, height: 2 });
+  const southEdge = LAYOUT.oldVillage.northBeachSouthEdge;
+  assert.equal(southEdge.x, 95);
+  southEdge.endOffsets.forEach((offset, index) => {
+    const x = southEdge.x + index;
+    const endZ = southEdge.z + offset;
+    for (let z = southEdge.z - 1; z <= southEdge.z + 1; z++)
+      assert.equal(tiles[z][x], z <= endZ ? 8 : 9);
+  });
   const platformStair =
     LAYOUT.oldVillage.westStairs[LAYOUT.oldVillage.westStairs.length - 1];
   assert.deepEqual(platformStair, {

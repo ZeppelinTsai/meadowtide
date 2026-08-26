@@ -201,15 +201,24 @@ export const LAYOUT = {
     // 這裡先記錄西擴前的 x=-5；下方 OLD_VILLAGE_OCEAN_EXPANSION 會把
     // LAYOUT.oldVillage 整體 +100，最後落在 x=95~105、z=16~36。
     northBeach: { x: -5, z: 16, width: 11, height: 21 },
-    // 平台以擴建後沙灘中心附近 (100,25.5) 為中心，四周保留 1~3 格沙。
-    // rowInsets 是固定種子的輕微參差，不在載圖時重抽，避免碰撞輪廓漂移。
+    // 東南側補沙，西擴後落在指定的 x=105~115、z=35~36。
+    northBeachEastFill: { x: 5, z: 35, width: 11, height: 2 },
+    // 平台由四個彼此貼合、正常寫深度的實心方塊組成；輪廓左右只偏 1 格。
+    // 最南段仍以 z=31 銜接樓梯頂端，所有段共用同一高度與材質規則。
     northBeachPlatform: {
-      z: 18,
-      depth: 16,
       elevation: 3,
-      rowInsets: [
-        2, 2, 1, 2, 1, 1, 2, 1, 1, 2, 1, 1, 2, 1, 2, 2,
+      segments: [
+        { x: -2, z: 18, width: 5, depth: 3 },
+        { x: -3, z: 21, width: 7, depth: 6 },
+        { x: -4, z: 27, width: 8, depth: 2 },
+        { x: -3, z: 29, width: 7, depth: 3 },
       ],
+    },
+    // x=95~115 的南岸每欄在 z=35~37 之間小幅進退；固定序列避免載圖漂移。
+    northBeachSouthEdge: {
+      x: -5,
+      z: 36,
+      endOffsets: [0, -1, 0, 1, 0, 0, -1, 0, 1, 0, -1, 0, 0, 1, 0, -1, 0, 1, 0, 0, -1],
     },
     stalactiteCave: {
       // 擴展到 x=29，剛好貼齊 westBeach(x:0~29)的東緣，跟乾地交界
@@ -1026,12 +1035,13 @@ export function oldVillageGroundY(x: number, z: number) {
 export function oldVillageNorthPlatformBounds(z: number) {
   const village = LAYOUT.oldVillage;
   const platform = village.northBeachPlatform;
-  const row = z - platform.z;
-  if (row < 0 || row >= platform.depth) return null;
-  const inset = platform.rowInsets[row];
+  const segment = platform.segments.find(
+    (entry) => z >= entry.z && z < entry.z + entry.depth,
+  );
+  if (!segment) return null;
   return {
-    minX: village.northBeach.x + inset,
-    maxX: village.northBeach.x + village.northBeach.width - inset - 1,
+    minX: segment.x,
+    maxX: segment.x + segment.width - 1,
   };
 }
 // 南沙灘海岸線以 x 為種子產生穩定的鋸齒凹凸，跟 portSouthBeachEndZ()
@@ -1627,21 +1637,24 @@ LAYOUT.oldVillage.height = MAPS.oldVillage.tiles.length;
 
 // 西擴後才依最終 LAYOUT 座標鋪這塊沙灘，避免在原始 77 欄 tile grid
 // 使用負索引。若日後調整外海寬度，範圍仍會跟著 shiftMapLayout 同步平移。
-for (
-  let z = LAYOUT.oldVillage.northBeach.z;
-  z <
-  LAYOUT.oldVillage.northBeach.z + LAYOUT.oldVillage.northBeach.height;
-  z++
-) {
-  for (
-    let x = LAYOUT.oldVillage.northBeach.x;
-    x < LAYOUT.oldVillage.northBeach.x + LAYOUT.oldVillage.northBeach.width;
-    x++
-  ) {
-    if (MAPS.oldVillage.tiles[z]?.[x] !== undefined)
-      MAPS.oldVillage.tiles[z][x] = 8;
+for (const sandPatch of [
+  LAYOUT.oldVillage.northBeach,
+  LAYOUT.oldVillage.northBeachEastFill,
+]) {
+  for (let z = sandPatch.z; z < sandPatch.z + sandPatch.height; z++) {
+    for (let x = sandPatch.x; x < sandPatch.x + sandPatch.width; x++) {
+      if (MAPS.oldVillage.tiles[z]?.[x] !== undefined)
+        MAPS.oldVillage.tiles[z][x] = 8;
+    }
   }
 }
+const northBeachSouthEdge = LAYOUT.oldVillage.northBeachSouthEdge;
+northBeachSouthEdge.endOffsets.forEach((offset, index) => {
+  const x = northBeachSouthEdge.x + index;
+  const endZ = northBeachSouthEdge.z + offset;
+  for (let z = northBeachSouthEdge.z - 1; z <= northBeachSouthEdge.z + 1; z++)
+    MAPS.oldVillage.tiles[z][x] = z <= endZ ? 8 : 9;
+});
 
 // 港口東側外海擴充：往陣列尾端追加海面，既有建築、事件與傳送點座標不變。
 export const PORT_OCEAN_EXPANSION = { east: 50 };
