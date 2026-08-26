@@ -121,8 +121,21 @@ test("舊城鎮西側與南側各擴充 100 格海面", () => {
   assert.equal(tiles[0].length, 77 + OLD_VILLAGE_OCEAN_EXPANSION.west);
   assert.equal(tiles.length, 64 + OLD_VILLAGE_OCEAN_EXPANSION.south);
   for (let z = 0; z < 64; z++)
-    for (let x = 0; x < OLD_VILLAGE_OCEAN_EXPANSION.west; x++)
+    for (let x = 0; x < OLD_VILLAGE_OCEAN_EXPANSION.west; x++) {
+      const beach = LAYOUT.oldVillage.northBeach;
+      if (
+        x >= beach.x &&
+        x < beach.x + beach.width &&
+        z >= beach.z &&
+        z < beach.z + beach.height
+      )
+        continue;
       assert.equal(tiles[z][x], 9, `西側新增海面 (${x},${z})`);
+    }
+  const northBeach = LAYOUT.oldVillage.northBeach;
+  for (let z = northBeach.z; z < northBeach.z + northBeach.height; z++)
+    for (let x = northBeach.x; x < northBeach.x + northBeach.width; x++)
+      assert.equal(tiles[z][x], 8);
   for (let z = 64; z < tiles.length; z++)
     for (let x = 0; x < tiles[z].length; x++)
       assert.equal(tiles[z][x], 9, `南側新增海面 (${x},${z})`);

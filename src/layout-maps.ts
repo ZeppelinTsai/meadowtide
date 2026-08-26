@@ -197,6 +197,10 @@ export const LAYOUT = {
     // addTerrace 的 xStart、OLD_VILLAGE_RAILS 前兩段)另外手動對應
     // 調整，這個工具目前不會幫忙掃到那些。
     westBeach: { x: 0, z: 0, width: 30, height: 64 },
+    // 位於西北岸、以世界座標 (100,37) 正北側為基準的 11x11 沙灘。
+    // 這裡先記錄西擴前的 x=-5；下方 OLD_VILLAGE_OCEAN_EXPANSION 會把
+    // LAYOUT.oldVillage 整體 +100，最後落在 x=95~105、z=26~36。
+    northBeach: { x: -5, z: 26, width: 11, height: 11 },
     stalactiteCave: {
       // 擴展到 x=29，剛好貼齊 westBeach(x:0~29)的東緣，跟乾地交界
       // 不留縫；入口跟著洞窟拓寬——從 22-23 移到 24-26，往東挪一點
@@ -1580,6 +1584,24 @@ shiftMapLayout({
 });
 LAYOUT.oldVillage.width = MAPS.oldVillage.tiles[0].length;
 LAYOUT.oldVillage.height = MAPS.oldVillage.tiles.length;
+
+// 西擴後才依最終 LAYOUT 座標鋪這塊沙灘，避免在原始 77 欄 tile grid
+// 使用負索引。若日後調整外海寬度，範圍仍會跟著 shiftMapLayout 同步平移。
+for (
+  let z = LAYOUT.oldVillage.northBeach.z;
+  z <
+  LAYOUT.oldVillage.northBeach.z + LAYOUT.oldVillage.northBeach.height;
+  z++
+) {
+  for (
+    let x = LAYOUT.oldVillage.northBeach.x;
+    x < LAYOUT.oldVillage.northBeach.x + LAYOUT.oldVillage.northBeach.width;
+    x++
+  ) {
+    if (MAPS.oldVillage.tiles[z]?.[x] !== undefined)
+      MAPS.oldVillage.tiles[z][x] = 8;
+  }
+}
 
 // 港口東側外海擴充：往陣列尾端追加海面，既有建築、事件與傳送點座標不變。
 export const PORT_OCEAN_EXPANSION = { east: 50 };
