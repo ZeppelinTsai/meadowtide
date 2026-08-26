@@ -916,10 +916,22 @@ export function buildMap(mapName) {
           }
         }
       }
+      // 2026-08-26：depthWrite:false 原本是為了避免相鄰台地/樓梯接縫
+      // z-fighting，但第一人稱貼地視角會從近乎水平的掠射角看向台地
+      // 側面/底部——這種角度下深度緩衝區精度本來就差，depthWrite:false
+      // 讓台地從來不寫入自己的真實深度，後面畫的東西（甚至只是遠處的
+      // 平面地板/天空）在掠射角下深度測試會跟台地「打成平手」甚至
+      // 蓋過去，看起來像台地/房子的地基整塊透空、看穿到底下的空地
+      // (Zeppelin 回報「房子底下是空的」「每一層平台都一樣」)。改用
+      // polygonOffset 達到同樣的防閃爍效果：一樣把台地表面在深度上
+      // 稍微推近鏡頭一點點，避開跟相鄰面共平面的 z-fighting，但這次
+      // 深度緩衝區有正確寫入，後面畫的東西才會被正常擋住，不會再穿幫。
       const terraceMat = new THREE.MeshStandardMaterial({
         color: 0x8f8779,
         roughness: 0.98,
-        depthWrite: false,
+        polygonOffset: true,
+        polygonOffsetFactor: -1,
+        polygonOffsetUnits: -1,
       });
       const northPlatformWallMat = new THREE.MeshStandardMaterial({
         color: 0x343638,
@@ -3040,7 +3052,17 @@ export function buildMap(mapName) {
                 ? mountainGroundY(x, z)
                 : 0;
         if (mapName === "oldVillage") {
-          (m.material as THREE.Material).depthWrite = false;
+          // 跟上面 terraceMat 同一個道理、同一個修法：石板步道(tile===5)
+          // 逐格貼在台地上，接縫處一樣需要防 z-fighting，但不能再用
+          // depthWrite:false（會製造出一模一樣的「看穿地板」問題）。
+          const pathMat = m.material as THREE.Material & {
+            polygonOffset?: boolean;
+            polygonOffsetFactor?: number;
+            polygonOffsetUnits?: number;
+          };
+          pathMat.polygonOffset = true;
+          pathMat.polygonOffsetFactor = -1;
+          pathMat.polygonOffsetUnits = -1;
           m.renderOrder = 1;
         }
         gameState.mapGroup.add(m);

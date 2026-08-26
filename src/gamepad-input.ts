@@ -29,6 +29,7 @@ let leftStickZ = 0;
 let rightStickX = 0;
 let rightStickY = 0;
 let prevRightStickButton = false;
+let prevStartButton = false;
 
 export function getGamepadLookInput() {
   return { x: rightStickX, y: rightStickY };
@@ -78,6 +79,14 @@ export function pollGamepad() {
   if (rightStickButton && !prevRightStickButton) dispatchKey("keydown", "Tab");
   if (!rightStickButton && prevRightStickButton) dispatchKey("keyup", "Tab");
   prevRightStickButton = rightStickButton;
+
+  // Start/Menu 鍵(標準映射 buttons[9])＝暫停選單(pause-menu.ts)，直接合成
+  // Escape 鍵盤事件——跟上面 Tab 是同一招，暫停選單本來就是掛在鍵盤 Esc
+  // 監聽上，不用另外幫手把寫一套開關邏輯。
+  const startButton = !!pad.buttons[9]?.pressed;
+  if (startButton && !prevStartButton) dispatchKey("keydown", "Escape");
+  if (!startButton && prevStartButton) dispatchKey("keyup", "Escape");
+  prevStartButton = startButton;
 
   let dx = pad.axes[0] ?? 0;
   let dz = pad.axes[1] ?? 0;

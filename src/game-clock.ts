@@ -42,9 +42,29 @@ export function beginNewDay(day) {
         return isWorldTimePaused();
       }
 
+      // 每日 06:00 自動存檔的時間點——只是「這一幀跨過的 elapsed 區間」
+      // 有沒有含到任一天的 06:00，不是比較 currentPhase 前後值(N 鍵快轉
+      // 一次跳 6 小時，前後值可能剛好跨過又繞回來，比較 elapsed 絕對值
+      // 才不會漏)。實際存檔動作在 game-loop.ts(見 gameState.pendingAutosave
+      // 註解)，這裡只負責偵測、不直接呼叫 saveGame()——input-save.ts 已經
+      // import 這個檔案的 updateGameClock()，這裡反過來 import
+      // input-save.ts 會形成循環 import，是這個專案踩過的坑，見
+      // scene-sky.ts 開頭那段說明。
+      const AUTOSAVE_HOUR = 6;
+      const AUTOSAVE_PHASE = AUTOSAVE_HOUR / 24;
+
+      function crossedAutosaveMark(oldElapsed, newElapsed) {
+        const base = dayLength * AUTOSAVE_PHASE;
+        return (
+          Math.floor((newElapsed - base) / dayLength) -
+          Math.floor((oldElapsed - base) / dayLength)
+        ) > 0;
+      }
+
       export function updateGameClock(delta) {
         if (!(delta > 0)) return 0;
-        const oldDay = Math.floor(gameState.elapsed / dayLength);
+        const oldElapsed = gameState.elapsed;
+        const oldDay = Math.floor(oldElapsed / dayLength);
         gameState.elapsed += delta;
         updateSeasonAndDate();
         const crossedDays = gameState.currentDay - oldDay;
@@ -57,6 +77,9 @@ export function beginNewDay(day) {
           gameState.prevDay = gameState.currentDay;
           syncFarmVisuals();
           scheduleNextMeteor(true);
+        }
+        if (crossedAutosaveMark(oldElapsed, gameState.elapsed)) {
+          gameState.pendingAutosave = true;
         }
         return crossedDays;
       }

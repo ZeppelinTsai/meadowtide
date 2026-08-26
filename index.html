@@ -15,7 +15,7 @@
     <div id="ui">
       <b>海風牧歌</b><br />
       WASD：移動 ・ 滾輪：縮放 ・ E：互動/種植/收成/釣魚 ・ M：音樂靜音<br />
-      F6：存檔 ・ F9：讀檔<br />
+      Shift+1~9：存檔 ・ 1~9：讀檔 ・ Esc：選單<br />
       <b style="color: #8ecfff">N：快轉時間</b>
     </div>
     <div id="hud"></div>
@@ -66,6 +66,48 @@
         <footer class="inventory-footer">
           ← →／手把 LB RB 切換分頁　・　Q／Y 關閉
         </footer>
+      </section>
+    </div>
+    <div id="pauseMenu" aria-hidden="true" data-game-menu="closed" data-step="menu">
+      <section
+        id="pauseMenuPanel"
+        class="pauseStep"
+        role="dialog"
+        aria-modal="true"
+        aria-label="暫停選單"
+      >
+        <h2 id="pauseMenuHeading">海風牧歌</h2>
+        <nav id="pauseMenuButtons">
+          <button type="button" id="pauseResumeBtn" class="titleMenuBtn">
+            返回畫面
+          </button>
+          <button type="button" id="pauseLoadBtn" class="titleMenuBtn">
+            讀取進度
+          </button>
+          <button type="button" id="pauseSystemBtn" class="titleMenuBtn">
+            系統
+          </button>
+          <button type="button" id="pauseQuitBtn" class="titleMenuBtn">
+            結束遊戲
+          </button>
+        </nav>
+        <p id="pauseQuitMessage" hidden>
+          感謝遊玩《海風牧歌》，可以安全關閉這個分頁了。
+        </p>
+      </section>
+      <section id="pauseLoadSlotsPanel" class="pauseStep">
+        <h2 id="pauseLoadSlotsHeading">讀取進度</h2>
+        <div id="pauseLoadSlotsList"></div>
+        <button type="button" id="pauseLoadSlotsBackBtn" class="titleMenuBtn">
+          返回
+        </button>
+      </section>
+      <section id="pauseSystemPanel" class="pauseStep">
+        <h2 id="pauseSystemHeading">系統</h2>
+        <button type="button" id="pauseMuteBtn" class="titleMenuBtn"></button>
+        <button type="button" id="pauseSystemBackBtn" class="titleMenuBtn">
+          返回
+        </button>
       </section>
     </div>
     <div id="fade"></div>
@@ -172,6 +214,13 @@
         <h2 id="titleSystemHeading">系統</h2>
         <button type="button" id="titleMuteBtn" class="titleMenuBtn"></button>
         <button type="button" id="titleSystemBackBtn" class="titleMenuBtn">
+          返回
+        </button>
+      </div>
+      <div id="titleLoadSlots" class="titleStep">
+        <h2 id="titleLoadSlotsHeading">選擇存檔</h2>
+        <div id="titleLoadSlotsList"></div>
+        <button type="button" id="titleLoadSlotsBackBtn" class="titleMenuBtn">
           返回
         </button>
       </div>

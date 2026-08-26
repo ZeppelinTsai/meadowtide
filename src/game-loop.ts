@@ -66,7 +66,14 @@ import {
 } from "./props";
 import { dialogQueue } from "./dialogue";
 import { isBlocked, events } from "./build-map";
-import { collidesAt, keys, updateHud, advanceFishingQte } from "./input-save";
+import {
+  collidesAt,
+  keys,
+  updateHud,
+  advanceFishingQte,
+  saveGame,
+  getActiveSaveSlot,
+} from "./input-save";
 import { updateMusic } from "./music";
 import {
   isCameraAdjustModeActive,
@@ -268,6 +275,16 @@ export function animate(now) {
   const clockDt = isGameTimePaused() ? 0 : frameDt;
   gameState.effectElapsed += frameDt; // 不受暫停影響，純視覺效果一律吃這個
   updateGameClock(clockDt);
+  // 每日 06:00 自動存檔——旗標由 game-clock.ts 的 updateGameClock() 設,
+  // 這裡才真的呼叫 saveGame()(game-clock.ts 不能直接呼叫，會跟
+  // input-save.ts 形成循環 import，見該檔案註解)。cutsceneActive 期間
+  // 延後存檔，避免存到過場演出中途的暫態(船在外海、玩家位置被演出接管
+  // 那種狀態)；旗標留著，過場結束後下一幀就會補存。
+  if (gameState.pendingAutosave && !gameState.cutsceneActive) {
+    saveGame("slot" + getActiveSaveSlot());
+    gameState.pendingAutosave = false;
+    console.info(`[自動存檔] 第 ${getActiveSaveSlot()} 格已於 06:00 自動儲存`);
+  }
   // 天梯閃耀星點——跟 foamMeshes/windowMats 這些其他「登記進陣列、
   // animate() 逐幀處理」的特效同一套慣例。只有站在山之洞第25層時這個
   // 陣列才會有內容(buildMap() 換地圖時會整批清空重灑，見

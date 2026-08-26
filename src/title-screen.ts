@@ -1,10 +1,11 @@
 import { buildMap, fadeIn, loadMap } from "./build-map";
 import { gameState } from "./game-state";
-import { loadGame } from "./input-save";
+import { loadGame, migrateLegacyDefaultSave, setActiveSaveSlot } from "./input-save";
+import { renderSaveSlotButtons } from "./save-slot-ui";
 import { initializeMusic, setMusicMuted } from "./music";
 import { hasSaveData, startPrologueScene } from "./prologue";
 
-type TitleStep = "splash" | "menu" | "system";
+type TitleStep = "splash" | "menu" | "system" | "loadSlots";
 
 function byId<T extends HTMLElement>(id: string): T {
   const element = document.getElementById(id);
@@ -13,6 +14,11 @@ function byId<T extends HTMLElement>(id: string): T {
 }
 
 export function initTitleScreen() {
+  // 開局第一件事：舊版單一 "default" 存檔搬進 slot1，之後所有讀存檔
+  // 判斷(hasSaveData()、renderSaveSlotButtons()...)都只認 slot1..slot9，
+  // 這行要跑在它們之前，見 input-save.ts 的 migrateLegacyDefaultSave()。
+  migrateLegacyDefaultSave();
+
   const titleScreen = byId<HTMLElement>("titleScreen");
   const continueButton = byId<HTMLButtonElement>("titleContinueBtn");
   const newGameButton = byId<HTMLButtonElement>("titleNewGameBtn");
@@ -21,6 +27,10 @@ export function initTitleScreen() {
   const quitMessage = byId<HTMLElement>("titleQuitMessage");
   const systemBackButton = byId<HTMLButtonElement>("titleSystemBackBtn");
   const muteButton = byId<HTMLButtonElement>("titleMuteBtn");
+  const loadSlotsList = byId<HTMLElement>("titleLoadSlotsList");
+  const loadSlotsBackButton = byId<HTMLButtonElement>(
+    "titleLoadSlotsBackBtn",
+  );
   let step: TitleStep = "splash";
 
   function setStep(nextStep: TitleStep) {
@@ -29,6 +39,12 @@ export function initTitleScreen() {
     requestAnimationFrame(() => {
       if (nextStep === "menu") newGameButton.focus();
       if (nextStep === "system") muteButton.focus();
+      if (nextStep === "loadSlots") {
+        const firstEnabled = loadSlotsList.querySelector<HTMLButtonElement>(
+          "button:not(:disabled)",
+        );
+        (firstEnabled || loadSlotsBackButton).focus();
+      }
     });
   }
 
@@ -52,20 +68,32 @@ export function initTitleScreen() {
   }
 
   function startNewGame() {
+    // 目前開新遊戲固定寫進第 1 格——還沒有「開局先選要存去哪一格」的
+    // 介面，之後真的要做「遊戲中隨時選單」時(Zeppelin 已經說之後要在
+    // Esc/手把預設鍵位放，見 pause-menu.ts)可以再讓這裡改成可選。
+    setActiveSaveSlot(1);
     hideTitleScreen();
     buildMap("port");
     loadMap("port", undefined);
     startPrologueScene();
   }
 
-  function continueGame() {
+  function loadFromSlot(slotNum: number) {
     hideTitleScreen();
+    setActiveSaveSlot(slotNum);
     buildMap("livingArea");
     loadMap("livingArea", undefined);
     window.setTimeout(() => {
-      if (!loadGame()) console.warn("[title-screen] 無法讀取存檔");
+      if (!loadGame("slot" + slotNum)) {
+        console.warn(`[title-screen] 讀取第 ${slotNum} 格失敗：找不到存檔`);
+      }
       fadeIn();
     }, 500);
+  }
+
+  function openLoadSlots() {
+    renderSaveSlotButtons(loadSlotsList, loadFromSlot);
+    setStep("loadSlots");
   }
 
   function toggleMute() {
@@ -81,9 +109,10 @@ export function initTitleScreen() {
   document.addEventListener("keydown", enterMenu);
   document.addEventListener("pointerdown", enterMenu);
   newGameButton.addEventListener("click", startNewGame);
-  continueButton.addEventListener("click", continueGame);
+  continueButton.addEventListener("click", openLoadSlots);
   systemButton.addEventListener("click", () => setStep("system"));
   systemBackButton.addEventListener("click", () => setStep("menu"));
+  loadSlotsBackButton.addEventListener("click", () => setStep("menu"));
   muteButton.addEventListener("click", toggleMute);
   quitButton.addEventListener("click", attemptQuit);
 

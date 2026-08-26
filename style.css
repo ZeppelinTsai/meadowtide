@@ -607,7 +607,7 @@ canvas {
 /* ==============================================================
    開局標題畫面(title-screen.ts) —— 純白底、不吃圖片素材，只用文字
    +按鈕。z-index 特意開到 100，蓋過 #fade(20)/#dialog(15) 等既有
-   最高疊層，滿版遮住底下的 3D 畫布。三個步驟(splash/menu/system)
+   最高疊層，滿版遮住底下的 3D 畫布。四個步驟(splash/menu/system/loadSlots)
    共用同一個容器，靠 data-step 屬性切換誰可見，離場時整個容器淡出。
    ============================================================== */
 #titleScreen {
@@ -635,7 +635,8 @@ canvas {
 }
 #titleScreen[data-step="splash"] #titleSplash,
 #titleScreen[data-step="menu"] #titleMenu,
-#titleScreen[data-step="system"] #titleSystem {
+#titleScreen[data-step="system"] #titleSystem,
+#titleScreen[data-step="loadSlots"] #titleLoadSlots {
   display: flex;
 }
 #titleLogo,
@@ -703,6 +704,120 @@ canvas {
   font-size: 24px;
 }
 #titleSystem .titleMenuBtn {
+  width: 220px;
+}
+
+/* 讀取遊戲的 9 格存檔清單——跟 .titleMenuBtn 同一套白底黑框風格，但要
+   放兩行文字(格數+摘要)，所以另外開一組 class，不直接沿用 .titleMenuBtn。 */
+#titleLoadSlotsHeading {
+  margin: 0 0 20px;
+  font-size: 24px;
+}
+#titleLoadSlotsList {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  width: 420px;
+  margin-bottom: 20px;
+}
+.titleSlotBtn {
+  font-family: inherit;
+  padding: 10px 8px;
+  border: 1px solid #2b2b2b;
+  border-radius: 6px;
+  background: #fff;
+  color: #2b2b2b;
+  cursor: pointer;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease;
+}
+.titleSlotBtn:hover:not(:disabled) {
+  background: #2b2b2b;
+  color: #fff;
+}
+.titleSlotBtn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.titleSlotNum {
+  font-size: 14px;
+  font-weight: 700;
+}
+.titleSlotSummary {
+  font-size: 11px;
+  opacity: 0.75;
+}
+#titleLoadSlots .titleMenuBtn {
+  width: 220px;
+}
+
+/* ==============================================================
+   遊戲中 Esc 暫停選單(pause-menu.ts)——2026-08-26 新增，架構照抄
+   title-screen.ts 的 data-step 切換那套(menu/loadSlots/system 三步)，
+   按鈕直接沿用上面的 .titleMenuBtn／.titleSlotBtn，只是外面多包一層
+   半透明遮罩(跟 #inventoryOverlay 同一種背景寫法)，因為底下還看得到
+   遊戲畫面，不像標題畫面是整片純白蓋滿。data-game-menu="open" 是跟
+   #inventoryOverlay 共用的既有慣例，time-pause.ts 的
+   syncAutomaticPauseSources() 會自動偵測到、暫停遊戲時間+擋
+   WASD，這裡不用另外寫暫停邏輯。
+   ============================================================== */
+#pauseMenu {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  display: none;
+  place-items: center;
+  padding: 5vh 5vw;
+  box-sizing: border-box;
+  background:
+    radial-gradient(circle at 50% 42%, rgba(44, 63, 55, 0.34), transparent 55%),
+    rgba(7, 12, 16, 0.76);
+  backdrop-filter: blur(3px);
+}
+#pauseMenu.open {
+  display: grid;
+}
+.pauseStep {
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  text-align: center;
+  padding: 28px 32px;
+  background: #fff;
+  color: #2b2b2b;
+  border-radius: 10px;
+  min-width: 260px;
+}
+#pauseMenu[data-step="menu"] #pauseMenuPanel,
+#pauseMenu[data-step="loadSlots"] #pauseLoadSlotsPanel,
+#pauseMenu[data-step="system"] #pauseSystemPanel {
+  display: flex;
+}
+#pauseMenuHeading,
+#pauseLoadSlotsHeading,
+#pauseSystemHeading {
+  margin: 0 0 16px;
+  font-size: 22px;
+}
+#pauseMenuButtons {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 220px;
+}
+#pauseQuitMessage {
+  margin-top: 18px;
+  font-size: 13px;
+  color: #9a9a9a;
+}
+#pauseLoadSlotsPanel .titleMenuBtn,
+#pauseSystemPanel .titleMenuBtn {
   width: 220px;
 }
 

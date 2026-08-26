@@ -115,6 +115,79 @@ import {
 import { gatherNodeMeshes, oreNodeMeshes, setThresholdMarkersVisible } from "./scene-registries";
 
 export const SAVE_KEY_PREFIX = "meadowtide.save.";
+// 2026-08-26 存檔改成 9 格：slot 參數變成 "slot1".."slot9"，"default" 是
+// 舊版單一存檔的名字，只留給 migrateLegacyDefaultSave() 讀一次搬家用，
+// 新程式碼不應該再直接寫 "default"。
+export const SAVE_SLOT_COUNT = 9;
+
+// 「目前在玩哪一格」——決定 Shift+數字快速存檔沒指定格數時(目前沒有這種
+// 用法，但保留擴充彈性)跟每日 06:00 自動存檔要存進哪一格。開新遊戲/讀取
+// 某一格都會呼叫 setActiveSaveSlot() 更新；預設 1 是給「還沒真的選過
+// 存檔格」的情況兜底(目前開新遊戲固定用第 1 格，還沒有讓玩家開局選格數
+// 的介面，見 docs/decisions/save-slots.md)。
+let activeSaveSlot = 1;
+export function getActiveSaveSlot() {
+  return activeSaveSlot;
+}
+export function setActiveSaveSlot(slot: number) {
+  activeSaveSlot = slot;
+}
+
+// 舊版只有一個 "default" 存檔；9 格系統上線後只讀一次，把裡面的內容
+// 搬進第 1 格，搬完就刪掉舊 key——之後全部程式碼都只認 slot1..slot9，
+// 不會有兩份資料同時存在造成「到底哪份才是最新」的疑惑。呼叫端要在任何
+// 讀 slot 資料之前先呼叫這個(目前只有 title-screen.ts 的
+// initTitleScreen() 開局呼叫一次)。
+export function migrateLegacyDefaultSave() {
+  try {
+    const legacyKey = SAVE_KEY_PREFIX + "default";
+    const slot1Key = SAVE_KEY_PREFIX + "slot1";
+    const legacy = localStorage.getItem(legacyKey);
+    if (legacy !== null && localStorage.getItem(slot1Key) === null) {
+      localStorage.setItem(slot1Key, legacy);
+      localStorage.removeItem(legacyKey);
+      console.info("[存檔] 舊版存檔已搬進第 1 格。");
+    }
+  } catch (err) {
+    // localStorage 不可用(例如無痕模式擋掉)時安靜放棄，不要打斷開局。
+  }
+}
+
+export interface SaveSlotSummary {
+  slot: number;
+  exists: boolean;
+  currentDay?: number;
+  currentSeason?: number;
+  currentMapName?: string;
+}
+
+// 給主選單「讀取遊戲」畫面用：9 格各自有沒有資料、簡短摘要(第幾天/
+// 季節/在哪張地圖)。故意不讀 elapsed 算到分鐘，摘要只求一眼看出「這格
+// 大概是哪次進度」，不是精確時間戳記。
+export function getSaveSlotSummaries(): SaveSlotSummary[] {
+  const summaries: SaveSlotSummary[] = [];
+  for (let i = 1; i <= SAVE_SLOT_COUNT; i++) {
+    const raw = localStorage.getItem(SAVE_KEY_PREFIX + "slot" + i);
+    if (!raw) {
+      summaries.push({ slot: i, exists: false });
+      continue;
+    }
+    try {
+      const data = JSON.parse(raw);
+      summaries.push({
+        slot: i,
+        exists: true,
+        currentDay: Number(data.currentDay) || 0,
+        currentSeason: Number(data.currentSeason) || 0,
+        currentMapName: data.currentMapName || "livingArea",
+      });
+    } catch (err) {
+      summaries.push({ slot: i, exists: false });
+    }
+  }
+  return summaries;
+}
+
 export function saveGame(slot = "default") {
   const data = {
     version: 4,
@@ -311,13 +384,6 @@ addEventListener("keydown", (event) => {
   if (event.key === "Tab" && !event.repeat) {
     event.preventDefault();
     toggleFirstPersonMode();
-  } else if (event.key === "F6") {
-    event.preventDefault();
-    saveGame();
-    console.info("[存檔] 已儲存 default 欄位");
-  } else if (event.key === "F9") {
-    event.preventDefault();
-    console.info(loadGame() ? "[讀檔] 已載入 default 欄位" : "[讀檔] 尚無存檔");
   } else if (event.key === "F8") {
     // 序幕(開場第一天演出)預覽熱鍵——不清存檔也能重播，見 prologue.ts。
     // 只能在已經站在港口地圖時使用，因為演出要借用 makePortScene() 蓋
@@ -345,6 +411,42 @@ addEventListener("keydown", (event) => {
   } else if (event.key.toLowerCase() === "c" && isCameraAdjustModeActive()) {
     event.preventDefault();
     recordCameraAdjustShot();
+  }
+});
+
+// 2026-08-26 存檔熱鍵改版：Shift+1~9 存到對應格、1~9(不按 Shift)直接讀
+// 對應格，取代原本只有一格的 F6/F9。用 event.code 判斷("Digit1".."Digit9")
+// 而不是 event.key——按 Shift 時 .key 在美式鍵盤會變成 "!"/"@" 這種符號，
+// 不再是 "1"/"2"，用 code 才不受 Shift/鍵盤配置影響。跟二選一提示的數字鍵
+// 選項共用同一批鍵位，靠 activeChoice/dialogQueue/isInventoryOpen 這三個
+// 既有守衛擋開，對話框開著時數字鍵照舊只選對話選項，不會誤觸存讀檔；
+// cutsceneActive 期間也擋掉，過場演出中不該被存讀檔打斷。讀檔沒有二次
+// 確認——Zeppelin 明確要求「直接讀」，不要跳確認框。
+addEventListener("keydown", (event) => {
+  const digitMatch = /^Digit([1-9])$/.exec(event.code);
+  if (!digitMatch) return;
+  if (
+    !gameState.player ||
+    gameState.cutsceneActive ||
+    isInventoryOpen() ||
+    dialogQueue.length ||
+    activeChoice
+  )
+    return;
+  event.preventDefault();
+  const slotNum = Number(digitMatch[1]);
+  if (event.shiftKey) {
+    setActiveSaveSlot(slotNum);
+    saveGame("slot" + slotNum);
+    console.info(`[存檔] 已儲存到第 ${slotNum} 格`);
+  } else {
+    const ok = loadGame("slot" + slotNum);
+    if (ok) {
+      setActiveSaveSlot(slotNum);
+      console.info(`[讀檔] 已載入第 ${slotNum} 格`);
+    } else {
+      console.info(`[讀檔] 第 ${slotNum} 格沒有存檔`);
+    }
   }
 });
 
