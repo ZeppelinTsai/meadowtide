@@ -133,6 +133,7 @@ import {
   makeSmallGarden,
   makePortScene,
   makeToriiGate,
+  makeShrineHall,
   makeShrinePathCauseway,
   makeTownPlaceholder,
   makeConstructionSign,
@@ -1140,27 +1141,18 @@ export function buildMap(mapName) {
         });
       });
       gameState.mapGroup.add(platformBasalt);
+      // 2026-08-26「波上宮開工」：素色長方體佔位換成完整建模的主殿
+      // (makeShrineHall()，props.ts)——朱紅牆身+米白長押+深色四坡頂+
+      // 千木+迴廊列柱+雙開木門，尺寸/位置一樣完全吃 LAYOUT 的 cube 資料，
+      // 不用同步改這裡。
       const platformCube = northPlatform.cube;
-      const platformCubeMesh = new THREE.Mesh(
-        new THREE.BoxGeometry(
-          platformCube.width,
-          platformCube.height,
-          platformCube.depth,
-        ),
-        new THREE.MeshStandardMaterial({
-          color: 0xb99a7a,
-          roughness: 0.96,
-          flatShading: true,
-        }),
-      );
-      platformCubeMesh.position.set(
+      const shrineHall = makeShrineHall(platformCube);
+      shrineHall.position.set(
         platformCube.x + (platformCube.width - 1) / 2,
-        northPlatform.elevation + platformCube.height / 2,
+        northPlatform.elevation,
         platformCube.z + (platformCube.depth - 1) / 2,
       );
-      platformCubeMesh.castShadow = true;
-      platformCubeMesh.receiveShadow = true;
-      gameState.mapGroup.add(platformCubeMesh);
+      gameState.mapGroup.add(shrineHall);
 
       const platformTorii = makeToriiGate();
       platformTorii.scale.setScalar(northPlatform.torii.scale);

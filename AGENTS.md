@@ -857,3 +857,23 @@ KeyboardEvent(...))`），直接餵給 `input-save.ts` 既有的全域
   放線/暴衝誤觸/收穫成功/斷線失敗）純憑感覺草擬數值，還沒有人拿真的
   搖桿測過手感，之後實測回報「哪幾種感覺不出差異/太弱/太吵」再回來調
   這個檔案的 `FISHING_HAPTICS` 物件即可，呼叫端完全不用動。
+
+## 波上宮風主殿：`makeShrineHall()`（`props.ts`，2026-08-26 已實作）
+
+`LAYOUT.oldVillage.northBeachPlatform`(Codex 建的西北岸神社平台，含
+`torii`/`cube`/`segments` 四段台地)原本的 `cube` 只是 `build-map.ts` 裡
+直接畫的一個素色 `BoxGeometry` 佔位(Zeppelin 原話「你可以只建立主模就
+好了」)。這輪補上完整建模：`props.ts` 新增 `makeShrineHall(cube)`，跟
+`makeToriiGate()` 放在一起(同一組神社道具)，接在 `build-map.ts` 原本畫
+`platformCubeMesh` 的地方，直接吃 `northPlatform.cube`(`{x,z,width,
+depth,height}`)算尺寸位置——**改 LAYOUT 的 cube 座標/大小這裡會自動跟著
+變，不用同步改 `makeShrineHall()` 本身**。
+
+外觀：石灰基座→朱紅牆身(跟 `makeToriiGate()` 同一顆 `0xb33b2a`，主殿跟
+鳥居才是同一組色)→米白長押(跟 `makeBuilding()` 預設牆色 `0xe8ddc7` 同一
+顆)→深色四坡頂(沿用 `makeBuilding()`「先把旋轉烤進 geometry、mesh 上只
+留縮放」的技巧，出簷比例 `0.85` 比一般房子(`0.72`)更誇張)→屋脊千木(chigi)
+交叉裝飾→正面(+z，鳥居/樓梯那一側)迴廊列柱→雙開木門。內部完全不做——
+這裡本來就設定「無法住人的簡化神社」。碰撞判定(`build-map.ts` 裡
+`isBlockedByOldVillageRail` 附近那段直接讀 `cube` 的 x/z/width/depth)
+沒有變，純視覺替換，`tsc` 過關。

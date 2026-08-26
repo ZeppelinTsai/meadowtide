@@ -2068,6 +2068,125 @@ export function makeWoodPlankTexture({
         return group;
       }
 
+      // 波上宮風主殿——2026-08-26 補上細節版，取代 northBeachPlatform.cube
+      // 原本的素色長方體佔位(build-map.ts 之前直接畫一個 BoxGeometry)。跟
+      // makeBuilding()/makeBarn() 同一套「方塊拼接、無貼圖、靠顏色分材質」
+      // 美術語言，由下往上疊：石灰基座(plinth)→朱紅牆身→米白長押(上緣
+      // 飾帶)→深色四坡頂(沿用 makeBuilding() 的「先把 45° 旋轉烤進
+      // geometry、mesh 上只留縮放」技巧，避免非等比縮放對已旋轉的形狀
+      // 產生剪切；出簷比例拉大到 0.85，比一般房子(0.72)更誇張，主殿要有
+      // 氣勢)，屋脊加一對交叉千木(chigi)做出神社剪影的辨識度，正面(+z，
+      // 鳥居/樓梯那一側，見 LAYOUT 註解的南北座標慣例)加迴廊列柱跟雙開
+      // 木門。內部完全不做(這裡本來就設定「無法住人的簡化神社」)。
+      //
+      // 牆身色刻意跟 makeToriiGate() 用同一顆朱紅(0xb33b2a)，主殿跟鳥居
+      // 才會是視覺上同一組建築，不是兩個各自配色的東西。
+      //
+      // 尺寸/位置完全吃呼叫端傳進來的 cube(即
+      // LAYOUT.oldVillage.northBeachPlatform.cube，{x,z,width,depth,
+      // height})——height 當作牆身高度，之後改 LAYOUT 的座標/大小這裡會
+      // 自動跟著變，不用同步改這個函式。回傳的 group 原點在主殿底部中心
+      // (跟 makeToriiGate() 一樣)，呼叫端自己 position.set(cube.x+
+      // (cube.width-1)/2, elevation, cube.z+(cube.depth-1)/2)。
+      export function makeShrineHall(cube) {
+        const group = new THREE.Group();
+        const width = cube.width * TILE,
+          depth = cube.depth * TILE;
+        const vermillion = 0xb33b2a;
+        const plinthHeight = 0.16,
+          wallHeight = cube.height,
+          roofHeight = 1.0;
+
+        const plinth = new THREE.Mesh(
+          new THREE.BoxGeometry(width * 1.06, plinthHeight, depth * 1.06),
+          new THREE.MeshStandardMaterial({ color: 0x6b655d, flatShading: true }),
+        );
+        plinth.position.y = plinthHeight / 2;
+        plinth.castShadow = true;
+        plinth.receiveShadow = true;
+        group.add(plinth);
+
+        const wall = new THREE.Mesh(
+          new THREE.BoxGeometry(width * 0.94, wallHeight, depth * 0.94),
+          new THREE.MeshStandardMaterial({ color: vermillion }),
+        );
+        wall.position.y = plinthHeight + wallHeight / 2;
+        wall.castShadow = true;
+        wall.receiveShadow = true;
+        group.add(wall);
+
+        // 長押(上緣米白飾帶)：嵌在牆頂，比牆身略寬，露出一圈邊緣，
+        // 顏色跟 makeBuilding() 的預設牆色(0xe8ddc7)同一顆，呼應「一般
+        // 房子是米白牆」的既有配色語言。
+        const trim = new THREE.Mesh(
+          new THREE.BoxGeometry(width * 0.98, 0.14, depth * 0.98),
+          new THREE.MeshStandardMaterial({ color: 0xe8ddc7 }),
+        );
+        trim.position.y = plinthHeight + wallHeight - 0.07;
+        trim.castShadow = true;
+        group.add(trim);
+
+        // 四坡頂：旋轉烤進 geometry 本身，mesh 上只留縮放，理由跟
+        // makeBuilding() 完全一樣(非等比縮放遇上已旋轉的 mesh 會剪切)。
+        const roofGeo = new THREE.ConeGeometry(1, roofHeight, 4);
+        roofGeo.rotateY(Math.PI / 4);
+        const roof = new THREE.Mesh(
+          roofGeo,
+          new THREE.MeshStandardMaterial({ color: 0x2c3a45, flatShading: true }),
+        );
+        roof.scale.set(width * 0.85, 1, depth * 0.85);
+        roof.position.y = plinthHeight + wallHeight + roofHeight / 2;
+        roof.castShadow = true;
+        group.add(roof);
+
+        // 千木(chigi)：屋脊尖端交叉的兩根木條，神社建築最好辨認的剪影
+        // 特徵，一根左傾一根右傾交叉成 X，卡在屋頂正中央尖端附近。
+        const chigiMat = new THREE.MeshStandardMaterial({ color: 0x3a2a20 });
+        [-1, 1].forEach((side) => {
+          const chigi = new THREE.Mesh(
+            new THREE.BoxGeometry(0.07, 0.62, 0.07),
+            chigiMat,
+          );
+          chigi.position.y = plinthHeight + wallHeight + roofHeight - 0.05;
+          chigi.rotation.z = (side * Math.PI) / 7;
+          chigi.castShadow = true;
+          group.add(chigi);
+        });
+
+        // 正面(+z，鳥居/樓梯那一側)迴廊列柱：四根朱紅圓柱貼著牆面外側，
+        // 高度跟牆身齊平，暗示這是一圈有頂的迴廊而不是實心牆貼到底。
+        const pillarMat = new THREE.MeshStandardMaterial({ color: vermillion });
+        const pillarZ = (depth / 2) * 1.02;
+        [-0.36, -0.12, 0.12, 0.36].forEach((t) => {
+          const pillar = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.06, 0.07, wallHeight, 8),
+            pillarMat,
+          );
+          pillar.position.set(width * t, plinthHeight + wallHeight / 2, pillarZ);
+          pillar.castShadow = true;
+          group.add(pillar);
+        });
+
+        // 正面雙開木門，卡在牆面中央——跟 makeBarn() 的雙開穀倉門同一種
+        // 做法，兩片薄板中間留縫。
+        const doorMat = new THREE.MeshStandardMaterial({ color: 0x3a2018 });
+        const doorHeight = wallHeight * 0.72;
+        [-1, 1].forEach((side) => {
+          const door = new THREE.Mesh(
+            new THREE.BoxGeometry(width * 0.16, doorHeight, 0.05),
+            doorMat,
+          );
+          door.position.set(
+            side * width * 0.09,
+            plinthHeight + doorHeight / 2,
+            (depth / 2) * 0.94,
+          );
+          group.add(door);
+        });
+
+        return group;
+      }
+
       // 城區佔位建築——純色平面方塊，沒有窗戶屋頂細節，先卡出聚落的輪廓
       export function makeTownPlaceholder(x, z, seed) {
         const group = new THREE.Group();
