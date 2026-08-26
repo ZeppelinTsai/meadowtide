@@ -147,8 +147,8 @@ test("舊城鎮西側與南側各擴充 100 格海面", () => {
   assert.deepEqual(platformStair, {
     x: 99,
     width: 3,
-    fromZ: 33,
-    toZ: 36,
+    fromZ: 31,
+    toZ: 34,
     baseElevation: 0,
     elevation: 3,
     steps: 6,

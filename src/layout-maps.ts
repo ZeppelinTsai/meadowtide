@@ -331,12 +331,12 @@ export const LAYOUT = {
         steps: 6,
       },
       // 北側平台南端樓梯：西擴前 x=-1，擴張後位於 x=99~101。
-      // z=33 頂端銜接高度 3 的平台，z=36 底端落回海平面沙灘。
+      // 往北移兩格後，z=31 頂端切入高度 3 的平台，z=34 底端落回沙灘。
       {
         x: -1,
         width: 3,
-        fromZ: 33,
-        toZ: 36,
+        fromZ: 31,
+        toZ: 34,
         baseElevation: 0,
         elevation: 3,
         steps: 6,
@@ -947,13 +947,6 @@ export function portSouthBeachEndZ(x: number) {
 
 export function oldVillageGroundY(x: number, z: number) {
   const village = LAYOUT.oldVillage;
-  const platformBounds = oldVillageNorthPlatformBounds(Math.round(z));
-  if (
-    platformBounds &&
-    x >= platformBounds.minX - 0.5 &&
-    x <= platformBounds.maxX + 0.5
-  )
-    return village.northBeachPlatform.elevation;
   const landing = village.mountainLanding;
   if (
     x >= landing.x - 0.5 &&
@@ -980,6 +973,13 @@ export function oldVillageGroundY(x: number, z: number) {
         (westStair.elevation / westStair.steps)
     );
   }
+  const platformBounds = oldVillageNorthPlatformBounds(Math.round(z));
+  if (
+    platformBounds &&
+    x >= platformBounds.minX - 0.5 &&
+    x <= platformBounds.maxX + 0.5
+  )
+    return village.northBeachPlatform.elevation;
   const stair = village.plazaStairs.find(
     (entry) =>
       z >= entry.z - 0.5 &&
