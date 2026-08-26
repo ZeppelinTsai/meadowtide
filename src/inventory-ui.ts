@@ -1,0 +1,224 @@
+import * as THREE from "three";
+import { inventory, RECIPES } from "./game-state";
+import { ORE_TIERS } from "./mine";
+import {
+  makeCropMesh,
+  makeFishProp,
+  makeOreNode,
+  makeSeedPouch,
+  makeStonePile,
+  makeWoodPile,
+} from "./props";
+import { setTimePauseSource } from "./time-pause";
+
+type InventoryTab = "bag" | "materials" | "cooking";
+type InventoryEntry = {
+  id: string;
+  tab: InventoryTab;
+  label: string;
+  amount: number;
+  tone: string;
+  symbol: string;
+  model?: () => THREE.Object3D;
+};
+
+const TABS: { id: InventoryTab; label: string }[] = [
+  { id: "bag", label: "背包" },
+  { id: "materials", label: "素材" },
+  { id: "cooking", label: "料理" },
+];
+
+const overlay = document.getElementById("inventoryOverlay") as HTMLDivElement;
+const grid = document.getElementById("inventoryGrid") as HTMLDivElement;
+const closeButton = document.getElementById("inventoryClose") as HTMLButtonElement;
+const tabList = document.getElementById("inventoryTabs") as HTMLDivElement;
+const tabButtons = Array.from(
+  tabList.querySelectorAll<HTMLButtonElement>('[role="tab"]'),
+);
+
+let open = false;
+let activeTabIndex = 0;
+const modelIconCache = new Map<string, string>();
+
+function oreModel(kind: string) {
+  const ore = ORE_TIERS.find((tier) => tier.kind === kind);
+  return ore
+    ? () => makeOreNode(0, 0, ore.color, ore.accentColor, 0.62)
+    : undefined;
+}
+
+function inventoryEntries(): InventoryEntry[] {
+  const entries: InventoryEntry[] = [
+    { id: "seeds", tab: "bag", label: "種子", amount: inventory.seeds, tone: "green", symbol: "種", model: makeSeedPouch },
+    { id: "harvested", tab: "bag", label: "農作物", amount: inventory.harvested, tone: "gold", symbol: "穗", model: () => makeCropMesh(2) },
+    { id: "fish", tab: "bag", label: "魚", amount: inventory.fish, tone: "blue", symbol: "魚", model: () => makeFishProp(2.4) },
+    { id: "oysters", tab: "bag", label: "牡蠣", amount: inventory.oysters, tone: "pearl", symbol: "貝" },
+    { id: "wood", tab: "materials", label: "木材", amount: inventory.wood, tone: "wood", symbol: "木", model: () => makeWoodPile(0, 0) },
+    { id: "stone", tab: "materials", label: "石材", amount: inventory.stone, tone: "stone", symbol: "石", model: () => makeStonePile(0, 0) },
+    { id: "copper", tab: "materials", label: "銅礦", amount: inventory.copper, tone: "copper", symbol: "銅", model: oreModel("copper") },
+    { id: "silver", tab: "materials", label: "銀礦", amount: inventory.silver, tone: "silver", symbol: "銀", model: oreModel("silver") },
+    { id: "gold", tab: "materials", label: "金礦", amount: inventory.gold, tone: "gold", symbol: "金", model: oreModel("gold") },
+    { id: "starCrystal", tab: "materials", label: "星晶", amount: inventory.starCrystal, tone: "star", symbol: "星", model: oreModel("starCrystal") },
+    { id: "godCrystal", tab: "materials", label: "神晶", amount: inventory.godCrystal, tone: "god", symbol: "神", model: oreModel("godCrystal") },
+  ];
+  const recipeNames = new Map(RECIPES.map((recipe) => [recipe.id, recipe.name]));
+  Object.entries(inventory.dishes).forEach(([id, amount]) => {
+    entries.push({
+      id: "dish-" + id,
+      tab: "cooking",
+      label: recipeNames.get(id) || id,
+      amount,
+      tone: "dish",
+      symbol: "食",
+    });
+  });
+  return entries;
+}
+
+function renderModelThumbnail(item: InventoryEntry) {
+  if (!item.model) return null;
+  const cached = modelIconCache.get(item.id);
+  if (cached) return cached;
+
+  const renderer = new THREE.WebGLRenderer({
+    alpha: true,
+    antialias: true,
+    preserveDrawingBuffer: true,
+  });
+  renderer.setPixelRatio(1);
+  renderer.setSize(96, 96, false);
+  renderer.setClearColor(0x000000, 0);
+
+  const scene = new THREE.Scene();
+  scene.add(new THREE.HemisphereLight(0xfff3d2, 0x34414a, 1.45));
+  const keyLight = new THREE.DirectionalLight(0xffffff, 1.1);
+  keyLight.position.set(-2, 3, 3);
+  scene.add(keyLight);
+
+  const model = item.model();
+  const bounds = new THREE.Box3().setFromObject(model);
+  const center = bounds.getCenter(new THREE.Vector3());
+  const size = bounds.getSize(new THREE.Vector3());
+  const largest = Math.max(size.x, size.y, size.z, 0.01);
+  model.scale.setScalar(1.45 / largest);
+  model.position.sub(center.multiplyScalar(1.45 / largest));
+  scene.add(model);
+
+  const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 10);
+  camera.position.set(2.2, 1.8, 3.2);
+  camera.lookAt(0, 0, 0);
+  renderer.render(scene, camera);
+  const dataUrl = renderer.domElement.toDataURL("image/png");
+  renderer.dispose();
+  modelIconCache.set(item.id, dataUrl);
+  return dataUrl;
+}
+
+function setActiveTab(index: number, focus = false) {
+  activeTabIndex = (index + TABS.length) % TABS.length;
+  const activeId = TABS[activeTabIndex].id;
+  tabButtons.forEach((button, buttonIndex) => {
+    const selected = button.dataset.inventoryTab === activeId;
+    button.classList.toggle("active", selected);
+    button.setAttribute("aria-selected", String(selected));
+    button.tabIndex = selected ? 0 : -1;
+    if (selected && focus) button.focus();
+    if (selected) activeTabIndex = buttonIndex;
+  });
+  renderInventory();
+}
+
+export function renderInventory() {
+  grid.innerHTML = "";
+  const activeId = TABS[activeTabIndex].id;
+  const visibleEntries = inventoryEntries().filter((item) => item.tab === activeId);
+  if (!visibleEntries.length) {
+    const empty = document.createElement("div");
+    empty.className = "inventory-empty";
+    empty.textContent = "目前沒有物品";
+    grid.appendChild(empty);
+    return;
+  }
+
+  visibleEntries.forEach((item) => {
+    const slot = document.createElement("div");
+    slot.className = "inventory-slot inventory-slot-" + item.tone;
+    slot.dataset.itemId = item.id;
+
+    const icon = document.createElement("div");
+    icon.className = "inventory-icon";
+    icon.setAttribute("aria-hidden", "true");
+    const modelImage = renderModelThumbnail(item);
+    if (modelImage) {
+      const image = document.createElement("img");
+      image.src = modelImage;
+      image.alt = "";
+      icon.appendChild(image);
+      icon.classList.add("inventory-icon-model");
+    } else {
+      icon.textContent = item.symbol;
+    }
+
+    const count = document.createElement("div");
+    count.className = "inventory-item-count";
+    count.textContent = "×" + item.amount;
+
+    const label = document.createElement("div");
+    label.className = "inventory-item-label";
+    label.textContent = item.label;
+
+    slot.append(icon, count, label);
+    grid.appendChild(slot);
+  });
+}
+
+export function isInventoryOpen() {
+  return open;
+}
+
+export function setInventoryOpen(nextOpen: boolean) {
+  open = nextOpen;
+  overlay.classList.toggle("open", open);
+  overlay.setAttribute("aria-hidden", String(!open));
+  overlay.dataset.gameMenu = open ? "open" : "closed";
+  setTimePauseSource("inventory", open);
+  if (open) {
+    renderInventory();
+    tabButtons[activeTabIndex]?.focus();
+  }
+}
+
+export function toggleInventory() {
+  const dialog = document.getElementById("dialog");
+  const dialogOpen = Boolean(
+    dialog && dialog.style.display !== "none" && dialog.style.display !== "",
+  );
+  if (!open && dialogOpen) return;
+  setInventoryOpen(!open);
+}
+
+tabButtons.forEach((button, index) => {
+  button.addEventListener("click", () => setActiveTab(index, true));
+});
+
+addEventListener("keydown", (event) => {
+  const key = event.key.toLowerCase();
+  if (key === "q" && !event.repeat) {
+    event.preventDefault();
+    toggleInventory();
+    return;
+  }
+  if (!open || event.repeat) return;
+  if (event.key === "ArrowLeft" || event.key === "[") {
+    event.preventDefault();
+    setActiveTab(activeTabIndex - 1, true);
+  } else if (event.key === "ArrowRight" || event.key === "]") {
+    event.preventDefault();
+    setActiveTab(activeTabIndex + 1, true);
+  }
+});
+
+closeButton.addEventListener("click", () => setInventoryOpen(false));
+overlay.addEventListener("click", (event) => {
+  if (event.target === overlay) setInventoryOpen(false);
+});

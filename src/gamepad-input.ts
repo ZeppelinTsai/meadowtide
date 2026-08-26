@@ -42,7 +42,8 @@ function dispatchKey(type: "keydown" | "keyup", key: string) {
 // 丟合成事件(邊緣觸發)——每幀都丟事件不只沒必要，E 鍵那組合成 keydown
 // 如果每幀重複丟，會被 gameState.ePressed 擋掉變成永遠只有第一幀有效，
 // 且語意上也該跟真的鍵盤按著不放一樣只在「按下/放開那一刻」各觸發一次。
-const prevHeld = { w: false, a: false, s: false, d: false, e: false };
+const prevHeld = { w: false, a: false, s: false, d: false, e: false, q: false, r: false };
+const prevShoulder = { left: false, right: false };
 
 function syncKey(key: keyof typeof prevHeld, held: boolean) {
   if (held === prevHeld[key]) return;
@@ -75,5 +76,18 @@ export function pollGamepad() {
   syncKey("d", dx > 0);
   syncKey("w", dz < 0);
   syncKey("s", dz > 0);
-  syncKey("e", !!pad.buttons[0]?.pressed); // A 鍵(Xbox 手把)＝互動鍵
+  syncKey("e", !!pad.buttons[0]?.pressed);
+  syncKey("r", !!pad.buttons[1]?.pressed); // B 鍵（standard mapping）＝收割牧草
+  syncKey("q", !!pad.buttons[3]?.pressed); // Y 鍵（standard mapping）＝背包
+
+  const leftShoulder = !!pad.buttons[4]?.pressed;
+  const rightShoulder = !!pad.buttons[5]?.pressed;
+  if (leftShoulder !== prevShoulder.left) {
+    dispatchKey(leftShoulder ? "keydown" : "keyup", "[");
+    prevShoulder.left = leftShoulder;
+  }
+  if (rightShoulder !== prevShoulder.right) {
+    dispatchKey(rightShoulder ? "keydown" : "keyup", "]");
+    prevShoulder.right = rightShoulder;
+  } // A 鍵(Xbox 手把)＝互動鍵
 }

@@ -3,7 +3,7 @@ import { carpenterQuest, CARPENTER_CONSTRUCTION_DAYS, chefQuest, CHEF_RENOVATION
 import { updateAvenueTreeColors, updateSeasonalTreeColors, updateSeasonalGroundColors } from "./props";
 import { syncFarmVisuals } from "./farm-visuals";
 import { scheduleNextMeteor } from "./scene-sky";
-import { dialogEl } from "./dialogue";
+import { isWorldTimePaused } from "./time-pause";
 
 export function beginNewDay(day) {
         gameState.currentSeason = getSeasonIndex(day);
@@ -39,19 +39,7 @@ export function beginNewDay(day) {
       }
 
       export function isGameTimePaused() {
-        const dialogOpen =
-          typeof dialogEl !== "undefined" &&
-          dialogEl.style.display !== "none" &&
-          dialogEl.style.display !== "";
-        const menuOpen = Boolean(
-          document.querySelector('[data-game-menu="open"], .game-menu.open'),
-        );
-        return (
-          document.hidden ||
-          dialogOpen ||
-          menuOpen ||
-          (window as any).__gamePaused === true
-        );
+        return isWorldTimePaused();
       }
 
       export function updateGameClock(delta) {

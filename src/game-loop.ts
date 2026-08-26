@@ -12,8 +12,11 @@ import {
   STONE_NODES,
   settlePastureGrazing,
   settleFeederConsumption,
+  pastureGrassStageAt,
 } from "./game-state";
 import { isGameTimePaused, updateGameClock } from "./game-clock";
+import { isGameplayPaused } from "./time-pause";
+import { isInventoryOpen } from "./inventory-ui";
 import { rollFishTier, COUNTER_DIRECTION } from "./fishing";
 import { pollGamepad } from "./gamepad-input";
 import { vibrateGamepad, FISHING_HAPTICS } from "./gamepad-haptics";
@@ -92,7 +95,7 @@ import {
   pastureGrassBlades,
   gatherNodeMeshes,
   celestialSparkleMaterials,
-  GRASS_GROWTH_SECONDS,
+
   EAST_SEA_WAVE,
   NORTH_SEA_WAVE,
   EAST_SEA_WAVE_DIRECTION,
@@ -245,9 +248,10 @@ export function animate(now) {
   if (!gameState.player) return;
   const frameDt = Math.min((now - gameState.lastFrame) / 1000, 0.05);
   gameState.lastFrame = now;
-  const dt = isGameTimePaused() ? 0 : frameDt;
+  const dt = isGameplayPaused() ? 0 : frameDt;
+  const clockDt = isGameTimePaused() ? 0 : frameDt;
   gameState.effectElapsed += frameDt; // 不受暫停影響，純視覺效果一律吃這個
-  updateGameClock(dt);
+  updateGameClock(clockDt);
   // 天梯閃耀星點——跟 foamMeshes/windowMats 這些其他「登記進陣列、
   // animate() 逐幀處理」的特效同一套慣例。只有站在山之洞第25層時這個
   // 陣列才會有內容(buildMap() 換地圖時會整批清空重灑，見
@@ -694,7 +698,7 @@ export function animate(now) {
   // E 鍵開對話那一刻角色剛好卡在格線中間(還沒 round 穩定)，下一幀四捨
   // 五入結果可能剛好翻過門檻格，誤觸 touch 事件(例如衝進房子/切地圖)，
   // 對話框卻還開著——曾經真的遇到這個 bug，玩家會卡在錯的地圖裡動不了。
-  if (!dialogQueue.length) {
+  if (!dialogQueue.length && !isInventoryOpen()) {
     const roundedX = Math.round(gameState.player.position.x),
       roundedZ = Math.round(gameState.player.position.z);
     if (
@@ -1429,11 +1433,10 @@ export function animate(now) {
     }
   });
 
-  // 牧草會依序長成短、中、長三階段；長草被牛羊吃掉後回到短草。
-  // 風擺施加在葉片底部的 pivot，草根因此會固定在地面。
+  // 牧草短／中／長三階段由 pastureDepletedTiles 的遊戲日齡決定：
+  // 收割／放牧當天變短，之後長到中段，第三天恢復成熟。風擺仍逐幀更新。
   gameState.grassAnimationAccumulator += dt;
   if (gameState.grassAnimationAccumulator >= 1 / 20) {
-    const grassDt = gameState.grassAnimationAccumulator;
     gameState.grassAnimationAccumulator = 0;
     const windSpeed =
       gameState.currentWeather === "typhoon"
@@ -1450,11 +1453,11 @@ export function animate(now) {
     pastureGrassBlades.forEach((tuft) => {
       const wx = tuft.position.x,
         wz = tuft.position.z;
-      tuft.userData.growth = Math.min(
-        3,
-        tuft.userData.growth + grassDt / GRASS_GROWTH_SECONDS,
+      const logicalStage = pastureGrassStageAt(
+        tuft.userData.tileX,
+        tuft.userData.tileZ,
       );
-      setPastureGrassStage(tuft, Math.floor(tuft.userData.growth));
+      setPastureGrassStage(tuft, logicalStage < 0 ? 0 : logicalStage);
       const sway =
         0.16 + tuft.userData.stage * 0.09 + weatherWindStrength * 0.22;
       // 雨勢朝 +X；草繞 Z 軸負向傾斜時也會倒向 +X。

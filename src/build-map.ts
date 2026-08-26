@@ -4,6 +4,7 @@ import {
   gameState,
   getSeasonGrassTone,
   SEASON_GRASS_TONES,
+  pastureGrassStageAt,
 } from "./game-state";
 import {
   scene,
@@ -128,6 +129,7 @@ import {
   makeLakeShoreRock,
   makeGrassTuft,
   makeWindGrass,
+  setPastureGrassStage,
   makeFlower,
   makeFruitTree,
   makeWaterfallPlaceholder,
@@ -3329,13 +3331,10 @@ export function buildMap(mapName) {
           const seed = hash2(gx * 7.1 + i * 2.3, gz * 5.9 + i * 4.7);
           const jx = gx + (hash2(gx + i * 11.3, gz * 2.1 + i) - 0.5) * 0.94;
           const jz = gz + (hash2(gz + i * 13.7, gx * 3.4 + i) - 0.5) * 0.94;
-          const broadGrowth =
-            1.5 +
-            Math.sin(jx * 0.43 + jz * 0.18) * 0.62 +
-            Math.cos(jz * 0.37 - jx * 0.12) * 0.48 +
-            (seed - 0.5) * 0.34;
           const tuft = makeWindGrass(jx, jz, seed);
-          tuft.userData.growth = Math.max(0.08, Math.min(2.98, broadGrowth));
+          tuft.userData.tileX = gx;
+          tuft.userData.tileZ = gz;
+          setPastureGrassStage(tuft, pastureGrassStageAt(gx, gz));
           tuft.rotation.y = seed * Math.PI * 2;
           const widthScale = 0.88 + hash2(seed * 8.4, 1.7) * 0.28;
           tuft.scale.x = widthScale;

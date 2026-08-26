@@ -19,6 +19,20 @@
       <b style="color: #8ecfff">N：快轉時間</b>
     </div>
     <div id="hud"></div>
+    <div id="inventoryOverlay" aria-hidden="true" data-game-menu="closed">
+      <section id="inventoryPanel" role="dialog" aria-modal="true" aria-label="背包">
+        <header class="inventory-header">
+          <div id="inventoryTabs" role="tablist" aria-label="背包分頁">
+            <button class="inventory-tab active" type="button" role="tab" aria-selected="true" data-inventory-tab="bag">背包</button>
+            <button class="inventory-tab" type="button" role="tab" aria-selected="false" data-inventory-tab="materials" tabindex="-1">素材</button>
+            <button class="inventory-tab" type="button" role="tab" aria-selected="false" data-inventory-tab="cooking" tabindex="-1">料理</button>
+          </div>
+          <button id="inventoryClose" type="button" aria-label="關閉背包">Q / Y　關閉</button>
+        </header>
+        <div id="inventoryGrid"></div>
+        <footer class="inventory-footer">← →／手把 LB RB 切換分頁　・　Q／Y 關閉</footer>
+      </section>
+    </div>
     <div id="fade"></div>
     <div id="cgOverlay"><img id="cgImg" alt="" /></div>
     <div id="dialog">

@@ -1,6 +1,11 @@
 import * as THREE from "three";
 import { hash2 } from "./utils";
-import { gameState, getSeasonGrassTone, mapleAutumnColor } from "./game-state";
+import {
+  gameState,
+  getSeasonGrassTone,
+  mapleAutumnColor,
+  pastureGrassStageAt,
+} from "./game-state";
 import {
   TILE,
   PLATEAU_Y,
@@ -791,7 +796,7 @@ export function makeWindGrass(x, z, seed) {
   g.userData.baseRotZ = (hash2(seed, 2.4) - 0.5) * 0.12;
   g.userData.baseRotX = (hash2(seed + 3.7, 8.2) - 0.5) * 0.08;
   g.userData.phase = seed * 12;
-  g.userData.growth = seed * 3;
+
   g.userData.stage = -1;
   g.userData.grassMaterial = mat;
   g.userData.baseGrassColor = grassColor;
@@ -852,8 +857,8 @@ export function tryEatPastureGrass(animal) {
     0.55,
   );
   if (!grass) return false;
-  grass.userData.growth = 0;
-  setPastureGrassStage(grass, 0);
+  // 真正消耗哪一格牧草由每日 08:00 結算統一決定；這裡只播放動物低頭
+  // 吃草的行為，不再另外改一套 32 秒即時生長資料。
   return true;
 }
 export function makeFlower(x, z, color) {

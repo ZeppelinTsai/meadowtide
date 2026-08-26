@@ -142,4 +142,4 @@ export const waterSkyUnderlayMaterials: import("three").MeshStandardMaterial[] =
       }> = [];
       export const pastureGrassBlades = []; // 牧場裡會被風吹動的草叢，每叢存自己的葉片群組
       export const GRASS_STAGE_HEIGHTS = [0.2, 0.46, 0.82]; // 短、中、長；長草約到動物胸高
-      export const GRASS_GROWTH_SECONDS = 32;
+

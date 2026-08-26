@@ -551,10 +551,9 @@ export function isOysterRackReady() {
 //   直接回傳 false。
 // - 傍晚 18 點結算：今天如果沒吃到放牧的草，才消耗一單位投餵機餵食
 //   （出外吃草那天不消耗投餵機，兩種結算互斥、不疊加）。
-// - 牧草格用「座標 -> 被吃掉的遊戲天數」這份純資料模擬，跟
-//   pastureGrassBlades 那套 32 秒即時循環的裝飾動畫是兩個不同時間尺度，
-//   故意不耦合——玩家看到的草叢搖擺/變短是純演出，格子「還能不能被
-//   放牧吃到」是這裡另外算的天數制。
+// - 牧草格以「座標 -> 被收割／吃掉的遊戲日」為唯一資料源；視覺高度、
+//   玩家收割與 08:00 放牧都讀同一份資料。當天短草、成長中顯示中草，
+//   第三天恢復成熟，不再另跑 32 秒即時重生。
 // ==============================================================
 // 放在牧場邊、穀倉門口(BARN_DOOR)西側，跟穀倉保持距離，不擋動物早晚
 // 進出的門口空地——座標選在生活區西側開闊草地，已用 map-debug 確認是
@@ -578,47 +577,69 @@ export const FEEDER_CAPACITY = 99;
 export const FEEDER_REGRAZE_DAYS = 3;
 export const pastureDepletedTiles: Record<string, number> = {};
 
+export function pastureGrassStageAt(
+  x: number,
+  z: number,
+  day = gameState.currentDay,
+) {
+  if (!hasPastureGrassAt(x, z)) return -1;
+  const key = x + "," + z;
+  const depletedDay = pastureDepletedTiles[key];
+  if (depletedDay === undefined) return 2;
+  const age = day - depletedDay;
+  if (age >= FEEDER_REGRAZE_DAYS) {
+    delete pastureDepletedTiles[key];
+    return 2;
+  }
+  return age <= 0 ? 0 : 1;
+}
+
 function pastureCandidateTiles(day: number) {
   const p = LAYOUT.pasture;
   const candidates: { x: number; z: number }[] = [];
   for (let z = p.z; z < p.z + p.height; z++) {
     for (let x = p.x; x < p.x + p.width; x++) {
-      if (!hasPastureGrassAt(x, z)) continue;
-      const eatenDay = pastureDepletedTiles[`${x},${z}`];
-      if (eatenDay !== undefined && day - eatenDay < FEEDER_REGRAZE_DAYS)
-        continue;
+      if (pastureGrassStageAt(x, z, day) !== 2) continue;
       candidates.push({ x, z });
     }
   }
   return candidates;
 }
 
-// 早上 8 點呼叫一次。天氣不好就整天不結算，回傳 false；安全天氣但剛好
-// 找不到候選格（理論上不會發生，牧草格遠多於 99）也回傳 false。回傳值
-// 只給傍晚的 settleFeederConsumption() 判斷要不要改吃投餵機用。
+export type PastureHarvestResult =
+  | "harvested"
+  | "not-grass"
+  | "regrowing"
+  | "feeder-full";
+
+export function harvestPastureGrass(
+  x: number,
+  z: number,
+  day = gameState.currentDay,
+): PastureHarvestResult {
+  if (!hasPastureGrassAt(x, z)) return "not-grass";
+  if (gameState.feederUnits >= FEEDER_CAPACITY) return "feeder-full";
+  if (pastureGrassStageAt(x, z, day) !== 2) return "regrowing";
+  pastureDepletedTiles[x + "," + z] = day;
+  gameState.feederUnits += 1;
+  return "harvested";
+}
+
+// 08:00 安全天氣只吃一格成熟牧草；惡劣天氣不結算外草，也不消耗機器。
 export function settlePastureGrazing(day = gameState.currentDay) {
   if (isUnsafeAnimalWeather()) return false;
   const candidates = pastureCandidateTiles(day);
   if (candidates.length === 0) return false;
   const pick = candidates[Math.floor(Math.random() * candidates.length)];
-  pastureDepletedTiles[`${pick.x},${pick.z}`] = day;
+  pastureDepletedTiles[pick.x + "," + pick.z] = day;
   return true;
 }
 
-// 傍晚 18 點呼叫一次（只在今天沒吃到放牧的草時呼叫）。回傳有沒有成功
-// 消耗到投餵機（false 代表投餵機也是空的）。
+// 18:00 只有當天沒吃到外草時才消耗一單位；動物數量不影響消耗量。
 export function settleFeederConsumption() {
   if (gameState.feederUnits <= 0) return false;
   gameState.feederUnits -= 1;
   return true;
-}
-
-// 補料——目前免費全部補滿，補多少單位、要不要消耗其他資源之後有經濟
-// 系統再另外設計；先讓機制本身能測試。回傳實際補了多少單位。
-export function refillFeeder() {
-  const added = FEEDER_CAPACITY - gameState.feederUnits;
-  gameState.feederUnits = FEEDER_CAPACITY;
-  return added;
 }
 
 // ==============================================================
