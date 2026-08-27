@@ -20,3 +20,6 @@ build/*
 
 # 保留 VS Code 的 workspace 設定，方便共用編輯器設定
 !.vscode/settings.json
+
+# Claude Code 這邊自動產生的本機權限允許清單
+.claude/
