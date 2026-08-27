@@ -267,10 +267,13 @@ import {
       }
       export const MILKY_WAY_TEXTURE = makeMilkyWayTexture();
       export function starSkyPoint(nx, ny, seasonIndex) {
-        // 覆蓋最大縮放(gameState.zoom=18)與寬螢幕的完整遠景天幕；地形靠深度緩衝遮住星點。
+        // 星空是掛在目前渲染相機前方的相機空間平面。第一人稱 PerspectiveCamera
+        // 的 65° 垂直視角比原本正交遠景寬很多；舊的 98×42 覆蓋會直接露出
+        // 矩形邊界，而且透明水面也會把同一條邊界透出來。保留平面方案但把
+        // 覆蓋擴到 238×120，足以包住 16:9 第一人稱視錐並留旋轉安全量。
         return new THREE.Vector3(
-          nx * 70,
-          (ny - 0.5) * 42 + seasonIndex * 0.22,
+          nx * 170,
+          (ny - 0.5) * 120 + seasonIndex * 0.22,
           -78,
         );
       }
@@ -328,7 +331,7 @@ import {
             blending: THREE.AdditiveBlending,
           });
           const milkyWay = new THREE.Mesh(
-            new THREE.PlaneGeometry(112, 19),
+            new THREE.PlaneGeometry(260, 48),
             milkyWayMaterial,
           );
           milkyWay.position.set(0, 1, -79);
