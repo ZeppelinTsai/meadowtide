@@ -19,6 +19,8 @@ export const NORTH_EXPANSION = 5;
 export const STAIR_SLOPE_DEGREES = 50;
 export const STAIR_SLOPE_TAN = Math.tan((STAIR_SLOPE_DEGREES * Math.PI) / 180);
 export const DECORATIVE_STAIR_WIDTH = 3;
+// 舊城鎮波上宮與 mountain (20,14) 共用的地標鳥居尺寸。
+export const LANDMARK_TORII_SCALE = 2;
 export const LAYOUT = {
   livingArea: {
     oldVillageGate: { x: 20, z: 42, width: 3 },
@@ -282,7 +284,7 @@ export const LAYOUT = {
         { x: 4, z: 27, width: 1, depth: 1 },
         { x: -4, z: 30, width: 1, depth: 1 },
       ],
-      torii: { x: 0, z: 28, scale: 1.4 },
+      torii: { x: 0, z: 28, scale: LANDMARK_TORII_SCALE },
       cube: { x: -2, z: 15, width: 5, depth: 6, height: 1.6 },
     },
     // x=95~115 的南岸每欄在 z=35~37 之間小幅進退；固定序列避免載圖漂移。

@@ -224,7 +224,7 @@ test("舊城鎮西側與南側各擴充 100 格海面", () => {
   assert.deepEqual(oldVillageNorthPlatformBounds(21), { minX: 97, maxX: 104 });
   assert.deepEqual(oldVillageNorthPlatformBounds(15), { minX: 96, maxX: 103 });
   assert.equal(isBlockedByOldVillageRail(104.5, 21), true);
-  assert.deepEqual(platform.torii, { x: 100, z: 28, scale: 1.4 });
+  assert.deepEqual(platform.torii, { x: 100, z: 28, scale: 2 });
   assert.deepEqual(platform.cube, {
     x: 98,
     z: 15,

@@ -45,6 +45,7 @@ import {
   MOUNTAIN_GATE_BLOCKER,
   OLD_VILLAGE_RAILS,
   isBlockedByOldVillageRail,
+  LANDMARK_TORII_SCALE,
 } from "./layout-maps";
 import {
   handleCarpenterDockTouch,
@@ -2442,7 +2443,7 @@ export function buildMap(mapName) {
       // 山頂石標旁補一座小鳥居，呼應概念圖山頂那座小神社的意象；跟
       // 女神祠堂共用同一個 makeToriiGate()，不用另外做新造型。
       const summitTorii = makeToriiGate();
-      summitTorii.scale.setScalar(0.75);
+      summitTorii.scale.setScalar(LANDMARK_TORII_SCALE);
       summitTorii.position.set(
         summitCenterX,
         mountain.summit.elevation,
