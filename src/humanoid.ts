@@ -610,6 +610,199 @@ export function addDefaultHumanoidSmile(
         return group;
       }
 
+      // 廚師——2026-08-27 依 Zeppelin 提供的角色設定圖建模：深棕色雙層
+      // 丸子頭(頭頂疊兩顆糰子，兩側留幾綹垂下的髮絲)、赤陶紅襯衫(袖子
+      // 捲到前臂)、米色頸巾、深墨綠圍裙(前胸片+肩帶+腰間圍裙裙擺，
+      // 蓋在深墨綠工作褲外面)，皮腰帶上掛一把小刀(連刀鞘)、一顆黃銅
+      // 小鈴鐺、一條垂下來的白色抹布，深棕色綁帶靴。
+      // 這次先只做外觀＋讓她在舊城鎮廣場(LAYOUT.oldVillage.plaza)閒晃，
+      // Zeppelin 明講不用對話/互動。src/chef-quest.ts 已經有一整套招募
+      // 敘事(dock 見面/看屋/共餐條件/入住)在同步開發中，且
+      // startChefMoveInScene() 已經會找 `npcs.find(id==="chef")`——這個
+      // make 函式跟 npc-defs.ts 的 "chef" 項目就是接給那套邏輯用的正式
+      // 角色模型，不是另外做的臨時替代品。目前 npc-defs.ts 讓她一路可見
+      // (還沒有比照木匠那樣「quest 沒推進到 moved_in 前 mesh 隱藏」)，
+      // 這是照 Zeppelin 現在的要求先讓角色看得到，之後接上
+      // handleChefDockTouch/handleChefDoorstepTouch 時要記得補上那個
+      // 隱藏特例，細節寫在 npc-defs.ts 那個項目的註解裡。
+      //
+      // 2026-08-27 比例修正：Zeppelin 截圖回報她站在其他 NPC 旁邊「小了
+      // 一號」。查了 HUMANOID_WORLD_HEIGHT 這套系統才發現根因——每個角色
+      // 最後都靠 `group.scale.setScalar(humanoidScale(unscaledHeight))`
+      // 統一縮放到「頭頂最高點到腳底同一個世界高度(=1)」，`unscaledHeight`
+      // 這個參數必須是「這個角色自己建模當下、頭頂最高點的真實 y 座標」，
+      // 差一點就會讓整個角色等比例縮小或放大。第一版我用球體的算法
+      // (中心 y + 半徑)去估兩顆糰子頭(DodecahedronGeometry)的頂點高度，
+      // 但十二面體用 THREE.js 的建構方式頂點是正規化到「外接半徑」，最高
+      // 的頂點方向其實只到半徑的 1/√3(≈0.577)，不是整個半徑——這個算錯
+      // 只造成 ~2% 誤差，不是主因。真正主因是：算對高度後，發現這兩顆疊起
+      // 來的糰子頭把「頭頂到最高點」這段距離撐得比其他角色都高很多(頭髮
+      // 佔總高度比例達 24%，木匠/村長大概是 20%)——humanoidScale() 是把
+      // 「頭到腳」整段壓進同一個世界高度，頭髮占比越高，身體(肩膀以下、
+      // 實際決定「看起來多大」的部分)在最終畫面裡分到的空間就越少，整個
+      // 人看起來理所當然比同樣「頭頂到腳」都是 1 個世界單位的其他角色矮
+      // 一截。順便發現腳底(boot/sole)沒有像木匠、村長那樣精準落在
+      // pivot 的 y=0 基準上，還多探了 0.035，也一起修正。
+      // 修法：兩顆糰子頭尺寸略縮小(0.11/0.08 → 0.10/0.075)、位置降低、
+      // 堆疊時彼此留自然的重疊(不是硬算出精確貼合，跟其他角色的做法一
+      // 致)，讓「頭髮占總高度比例」回到跟木匠/村長同一個量級(~20%)；靴子
+      // /鞋底位置上移 0.035 讓腳底精準落在 0；humanoidScale 的校正值改成
+      // 實際量出來的新頂點高度 1.364(不是憑印象抓的數字)。
+      // 教訓：以後新角色如果頭髮/帽子之類的裝飾比一般角色更高聳，
+      // humanoidScale() 的校正參數不能只抓「頭部本身」的高度隨便加一點
+      // 估计，要嘛老實把最高點的裝飾也算進去，要嘛控制裝飾高度不要讓它
+      // 占掉太高比例的「總高度預算」，否則角色會在跟其他人並排站的時候
+      // 明顯矮一截，即使兩人的 humanoidScale() 都設對了「頭頂到腳」正確
+      // 對齊到 1 個世界單位。
+      export function makeChef() {
+        const group: any = new THREE.Group();
+        const parts: any = {};
+        const mat = (color) => new THREE.MeshStandardMaterial({ color, flatShading: true });
+        const skinMat = mat(0xd9a679), hairMat = mat(0x3b2a1f);
+        const shirtMat = mat(0xc1543a), shirtTrimMat = mat(0xd9c9a3);
+        const kerchiefMat = mat(0xe6dcc4);
+        const apronMat = mat(0x2c4a42), apronTrimMat = mat(0x3a5d54);
+        const trouserMat = mat(0x24413b), cuffMat = mat(0x33544c);
+        const leatherMat = mat(0x5c3c22), bootMat = mat(0x4a3220), soleMat = mat(0x211b17);
+        const brassMat = mat(0xb27b2d), bladeMat = mat(0xb8bcc0), towelMat = mat(0xf0ead8);
+
+        const pelvis = new THREE.Mesh(new THREE.CylinderGeometry(0.175, 0.19, 0.16, 8), trouserMat);
+        pelvis.position.y = 0.48; group.add(pelvis);
+        const torso = new THREE.Mesh(new THREE.CylinderGeometry(0.165, 0.2, 0.4, 8), shirtMat);
+        torso.position.y = 0.75; torso.castShadow = true; group.add(torso);
+
+        // 米色頸巾——沿用船長頸巾同一套做法(扁環+垂下的一角)，改素色米色。
+        const kerchief = new THREE.Mesh(new THREE.TorusGeometry(0.105, 0.028, 5, 10), kerchiefMat);
+        kerchief.position.set(0, 0.955, 0); kerchief.rotation.x = Math.PI / 2; group.add(kerchief);
+        const kerchiefTail = new THREE.Mesh(new THREE.BoxGeometry(0.055, 0.11, 0.018), kerchiefMat);
+        kerchiefTail.position.set(0.055, 0.87, -0.105); kerchiefTail.rotation.z = 0.12; group.add(kerchiefTail);
+
+        // 圍裙——前胸片＋交叉肩帶＋腰間裙擺，整組蓋在襯衫/長褲外面，
+        // 前胸片跟裙擺都刻意比身體窄一點，露出兩側襯衫/長褲，才看得出
+        // 是「罩在外面」而不是換了一套連身裝。
+        const apronBib = new THREE.Mesh(new THREE.BoxGeometry(0.19, 0.24, 0.03), apronMat);
+        apronBib.position.set(0, 0.815, -0.135); group.add(apronBib);
+        const apronBibTrim = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.03, 0.032), apronTrimMat);
+        apronBibTrim.position.set(0, 0.7, -0.136); group.add(apronBibTrim);
+        for (const side of [-1, 1]) {
+          const strap = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.26, 0.02), apronMat);
+          strap.position.set(side * 0.075, 0.93, -0.1); strap.rotation.z = side * 0.55;
+          strap.rotation.x = -0.15; group.add(strap);
+        }
+        // 裙擺分兩層(主層+內襯層前後略錯開)，呼應設計圖裙擺中線那道
+        // 開衩——低模不特別挖洞，用兩片微微交錯的面板意思到就好。
+        const apronSkirt = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.26, 0.03), apronMat);
+        apronSkirt.position.set(0, 0.4, -0.14); apronSkirt.rotation.x = 0.05; group.add(apronSkirt);
+        const apronSkirtLining = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.22, 0.026), apronTrimMat);
+        apronSkirtLining.position.set(0, 0.375, -0.128); group.add(apronSkirtLining);
+
+        const belt = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.055, 8), leatherMat);
+        belt.position.y = 0.535; group.add(belt);
+        const buckle = new THREE.Mesh(new THREE.BoxGeometry(0.075, 0.06, 0.022), brassMat);
+        buckle.position.set(0, 0.535, -0.205); group.add(buckle);
+
+        // 皮鞘小刀——掛在腰帶右後方。
+        const sheath = new THREE.Mesh(new THREE.BoxGeometry(0.045, 0.16, 0.03), leatherMat);
+        sheath.position.set(0.165, 0.42, -0.09); sheath.rotation.z = 0.1; group.add(sheath);
+        const bladeTip = new THREE.Mesh(new THREE.ConeGeometry(0.022, 0.05, 4), bladeMat);
+        bladeTip.position.set(0.168, 0.505, -0.09); bladeTip.rotation.z = 0.1; group.add(bladeTip);
+
+        // 黃銅小鈴鐺——一小截皮繩掛在腰帶左前方。
+        const bellCord = new THREE.Mesh(new THREE.CylinderGeometry(0.006, 0.006, 0.05, 5), leatherMat);
+        bellCord.position.set(-0.155, 0.485, -0.11); group.add(bellCord);
+        const bell = new THREE.Mesh(new THREE.SphereGeometry(0.026, 7, 5), brassMat);
+        bell.position.set(-0.155, 0.45, -0.11); group.add(bell);
+
+        // 白色抹布——摺過一次塞在腰帶上，垂下來一截。
+        const towel = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.16, 0.014), towelMat);
+        towel.position.set(0.06, 0.4, -0.145); towel.rotation.z = -0.08; group.add(towel);
+
+        const head = new THREE.Mesh(new THREE.SphereGeometry(0.2, 10, 8), skinMat);
+        head.scale.set(0.94, 1.05, 0.94); head.position.y = 1.09;
+        head.castShadow = true; group.add(head);
+        // 髮帽修正（2026-08-27）：原本 scale.set(1.02,0.6,1.0) + position y=1.135 導致兩個問題──
+        // (1) 頭頂露出「禿頭」：hairCap 頂點只到 1.2622，頭骨本身頂點卻到 1.30，中間有 0.038 空隙。
+        // (2) 「頭髮蓋到眼睛」：hairCap 是完整未裁切的橢球體，z 方向半徑(0.212)比臉部本身還大，
+        //     且中心點(y=1.135)太接近眼睛高度(y=1.12)，導致橢球體在眼睛高度往前凸出到 z=-0.2005，
+        //     比眼睛本身的 z=-0.183 還要靠前──頭髮實際蓋住了眼睛，不是視覺錯覺。
+        // 修正：把 y-scale 加大(0.6→0.75)並把中心點抬高(1.135→1.16)，讓橢球體「腰身」離開臉部區域、
+        // 改用赤道以下較窄的下緣覆蓋眼周；同時把 z-scale 縮小(1.0→0.75)減少整體前凸幅度。
+        // 用 Python 驗證過（~/verify_chef_hair_fix.py）：新頂點 1.319 > 頭頂 1.30（禿頭修好），
+        // 在眼睛/眉毛/鼻子高度的 z 方向都有 0.039～0.048 的安全距離（不再蓋到臉）。
+        // 頂部仍低於 bunUpper 的頂點 1.364，所以 humanoidScale(1.364) 的校準值不受影響、不需要重算。
+        const hairCap = new THREE.Mesh(new THREE.SphereGeometry(0.212, 9, 7), hairMat);
+        hairCap.scale.set(1.02, 0.75, 0.75); hairCap.position.set(0, 1.16, 0.01); group.add(hairCap);
+        // 雙層丸子頭——用低面數的十二面體(Dodecahedron)取代球體，稜面感
+        // 剛好適合「隨性盤起來」的糰子頭，不用另外做髮絲細節。
+        const bunLower = new THREE.Mesh(new THREE.DodecahedronGeometry(0.1, 0), hairMat);
+        bunLower.scale.set(1.05, 0.95, 1.0); bunLower.position.set(0, 1.255, 0.015); group.add(bunLower);
+        const bunUpper = new THREE.Mesh(new THREE.DodecahedronGeometry(0.075, 0), hairMat);
+        bunUpper.scale.set(1.05, 0.9, 1.0); bunUpper.position.set(0, 1.325, 0.02); group.add(bunUpper);
+        // 兩側垂下的幾綹髮絲——跟木匠那種「往外翹」的短髮束方向相反，
+        // 這裡是從太陽穴往下垂，錐尖朝下(旋轉角度跟木匠版是反過來的)。
+        [
+          [-0.185, 1.08, -0.05, 2.9, 0.12],
+          [-0.15, 1.02, -0.14, 3.05, 0.1],
+          [0.185, 1.08, -0.05, -2.9, 0.12],
+          [0.15, 1.02, -0.14, -3.05, 0.1],
+        ].forEach(([x, y, z, rotationZ, length]) => {
+          const strand = new THREE.Mesh(new THREE.ConeGeometry(0.018, length, 5), hairMat);
+          strand.position.set(x, y, z); strand.rotation.z = rotationZ; group.add(strand);
+        });
+
+        const nose = new THREE.Mesh(new THREE.ConeGeometry(0.025, 0.055, 5), skinMat);
+        nose.rotation.x = Math.PI / 2; nose.position.set(0, 1.115, -0.19); group.add(nose);
+        for (const side of [-1, 1]) {
+          const eye = new THREE.Mesh(new THREE.SphereGeometry(0.017, 6, 4), mat(0x2b211b));
+          eye.scale.set(1, 0.6, 0.35); eye.position.set(side * 0.07, 1.12, -0.183); group.add(eye);
+          const brow = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.012, 0.012), hairMat);
+          brow.position.set(side * 0.07, 1.16, -0.188); brow.rotation.z = side * -0.16; group.add(brow);
+          const blush = new THREE.Mesh(new THREE.SphereGeometry(0.03, 6, 4), mat(0xe8869a));
+          blush.scale.set(1, 0.55, 0.3); blush.position.set(side * 0.1, 1.075, -0.175); group.add(blush);
+        }
+        addDefaultHumanoidSmile(group, 1.04, -0.195, 0x8a4a3c);
+
+        function makeArm(side) {
+          const pivot: any = new THREE.Group(); pivot.position.set(side * 0.235, 0.9, 0);
+          const sleeve = new THREE.Mesh(new THREE.CylinderGeometry(0.062, 0.054, 0.22, 7), shirtMat);
+          sleeve.position.y = -0.11; pivot.add(sleeve);
+          const rolledCuff = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.057, 0.055, 7), shirtTrimMat);
+          rolledCuff.position.y = -0.225; pivot.add(rolledCuff);
+          const forearm = new THREE.Mesh(new THREE.CylinderGeometry(0.044, 0.04, 0.2, 7), skinMat);
+          forearm.position.y = -0.335; pivot.add(forearm);
+          const hand = new THREE.Mesh(new THREE.SphereGeometry(0.048, 7, 5), skinMat);
+          hand.scale.set(0.85, 1.05, 0.8); hand.position.y = -0.45; pivot.add(hand);
+          group.add(pivot); return pivot;
+        }
+        parts.armL = makeArm(-1); parts.armR = makeArm(1);
+        function makeLeg(side) {
+          const pivot = new THREE.Group(); pivot.position.set(side * 0.1, 0.44, 0.01);
+          const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.065, 0.34, 7), trouserMat);
+          leg.position.y = -0.17; pivot.add(leg);
+          const ankleCuff = new THREE.Mesh(new THREE.CylinderGeometry(0.072, 0.072, 0.04, 7), cuffMat);
+          ankleCuff.position.y = -0.29; pivot.add(ankleCuff);
+          // 2026-08-27：靴子/鞋底原本往下多探了 0.035，腳底沒有真的貼在
+          // pivot 的 y=0 落地基準上(木匠/村長的靴子鞋底都精準落在 0)，
+          // 這裡一起往上收 0.035 對齊，跟下面 humanoidScale 校正是同一輪
+          // 「廚師比例比其他角色小一號」問題的其中一個成因，記錄在
+          // makeChef() 開頭的比例修正註解裡。
+          const boot = new THREE.Mesh(new THREE.BoxGeometry(0.135, 0.13, 0.21), bootMat);
+          boot.position.set(0, -0.375, -0.035); pivot.add(boot);
+          const sole = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.032, 0.225), soleMat);
+          sole.position.set(0, -0.421, -0.04); pivot.add(sole);
+          for (let lace = 0; lace < 3; lace++) {
+            const bootLace = new THREE.Mesh(new THREE.BoxGeometry(0.085, 0.008, 0.012), brassMat);
+            bootLace.position.set(0, -0.34 - lace * 0.026, -0.15); pivot.add(bootLace);
+          }
+          group.add(pivot); return pivot;
+        }
+        parts.legL = makeLeg(-1); parts.legR = makeLeg(1);
+
+        group.parts = parts;
+        group.scale.setScalar(humanoidScale(1.364));
+        return group;
+      }
+
       export function makeGirlPlayer({
         skin = 0xffe3c9,
         outfit = 0xff8fab,

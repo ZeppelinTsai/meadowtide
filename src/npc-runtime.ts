@@ -3,7 +3,7 @@ import { hash2 } from "./utils";
 import { scene, PLATEAU_Y } from "./scene-sky";
 import { MAPS, LAYOUT, carpenterQuest, isInsideLakeShape } from "./layout-maps";
 import { npcDefs } from "./npc-defs";
-import { makeCaptain, makeCarpenter, makeHumanoid, makeMayor } from "./humanoid";
+import { makeCaptain, makeCarpenter, makeChef, makeHumanoid, makeMayor } from "./humanoid";
 import { makeAnimal } from "./props";
 
 // 9) NPC 群 — 現在每個 NPC 多帶兩個欄位：path（A* 算出的格子序列）
@@ -26,7 +26,9 @@ export const npcs = npcDefs.map((def) => {
         ? makeCarpenter()
         : def.id === "captain"
           ? makeCaptain()
-          : makeHumanoid({ shirt: def.shirt, hair: def.hair });
+          : def.id === "chef"
+            ? makeChef()
+            : makeHumanoid({ shirt: def.shirt, hair: def.hair });
   mesh.position.set(def.home.x, 0, def.home.z);
   npcGroup.add(mesh);
   return {
