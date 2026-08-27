@@ -583,6 +583,10 @@ export const LAYOUT = {
     homeGate: { x: 33, z: 34, width: 3 },
     townArrival: { x: 22, z: 65, width: 3 },
     homeArrival: { x: 31, z: 34, width: 3 },
+    skyPalaceGate: {
+      trigger: { x: 20, z: 14 },
+      arrival: { x: 20, z: 15 },
+    },
     // 2026-08-25 二次調整：x 從 32.65 改成 33.5，貼齊 waist 平台邊界
     // (centerX+halfWidth=33.5，跟 build-map.ts addPlatform() 算的
     // 是同一個數字)——石梯第一階緊接平台邊緣，不再留一小截空隙。
@@ -692,6 +696,20 @@ export const LAYOUT = {
       [27, 11],
       [27, 14],
     ],
+  },
+  mountainCave: {
+    skyPalaceGate: { x: 43, z: 2, width: 3, depth: 3 },
+    skyPalaceArrival: { x: 42, z: 3 },
+  },
+  skyPalace: {
+    width: 50,
+    height: 50,
+    caveGate: { x: 23, z: 2, width: 3, depth: 3 },
+    caveArrival: { x: 24, z: 5 },
+    mountainGate: {
+      trigger: { x: 24, z: 47 },
+      arrival: { x: 24, z: 46 },
+    },
   },
   port: {
     width: 34,
@@ -860,6 +878,11 @@ function makeMountainMapTiles() {
         ) + 2,
     },
     { x: mountain.homeArrival.x, z: mountain.homeArrival.z, radius: 4.5 },
+    {
+      x: mountain.skyPalaceGate.trigger.x,
+      z: mountain.skyPalaceGate.trigger.z,
+      radius: 2,
+    },
   ];
   for (let z = 0; z < mountain.height; z++) {
     for (let x = 0; x < mountain.width; x++) {
@@ -879,6 +902,7 @@ function makeMountainMapTiles() {
     tiles[mountain.townGate.z][mountain.townGate.x + i] = 3;
   for (let i = -1; i <= 1; i++)
     tiles[mountain.homeGate.z + i][mountain.homeGate.x] = 3;
+  tiles[mountain.skyPalaceGate.trigger.z][mountain.skyPalaceGate.trigger.x] = 3;
   mountain.trees.forEach(([x, z]) => {
     const insideClearing = protectedClearings.some(
       (clearing) =>
@@ -903,6 +927,22 @@ function makeMountainMapTiles() {
       for (let x = cave.entranceX; x < cave.entranceX + cave.entranceWidth; x++)
         if (tiles[z]?.[x] !== undefined) tiles[z][x] = 0;
   }
+  return tiles;
+}
+
+function makeSkyPalaceTiles() {
+  const palace = LAYOUT.skyPalace;
+  const tiles: number[][] = Array.from({ length: palace.height }, (_, z) =>
+    Array.from({ length: palace.width }, (_, x) =>
+      x === 0 || z === 0 || x === palace.width - 1 || z === palace.height - 1
+        ? 1
+        : 0,
+    ),
+  );
+  for (let z = palace.caveGate.z; z < palace.caveGate.z + palace.caveGate.depth; z++)
+    for (let x = palace.caveGate.x; x < palace.caveGate.x + palace.caveGate.width; x++)
+      tiles[z][x] = 3;
+  tiles[palace.mountainGate.trigger.z][palace.mountainGate.trigger.x] = 3;
   return tiles;
 }
 
@@ -1736,6 +1776,10 @@ export const MAPS = {
   mountain: {
     tiles: makeMountainMapTiles(),
     playerStart: { ...LAYOUT.mountain.townArrival },
+  },
+  skyPalace: {
+    tiles: makeSkyPalaceTiles(),
+    playerStart: { ...LAYOUT.skyPalace.caveArrival },
   },
   // 港口——左側石板廣場接舊城鎮；中央是三面石造碼頭包圍的內港與渡輪；
   // 北側商店背後的沙灘延續生活區；右側木棧橋停小艇。保留原本西界換圖、

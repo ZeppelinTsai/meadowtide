@@ -4177,6 +4177,71 @@ function mountainMineGoDown() {
 
 export const events = [
   ...worldTransitionEvents,
+  // 山之洞第 25 層天梯區（43~45, 2~4）通往雲上天宮。低樓層同一組
+  // 座標仍可能走得到，因此 getter 在非頂層回傳 -1，避免提前傳送。
+  ...Array.from(
+    {
+      length:
+        LAYOUT.mountainCave.skyPalaceGate.width *
+        LAYOUT.mountainCave.skyPalaceGate.depth,
+    },
+    (_, index) => ({
+      map: "mountainCave",
+      get x() {
+        return gameState.mountainMineFloor === MOUNTAIN_MINE_FLOOR_MAX
+          ? LAYOUT.mountainCave.skyPalaceGate.x +
+              (index % LAYOUT.mountainCave.skyPalaceGate.width)
+          : -1;
+      },
+      get z() {
+        return gameState.mountainMineFloor === MOUNTAIN_MINE_FLOOR_MAX
+          ? LAYOUT.mountainCave.skyPalaceGate.z +
+              Math.floor(index / LAYOUT.mountainCave.skyPalaceGate.width)
+          : -1;
+      },
+      trigger: "touch",
+      action: () =>
+        loadMap("skyPalace", { ...LAYOUT.skyPalace.caveArrival }),
+    }),
+  ),
+  ...Array.from(
+    {
+      length:
+        LAYOUT.skyPalace.caveGate.width * LAYOUT.skyPalace.caveGate.depth,
+    },
+    (_, index) => ({
+      map: "skyPalace",
+      x:
+        LAYOUT.skyPalace.caveGate.x +
+        (index % LAYOUT.skyPalace.caveGate.width),
+      z:
+        LAYOUT.skyPalace.caveGate.z +
+        Math.floor(index / LAYOUT.skyPalace.caveGate.width),
+      trigger: "touch",
+      action: () => {
+        gameState.mountainMineFloor = MOUNTAIN_MINE_FLOOR_MAX;
+        loadMap("mountainCave", {
+          ...LAYOUT.mountainCave.skyPalaceArrival,
+        });
+      },
+    }),
+  ),
+  {
+    map: "mountain",
+    x: LAYOUT.mountain.skyPalaceGate.trigger.x,
+    z: LAYOUT.mountain.skyPalaceGate.trigger.z,
+    trigger: "touch",
+    action: () =>
+      loadMap("skyPalace", { ...LAYOUT.skyPalace.mountainGate.arrival }),
+  },
+  {
+    map: "skyPalace",
+    x: LAYOUT.skyPalace.mountainGate.trigger.x,
+    z: LAYOUT.skyPalace.mountainGate.trigger.z,
+    trigger: "touch",
+    action: () =>
+      loadMap("mountain", { ...LAYOUT.mountain.skyPalaceGate.arrival }),
+  },
   // 洞口(entranceX~entranceX+entranceWidth)沿線 3 格都能走進去，座標用
   // LAYOUT.oldVillage.stalactiteCave 現值推導，洞窟之後再拓寬/搬動也不用
   // 回來改這裡。

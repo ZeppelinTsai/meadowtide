@@ -156,6 +156,7 @@
 - 開局標題畫面 `title-screen.ts` → `docs/decisions/title-screen.md`
 - 過場鏡頭系統(換位置/焦點/zoom，F4 手動調整模式) `cutscene-camera.ts` → `docs/decisions/cutscene-camera.md`
 - 存檔系統(9 格、Shift+1-9 存/1-9 讀、每日 06:00 自動存檔) `input-save.ts`/`game-clock.ts` → `docs/decisions/save-slots.md`
+- 雲上天宮 50×50 空殼、山之洞第 25 層／mountain 雙向傳送 → docs/decisions/sky-palace.md
 - 遊戲中 Esc/手把暫停選單(返回/讀取進度/系統/結束遊戲) `pause-menu.ts` → `docs/decisions/pause-menu.md`
 - Q／手把 Y 資訊選單(物品/素材/料理/關係)與右上角 HUD 資訊分工 `inventory-ui.ts`/`input-save.ts` → `docs/decisions/game-menu.md`
 - 舊城鎮台地/步道 depthWrite 穿幫(第一人稱視角下房子底下看起來是空的) `build-map.ts` 的 `terraceMat`/tile===5 步道 → `docs/decisions/oldvillage-terrace-depthwrite.md`
