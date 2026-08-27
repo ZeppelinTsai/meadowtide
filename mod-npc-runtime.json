@@ -1,5 +1,0 @@
-{
-  "outFile": "src/npc-runtime.ts",
-  "header": "import * as THREE from \"three\";\nimport { hash2 } from \"./utils\";\nimport { scene, PLATEAU_Y } from \"./scene-sky\";\nimport { MAPS, LAYOUT, carpenterQuest, isInsideLakeShape } from \"./layout-maps\";\nimport { npcDefs } from \"./npc-defs\";\nimport { makeHumanoid } from \"./humanoid\";\nimport { makeAnimal } from \"./props\";\n",
-  "ranges": [[5674, 5794]]
-}

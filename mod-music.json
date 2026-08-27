@@ -1,5 +1,0 @@
-{
-  "outFile": "src/music.ts",
-  "header": "import { gameState } from \"./game-state\";\n",
-  "ranges": [[2860, 3031], [3203, 3212]]
-}

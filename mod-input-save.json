@@ -1,5 +1,0 @@
-{
-  "outFile": "src/input-save.ts",
-  "header": "import { gameState, inventory, cropState, TIME_CONFIG, SEASON_NAMES, WEATHER_NAMES, getSeasonDay, getSeasonPeriod, rollWeatherForSeason, growCropsForNewDay, nearWater, plantSeed, harvestCrop, pickupSeeds, CAST_ANIM_DURATION, OYSTER_RACK_TILES, oysterRackState, harvestOysterRack } from \"./game-state\";\nimport { updateSeasonAndDate } from \"./game-clock\";\nimport { carpenterQuest, events, POUCH_POS, FARMLAND_TILES } from \"./layout-maps\";\nimport { npcs } from \"./npc-runtime\";\nimport { npcLine } from \"./npc-defs\";\nimport { dialogQueue, advanceDialogSequence, showDialog, dialogEl } from \"./dialogue\";\nimport { loadMap, isBlocked } from \"./build-map\";\nimport { updateAvenueTreeColors, updateSeasonalTreeColors, updateSeasonalGroundColors, makeBobber, makeFishProp } from \"./props\";\nimport { syncFarmVisuals } from \"./farm-visuals\";\nimport { scene, clearMeteors, scheduleNextMeteor, updateCameraFrustum, meteorPool, getMeteorShowerHudLabel } from \"./scene-sky\";\n",
-  "ranges": [[7046, 7295]]
-}

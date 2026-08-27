@@ -1,5 +1,0 @@
-{
-  "outFile": "src/farm-visuals.ts",
-  "header": "import * as THREE from \"three\";\nimport { PLATEAU_Y, scene } from \"./scene-sky\";\nimport { gameState, cropState, inventory } from \"./game-state\";\nimport { FARMLAND_TILES, POUCH_POS } from \"./layout-maps\";\nimport { makeSoil, makeCropMesh, makeSeedPouch } from \"./props\";\n",
-  "ranges": [[5644, 5673]]
-}

@@ -1,5 +1,0 @@
-{
-  "outFile": "src/scene-sky.ts",
-  "header": "import * as THREE from \"three\";\nimport { hash2 } from \"./utils\";\nimport { LAYOUT } from \"./layout-maps\";\nimport { gameState } from \"./game-state\";\nimport {\n  getNightFactor,\n  getDaylightForSeason,\n  isNightTime,\n  TIME_CONFIG,\n  METEOR_CONFIG,\n  METEOR_SHOWER_SCHEDULE,\n  METEOR_SHOWER_PHASE_NAMES,\n  SEASON_NAMES,\n} from \"./game-state\";\n",
-  "ranges": [[1261, 2435]]
-}

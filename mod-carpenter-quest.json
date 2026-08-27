@@ -1,5 +1,0 @@
-{
-  "outFile": "src/carpenter-quest.ts",
-  "header": "import { gameState, inventory, isNightTime } from \"./game-state\";\nimport {\n  carpenterQuest,\n  CARPENTER_MATERIALS,\n} from \"./layout-maps\";\nimport {\n  showDialog,\n  showDialogSequence,\n  dialogQueue,\n} from \"./dialogue\";\nimport { npcs } from \"./npc-runtime\";\n",
-  "ranges": [[3032, 3140]]
-}
