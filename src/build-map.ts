@@ -3833,6 +3833,21 @@ export function buildMap(mapName) {
   syncFarmVisuals();
 }
 
+export function syncPlayerAppearance() {
+  const appearance = gameState.playerAppearance;
+  if (gameState.player?.userData?.playerAppearance === appearance) return;
+  const previous = gameState.player;
+  const replacement = makeHeroPlayer(appearance);
+  if (previous) {
+    replacement.position.copy(previous.position);
+    replacement.rotation.copy(previous.rotation);
+    replacement.visible = previous.visible;
+    previous.parent?.remove(previous);
+  }
+  gameState.player = replacement;
+  scene.add(replacement);
+}
+
 export function isBlocked(mapName, x, z) {
   const map = MAPS[mapName];
   const tx = Math.round(x),
@@ -3953,10 +3968,7 @@ export function loadMap(mapName, startPos, onLoaded?: () => void) {
     };
     const pos = nearestSafePosition();
     gameState.playerGridPos = { x: pos.x, z: pos.z };
-    if (!gameState.player) {
-      gameState.player = makeHeroPlayer();
-      scene.add(gameState.player);
-    }
+    syncPlayerAppearance();
     gameState.player.position.x = gameState.playerGridPos.x;
     gameState.player.position.z = gameState.playerGridPos.z;
     gameState.player.position.y =

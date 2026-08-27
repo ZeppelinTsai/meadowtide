@@ -64,6 +64,15 @@ slot markup 或 CSS。
 `prologue.ts` 的存檔存在判斷也包含 autosave。即使玩家沒有建立手動存檔，
 只要 06:00 autosave 存在，標題畫面仍會顯示「繼續遊戲」。
 
+## 玩家資料（存檔版本 6，2026-08-28）
+
+- `playerProfile.name`：序章前輸入的牧場主姓名，去除首尾空白後最多 16 字元。
+- `playerProfile.appearance`：`male` 或 `female`，建立玩家 Mesh 與讀檔時皆生效。
+- 舊存檔沒有 `playerProfile` 時，預設名稱為「牧場主」、外型為 `female`，
+  保持加入選擇功能前的既有外觀。
+- 讀取另一格、即使仍在同一張地圖，也必須呼叫 `syncPlayerAppearance()`
+  替換 Mesh；只在 `loadMap()` 建場景時判定會讓同地圖讀檔沿用錯誤外型。
+
 ## 尚未做的事
 
 - 開新遊戲目前固定寫進第 1 格，還沒有「開局先選要存去哪一格」的介面。

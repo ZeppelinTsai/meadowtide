@@ -91,7 +91,7 @@ import {
   handleChoiceDigitKey,
   advanceChoicePage,
 } from "./dialogue";
-import { loadMap, isBlocked, events } from "./build-map";
+import { loadMap, isBlocked, events, syncPlayerAppearance } from "./build-map";
 import { isInventoryOpen } from "./inventory-ui";
 import {
   updateAvenueTreeColors,
@@ -226,7 +226,11 @@ export function getSaveSlotSummaries(): SaveSlotSummary[] {
 export function saveGame(slot = "default") {
   npcs.forEach((npc) => getRelationship(npc.id));
   const data = {
-    version: 5,
+    version: 6,
+    playerProfile: {
+      name: gameState.playerName,
+      appearance: gameState.playerAppearance,
+    },
     activeSaveSlot,
     elapsed: gameState.elapsed,
     currentDay: gameState.currentDay,
@@ -279,6 +283,13 @@ export function loadGame(
   const raw = localStorage.getItem(SAVE_KEY_PREFIX + slot);
   if (!raw) return false;
   const data = JSON.parse(raw);
+  gameState.playerName = typeof data.playerProfile?.name === "string" && data.playerProfile.name.trim()
+    ? data.playerProfile.name.trim().slice(0, 16)
+    : "牧場主";
+  gameState.playerAppearance = data.playerProfile?.appearance === "male"
+    ? "male"
+    : "female";
+  if (gameState.player) syncPlayerAppearance();
   gameState.elapsed = Math.max(0, Number(data.elapsed) || 0);
   updateSeasonAndDate();
   gameState.prevDay = gameState.currentDay;

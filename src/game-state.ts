@@ -22,6 +22,8 @@ export { MAX_EXTREME_WEATHER_PER_SEASON } from "./weather-schedule";
 // 好幾個函式(例如 harvestOysterRack)自己就宣告了區域變數叫 state，會撞名。
 // ==============================================================
 export const gameState = {
+  playerName: "牧場主",
+  playerAppearance: "female" as "male" | "female",
   // 2026-08-26 每日 06:00 自動存檔：game-clock.ts 的 updateGameClock()
   // 偵測到這一幀跨過了某一天的 06:00 就把這個設 true；game-loop.ts 的
   // animate() 每幀檢查，真的存完檔才清回 false。放在 gameState 上而不是

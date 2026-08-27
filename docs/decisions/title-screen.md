@@ -12,7 +12,9 @@
 ## 流程
 
 `splash`（純白底，按任意鍵）→ `menu`（開始新遊戲／繼續遊戲／系統／
-結束遊戲）→（選了「系統」才會進的）`system` 子畫面。三步共用同一個
+結束遊戲）。開始新遊戲會先進 `profileName`（姓名輸入），再進
+`appearance`（左男性、右女性的 3D 模型預覽），選定後才開始序章；
+系統設定與讀檔則分別進 `system`／`loadSlots`。所有步驟共用同一個
 `#titleScreen` 容器（`index.html`），用 `data-step` 屬性切換誰可見
 （`style.css`），`z-index: 100`，蓋過 `#fade`（20）等既有最高疊層。
 
@@ -31,7 +33,8 @@
 `main.ts` 原本自己判斷 `shouldPlayPrologueOnBoot()`（有沒有存檔）
 決定要不要播序幕。現在改成玩家自己在主選單選：
 
-- **開始新遊戲**：`buildMap("port"); loadMap("port", undefined);
+- **開始新遊戲**：先填寫姓名並選擇男女外型，再執行
+  `buildMap("port"); loadMap("port", undefined);
   startPrologueScene();`——等於原本 `shouldPlayPrologueOnBoot()` 為真
   那條分支，不檢查是否已有存檔（不刪除既有存檔，只是不管它——舊存檔
   要到玩家實際按 F6 存檔時才會被覆蓋）。

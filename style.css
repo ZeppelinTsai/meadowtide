@@ -854,9 +854,94 @@ canvas {
 }
 #titleScreen[data-step="splash"] #titleSplash,
 #titleScreen[data-step="menu"] #titleMenu,
+#titleScreen[data-step="profileName"] #titleProfileName,
+#titleScreen[data-step="appearance"] #titleAppearance,
 #titleScreen[data-step="system"] #titleSystem,
 #titleScreen[data-step="loadSlots"] #titleLoadSlots {
   display: flex;
+}
+.titleProfileStep {
+  width: min(680px, 90vw);
+}
+.titleProfilePrompt,
+.titleProfileStep h2 {
+  margin: 0 0 18px;
+  font-size: 24px;
+}
+.titleProfileStep label,
+.titleProfileStep small {
+  font-size: 18px;
+}
+#titlePlayerNameInput {
+  width: min(420px, 82vw);
+  box-sizing: border-box;
+  padding: 12px 14px;
+  border: 2px solid #79684e;
+  border-radius: 7px;
+  font: inherit;
+  font-size: 22px;
+  text-align: center;
+}
+#titlePlayerNameInput:focus {
+  outline: 3px solid #f2b84b;
+  outline-offset: 3px;
+}
+.titleProfileActions {
+  display: flex;
+  gap: 12px;
+  margin-top: 12px;
+}
+.titleProfileActions .titleMenuBtn,
+#titleAppearanceBackBtn {
+  min-width: 150px;
+}
+.titleMenuBtn:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+.titleAppearanceChoices {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(220px, 1fr));
+  gap: 20px;
+  width: min(600px, 88vw);
+  margin-bottom: 12px;
+}
+.titleAppearanceCard {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 16px;
+  border: 2px solid #b8aa91;
+  border-radius: 12px;
+  background: #f6f3eb;
+  color: #2b2b2b;
+  font: inherit;
+  font-size: 20px;
+  cursor: pointer;
+}
+.titleAppearanceCard:hover,
+.titleAppearanceCard:focus {
+  border-color: #79684e;
+  outline: 3px solid #f2b84b;
+  outline-offset: 3px;
+}
+.titleAppearanceCard img {
+  width: 200px;
+  height: 240px;
+  object-fit: contain;
+  border-radius: 8px;
+  background: linear-gradient(#dceff1, #f3e7ce);
+}
+@media (max-width: 560px) {
+  .titleAppearanceChoices {
+    grid-template-columns: repeat(2, minmax(140px, 1fr));
+    gap: 10px;
+  }
+  .titleAppearanceCard img {
+    width: 135px;
+    height: 190px;
+  }
 }
 #titleLogo,
 #titleMenuLogo {

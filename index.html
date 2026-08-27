@@ -392,6 +392,38 @@
           感謝遊玩《海風牧歌》，可以安全關閉這個分頁了。
         </p>
       </div>
+      <div id="titleProfileName" class="titleStep titleProfileStep">
+        <p class="titleProfilePrompt">
+          您就是新的牧場主是吧，那麼請您在這裡簽下名字
+        </p>
+        <label for="titlePlayerNameInput">牧場主姓名</label>
+        <input
+          id="titlePlayerNameInput"
+          type="text"
+          maxlength="16"
+          autocomplete="off"
+          aria-describedby="titlePlayerNameHint"
+        />
+        <small id="titlePlayerNameHint">最多 16 個字元</small>
+        <div class="titleProfileActions">
+          <button type="button" id="titleNameBackBtn" class="titleMenuBtn">返回</button>
+          <button type="button" id="titleNameConfirmBtn" class="titleMenuBtn" disabled>簽名</button>
+        </div>
+      </div>
+      <div id="titleAppearance" class="titleStep titleProfileStep">
+        <h2>請選擇外型</h2>
+        <div class="titleAppearanceChoices" role="radiogroup" aria-label="玩家外型">
+          <button type="button" id="titleMaleAppearanceBtn" class="titleAppearanceCard" role="radio" aria-checked="false">
+            <img id="titleMaleAppearancePreview" alt="男性牧場主外型" />
+            <strong>男性外型</strong>
+          </button>
+          <button type="button" id="titleFemaleAppearanceBtn" class="titleAppearanceCard" role="radio" aria-checked="false">
+            <img id="titleFemaleAppearancePreview" alt="女性牧場主外型" />
+            <strong>女性外型</strong>
+          </button>
+        </div>
+        <button type="button" id="titleAppearanceBackBtn" class="titleMenuBtn">返回</button>
+      </div>
       <div id="titleSystem" class="titleStep">
         <h2 id="titleSystemHeading">系統</h2>
         <div id="titleSystemSettings" class="systemSettings"></div>

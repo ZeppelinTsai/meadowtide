@@ -1588,9 +1588,15 @@ export function addDefaultHumanoidSmile(
         group.scale.setScalar(humanoidScale(1.265));
         return group;
       }
-      // 目前正式入口使用女主角版本。
-      export function makeHeroPlayer() {
+      export function makeFemaleHeroPlayer() {
         return makeAdventurerHero(true);
+      }
+      export function makeHeroPlayer(appearance: "male" | "female" = "female") {
+        const player = appearance === "male"
+          ? makeMaleHeroPlayer()
+          : makeFemaleHeroPlayer();
+        player.userData.playerAppearance = appearance;
+        return player;
       }
       export function animateWalk(humanoid: any, moving, t) {
         const p = humanoid.parts;
