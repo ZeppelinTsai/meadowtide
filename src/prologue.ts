@@ -8,6 +8,7 @@ import { updateCameraFrustum } from "./scene-sky";
 import { isCameraShotsPlaying, isCameraAdjustModeActive } from "./cutscene-camera";
 import { animateWalk } from "./humanoid";
 import { getScheduleTarget } from "./npc-defs";
+import { SAVE_SLOT_COUNT } from "./save-slot-config";
 
 // ==============================================================
 // 序幕：開場第一天演出——主角乘（makePortScene() 裡本來就停在港口的
@@ -31,17 +32,16 @@ import { getScheduleTarget } from "./npc-defs";
 // 影響，正好也符合「唸台詞的時候船不該在動」的要求。
 // ==============================================================
 
-// 2026-08-26 存檔改成 9 格(slot1..slot9)之後這裡改成檢查「9 格裡有沒有
-//任一格存過」，不再只看單一 "default" key。故意不 import input-save.ts
-// 的 SAVE_KEY_PREFIX/SAVE_SLOT_COUNT——那個檔案已經 import 這個檔案的
+// 多格存檔上線後，這裡要檢查 slot1..slot10 任一格是否存在。
+// 不再只看單一 "default" key。故意不 import input-save.ts——那個檔案
+// 已經 import 這個檔案的
 // previewPrologue()，反過來 import 會形成循環 import(這個專案踩過的坑，
-// 見 scene-sky.ts 開頭那段說明)，兩個常數字面值直接複製一份比較安全。
+// 見 scene-sky.ts 開頭那段說明)；格數改讀無 DOM 副作用的純設定模組。
 // "default" 這個舊 key 理論上開局時 title-screen.ts 的
 // migrateLegacyDefaultSave() 就已經搬進 slot1、刪掉了，這裡多檢查一次
 // 純粹是防守——萬一哪次搬家漏跑，也不會把有存檔的玩家誤判成新玩家、
 // 重新逼一次序幕。
 const SAVE_KEY_PREFIX = "meadowtide.save.";
-const SAVE_SLOT_COUNT = 9;
 
 export function shouldPlayPrologueOnBoot(): boolean {
   try {

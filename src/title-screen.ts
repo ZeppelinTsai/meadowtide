@@ -47,7 +47,7 @@ function renderAppearancePreview(
 
 export function initTitleScreen() {
   // 開局第一件事：舊版單一 "default" 存檔搬進 slot1，之後所有讀存檔
-  // 判斷與清單都只認 autosave/slot1..slot9，
+  // 判斷與清單都只認 autosave/slot1..slot10，
   // 這行要跑在它們之前，見 input-save.ts 的 migrateLegacyDefaultSave()。
   migrateLegacyDefaultSave();
 

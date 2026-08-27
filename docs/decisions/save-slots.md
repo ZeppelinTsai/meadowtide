@@ -1,29 +1,33 @@
-# 存檔系統：9 格手動存檔 + 每日 06:00 獨立自動存檔
+# 存檔系統：10 格手動存檔 + 每日 06:00 獨立自動存檔
 
 > 從 `AGENTS.md` 搬過來的架構/設計決策，仍然有效。
 
-## 2026-08-26 從單一「default」存檔改成 9 格
+## 2026-08-26 從單一「default」存檔改成多格
 
 `input-save.ts` 的 `saveGame(slot)`/`loadGame(slot)` 本來就吃參數，只是
 過去所有呼叫端都用預設值 `"default"`，等於只有一格。這輪改成 slot 命名
-`"slot1".."slot9"`，`SAVE_KEY_PREFIX + slot` 組出 localStorage key
+`"slot1".."slot10"`，`SAVE_KEY_PREFIX + slot` 組出 localStorage key
 (`meadowtide.save.slot1` 這樣)。
 
 - `migrateLegacyDefaultSave()`：開局第一件事(`title-screen.ts` 的
   `initTitleScreen()` 最前面呼叫)，把舊版 `meadowtide.save.default`
   搬進 `slot1`、刪掉舊 key，只搬一次(`slot1` 已經有資料就不會覆蓋)。
-- `getSaveSlotSummaries()`：回傳 autosave 與 9 格手動存檔各自有沒有資料
+- `getSaveSlotSummaries()`：回傳 autosave 與 10 格手動存檔各自有沒有資料
   及簡短摘要(第幾天/季節/地圖)，給共用讀取清單使用。
 - `getActiveSaveSlot()`/`setActiveSaveSlot()`：「目前在玩哪一格」，開新
   遊戲固定設 1(還沒有開局選格數的介面)、讀取某一格時設成該格號、
   Shift+數字手動存檔時也會更新。autosave 會記錄這個來源格號，但不覆寫它。
 
-## 熱鍵：Shift+1~9 存、1~9 讀
+## 熱鍵：Shift+1~9／Shift+0 存，1~9／0 讀
 
 `input-save.ts` 有一個獨立的 `keydown` 監聽只認
-`event.code`(`"Digit1".."Digit9"`)，不是 `event.key`——按 Shift 時
+`event.code`(`"Digit0".."Digit9"`)，不是 `event.key`——按 Shift 時
 `.key` 在美式鍵盤會變成 `"!"`/`"@"` 這種符號，用 `code` 才不受 Shift/
-鍵盤配置影響。跟「二選一提示」的數字鍵選項共用同一批物理鍵位，靠
+鍵盤配置影響。`src/save-slot-config.ts` 是格數與數字列映射的單一資料源：
+`Digit0` 對應第 10 格，`Digit1`～`Digit9` 維持同號格。修改格數或快捷鍵後
+必須執行 `npm run test:save-slots`，再執行 `npm run build`。
+
+跟「二選一提示」的數字鍵選項共用同一批物理鍵位，靠
 `activeChoice`/`dialogQueue.length`/`isInventoryOpen()`/
 `gameState.cutsceneActive` 這幾個既有狀態擋開，對話框開著時數字鍵照舊
 只選對話選項。**讀檔沒有二次確認**——這是 Zeppelin 明確要求的行為
@@ -57,7 +61,7 @@ slot 給 `migrateLegacyDefaultSave()` 讀一次搬家用，新程式碼不應該
 ## 2026-08-27 共用縱向讀取清單
 
 `save-slot-ui.ts` 的 `renderSaveSlotButtons()` 是開始畫面與遊戲中暫停
-選單唯一的讀取清單渲染來源。順序固定為最上方 autosave，接著 slot1～slot9；
+選單唯一的讀取清單渲染來源。順序固定為最上方 autosave，接著 slot1～slot10；
 使用同一套單欄、可捲動 UI 與摘要格式，不得在兩個畫面各自建立另一套
 slot markup 或 CSS。
 

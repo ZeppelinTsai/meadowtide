@@ -110,6 +110,7 @@ import {
 } from "./affection";
 import { completeNpcDailyConversation } from "./affection-ui";
 import { weatherIconSvg } from "./weather-icons";
+import { SAVE_SLOT_COUNT, saveSlotForDigitCode } from "./save-slot-config";
 import {
   scene,
   renderer,
@@ -127,10 +128,10 @@ import {
 } from "./scene-registries";
 
 export const SAVE_KEY_PREFIX = "meadowtide.save.";
-// 2026-08-26 存檔改成 9 格：slot 參數變成 "slot1".."slot9"，"default" 是
+// 手動存檔共 10 格：slot 參數為 "slot1".."slot10"，"default" 是
 // 舊版單一存檔的名字，只留給 migrateLegacyDefaultSave() 讀一次搬家用，
 // 新程式碼不應該再直接寫 "default"。
-export const SAVE_SLOT_COUNT = 9;
+export { SAVE_SLOT_COUNT } from "./save-slot-config";
 
 // 「目前在玩哪一格」——決定 Shift+數字快速存檔沒指定格數時(目前沒有這種
 // 用法，但保留擴充彈性)跟每日 06:00 自動存檔要存進哪一格。開新遊戲/讀取
@@ -142,11 +143,11 @@ export function getActiveSaveSlot() {
   return activeSaveSlot;
 }
 export function setActiveSaveSlot(slot: number) {
-  activeSaveSlot = slot;
+  activeSaveSlot = Math.min(SAVE_SLOT_COUNT, Math.max(1, Math.round(slot) || 1));
 }
 
-// 舊版只有一個 "default" 存檔；9 格系統上線後只讀一次，把裡面的內容
-// 搬進第 1 格，搬完就刪掉舊 key——之後只認 autosave/slot1..slot9，
+// 舊版只有一個 "default" 存檔；多格系統上線後只讀一次，把裡面的內容
+// 搬進第 1 格，搬完就刪掉舊 key——之後只認 autosave/slot1..slot10，
 // 不會有兩份資料同時存在造成「到底哪份才是最新」的疑惑。呼叫端要在任何
 // 讀 slot 資料之前先呼叫這個(目前只有 title-screen.ts 的
 // initTitleScreen() 開局呼叫一次)。
@@ -176,7 +177,7 @@ export interface SaveSlotSummary {
   currentMapName?: string;
 }
 
-// 給共用讀取清單使用：autosave 與 9 格手動存檔各自有沒有資料、摘要(第幾天/
+// 給共用讀取清單使用：autosave 與 10 格手動存檔各自有沒有資料、摘要(第幾天/
 // 季節/在哪張地圖)。故意不讀 elapsed 算到分鐘，摘要只求一眼看出「這格
 // 大概是哪次進度」，不是精確時間戳記。
 export function getSaveSlotSummaries(): SaveSlotSummary[] {
@@ -492,17 +493,15 @@ addEventListener("keydown", (event) => {
   }
 });
 
-// 2026-08-26 存檔熱鍵改版：Shift+1~9 存到對應格、1~9(不按 Shift)直接讀
-// 對應格，取代原本只有一格的 F6/F9。用 event.code 判斷("Digit1".."Digit9")
-// 而不是 event.key——按 Shift 時 .key 在美式鍵盤會變成 "!"/"@" 這種符號，
-// 不再是 "1"/"2"，用 code 才不受 Shift/鍵盤配置影響。跟二選一提示的數字鍵
+// Shift+1~9 存到第 1~9 格，Shift+0 存到第 10 格；不按 Shift 直接讀取。
+// 用 event.code 判斷 Digit0..Digit9，避免 Shift 改變 event.key。跟二選一提示的數字鍵
 // 選項共用同一批鍵位，靠 activeChoice/dialogQueue/isInventoryOpen 這三個
 // 既有守衛擋開，對話框開著時數字鍵照舊只選對話選項，不會誤觸存讀檔；
 // cutsceneActive 期間也擋掉，過場演出中不該被存讀檔打斷。讀檔沒有二次
 // 確認——Zeppelin 明確要求「直接讀」，不要跳確認框。
 addEventListener("keydown", (event) => {
-  const digitMatch = /^Digit([1-9])$/.exec(event.code);
-  if (!digitMatch) return;
+  const slotNum = saveSlotForDigitCode(event.code);
+  if (slotNum === null) return;
   if (
     !gameState.player ||
     gameState.cutsceneActive ||
@@ -512,7 +511,6 @@ addEventListener("keydown", (event) => {
   )
     return;
   event.preventDefault();
-  const slotNum = Number(digitMatch[1]);
   if (event.shiftKey) {
     setActiveSaveSlot(slotNum);
     saveGame("slot" + slotNum);

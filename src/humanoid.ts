@@ -1288,20 +1288,34 @@ export function addDefaultHumanoidSmile(
         pendant.position.set(0, 0.98, -0.174);
         group.add(pendant);
 
-        // 手臂保持自然下垂；半透明披袖掛在肩後，形成概念圖的大披帛輪廓。
+        // 短袖、前臂與手掌全部掛在同一個肩膀支點，並讓相鄰幾何稍微重疊；
+        // 各段若直接用世界座標分開旋轉，手肘處會像上一版一樣裂開。
+        // 半透明披袖仍掛在肩後，形成概念圖的大披帛輪廓。
         for (const side of [-1, 1]) {
-          const upperArm = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.05, 0.27, 7), skinMat);
-          upperArm.position.set(side * 0.235, 0.84, 0);
-          upperArm.rotation.z = side * -0.13;
-          group.add(upperArm);
-          const forearm = new THREE.Mesh(new THREE.CylinderGeometry(0.038, 0.045, 0.25, 7), skinMat);
-          forearm.position.set(side * 0.27, 0.59, -0.005);
-          forearm.rotation.z = side * -0.08;
-          group.add(forearm);
+          const armPivot = new THREE.Group();
+          armPivot.position.set(side * 0.225, 0.97, 0);
+          armPivot.rotation.z = side * -0.1;
+          const shortSleeve = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.072, 0.055, 0.24, 7),
+            paleBlueMat,
+          );
+          shortSleeve.position.y = -0.115;
+          armPivot.add(shortSleeve);
+          const sleeveCuff = new THREE.Mesh(
+            new THREE.TorusGeometry(0.055, 0.012, 5, 8),
+            goldMat,
+          );
+          sleeveCuff.position.y = -0.23;
+          sleeveCuff.rotation.x = Math.PI / 2;
+          armPivot.add(sleeveCuff);
+          const forearm = new THREE.Mesh(new THREE.CylinderGeometry(0.038, 0.048, 0.27, 7), skinMat);
+          forearm.position.y = -0.35;
+          armPivot.add(forearm);
           const hand = new THREE.Mesh(new THREE.SphereGeometry(0.047, 7, 5), skinMat);
           hand.scale.set(0.75, 1.18, 0.7);
-          hand.position.set(side * 0.285, 0.445, -0.015);
-          group.add(hand);
+          hand.position.y = -0.505;
+          armPivot.add(hand);
+          group.add(armPivot);
           const sleeve = new THREE.Mesh(new THREE.ConeGeometry(0.19, 0.64, 4, 1, true), sheerMat);
           sleeve.scale.set(0.72, 1, 0.58);
           sleeve.position.set(side * 0.29, 0.69, 0.08);
