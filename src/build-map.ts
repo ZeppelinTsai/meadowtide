@@ -2413,6 +2413,7 @@ export function buildMap(mapName) {
       bench.position.y += mountain.summit.elevation;
       gameState.mapGroup.add(bench);
       const summitMarker = new THREE.Group();
+      const summitShrine = mountain.summitShrine;
       const markerStone = new THREE.MeshStandardMaterial({
         color: 0x8f8b80,
         roughness: 1,
@@ -2423,9 +2424,9 @@ export function buildMap(mapName) {
       );
       ring.rotation.x = Math.PI / 2;
       ring.position.set(
-        summitCenterX + 2.5,
+        summitShrine.x,
         mountain.summit.elevation + 0.12,
-        summitCenterZ - 2.5,
+        summitShrine.z,
       );
       summitMarker.add(ring);
       const post = new THREE.Mesh(
@@ -2433,9 +2434,9 @@ export function buildMap(mapName) {
         markerStone,
       );
       post.position.set(
-        summitCenterX + 2.5,
+        summitShrine.x,
         mountain.summit.elevation + 0.55,
-        summitCenterZ - 2.5,
+        summitShrine.z,
       );
       summitMarker.add(post);
       gameState.mapGroup.add(summitMarker);
@@ -2451,13 +2452,12 @@ export function buildMap(mapName) {
       );
       gameState.mapGroup.add(summitTorii);
 
-      // 鳥居側邊的靜態守護者角色，面朝鳥居；純裝飾，不參與互動/排程。放在
-      // 鳥居正後方會被上樑在畫面上重疊擋住，改成站在旁側才看得清楚全身。
+      // 靜態守護者放在小型神壇左側；純裝飾，不參與互動或排程。
       const mountainGuardian = makeMountainGuardian();
       mountainGuardian.position.set(
-        mountain.skyPalaceGate.trigger.x - 1.7,
+        summitShrine.x + summitShrine.guardianOffsetX,
         mountain.summit.elevation,
-        mountain.skyPalaceGate.trigger.z,
+        summitShrine.z,
       );
       mountainGuardian.rotation.y = -Math.PI / 2;
       gameState.mapGroup.add(mountainGuardian);
