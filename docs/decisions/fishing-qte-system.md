@@ -13,7 +13,7 @@ v1.md`，裡面有完整設計來源、待確認事項、跟每一輪追加功�
 
 **串接方式**（刻意的單向依賴，避免循環 import）：`game-state.ts` 只放
 狀態欄位（`fishingState: "idle"|"casting"|"biting"|"reeling"`、
-`stamina`/`staminaMax`、`rodLevel`、`fishingQte`、`pendingFishTier`）；
+`rodLevel`、`fishingQte`、`pendingFishTier`）；
 `input-save.ts` 擁有全部狀態機轉換邏輯（收竿判定、QTE 按鍵即時判定、
 逐幀超時判定、`resolveFishCatch()` 收穫演出）——原因是它已經有
 `scene`/`makeFishProp`/`playRandomSfx`/`inventory` 這些依賴，而且
@@ -38,11 +38,10 @@ E 取消**（`input-save.ts`），原本「casting 中途按 E 沒有作用」�
 （貼在主角頭頂正上方，每幀用 `new THREE.Vector3(player.x, player.y+1.75,
 player.z).project(camera)` 算螢幕座標——這是跟著 `scene-sky.ts` 既有的
 `.project(camera)` 太陽/月亮天際遮罩用法抄的技巧，第一次用在 DOM 定位
-上），內含一條體力條 + 一個當下要按的按鍵/方向大字。兩組 UI 互斥顯示。
+上），內含一個當下要按的按鍵/方向大字。兩組 UI 互斥顯示。
 
 **已知簡化/未做**（完整清單見專案文件「還沒做」段落，這裡只列會影響
 之後改動的部分）：只有 `livingArea` 地圖能釣魚（`nearWater()` 判斷綁在
 `input-save.ts` 的 E 鍵處理，`currentMapName === "livingArea"` 這個條件
-寫死）；體力扣了不會回、沒有下限門檻；`rodLevel` 有欄位但沒有任何升級
-介面；魚的個性行為模版（快魚/深水魚/跳躍魚…）全部還是同一種隨機方向。
-
+寫死）；`rodLevel` 有欄位但沒有任何升級介面；魚的個性行為模版
+（快魚/深水魚/跳躍魚…）全部還是同一種隨機方向。

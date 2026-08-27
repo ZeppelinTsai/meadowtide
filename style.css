@@ -238,11 +238,9 @@ body {
   z-index: 15;
 }
 /* 釣魚 QTE 浮動提示——貼在主角頭頂正上方(螢幕座標由 game-loop.ts 每幀用
-   .project(camera) 算出來寫進 left/top，這裡只負責外觀)，取代 #fishHint
-   在 biting/reeling 這兩個「要馬上按鍵」狀態下的整句文字：體力條讓玩家
-   不用看 HUD 數字就知道還能撐幾次收竿，大按鍵符號讓玩家不用讀完整句話
-   就知道現在該按什麼。#fishHint 保留給 casting 提示跟收線後的結果通知
-   (釣到了/斷線了/跑掉了)這種不急著馬上動作的訊息，兩者互斥顯示。 */
+   .project(camera) 算出來寫進 left/top，這裡只負責外觀)。大按鍵符號讓玩家
+   不用讀完整句話就知道現在該按什麼；#fishHint 保留給 casting 提示跟收線後
+   的結果通知(釣到了/斷線了/跑掉了)，兩者互斥顯示。 */
 #fishActionHud {
   position: fixed;
   transform: translate(-50%, -100%);
@@ -250,21 +248,6 @@ body {
   pointer-events: none;
   z-index: 16;
   text-align: center;
-}
-#fishStaminaBar {
-  width: 46px;
-  height: 6px;
-  margin: 0 auto 4px;
-  background: rgba(10, 20, 30, 0.75);
-  border: 1px solid #5fb8e0;
-  border-radius: 4px;
-  overflow: hidden;
-}
-#fishStaminaFill {
-  height: 100%;
-  width: 100%;
-  background: #7be08a;
-  transition: width 0.15s ease, background-color 0.3s ease;
 }
 #fishActionKey {
   min-width: 28px;

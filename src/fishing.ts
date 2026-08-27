@@ -6,8 +6,8 @@
 // 音效跟畫面——那兩處目前用最陽春的文字提示(#fishHint)顯示，之後畫面
 // 版本確定了再換掉，不影響這裡的邏輯。
 //
-// 設計來源：claude/釣魚QTE系統設計筆記v1.md(專案文件)。所有數值(體力/
-// 權重/QTE次數/暴衝次數/判定秒數)都是草案，之後隨時可能依實際遊玩調整
+// 設計來源：claude/釣魚QTE系統設計筆記v1.md(專案文件)。所有數值(權重/
+// QTE次數/暴衝次數/判定秒數)都是草案，之後隨時可能依實際遊玩調整
 // ——這裡集中放，改起來只要動這個檔案。
 // ==============================================================
 
@@ -22,7 +22,6 @@ export type FishTierKey =
 export interface FishTierDef {
   key: FishTierKey;
   label: string;
-  staminaCost: number;
   baseQteMin: number;
   baseQteMax: number;
   // 暴衝次數範圍——不計入上面的 QTE 額度(見設計筆記 2.1 節)。
@@ -36,12 +35,11 @@ export interface FishTierDef {
   weight: number;
 }
 
-// 六階分級——體力/QTE 範圍/暴衝次數/時間預算照設計筆記表 1 抄。
+// 六階分級——QTE 範圍/暴衝次數/時間預算照設計筆記表 1 抄。
 export const FISH_TIERS: Record<FishTierKey, FishTierDef> = {
   trash: {
     key: "trash",
     label: "垃圾",
-    staminaCost: 0,
     baseQteMin: 0,
     baseQteMax: 0,
     rushMin: 0,
@@ -53,7 +51,6 @@ export const FISH_TIERS: Record<FishTierKey, FishTierDef> = {
   small: {
     key: "small",
     label: "小魚",
-    staminaCost: 3,
     baseQteMin: 3,
     baseQteMax: 3,
     rushMin: 0,
@@ -65,7 +62,6 @@ export const FISH_TIERS: Record<FishTierKey, FishTierDef> = {
   medium: {
     key: "medium",
     label: "中魚",
-    staminaCost: 6,
     baseQteMin: 4,
     baseQteMax: 5,
     rushMin: 1,
@@ -77,7 +73,6 @@ export const FISH_TIERS: Record<FishTierKey, FishTierDef> = {
   large: {
     key: "large",
     label: "大魚",
-    staminaCost: 9,
     baseQteMin: 5,
     baseQteMax: 6,
     rushMin: 1,
@@ -89,7 +84,6 @@ export const FISH_TIERS: Record<FishTierKey, FishTierDef> = {
   boss: {
     key: "boss",
     label: "魚霸主",
-    staminaCost: 12,
     baseQteMin: 6,
     baseQteMax: 7,
     rushMin: 2,
@@ -101,7 +95,6 @@ export const FISH_TIERS: Record<FishTierKey, FishTierDef> = {
   legendary: {
     key: "legendary",
     label: "特殊",
-    staminaCost: 15,
     baseQteMin: 7,
     baseQteMax: 9,
     rushMin: 3,

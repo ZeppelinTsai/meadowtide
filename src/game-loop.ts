@@ -546,11 +546,6 @@ export function animate(now) {
     ((window as any).__fishActionHudEl = document.getElementById(
       "fishActionHud",
     ));
-  const fishStaminaFillEl =
-    (window as any).__fishStaminaFillEl ||
-    ((window as any).__fishStaminaFillEl = document.getElementById(
-      "fishStaminaFill",
-    ));
   const fishActionKeyEl =
     (window as any).__fishActionKeyEl ||
     ((window as any).__fishActionKeyEl = document.getElementById(
@@ -577,8 +572,7 @@ export function animate(now) {
     if (gameState.fishingTimer >= gameState.biteWaitTime) {
       gameState.fishingState = "biting";
       gameState.biteWindowStart = gameState.elapsed;
-      // 2026-08-26 釣魚 QTE：咬鉤這一刻就把魚階抽出來定案(設計筆記 3.2
-      // 節)，體力則等玩家按 E 決定收竿才扣——兩個時間點刻意分開。
+      // 咬鉤這一刻就把魚階抽出來定案，等玩家按 E 決定是否進入拉扯期。
       gameState.pendingFishTier = rollFishTier();
       // 2026-08-26 上鉤提示要「大震動大音效」——咬鉤窗只有 1.1 秒，
       // 用最強的震動強度(見 gamepad-haptics.ts 的 FISHING_HAPTICS.bite)
@@ -633,8 +627,8 @@ export function animate(now) {
   } else {
     fishHintEl.style.display = "none";
   }
-  // 2026-08-26 釣魚 QTE 浮動 HUD——biting(按 E 收竿)/reeling(方向對抗)這兩個
-  // 「要馬上按鍵」的狀態改成貼在主角頭頂的體力條+單一按鍵提示(取代原本
+  // 釣魚 QTE 浮動 HUD——biting(按 E 收竿)/reeling(方向對抗)這兩個
+  // 「要馬上按鍵」的狀態改成貼在主角頭頂的單一按鍵提示(取代原本
   // #fishHint 的整句文字，見 index.html/style.css 的 #fishActionHud 註解)，
   // 跟上面的 #fishHint 互斥——同一時間只會有一邊在畫面上。
   if (
@@ -650,14 +644,6 @@ export function animate(now) {
     const screenY = (-FISH_HUD_PROJECT_VEC.y * 0.5 + 0.5) * window.innerHeight;
     fishActionHudEl.style.left = `${screenX}px`;
     fishActionHudEl.style.top = `${screenY}px`;
-
-    const staminaRatio = Math.max(
-      0,
-      Math.min(1, gameState.stamina / gameState.staminaMax),
-    );
-    fishStaminaFillEl.style.width = `${staminaRatio * 100}%`;
-    fishStaminaFillEl.style.backgroundColor =
-      staminaRatio > 0.5 ? "#7be08a" : staminaRatio > 0.25 ? "#e0c85f" : "#e05f5f";
 
     if (gameState.fishingState === "biting") {
       fishActionKeyEl.textContent = "E";

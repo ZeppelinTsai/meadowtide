@@ -49,13 +49,6 @@ export const gameState = {
   // actualQteCount())。目前遊戲裡還沒有升級竿具的管道(商店/工作台之類
   // 都還沒接)，先給個可以手動調的欄位，介面接上後再串。
   rodLevel: 0,
-  // 體力——目前遊戲裡沒有既有的體力/能量系統，這是釣魚 QTE 新加的資源，
-  // 只在咬鉤那一刻(biting 按 E)依魚階扣(見設計筆記 3.2 節「體力在這
-  // 一刻扣，不是下竿的時候」)。目前刻意不做「體力不夠不能釣」的硬性
-  // 門檻，扣到 0 就夾住不再往下扣，照樣讓你釣——回血/上限怎麼設計、
-  // 要不要真的擋著不給釣，留給你之後決定，這裡先讓數值看得到、動得了。
-  stamina: 100,
-  staminaMax: 100,
   // 拉扯期(reeling)的完整 QTE 進行狀態；不在拉扯期時是 null。
   // sequence 由 buildQteSequence() 產生，index 指向目前正在判定的事件，
   // windowStart 是目前這個事件的判定窗開始時間(elapsed)，
@@ -71,9 +64,8 @@ export const gameState = {
     rushPressed: boolean;
     judged: boolean;
   } | null,
-  // 咬鉤(casting→biting)那一刻就先抽好魚階(設計筆記 3.2 節：「魚的階級
-  // 已經確定」發生在咬鉤，體力則是玩家按 E 決定收竿的那一刻才扣)，
-  // 存在這裡等按 E 的時候用；biting 逾時魚跑掉/離開水邊取消釣魚都要
+  // 咬鉤(casting→biting)那一刻就先抽好魚階，存在這裡等玩家按 E
+  // 決定收竿時使用；biting 逾時魚跑掉/離開水邊取消釣魚都要
   // 記得清掉，不然下一次咬鉤沒重新抽會拿到舊魚階。
   pendingFishTier: null as import("./fishing").FishTierDef | null,
   // 牡蠣架收成的 UI 回饋——跟 fishFeedback 同一套「elapsed 到期就清掉」

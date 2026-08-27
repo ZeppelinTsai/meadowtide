@@ -862,9 +862,8 @@ addEventListener("keydown", (e) => {
       if (gameState.player.parts.rod)
         gameState.player.parts.rod.visible = false;
     } else if (gameState.fishingState === "biting") {
-      // 2026-08-26 釣魚 QTE：魚階在咬鉤那一刻(game-loop.ts 的
-      // casting→biting 轉換)就抽好存在 pendingFishTier，這裡只決定
-      // 「要不要進拉扯期」——體力在這一刻扣(設計筆記 3.2 節)。
+      // 魚階在咬鉤那一刻(game-loop.ts 的 casting→biting 轉換)就抽好
+      // 存在 pendingFishTier，這裡只決定要不要進入拉扯期。
       const tier = gameState.pendingFishTier;
       gameState.pendingFishTier = null;
       if (!tier) {
@@ -873,7 +872,6 @@ addEventListener("keydown", (e) => {
         resolveFishCatch(FISH_TIERS.trash);
         return;
       }
-      gameState.stamina = Math.max(0, gameState.stamina - tier.staminaCost);
       const qteCount = actualQteCount(tier, gameState.rodLevel);
       if (qteCount <= 0) {
         // 竿具等級已經把這個階級「畢業」掉(或本來就是垃圾魚)：跟原本
@@ -946,7 +944,7 @@ function triggerFishingEventOnsetHaptic(
 // 或是走完整個拉扯期序列成功時)。
 export function resolveFishCatch(tier: FishTierDef) {
   playRandomSfx(FISH_REEL_SFX);
-  // 垃圾魚維持原本零反饋(0 體力/0 QTE，本來就是「撿了就走」的等級)，
+  // 垃圾魚維持原本零 QTE（本來就是「撿了就走」的等級），
   // 真的釣到魚才給一次收穫震動，不然搖桿會震到膩。
   if (tier.key !== "trash") vibrateFishingHaptic("catchSuccess", tier.key);
   inventory.fish++;
@@ -1149,5 +1147,5 @@ export function updateHud() {
   hudEl.dataset.nightFactor = ((window as any).__nightFactor || 0).toFixed(3);
   const meteorShowerLabel = getMeteorShowerHudLabel();
   const weatherLabel = `${WEATHER_NAMES[gameState.currentWeather]}${meteorShowerLabel ? `・<b style="color:#a9d8ff">${meteorShowerLabel}</b>` : ""}`;
-  hudEl.innerHTML = `${SEASON_NAMES[gameState.currentSeason]}季 ・ 第 <b>${getSeasonDay()}</b> 日（${getSeasonPeriod()}）・ ${weatherLabel} ・ ${String(hh).padStart(2, "0")}:${String(mm).padStart(2, "0")}${gameState.musicMuted ? " ・ 靜音" : ""}<br>種子 <b>${inventory.seeds}</b> ・ 收成 <b>${inventory.harvested}</b> ・ 魚 <b>${inventory.fish}</b> ・ 體力 <b>${gameState.stamina}/${gameState.staminaMax}</b> ・ 料理 <b>${Object.values(inventory.dishes).reduce((a, b) => a + b, 0)}</b><br>村長印象 <b>${npcs[0].memory}</b> ・ 木匠印象 <b>${npcs[1].memory}</b>`;
+  hudEl.innerHTML = `${SEASON_NAMES[gameState.currentSeason]}季 ・ 第 <b>${getSeasonDay()}</b> 日（${getSeasonPeriod()}）・ ${weatherLabel} ・ ${String(hh).padStart(2, "0")}:${String(mm).padStart(2, "0")}${gameState.musicMuted ? " ・ 靜音" : ""}<br>種子 <b>${inventory.seeds}</b> ・ 收成 <b>${inventory.harvested}</b> ・ 魚 <b>${inventory.fish}</b> ・ 料理 <b>${Object.values(inventory.dishes).reduce((a, b) => a + b, 0)}</b><br>村長印象 <b>${npcs[0].memory}</b> ・ 木匠印象 <b>${npcs[1].memory}</b>`;
 }
