@@ -132,4 +132,4 @@
 選單
 背包
 存檔一般除錯
-釣魚消耗體力的系統要刪掉
+<div id="hud" data-active-meteors="0" data-night-factor="1.000">夏季 ・ 第 <b>13</b> 日（中旬）・ 晴・<b style="color:#a9d8ff">今晚：流星雨高峰</b> ・ 21:32</div>

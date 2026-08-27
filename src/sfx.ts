@@ -88,13 +88,10 @@ export const FISH_REEL_SFX = [
 // 立刻按 E」的強烈提示，跟拋竿/收竿那種背景質感的音效不是同一個等級。
 // SFX_VOLUME 已經是 1.0(全音量，見上面的說明)，音量已經拉滿沒有再往上
 // 的空間，所以「更大聲」是靠換一顆本身聽起來更巨大/更突兀的音效達成，
-// 不是靠調高音量參數。這裡用的是專案素材夾裡原本就有、但還沒有任何
-// 呼叫點用過的一顆鑼聲(freesound.org 素材，路徑保留原始檔名)——**這是
-// 憑檔名猜的，我沒有實際聽過內容**，跟拋竿/收竿那兩組「找質感最接近
-// 替代品」是同一種做法。如果聽起來不合適(太長、音色不對、跟拋竿音效
-// 撞在一起很怪)，直接告訴我要換哪一顆，或提供新素材放進
-// public/assets/audio/sfx/ 就能直接換掉這裡的路徑，呼叫端(game-loop.ts)
-// 不用動。
+// 不是靠調高音量參數。
+// 2026-08-27：原本這裡用的是猜檔名選的一顆鑼聲(freesound.org 素材)，
+// 沒人實際聽過內容——Zeppelin 換成 kenney_interface-sounds 素材包裡的
+// drop_004.ogg，路徑跟其他 SFX 常數同一套「相對 SFX_BASE_PATH」寫法。
 export const FISH_BITE_SFX = [
-  "466768__iut_paris8__machado_joanna_2018_2019_gongwav.wav",
+  "kenney_interface-sounds/Audio/drop_004.ogg",
 ];
