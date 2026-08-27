@@ -140,6 +140,7 @@ import {
   makeSmallGarden,
   makePortScene,
   makeToriiGate,
+  makeMountainSummitShrine,
   makeShrineHall,
   makeShrinePathCauseway,
   makeTownPlaceholder,
@@ -2412,34 +2413,14 @@ export function buildMap(mapName) {
       const bench = makeBench(summitCenterX - 5, summitCenterZ - 2, Math.PI);
       bench.position.y += mountain.summit.elevation;
       gameState.mapGroup.add(bench);
-      const summitMarker = new THREE.Group();
       const summitShrine = mountain.summitShrine;
-      const markerStone = new THREE.MeshStandardMaterial({
-        color: 0x8f8b80,
-        roughness: 1,
-      });
-      const ring = new THREE.Mesh(
-        new THREE.TorusGeometry(0.48, 0.11, 8, 18),
-        markerStone,
-      );
-      ring.rotation.x = Math.PI / 2;
-      ring.position.set(
+      const summitShrineModel = makeMountainSummitShrine();
+      summitShrineModel.position.set(
         summitShrine.x,
-        mountain.summit.elevation + 0.12,
+        mountain.summit.elevation,
         summitShrine.z,
       );
-      summitMarker.add(ring);
-      const post = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.07, 0.09, 0.9, 6),
-        markerStone,
-      );
-      post.position.set(
-        summitShrine.x,
-        mountain.summit.elevation + 0.55,
-        summitShrine.z,
-      );
-      summitMarker.add(post);
-      gameState.mapGroup.add(summitMarker);
+      gameState.mapGroup.add(summitShrineModel);
 
       // 山頂石標旁補一座小鳥居，呼應概念圖山頂那座小神社的意象；跟
       // 女神祠堂共用同一個 makeToriiGate()，不用另外做新造型。
@@ -2459,7 +2440,8 @@ export function buildMap(mapName) {
         mountain.summit.elevation,
         summitShrine.z,
       );
-      mountainGuardian.rotation.y = -Math.PI / 2;
+      // 人形預設面朝本地 -Z；旋轉 180 度後面向地圖下方（+Z）。
+      mountainGuardian.rotation.y = Math.PI;
       gameState.mapGroup.add(mountainGuardian);
 
       // 山腳平台補概念圖裡的長椅+營火+木欄杆+告示牌，這輪先只放在

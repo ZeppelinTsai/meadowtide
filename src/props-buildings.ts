@@ -1255,6 +1255,89 @@ export function makePortScene() {
 // +兩道橫樑(上樑較寬、下樑較窄，鳥居的招牌比例)，朱紅色。退潮步道跟
 // 祠堂本身的機制之後再接，這裡純粹是佔位地標。
 
+// 山頂的小型神壇（祠／hokora）。正面朝本地 +Z，和地圖畫面「下方」
+// 一致；原點位於石基座底部中央，呼叫端只需設定世界座標。
+export function makeMountainSummitShrine() {
+  const group = new THREE.Group();
+  const stoneMat = new THREE.MeshStandardMaterial({
+    color: 0x8f8b80,
+    roughness: 1,
+    flatShading: true,
+  });
+  const vermillionMat = new THREE.MeshStandardMaterial({
+    color: 0xb33b2a,
+    roughness: 0.88,
+  });
+  const plasterMat = new THREE.MeshStandardMaterial({
+    color: 0xe8ddc7,
+    roughness: 0.94,
+  });
+  const darkWoodMat = new THREE.MeshStandardMaterial({
+    color: 0x3a241c,
+    roughness: 0.96,
+  });
+  const goldMat = new THREE.MeshStandardMaterial({
+    color: 0xd5ac42,
+    emissive: new THREE.Color(0x5a3108),
+    emissiveIntensity: 0.16,
+    roughness: 0.55,
+  });
+  const addBox = (
+    width: number,
+    height: number,
+    depth: number,
+    x: number,
+    y: number,
+    z: number,
+    material: THREE.Material,
+  ) => {
+    const mesh = new THREE.Mesh(
+      new THREE.BoxGeometry(width, height, depth),
+      material,
+    );
+    mesh.position.set(x, y, z);
+    mesh.castShadow = true;
+    mesh.receiveShadow = true;
+    group.add(mesh);
+  };
+
+  // 兩階石座，讓小神壇即使在遠鏡頭也有清楚輪廓。
+  addBox(1.45, 0.16, 1.05, 0, 0.08, 0, stoneMat);
+  addBox(1.16, 0.16, 0.84, 0, 0.24, -0.02, stoneMat);
+
+  // 米白內龕、朱紅柱框與前方供台。
+  addBox(0.86, 0.82, 0.54, 0, 0.73, -0.1, plasterMat);
+  [-0.48, 0.48].forEach((x) =>
+    addBox(0.11, 0.92, 0.11, x, 0.76, 0.2, vermillionMat),
+  );
+  addBox(1.08, 0.12, 0.14, 0, 1.19, 0.2, vermillionMat);
+  addBox(0.76, 0.08, 0.34, 0, 0.47, 0.38, darkWoodMat);
+  addBox(0.38, 0.43, 0.04, 0, 0.79, 0.185, darkWoodMat);
+
+  const sacredMirror = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.13, 0.13, 0.035, 12),
+    goldMat,
+  );
+  sacredMirror.rotation.x = Math.PI / 2;
+  sacredMirror.position.set(0, 0.84, 0.22);
+  sacredMirror.castShadow = true;
+  group.add(sacredMirror);
+
+  // 四坡小屋頂與屋脊；深色大出簷讓它不再像石柱佔位。
+  const roof = new THREE.Mesh(
+    new THREE.ConeGeometry(1.02, 0.42, 4),
+    darkWoodMat,
+  );
+  roof.rotation.y = Math.PI / 4;
+  roof.scale.z = 0.72;
+  roof.position.set(0, 1.35, -0.02);
+  roof.castShadow = true;
+  group.add(roof);
+  addBox(0.9, 0.08, 0.08, 0, 1.58, -0.02, goldMat);
+
+  return group;
+}
+
 export function makeToriiGate() {
   const group = new THREE.Group();
   const mat = new THREE.MeshStandardMaterial({
