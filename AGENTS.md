@@ -51,6 +51,11 @@
 
 ## 技術限制（不要違反）
 
+- **所有 UI 可見文字的最終字級禁止小於 18px。** 這包含一般文字、按鈕、
+  small 副標、快捷鍵提示、頁籤、toast、HUD、表單標籤與響應式版面；
+  不可只讓父元素為 18px，卻在子元素或 media query 內縮小。修改 UI/CSS 後
+  必須搜尋 font-size 與相關縮寫，確認任何實際顯示給玩家的文字都至少
+  18px，並執行 npm run build。
 - **Three.js r128**：沒有 `THREE.CapsuleGeometry`（r142+ 才有），身體用
   `CylinderGeometry` + `SphereGeometry` 拼；沒有內建 `OrbitControls`。
 - **圖片素材規則：3D 世界 vs UI 層，不是全面禁止外部圖片。** 3D 世界本身
