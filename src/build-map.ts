@@ -2445,9 +2445,9 @@ export function buildMap(mapName) {
       const summitTorii = makeToriiGate();
       summitTorii.scale.setScalar(LANDMARK_TORII_SCALE);
       summitTorii.position.set(
-        summitCenterX,
+        mountain.skyPalaceGate.trigger.x,
         mountain.summit.elevation,
-        summitCenterZ + 3.2,
+        mountain.skyPalaceGate.trigger.z,
       );
       gameState.mapGroup.add(summitTorii);
 
@@ -2455,9 +2455,9 @@ export function buildMap(mapName) {
       // 鳥居正後方會被上樑在畫面上重疊擋住，改成站在旁側才看得清楚全身。
       const mountainGuardian = makeMountainGuardian();
       mountainGuardian.position.set(
-        summitCenterX - 1.7,
+        mountain.skyPalaceGate.trigger.x - 1.7,
         mountain.summit.elevation,
-        summitCenterZ + 3.2,
+        mountain.skyPalaceGate.trigger.z,
       );
       mountainGuardian.rotation.y = -Math.PI / 2;
       gameState.mapGroup.add(mountainGuardian);

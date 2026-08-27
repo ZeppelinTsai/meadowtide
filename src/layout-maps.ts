@@ -586,8 +586,8 @@ export const LAYOUT = {
     townArrival: { x: 22, z: 65, width: 3 },
     homeArrival: { x: 31, z: 34, width: 3 },
     skyPalaceGate: {
-      trigger: { x: 20, z: 14 },
-      arrival: { x: 20, z: 15 },
+      trigger: { x: 18, z: 12 },
+      arrival: { x: 18, z: 13 },
     },
     // 2026-08-25 二次調整：x 從 32.65 改成 33.5，貼齊 waist 平台邊界
     // (centerX+halfWidth=33.5，跟 build-map.ts addPlatform() 算的
