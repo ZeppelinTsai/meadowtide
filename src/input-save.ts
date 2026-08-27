@@ -466,6 +466,7 @@ addEventListener("keydown", (event) => {
     if (!gameState.player) return;
     if (isCameraAdjustModeActive()) {
       endCameraAdjustMode();
+      updateCameraFrustum();
     } else {
       beginCameraAdjustMode(
         gameState.player.position.x,
@@ -592,6 +593,14 @@ addEventListener("keydown", (e) => {
 // 的範圍下限，兩者不衝突。
 const ZOOM_MIN = 0.05;
 function setCameraZoom(zoom) {
+  if (isCameraAdjustModeActive()) {
+    // F4 是開發用自由視角：不套用各地圖的正常最大縮放限制。只保留大於零
+    // 的技術性下限，避免正交相機 frustum 退化成零面積。
+    gameState.zoom = Math.max(0.001, zoom);
+    updateCameraFrustum();
+    if (import.meta.env.DEV) console.info(`[zoom] ${gameState.zoom.toFixed(3)}`);
+    return;
+  }
   const maxZoom = gameState.currentMapName === "port" ? 20 : 18;
   gameState.zoom = Math.max(ZOOM_MIN, Math.min(maxZoom, zoom));
   updateCameraFrustum();

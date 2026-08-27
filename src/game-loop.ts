@@ -1286,7 +1286,13 @@ export function animate(now) {
   const cameraShotOverride = updateCameraShots(frameDt);
   const cameraAdjustOverride = cameraShotOverride
     ? null
-    : updateCameraAdjustMode(frameDt, false, false, false, false);
+    : updateCameraAdjustMode(
+        frameDt,
+        Boolean(keys["a"] || keys["arrowleft"]),
+        Boolean(keys["d"] || keys["arrowright"]),
+        Boolean(keys["w"] || keys["arrowup"]),
+        Boolean(keys["s"] || keys["arrowdown"]),
+      );
   const cameraOverride = cameraShotOverride ?? cameraAdjustOverride;
   if (cameraOverride) {
     gameState.zoom = cameraOverride.zoom;

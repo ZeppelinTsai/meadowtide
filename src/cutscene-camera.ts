@@ -133,6 +133,7 @@ let adjustFocusX = 0;
 let adjustFocusZ = 0;
 let adjustYaw = 0;
 let adjustPitch = Math.PI / 2 - Math.PI / 4;
+let adjustPreviousZoom = gameState.zoom;
 let dragButton = -1;
 let recordedShots: CameraShot[] = [];
 
@@ -143,6 +144,7 @@ export function isCameraAdjustModeActive(): boolean {
 export function beginCameraAdjustMode(startFocusX: number, startFocusZ: number) {
   stopCameraShots(); // 兩種接管模式互斥，開手動模式前先確保沒有清單在播
   adjustModeActive = true;
+  adjustPreviousZoom = gameState.zoom;
   adjustFocusX = startFocusX;
   adjustFocusZ = startFocusZ;
   adjustYaw = 0;
@@ -155,6 +157,7 @@ export function beginCameraAdjustMode(startFocusX: number, startFocusZ: number) 
 
 export function endCameraAdjustMode() {
   adjustModeActive = false;
+  gameState.zoom = adjustPreviousZoom;
   console.info("[鏡頭調整模式] 已關閉，鏡頭交還自動跟隨。");
 }
 
@@ -181,7 +184,7 @@ export function updateCameraAdjustMode(
   adjustFocusX += (rightX * move.x - forwardX * move.z) * ADJUST_PAN_SPEED * dt;
   adjustFocusZ += (rightZ * move.x - forwardZ * move.z) * ADJUST_PAN_SPEED * dt;
   adjustYaw -= look.x * 1.9 * dt;
-  adjustPitch = Math.max(0.17, Math.min(1.48, adjustPitch - look.y * 1.9 * dt));
+  adjustPitch -= look.y * 1.9 * dt;
   return { focusX: adjustFocusX, focusZ: adjustFocusZ, zoom: gameState.zoom, yaw: adjustYaw, pitch: adjustPitch };
 }
 
@@ -195,7 +198,7 @@ addEventListener("mousemove", (event) => {
   if (!adjustModeActive || dragButton < 0) return;
   if (dragButton === 2) {
     adjustYaw -= event.movementX * 0.006;
-    adjustPitch = Math.max(0.17, Math.min(1.48, adjustPitch - event.movementY * 0.006));
+    adjustPitch -= event.movementY * 0.006;
   } else {
     const scale = Math.max(0.004, gameState.zoom * 0.0025);
     const rightX = Math.cos(adjustYaw);
