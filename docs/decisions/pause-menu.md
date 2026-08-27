@@ -1,5 +1,10 @@
 # 遊戲中 Esc 暫停選單：src/pause-menu.ts
 
+左上角常駐 UI 的「隨時選單」按鈕與 Esc／手把 Start 共用
+pause-menu.ts 的 openPauseMenu() 流程；「資訊選單」按鈕則呼叫
+inventory-ui.ts 的 setInventoryOpen(true)。快捷按鈕不可複製選單狀態，
+也不可在過場、對話或另一個選單開啟時強行疊加介面。
+
 > 從 `AGENTS.md` 搬過來的架構/設計決策，仍然有效。
 
 ## 2026-08-26 新增，照抄 title-screen.ts 的架構

@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { inventory, RECIPES } from "./game-state";
+import { gameState, inventory, RECIPES } from "./game-state";
 import { ORE_TIERS } from "./mine";
 import { npcs } from "./npc-runtime";
 import {
@@ -246,6 +246,10 @@ addEventListener("keydown", (event) => {
 });
 
 closeButton.addEventListener("click", () => setInventoryOpen(false));
+document.getElementById("quickInfoMenuBtn")?.addEventListener("click", () => {
+  if (!gameState.player || gameState.cutsceneActive) return;
+  setInventoryOpen(true);
+});
 overlay.addEventListener("click", (event) => {
   if (event.target === overlay) setInventoryOpen(false);
 });

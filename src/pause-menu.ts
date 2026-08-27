@@ -40,6 +40,7 @@ export function initPauseMenu() {
   const resumeButton = byId<HTMLButtonElement>("pauseResumeBtn");
   const loadButton = byId<HTMLButtonElement>("pauseLoadBtn");
   const tutorialButton = byId<HTMLButtonElement>("pauseTutorialBtn");
+  const quickPauseButton = byId<HTMLButtonElement>("quickPauseMenuBtn");
   const systemButton = byId<HTMLButtonElement>("pauseSystemBtn");
   const quitButton = byId<HTMLButtonElement>("pauseQuitBtn");
   const quitMessage = byId<HTMLElement>("pauseQuitMessage");
@@ -159,6 +160,11 @@ export function initPauseMenu() {
   }
 
   resumeButton.addEventListener("click", closePauseMenu);
+  quickPauseButton.addEventListener("click", () => {
+    if (!gameState.player || gameState.cutsceneActive) return;
+    if (dialogQueue.length || activeChoice || isInventoryOpen()) return;
+    openPauseMenu();
+  });
   loadButton.addEventListener("click", () => setStep("loadSlots"));
   tutorialButton.addEventListener("click", () => setStep("tutorial"));
   tutorialBackButton.addEventListener("click", () => setStep("menu"));

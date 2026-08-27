@@ -17,10 +17,33 @@ body {
   border-radius: 8px;
   font-size: 13px;
   line-height: 1.6;
-  pointer-events: none;
+  pointer-events: auto;
+  display: flex;
+  gap: 8px;
 }
-#ui b {
-  color: #ffd479;
+.quickMenuBtn {
+  min-width: 112px;
+  padding: 9px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.34);
+  border-radius: 8px;
+  background: rgba(2, 18, 38, 0.86);
+  color: #fff;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+.quickMenuBtn small {
+  display: block;
+  margin-top: 2px;
+  color: #8ecfff;
+  font-size: 11px;
+  font-weight: 600;
+}
+.quickMenuBtn:hover,
+.quickMenuBtn:focus-visible {
+  background: rgba(19, 59, 91, 0.94);
+  outline: 3px solid #f2b84b;
+  outline-offset: 2px;
 }
 
 /* --- 共同定義：文字改暗色為主，並上白粗邊框 --- */

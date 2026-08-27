@@ -13,10 +13,14 @@
   </head>
   <body>
     <div id="ui">
-      <b>海風牧歌</b><br />
-      WASD：移動 ・ 滾輪：縮放 ・ E：互動/種植/收成/釣魚 ・ M：音樂靜音<br />
-      Q：資訊選單 ・ Esc：暫停選單 ・ Shift+1~9：存檔 ・ 1~9：讀檔<br />
-      <b style="color: #8ecfff">N：快轉時間</b>
+      <button id="quickInfoMenuBtn" class="quickMenuBtn" type="button" aria-keyshortcuts="Q">
+        資訊選單
+        <small>Q／Y</small>
+      </button>
+      <button id="quickPauseMenuBtn" class="quickMenuBtn" type="button" aria-keyshortcuts="Escape">
+        隨時選單
+        <small>Esc／Start</small>
+      </button>
     </div>
     <div id="hud" aria-label="日期與天氣">
       <div id="hudDate" class="hud-date"></div>
