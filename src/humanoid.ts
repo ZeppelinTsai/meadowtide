@@ -519,12 +519,19 @@ export function addDefaultHumanoidSmile(
           sideburn.position.set(side * 0.195, 1.06, -0.02); group.add(sideburn);
         }
         // 船帽——米色帽身＋深藍帽緣，蓋住大半頭頂。
+        // 2026-08-26：Zeppelin 反饋帽緣(深藍色那圈)下緣擋到眼睛——原本
+        // capBrim(y=1.19，範圍 1.175~1.205)整圈是一片扁平的圓盤，跟
+        // 眉毛(brow，y=1.178，範圍約 1.171~1.185)在 y 方向重疊了一截，
+        // 從正面看帽緣剛好切過眉毛/眼睛的高度。capBody/capBrim/
+        // capButton 三個一起往上抬 0.025(帽身本來就是靠 hairCap 頭髮
+        // 幾何撐住視覺連續性，往上抬一點不會露出破洞)，讓帽緣下緣
+        // (現在約 1.2)清楚落在眉毛上緣(1.185)之上，不再擋到臉。
         const capBody = new THREE.Mesh(new THREE.SphereGeometry(0.225, 10, 7, 0, Math.PI * 2, 0, Math.PI * 0.62), capMat);
-        capBody.position.set(0, 1.2, 0.005); group.add(capBody);
+        capBody.position.set(0, 1.225, 0.005); group.add(capBody);
         const capBrim = new THREE.Mesh(new THREE.CylinderGeometry(0.235, 0.235, 0.03, 12), capTrimMat);
-        capBrim.position.set(0, 1.19, 0.005); group.add(capBrim);
+        capBrim.position.set(0, 1.215, 0.005); group.add(capBrim);
         const capButton = new THREE.Mesh(new THREE.SphereGeometry(0.014, 6, 4), brassMat);
-        capButton.position.set(0, 1.3, 0.005); group.add(capButton);
+        capButton.position.set(0, 1.325, 0.005); group.add(capButton);
 
         const nose = new THREE.Mesh(new THREE.ConeGeometry(0.028, 0.062, 5), skinMat);
         nose.rotation.x = Math.PI / 2; nose.position.set(0, 1.09, -0.195); group.add(nose);
