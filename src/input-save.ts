@@ -108,6 +108,7 @@ import {
   restoreRelationships,
 } from "./affection";
 import { completeNpcDailyConversation } from "./affection-ui";
+import { weatherIconSvg } from "./weather-icons";
 import {
   scene,
   renderer,
@@ -518,6 +519,15 @@ addEventListener("keydown", (event) => {
 export const keys = {};
 addEventListener("keydown", (e) => (keys[e.key.toLowerCase()] = true));
 addEventListener("keyup", (e) => (keys[e.key.toLowerCase()] = false));
+
+function releaseAllGameplayKeys() {
+  Object.keys(keys).forEach((key) => (keys[key] = false));
+  gameState.ePressed = false;
+}
+addEventListener("blur", releaseAllGameplayKeys);
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden) releaseAllGameplayKeys();
+});
 
 addEventListener("keydown", (event) => {
   if (
@@ -1234,16 +1244,6 @@ export function collidesAt(mapName, x, z, half = 0.22) {
 
 const WEEKDAY_NAMES = ["日", "一", "二", "三", "四", "五", "六"] as const;
 
-const WEATHER_EMOJI: Record<string, string> = {
-  clear: "☀️",
-  cloudy: "☁️",
-  rain: "🌧️",
-  typhoon: "🌀",
-  storm: "⛈️",
-  snow: "❄️",
-  blizzard: "🌨️",
-};
-
 /** 依「遊戲日」推星期；第 1 天當週日，之後循環。 */
 function weekdayLabelForDay(day: number): string {
   const idx = (((Math.max(1, Math.floor(day)) - 1) % 7) + 7) % 7;
@@ -1306,12 +1306,11 @@ export function updateHud() {
     const day = gameState.currentDay + offset;
     const weatherKey =
       offset === 0 ? gameState.currentWeather : weatherForDay(day);
-    const emoji = WEATHER_EMOJI[weatherKey] ?? "🌡️";
     const label = WEATHER_NAMES[weatherKey] ?? weatherKey;
 
     const emojiEl = dayEl.querySelector(".hud-weather-emoji");
     const labelEl = dayEl.querySelector(".hud-weather-label");
-    if (emojiEl) emojiEl.textContent = emoji;
+    if (emojiEl) emojiEl.innerHTML = weatherIconSvg(weatherKey);
     if (labelEl) {
       // 流星雨只掛在「今天」
       labelEl.innerHTML =

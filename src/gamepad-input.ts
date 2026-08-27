@@ -77,11 +77,49 @@ function syncKey(key: keyof typeof prevHeld, held: boolean) {
   prevHeld[key] = held;
 }
 
+function releaseAllGamepadInputs() {
+  (Object.keys(prevHeld) as Array<keyof typeof prevHeld>).forEach((key) => {
+    if (prevHeld[key]) dispatchKey("keyup", key);
+    prevHeld[key] = false;
+  });
+  (Object.keys(prevUiDirection) as Array<keyof typeof prevUiDirection>).forEach(
+    (key) => {
+      if (prevUiDirection[key]) {
+        dispatchKey("keyup", "Arrow" + key[0].toUpperCase() + key.slice(1));
+      }
+      prevUiDirection[key] = false;
+    },
+  );
+  leftStickX = 0;
+  leftStickZ = 0;
+  rightStickX = 0;
+  rightStickY = 0;
+  prevUiConfirm = false;
+  prevCancelButton = false;
+  prevZoomIn = false;
+  prevZoomOut = false;
+  prevRightStickButton = false;
+  prevStartButton = false;
+  prevSelectButton = false;
+  prevShoulder.left = false;
+  prevShoulder.right = false;
+}
+addEventListener("blur", releaseAllGamepadInputs);
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden) releaseAllGamepadInputs();
+});
+
 /** game-loop.ts 的 animate() 每幀呼叫——讀搖桿左搖桿/d-pad/A 鍵目前
  * 狀態，轉成合成鍵盤事件丟出去，跟玩家實際按鍵盤是同一條路徑，下游
  * (移動、E 鍵互動、拉扯期方向判定)完全不用區分輸入來源。找不到搖桿
  * 直接跳過，不影響鍵盤操作。 */
 export function pollGamepad() {
+  // 背景分頁的 rAF 雖會降頻但不保證完全停止；不可在 blur 清掉後又立刻
+  // 從仍偏著的搖桿重新合成 keydown，否則回到前景仍會自動行走。
+  if (document.hidden || !document.hasFocus()) {
+    releaseAllGamepadInputs();
+    return;
+  }
   const pad = firstConnectedGamepad();
   if (!pad) return;
 

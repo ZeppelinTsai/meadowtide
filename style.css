@@ -142,6 +142,11 @@ body {
   /* 移除原本的 drop-shadow，改用黑邊的整體陰影 (可選) */
   box-shadow: 0 2px 4px rgba(73, 48, 37, 0.15);
 }
+.hud-weather-emoji svg {
+  display: block;
+  width: 30px;
+  height: 30px;
+}
 
 .hud-weather-label {
   font-size: 18px;
