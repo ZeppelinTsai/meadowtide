@@ -523,15 +523,30 @@ export function addDefaultHumanoidSmile(
         // capBrim(y=1.19，範圍 1.175~1.205)整圈是一片扁平的圓盤，跟
         // 眉毛(brow，y=1.178，範圍約 1.171~1.185)在 y 方向重疊了一截，
         // 從正面看帽緣剛好切過眉毛/眼睛的高度。capBody/capBrim/
-        // capButton 三個一起往上抬 0.025(帽身本來就是靠 hairCap 頭髮
-        // 幾何撐住視覺連續性，往上抬一點不會露出破洞)，讓帽緣下緣
-        // (現在約 1.2)清楚落在眉毛上緣(1.185)之上，不再擋到臉。
+        // capButton 三個一起往上抬 0.025，讓帽緣下緣落到眉毛上緣之上。
+        // 2026-08-27：Zeppelin 在(鏡頭調整模式的近距離下)反饋帽子整個
+        // 抬太高、帽緣跟眉毛之間留了一截明顯的空隙，看起來像飄在頭上。
+        // 三個一起降回來 0.012(不是整個復原成 0.025 前的位置，只退
+        // 一半多一點)：capBrim 下緣落在 y≈1.188，眉毛上緣是 1.185，
+        // 留 0.003 的貼合誤差、視覺上是帽子自然貼著頭，又不會重新蓋到
+        // 眉毛/眼睛。
+        // 2026-08-27 再修一次：貼近特寫下 Zeppelin 反饋帽身白色(米色)
+        // 蓋過帽緣的深藍色、深藍看起來被穿過去了。算過幾何才發現
+        // capBody 是球體，最寬的地方在赤道(y=1.213，剛好等於自己的
+        // position.y，半徑就是完整的 0.225)；capBrim 是圓柱，整個
+        // 高度範圍(y: 1.188~1.218)半徑固定 0.235，赤道那個高度剛好落在
+        // 帽緣範圍內，理論上帽緣(0.235)還是比帽身赤道(0.225)寬——但
+        // 只寬 0.01，一般 zoom 看不出來，貼到極限特寫(這幾輪剛把
+        // ZOOM_MIN 降到 0.05)這種細節就藏不住了，稍微一個轉角/半透明
+        // 邊緣就像穿過去。capBrim 半徑加大到 0.26(不動 capBody)，跟
+        // 帽身赤道的間距從 0.01 拉開到 0.035，特寫下也留得住清楚的深藍
+        // 帽緣，不會有部分被米色蓋過去的錯覺。
         const capBody = new THREE.Mesh(new THREE.SphereGeometry(0.225, 10, 7, 0, Math.PI * 2, 0, Math.PI * 0.62), capMat);
-        capBody.position.set(0, 1.225, 0.005); group.add(capBody);
-        const capBrim = new THREE.Mesh(new THREE.CylinderGeometry(0.235, 0.235, 0.03, 12), capTrimMat);
-        capBrim.position.set(0, 1.215, 0.005); group.add(capBrim);
+        capBody.position.set(0, 1.213, 0.005); group.add(capBody);
+        const capBrim = new THREE.Mesh(new THREE.CylinderGeometry(0.26, 0.26, 0.03, 12), capTrimMat);
+        capBrim.position.set(0, 1.203, 0.005); group.add(capBrim);
         const capButton = new THREE.Mesh(new THREE.SphereGeometry(0.014, 6, 4), brassMat);
-        capButton.position.set(0, 1.325, 0.005); group.add(capButton);
+        capButton.position.set(0, 1.313, 0.005); group.add(capButton);
 
         const nose = new THREE.Mesh(new THREE.ConeGeometry(0.028, 0.062, 5), skinMat);
         nose.rotation.x = Math.PI / 2; nose.position.set(0, 1.09, -0.195); group.add(nose);

@@ -502,9 +502,29 @@ addEventListener("keydown", (e) => {
     if (advanceChoicePage()) e.preventDefault();
   }
 });
+// 2026-08-27：Zeppelin 反饋鏡頭調整模式(F4)能拉近的極限不夠，希望至少
+// 跟第一人稱(first-person-camera.ts)貼近角色的程度一樣近，用來試演出
+// 構圖。下限原本是 2(camera.top/bottom = ±2，畫面總高度 4 世界單位)，
+// 先降到 0.5、再降到 0.25(整張臉框滿)。追問「能特寫到瞳孔嗎」，確認
+// 後 Zeppelin 澄清：不是真的要看瞳孔這個部件，是「儘可能特寫到看得清楚
+// 眼睛」，而且目前低模眼睛(沒有分虹膜/瞳孔、沒有貼圖，見
+// humanoid.ts)之後模型可能會換掉——換句話說現在不用因為顧慮目前模型在
+// 極限特寫下不好看而保守，相機能拉多近就拉多近，畫面粗糙是模型的事，
+// 之後模型換了自然會變好看。這個系統是正交相機，`zoom` 只是決定
+// camera.top/bottom 這個frustum半高，沒有「太近會撞到角色」這種物理
+// 限制(camDist 在 game-loop.ts 另外算，永遠維持 >=16 個世界單位遠，
+// 跟 zoom 無關)，理論上可以趨近 0 沒有下限；只是數字趨近 0 沒有意義
+// (frustum 趨近 0 大小，等於整個畫面只剩一個點)。降到 0.05(總高度
+// 0.1 世界單位，這顆角色單眼含眉毛的高度大概就在這個量級)當作「已經
+// 沒有再往下的實際用途」的下限，比技術上的 0 更安全、也已經遠遠超過
+// 一般構圖會用到的範圍。
+// docs/decisions/camera-zoom.md 的 2/5/10/20 官方級距不變——那是給
+// 「寫進事件程式碼」的鏡頭選的固定值，這裡放寬的是手動試鏡頭時能碰到
+// 的範圍下限，兩者不衝突。
+const ZOOM_MIN = 0.05;
 function setCameraZoom(zoom) {
   const maxZoom = gameState.currentMapName === "port" ? 20 : 18;
-  gameState.zoom = Math.max(2, Math.min(maxZoom, zoom));
+  gameState.zoom = Math.max(ZOOM_MIN, Math.min(maxZoom, zoom));
   updateCameraFrustum();
   // 2026-08-26 Zeppelin 要求：滾輪調 zoom 時印出目前值，方便試序幕
   // 演出(prologue.ts)該用哪個 zoom 時直接看 console 記下來，不用自己
@@ -513,8 +533,19 @@ function setCameraZoom(zoom) {
     console.info(`[zoom] ${gameState.zoom.toFixed(2)}`);
   }
 }
+// 2026-08-27：原本是「每次滾輪固定加減 e.deltaY*0.01」的線性 step——
+// zoom 範圍還是 2~18 時感覺剛好，但下限放寬到 0.05 之後(見上面
+// ZOOM_MIN 那段註解，現在整個範圍是 0.05~20，400 倍跨度)，同一個固定
+// step 在低 zoom 那端就太粗了：從 0.05 開始只要滾一格(deltaY 一般
+// ±100 上下)就直接跳過 1，遠距離那端反而滾好幾格才有感覺，調不出貼臉
+// 特寫需要的細微差異。改成乘法(依目前 zoom 等比例縮放，而不是固定加
+// 減量)：deltaY 每 1000 對應約 2.7 倍(e^1≈2.72)，玩家常見的一格滾輪
+// (deltaY≈±100)大概是 ±10% 左右——不管現在 zoom 是 0.05 還是 18，同一
+// 格滾輪感覺到的「相對」縮放幅度一致，這也是觸控雙指縮放
+// (pinchStartZoom*pinchStartDistance/distance，本來就是比例縮放)一直
+// 以來的做法，滾輪這裡只是補齊同一套邏輯。
 addEventListener("wheel", (e) => {
-  setCameraZoom(gameState.zoom + e.deltaY * 0.01);
+  setCameraZoom(gameState.zoom * Math.exp(e.deltaY * 0.001));
 });
 
 let pinchStartDistance = 0;
