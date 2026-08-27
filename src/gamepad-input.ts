@@ -109,7 +109,7 @@ export function pollGamepad() {
   syncKey("s", dz > 0);
   syncKey("e", !!pad.buttons[0]?.pressed);
   syncKey("r", !!pad.buttons[1]?.pressed); // B 鍵（standard mapping）＝收割牧草
-  syncKey("q", !!pad.buttons[3]?.pressed); // Y 鍵（standard mapping）＝背包
+  syncKey("q", !!pad.buttons[3]?.pressed); // Y 鍵（standard mapping）＝資訊選單
 
   const leftShoulder = !!pad.buttons[4]?.pressed;
   const rightShoulder = !!pad.buttons[5]?.pressed;

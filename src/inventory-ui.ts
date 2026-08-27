@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import { inventory, RECIPES } from "./game-state";
 import { ORE_TIERS } from "./mine";
+import { npcs } from "./npc-runtime";
 import {
   makeCropMesh,
   makeFishProp,
@@ -11,7 +12,7 @@ import {
 } from "./props";
 import { setTimePauseSource } from "./time-pause";
 
-type InventoryTab = "bag" | "materials" | "cooking";
+type InventoryTab = "bag" | "materials" | "cooking" | "relationships";
 type InventoryEntry = {
   id: string;
   tab: InventoryTab;
@@ -23,9 +24,10 @@ type InventoryEntry = {
 };
 
 const TABS: { id: InventoryTab; label: string }[] = [
-  { id: "bag", label: "背包" },
+  { id: "bag", label: "物品" },
   { id: "materials", label: "素材" },
   { id: "cooking", label: "料理" },
+  { id: "relationships", label: "關係" },
 ];
 
 const overlay = document.getElementById("inventoryOverlay") as HTMLDivElement;
@@ -131,6 +133,11 @@ function setActiveTab(index: number, focus = false) {
 export function renderInventory() {
   grid.innerHTML = "";
   const activeId = TABS[activeTabIndex].id;
+  grid.classList.toggle("inventory-grid-info", activeId === "relationships");
+  if (activeId === "relationships") {
+    renderRelationships();
+    return;
+  }
   const visibleEntries = inventoryEntries().filter((item) => item.tab === activeId);
   if (!visibleEntries.length) {
     const empty = document.createElement("div");
@@ -169,6 +176,26 @@ export function renderInventory() {
 
     slot.append(icon, count, label);
     grid.appendChild(slot);
+  });
+}
+
+function renderRelationships() {
+  const relationships = [
+    { id: "mayor", label: "村長" },
+    { id: "carpenter", label: "木匠" },
+  ];
+  relationships.forEach(({ id, label }) => {
+    const npc = npcs.find((entry) => entry.id === id);
+    const card = document.createElement("article");
+    card.className = "menu-info-card";
+    const heading = document.createElement("h3");
+    heading.textContent = label;
+    const value = document.createElement("strong");
+    value.textContent = String(npc?.memory ?? 0);
+    const caption = document.createElement("span");
+    caption.textContent = "印象";
+    card.append(heading, value, caption);
+    grid.appendChild(card);
   });
 }
 

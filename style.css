@@ -353,7 +353,7 @@ canvas {
   touch-action: none;
 }
 
-/* 背包：覆蓋遊戲畫面但保留世界作為暗色背景；開啟時由 inventory-ui.ts
+/* 資訊選單：覆蓋遊戲畫面但保留世界作為暗色背景；開啟時由 inventory-ui.ts
    登記 inventory 暫停來源，世界時間與角色操作一起暫停。 */
 #inventoryOverlay {
   position: fixed;
@@ -483,12 +483,21 @@ canvas {
   .inventory-slot { min-height: 110px; padding: 10px; }
   .inventory-icon { width: 44px; height: 44px; }
 }
-/* 背包分頁版：標題本身就是可聚焦 tab，不再另放「攜帶物品」或詳細說明。 */
+/* 資訊選單分頁：標題本身就是可聚焦 tab，不再另放「攜帶物品」或詳細說明。 */
 #inventoryTabs {
   display: flex;
   align-self: stretch;
   align-items: flex-end;
   gap: 6px;
+}
+.inventory-menu-label {
+  align-self: center;
+  margin-right: 8px;
+  color: #f2d08c;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  white-space: nowrap;
 }
 .inventory-tab {
   position: relative;
@@ -575,7 +584,42 @@ canvas {
   border: 1px dashed rgba(218, 188, 124, 0.24);
   border-radius: 10px;
 }
+.inventory-grid-info {
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)) !important;
+}
+.menu-info-card {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 5px 18px;
+  min-height: 92px;
+  padding: 18px 20px;
+  color: #ded8c9;
+  background: rgba(9, 15, 17, 0.58);
+  border: 1px solid rgba(220, 210, 185, 0.2);
+  border-radius: 10px;
+}
+.menu-info-card h3 {
+  grid-row: 1 / 3;
+  margin: 0;
+  color: #f3ead7;
+  font-size: 20px;
+}
+.menu-info-card strong {
+  justify-self: end;
+  color: #f2d08c;
+  font-size: 30px;
+  font-variant-numeric: tabular-nums;
+}
+.menu-info-card span {
+  justify-self: end;
+  color: rgba(232, 224, 205, 0.58);
+  font-size: 12px;
+}
 @media (max-width: 620px) {
+  .inventory-menu-label {
+    display: none;
+  }
   .inventory-tab {
     min-width: 74px;
     padding-inline: 10px;

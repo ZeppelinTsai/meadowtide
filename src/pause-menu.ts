@@ -210,7 +210,7 @@ export function initPauseMenu() {
     if (gameState.cutsceneActive) return; // 過場演出中不開暫停選單
     if (dialogQueue.length || activeChoice) return; // 對話/選擇進行中不開
     if (isInventoryOpen()) {
-      // Esc 順手兼背包的關閉鍵，比只能按 Q 關閉更符合直覺，兩邊不衝突。
+      // Esc 順手兼資訊選單的關閉鍵，比只能按 Q 關閉更符合直覺。
       event.preventDefault();
       setInventoryOpen(false);
       return;
