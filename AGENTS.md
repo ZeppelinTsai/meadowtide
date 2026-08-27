@@ -156,6 +156,7 @@
 - 存檔系統(9 格、Shift+1-9 存/1-9 讀、每日 06:00 自動存檔) `input-save.ts`/`game-clock.ts` → `docs/decisions/save-slots.md`
 - 遊戲中 Esc/手把暫停選單(返回/讀取進度/系統/結束遊戲) `pause-menu.ts` → `docs/decisions/pause-menu.md`
 - 舊城鎮台地/步道 depthWrite 穿幫(第一人稱視角下房子底下看起來是空的) `build-map.ts` 的 `terraceMat`/tile===5 步道 → `docs/decisions/oldvillage-terrace-depthwrite.md`
+- `props.ts`(場景道具/建築/自然物件 factory)已拆成 `props-nature.ts`/`props-buildings.ts`/`props-decor.ts`/`props-resources.ts` 四檔，`props.ts` 只剩 re-export barrel → `docs/decisions/props-file-split.md`
 
 ## 採集點延後刷新與多 agent 提交
 
