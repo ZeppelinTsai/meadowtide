@@ -512,7 +512,21 @@ export function addDefaultHumanoidSmile(
         head.scale.set(0.92, 1.08, 0.92); head.position.y = 1.105;
         head.castShadow = true; group.add(head);
         // 灰黑短髮——只露出後腦杓跟兩側鬢角，頭頂大半被帽子蓋住。
-        const hairCap = new THREE.Mesh(new THREE.SphereGeometry(0.215, 9, 7), hairMat);
+        // 只取上半球：完整球體即使壓扁，前側仍會一路延伸到眼睛高度，
+        // 形成整片灰色面罩。下緣停在 y=1.16，僅露出帽緣下的髮際線；
+        // 兩側較長的頭髮仍交給下方獨立 sideburn 幾何。
+        const hairCap = new THREE.Mesh(
+          new THREE.SphereGeometry(
+            0.215,
+            9,
+            7,
+            0,
+            Math.PI * 2,
+            0,
+            Math.PI * 0.5,
+          ),
+          hairMat,
+        );
         hairCap.scale.set(1.02, 0.62, 1.0); hairCap.position.set(0, 1.16, 0.01); group.add(hairCap);
         for (const side of [-1, 1]) {
           const sideburn = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.09, 0.02), sideburnMat);
@@ -530,18 +544,10 @@ export function addDefaultHumanoidSmile(
         // 一半多一點)：capBrim 下緣落在 y≈1.188，眉毛上緣是 1.185，
         // 留 0.003 的貼合誤差、視覺上是帽子自然貼著頭，又不會重新蓋到
         // 眉毛/眼睛。
-        // 2026-08-27 再修一次：貼近特寫下 Zeppelin 反饋帽身白色(米色)
-        // 蓋過帽緣的深藍色、深藍看起來被穿過去了。算過幾何才發現
-        // capBody 是球體，最寬的地方在赤道(y=1.213，剛好等於自己的
-        // position.y，半徑就是完整的 0.225)；capBrim 是圓柱，整個
-        // 高度範圍(y: 1.188~1.218)半徑固定 0.235，赤道那個高度剛好落在
-        // 帽緣範圍內，理論上帽緣(0.235)還是比帽身赤道(0.225)寬——但
-        // 只寬 0.01，一般 zoom 看不出來，貼到極限特寫(這幾輪剛把
-        // ZOOM_MIN 降到 0.05)這種細節就藏不住了，稍微一個轉角/半透明
-        // 邊緣就像穿過去。capBrim 半徑加大到 0.26(不動 capBody)，跟
-        // 帽身赤道的間距從 0.01 拉開到 0.035，特寫下也留得住清楚的深藍
-        // 帽緣，不會有部分被米色蓋過去的錯覺。
-        const capBody = new THREE.Mesh(new THREE.SphereGeometry(0.225, 10, 7, 0, Math.PI * 2, 0, Math.PI * 0.62), capMat);
+        // 2026-08-27：帽冠原本取球面 0.62π，會越過赤道繼續往下延伸到
+        // y≈1.13；因此即使帽緣加寬，正面仍看得到白色帽冠穿到藍圈下方。
+        // 收成半球(0.5π)，讓帽冠底緣停在 y=1.213、藏在帽緣厚度內。
+        const capBody = new THREE.Mesh(new THREE.SphereGeometry(0.225, 10, 7, 0, Math.PI * 2, 0, Math.PI * 0.5), capMat);
         capBody.position.set(0, 1.213, 0.005); group.add(capBody);
         const capBrim = new THREE.Mesh(new THREE.CylinderGeometry(0.26, 0.26, 0.03, 12), capTrimMat);
         capBrim.position.set(0, 1.203, 0.005); group.add(capBrim);
