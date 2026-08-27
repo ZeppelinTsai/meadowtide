@@ -409,7 +409,10 @@ export function animate(now) {
     updatePrologueCutscene(dt);
   }
   if (gameState.isSitting) animateSit(gameState.player);
-  else animateRun(gameState.player, gameState.isMoving, gameState.elapsed);
+  // 室內與礦坑會暫停世界時間(gameState.elapsed)，但玩家仍能在場景內移動。
+  // 走路若使用世界時間當相位，就會只平移、不擺手腳；視覺動畫改讀持續前進
+  // 的 effectElapsed。是否播放仍由 isMoving 決定，選單／對話 dt=0 時不會踏步。
+  else animateRun(gameState.player, gameState.isMoving, gameState.effectElapsed);
   // 2026-08-26 第六輪反饋「主角剛落地是陷進碼頭的」——animateRun()/
   // animateSit() 剛剛那行會直接覆寫 position.y 成走路/待機用的 bob 值，
   // 序幕在 updatePrologueCutscene() 裡辛苦算出來的甲板/跳板/碼頭高度

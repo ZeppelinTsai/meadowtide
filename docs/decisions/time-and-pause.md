@@ -1,5 +1,12 @@
 # 遊戲時間節奏
 
+## 世界時間與視覺動畫時間
+
+室內與礦坑會暫停 gameState.elapsed，但場景內仍允許玩家行走。因此走路、
+待機、水波等純視覺動畫必須使用 gameState.effectElapsed 作為相位；是否實際
+播放則另外讀 isMoving 或 dt。不可用暫停中的世界時間驅動室內移動動畫，否則
+角色會正常位移但手腳停在固定姿勢。
+
 > 從 `AGENTS.md` 搬過來的架構決策，仍然有效——採集點座標規則也在裡面，改動前照樣要看。
 
 
@@ -33,4 +40,3 @@
 - 生活區西側背景山坡的基準角度由 `LAYOUT.mountainBand.slopeDegrees` 控制，
   目前為 30°；`makeWesternMountainTerrain()` 必須從這個角度計算線性抬升，
   不可另寫非線性高牆公式。修改後執行 `npm run build`。
-
