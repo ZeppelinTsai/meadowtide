@@ -18,7 +18,27 @@
       Q：資訊選單 ・ Esc：暫停選單 ・ Shift+1~9：存檔 ・ 1~9：讀檔<br />
       <b style="color: #8ecfff">N：快轉時間</b>
     </div>
-    <div id="hud"></div>
+    <div id="hud" aria-label="日期與天氣">
+      <div id="hudDate" class="hud-date"></div>
+      <div id="hudTime" class="hud-time"></div>
+      <div id="hudWeatherRow" class="hud-weather-row">
+        <div class="hud-weather-day" data-offset="0">
+          <span class="hud-weather-emoji"></span>
+          <span class="hud-weather-label"></span>
+          <span class="hud-weather-when">今天</span>
+        </div>
+        <div class="hud-weather-day" data-offset="1">
+          <span class="hud-weather-emoji"></span>
+          <span class="hud-weather-label"></span>
+          <span class="hud-weather-when">明天</span>
+        </div>
+        <div class="hud-weather-day" data-offset="2">
+          <span class="hud-weather-emoji"></span>
+          <span class="hud-weather-label"></span>
+          <span class="hud-weather-when">後天</span>
+        </div>
+      </div>
+    </div>
     <div id="inventoryOverlay" aria-hidden="true" data-game-menu="closed">
       <section
         id="inventoryPanel"
@@ -79,7 +99,12 @@
         </footer>
       </section>
     </div>
-    <div id="pauseMenu" aria-hidden="true" data-game-menu="closed" data-step="menu">
+    <div
+      id="pauseMenu"
+      aria-hidden="true"
+      data-game-menu="closed"
+      data-step="menu"
+    >
       <section
         id="pauseMenuPanel"
         class="pauseStep"
@@ -127,27 +152,79 @@
         <h2>玩法教學</h2>
         <p class="pauseTutorialLead">選擇想查看的項目</p>
         <div class="pauseTutorialList">
-          <button type="button" class="pauseTutorialTopic" data-tutorial-topic="walking">
+          <button
+            type="button"
+            class="pauseTutorialTopic"
+            data-tutorial-topic="walking"
+          >
             <span class="pauseTutorialTopicNumber">01</span>
-            <span><strong>第一章　基本操作</strong><small>移動、互動、選單與手把</small></span>
+            <span
+              ><strong>第一章　基本操作</strong
+              ><small>移動、互動、選單與手把</small></span
+            >
             <span aria-hidden="true">›</span>
           </button>
         </div>
-        <button type="button" id="pauseTutorialBackBtn" class="titleMenuBtn">返回</button>
+        <button type="button" id="pauseTutorialBackBtn" class="titleMenuBtn">
+          返回
+        </button>
       </section>
       <section id="pauseTutorialCardsPanel" class="pauseStep pauseTutorialStep">
         <header class="pauseTutorialCardsHeader">
-          <button type="button" id="pauseTutorialCardsBackBtn" class="pauseTutorialIconBtn" aria-label="返回教學清單">‹</button>
-          <div><span class="pauseTutorialEyebrow">玩法教學</span><h2>行走</h2></div>
-          <span id="pauseTutorialPageNumber" class="pauseTutorialPageNumber">1 / 3</span>
+          <button
+            type="button"
+            id="pauseTutorialCardsBackBtn"
+            class="pauseTutorialIconBtn"
+            aria-label="返回教學清單"
+          >
+            ‹
+          </button>
+          <div>
+            <span class="pauseTutorialEyebrow">玩法教學</span>
+            <h2>行走</h2>
+          </div>
+          <span id="pauseTutorialPageNumber" class="pauseTutorialPageNumber"
+            >1 / 3</span
+          >
         </header>
-        <div id="pauseTutorialCarousel" class="pauseTutorialCarousel" tabindex="0">
-          <button type="button" id="pauseTutorialPrevBtn" class="pauseTutorialArrow" aria-label="上一頁">‹</button>
+        <div
+          id="pauseTutorialCarousel"
+          class="pauseTutorialCarousel"
+          tabindex="0"
+        >
+          <button
+            type="button"
+            id="pauseTutorialPrevBtn"
+            class="pauseTutorialArrow"
+            aria-label="上一頁"
+          >
+            ‹
+          </button>
           <article class="pauseTutorialCard" aria-live="polite">
-            <div class="pauseTutorialShot"><img id="pauseTutorialImage" alt="" /><div id="pauseTutorialImageFallback" class="pauseTutorialImageFallback">遊戲截圖預留位置</div></div>
-            <div class="pauseTutorialCopy"><span id="pauseTutorialCardKicker"></span><h3 id="pauseTutorialCardTitle"></h3><p id="pauseTutorialCardText"></p><div id="pauseTutorialKeys" class="pauseTutorialKeys"></div></div>
+            <div class="pauseTutorialShot">
+              <img id="pauseTutorialImage" alt="" />
+              <div
+                id="pauseTutorialImageFallback"
+                class="pauseTutorialImageFallback"
+              >
+                遊戲截圖預留位置
+              </div>
+            </div>
+            <div class="pauseTutorialCopy">
+              <span id="pauseTutorialCardKicker"></span>
+              <h3 id="pauseTutorialCardTitle"></h3>
+              <p id="pauseTutorialCardText"></p>
+              <div id="pauseTutorialKeys" class="pauseTutorialKeys"></div>
+            </div>
           </article>
-          <button type="button" id="pauseTutorialNextBtn" class="pauseTutorialArrow" aria-label="下一頁">›</button>
+          <button
+            type="button"
+            id="pauseTutorialNextBtn"
+            class="pauseTutorialArrow"
+            aria-label="下一頁"
+          >
+            ›
+          </button>
         </div>
         <div id="pauseTutorialDots" class="pauseTutorialDots"></div>
         <p class="pauseTutorialHint">滾輪／← → 切換頁面</p>

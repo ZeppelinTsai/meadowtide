@@ -112,7 +112,11 @@ import {
   getMeteorShowerHudLabel,
   groundY,
 } from "./scene-sky";
-import { gatherNodeMeshes, oreNodeMeshes, setThresholdMarkersVisible } from "./scene-registries";
+import {
+  gatherNodeMeshes,
+  oreNodeMeshes,
+  setThresholdMarkersVisible,
+} from "./scene-registries";
 
 export const SAVE_KEY_PREFIX = "meadowtide.save.";
 // 2026-08-26 存檔改成 9 格：slot 參數變成 "slot1".."slot9"，"default" 是
@@ -499,7 +503,12 @@ addEventListener("keydown", (event) => {
       ? {
           kind: "success",
           title: "收割牧草",
-          text: "投餵機 +1（" + gameState.feederUnits + "／" + FEEDER_CAPACITY + "）",
+          text:
+            "投餵機 +1（" +
+            gameState.feederUnits +
+            "／" +
+            FEEDER_CAPACITY +
+            "）",
           until: gameState.elapsed + 2.6,
         }
       : {
@@ -736,7 +745,12 @@ addEventListener("keydown", (e) => {
     gameState.currentMapName === "livingArea"
   ) {
     const { x: gx, z: gz } = gameState.playerGridPos;
-    const nearNode = (n: { x: number; z: number; map: string; collected?: boolean }) =>
+    const nearNode = (n: {
+      x: number;
+      z: number;
+      map: string;
+      collected?: boolean;
+    }) =>
       n.map === gameState.currentMapName &&
       !n.collected &&
       Math.abs(n.x - gx) + Math.abs(n.z - gz) <= 1;
@@ -792,7 +806,10 @@ addEventListener("keydown", (e) => {
         );
         if (meshEntry) meshEntry.group.visible = false;
         for (let i = 0; i < 3; i++) {
-          const chip = makeOreChipDebris(result.tier.accentColor, Math.random());
+          const chip = makeOreChipDebris(
+            result.tier.accentColor,
+            Math.random(),
+          );
           chip.position.set(
             oreNode.x + (Math.random() - 0.5) * 0.3,
             gameState.player.position.y + 0.3,
@@ -829,7 +846,10 @@ addEventListener("keydown", (e) => {
         );
         if (meshEntry) meshEntry.group.visible = false;
         for (let i = 0; i < 3; i++) {
-          const chip = makeOreChipDebris(result.tier.accentColor, Math.random());
+          const chip = makeOreChipDebris(
+            result.tier.accentColor,
+            Math.random(),
+          );
           chip.position.set(
             oreNode.x + (Math.random() - 0.5) * 0.3,
             gameState.player.position.y + 0.3,
@@ -955,10 +975,7 @@ addEventListener("keyup", (e) => {
 // 震動，兩次中間那段等待窗刻意不震——安靜的空檔就是「暫停」的觸感，
 // 不是漏寫。呼叫點：fishingQte 剛建立時(第一個事件)、
 // advanceFishingQteAfterJudge() 換下一個事件時。
-function triggerFishingEventOnsetHaptic(
-  event: QteEvent,
-  tierKey: FishTierKey,
-) {
+function triggerFishingEventOnsetHaptic(event: QteEvent, tierKey: FishTierKey) {
   if (event.kind === "rush") vibrateRushSpin(tierKey);
   else vibrateDirectionalPull(event.fishDirection!, tierKey);
 }
@@ -984,9 +1001,7 @@ export function resolveFishCatch(tier: FishTierDef) {
   if (gameState.player.parts.rod) gameState.player.parts.rod.visible = false;
   gameState.fishFeedback = {
     text:
-      tier.key === "trash"
-        ? "釣到一些垃圾……"
-        : `釣到一隻魚！（${tier.label}）`,
+      tier.key === "trash" ? "釣到一些垃圾……" : `釣到一隻魚！（${tier.label}）`,
     until: gameState.elapsed + 1.4,
   };
   const flyingFish = makeFishProp(Math.random() * 100);
@@ -1097,7 +1112,11 @@ addEventListener("keydown", (e) => {
       1,
       Math.max(0, (gameState.elapsed - qte.windowStart) / event.windowSeconds),
     );
-    const judgement = judgeDirectionPress(event.fishDirection!, dir, pressRatio);
+    const judgement = judgeDirectionPress(
+      event.fishDirection!,
+      dir,
+      pressRatio,
+    );
     if (judgement === "perfect") qte.perfectCount++;
     vibrateFishingHaptic(judgement, qte.tier.key);
     qte.tension = clampTension(qte.tension + tensionDeltaFor(judgement));
@@ -1160,16 +1179,92 @@ export function collidesAt(mapName, x, z, half = 0.22) {
   crops: JSON.parse(JSON.stringify(cropState)),
 });
 
+const WEEKDAY_NAMES = ["日", "一", "二", "三", "四", "五", "六"] as const;
+
+const WEATHER_EMOJI: Record<string, string> = {
+  clear: "☀️",
+  cloudy: "☁️",
+  rain: "🌧️",
+  typhoon: "🌀",
+  storm: "⛈️",
+  snow: "❄️",
+  blizzard: "🌨️",
+};
+
+/** 依「遊戲日」推星期；第 1 天當週日，之後循環。 */
+function weekdayLabelForDay(day: number): string {
+  const idx = (((Math.max(1, Math.floor(day)) - 1) % 7) + 7) % 7;
+  return `${WEEKDAY_NAMES[idx]}`;
+}
+
+/**
+ * 讀未來某天的天氣。優先用已排程的 weatherSchedules，
+ * 沒有就用 rollWeatherForSeason 即時算（與實際跨日時一致即可）。
+ */
+function weatherForDay(day: number): string {
+  const key = String(day);
+  const scheduled = gameState.weatherSchedules?.[key];
+  if (typeof scheduled === "string" && scheduled) return scheduled;
+  // 若 schedules 結構是 { [day]: weather } 以外的寫法，再對齊 game-state 調整
+  try {
+    return rollWeatherForSeason(gameState.currentSeason, day);
+  } catch {
+    return gameState.currentWeather;
+  }
+}
 export const hudEl = document.getElementById("hud");
+const hudDateEl = document.getElementById("hudDate");
+const hudTimeEl = document.getElementById("hudTime");
+const hudWeatherDays = Array.from(
+  document.querySelectorAll<HTMLElement>("#hudWeatherRow .hud-weather-day"),
+);
+
 export function updateHud() {
+  if (!hudEl || !hudDateEl || !hudTimeEl) return;
+
   const gameHour = gameState.currentPhase * TIME_CONFIG.gameHoursPerDay;
   const hh = Math.floor(gameHour) % TIME_CONFIG.gameHoursPerDay;
   const mm = Math.floor((gameHour - Math.floor(gameHour)) * 60);
+
+  // 除錯用 dataset 維持
   hudEl.dataset.activeMeteors = String(
     meteorPool.filter((meteor) => meteor.active).length,
   );
   hudEl.dataset.nightFactor = ((window as any).__nightFactor || 0).toFixed(3);
+
+  // 標題：春季 ・ 第 3 日（上旬）・ 週二
+  // 改成春月3日(二)
+  const seasonName = SEASON_NAMES[gameState.currentSeason] ?? "";
+  const seasonDay = getSeasonDay();
+  const period = getSeasonPeriod();
+  const weekday = weekdayLabelForDay(gameState.currentDay);
+  hudDateEl.innerHTML =
+    seasonName + `月${seasonDay}日` + `<span>(${weekday})</span>`;
+
+  // 大字時間
+  hudTimeEl.textContent = `${String(hh).padStart(2, "0")}:${String(mm).padStart(2, "0")}`;
+
+  hudEl.classList.toggle("hud--muted", Boolean(gameState.musicMuted));
+
+  // 今天 / 明天 / 後天
   const meteorShowerLabel = getMeteorShowerHudLabel();
-  const weatherLabel = `${WEATHER_NAMES[gameState.currentWeather]}${meteorShowerLabel ? `・<b style="color:#a9d8ff">${meteorShowerLabel}</b>` : ""}`;
-  hudEl.innerHTML = `${SEASON_NAMES[gameState.currentSeason]}季 ・ 第 <b>${getSeasonDay()}</b> 日（${getSeasonPeriod()}）・ ${weatherLabel} ・ ${String(hh).padStart(2, "0")}:${String(mm).padStart(2, "0")}${gameState.musicMuted ? " ・ 靜音" : ""}`;
+  hudWeatherDays.forEach((dayEl) => {
+    const offset = Number(dayEl.dataset.offset) || 0;
+    const day = gameState.currentDay + offset;
+    const weatherKey =
+      offset === 0 ? gameState.currentWeather : weatherForDay(day);
+    const emoji = WEATHER_EMOJI[weatherKey] ?? "🌡️";
+    const label = WEATHER_NAMES[weatherKey] ?? weatherKey;
+
+    const emojiEl = dayEl.querySelector(".hud-weather-emoji");
+    const labelEl = dayEl.querySelector(".hud-weather-label");
+    if (emojiEl) emojiEl.textContent = emoji;
+    if (labelEl) {
+      // 流星雨只掛在「今天」
+      labelEl.innerHTML =
+        offset === 0 && meteorShowerLabel
+          ? `${label}<br><b style="color:#a9d8ff;font-size:10px">${meteorShowerLabel}</b>`
+          : label;
+    }
+  });
 }
