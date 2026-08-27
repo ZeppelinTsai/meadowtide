@@ -83,14 +83,10 @@ export function initTitleScreen() {
   function loadFromSlot(saveName: string, sourceSlot: number) {
     hideTitleScreen();
     setActiveSaveSlot(sourceSlot);
-    buildMap("livingArea");
-    loadMap("livingArea", undefined);
-    window.setTimeout(() => {
-      if (!loadGame(saveName)) {
-        console.warn(`[title-screen] 讀取 ${saveName} 失敗：找不到存檔`);
-      }
-      fadeIn();
-    }, 500);
+    if (!loadGame(saveName, { initializeTargetMap: true })) {
+      console.warn(`[title-screen] 讀取 ${saveName} 失敗：找不到存檔`);
+    }
+    fadeIn();
   }
 
   function openLoadSlots() {

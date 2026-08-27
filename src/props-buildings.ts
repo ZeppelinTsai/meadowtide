@@ -1323,17 +1323,21 @@ export function makeMountainSummitShrine() {
   sacredMirror.castShadow = true;
   group.add(sacredMirror);
 
-  // 四坡小屋頂與屋脊；深色大出簷讓它不再像石柱佔位。
-  const roof = new THREE.Mesh(
-    new THREE.ConeGeometry(1.02, 0.42, 4),
-    darkWoodMat,
-  );
-  roof.rotation.y = Math.PI / 4;
-  roof.scale.z = 0.72;
-  roof.position.set(0, 1.35, -0.02);
-  roof.castShadow = true;
-  group.add(roof);
-  addBox(0.9, 0.08, 0.08, 0, 1.58, -0.02, goldMat);
+  // 兩片式切妻屋頂：屋脊沿 X，坡面向前後（±Z）落下。不能再用四角
+  // ConeGeometry 旋轉 45 度，俯視投影會變菱形且四角罩不住龕體。
+  const roofAngle = Math.PI / 6;
+  const roofPanelDepth = 0.82;
+  [-1, 1].forEach((side) => {
+    const panel = new THREE.Mesh(
+      new THREE.BoxGeometry(1.5, 0.1, roofPanelDepth),
+      darkWoodMat,
+    );
+    panel.rotation.x = side * roofAngle;
+    panel.position.set(0, 1.38, side * 0.31);
+    panel.castShadow = true;
+    group.add(panel);
+  });
+  addBox(1.08, 0.09, 0.1, 0, 1.59, 0, goldMat);
 
   return group;
 }

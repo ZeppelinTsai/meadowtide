@@ -90,7 +90,7 @@ import {
   handleChoiceDigitKey,
   advanceChoicePage,
 } from "./dialogue";
-import { loadMap, isBlocked, events } from "./build-map";
+import { buildMap, loadMap, isBlocked, events } from "./build-map";
 import { isInventoryOpen } from "./inventory-ui";
 import {
   updateAvenueTreeColors,
@@ -262,7 +262,10 @@ export function saveGame(slot = "default") {
   return data;
 }
 
-export function loadGame(slot = "default") {
+export function loadGame(
+  slot = "default",
+  options: { initializeTargetMap?: boolean } = {},
+) {
   const raw = localStorage.getItem(SAVE_KEY_PREFIX + slot);
   if (!raw) return false;
   const data = JSON.parse(raw);
@@ -351,6 +354,12 @@ export function loadGame(slot = "default") {
       MOUNTAIN_ORE_NODES.length,
       ...data.mountainOreNodes,
     );
+  }
+  // 標題畫面讀檔時尚未建立任何正式場景。必須先還原上面的洞窟樓層、
+  // 礦點等狀態，再直接建置存檔目標地圖；不可先建立 livingArea 當中繼，
+  // 否則玩家會看見生活區後才跳到真正位置。
+  if (options.initializeTargetMap) {
+    buildMap(data.currentMapName || "livingArea");
   }
   if (data.player) {
     const targetMap = data.currentMapName || "livingArea";
