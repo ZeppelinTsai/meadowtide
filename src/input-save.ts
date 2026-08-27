@@ -1268,7 +1268,7 @@ export function updateHud() {
       // 流星雨只掛在「今天」
       labelEl.innerHTML =
         offset === 0 && meteorShowerLabel
-          ? `${label}<br><b style="color:#a9d8ff;font-size:10px">${meteorShowerLabel}</b>`
+          ? `${label}<br><b style="color:#a9d8ff;font-size:18px">${meteorShowerLabel}</b>`
           : label;
     }
   });

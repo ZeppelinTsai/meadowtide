@@ -144,7 +144,7 @@ body {
 }
 
 .hud-weather-label {
-  font-size: 11px;
+  font-size: 18px;
   white-space: nowrap;
   display: none;
 }
@@ -253,7 +253,7 @@ body {
   border: 2px dashed rgba(245, 197, 66, 0.6);
   border-radius: 8px;
   color: rgba(245, 197, 66, 0.85);
-  font-size: 13px;
+  font-size: 18px;
   line-height: 1.5;
   white-space: pre-line;
   pointer-events: none;
@@ -317,7 +317,7 @@ body {
 }
 .dialogChoiceNextBtn {
   font: inherit;
-  font-size: 16px;
+  font-size: 18px;
   color: rgba(245, 197, 66, 0.75);
   background: rgba(15, 15, 20, 0.7);
   border: 1px solid rgba(245, 197, 66, 0.5);
@@ -356,7 +356,7 @@ body {
   color: #dff3ff;
   padding: 8px 16px;
   border-radius: 10px;
-  font-size: 14px;
+  font-size: 18px;
   display: none;
   border: 1px solid #5fb8e0;
   z-index: 15;
@@ -440,12 +440,12 @@ body {
   gap: 2px;
 }
 #harvestToastTitle {
-  font-size: 12px;
+  font-size: 18px;
   letter-spacing: 0.04em;
   color: rgba(245, 197, 66, 0.85);
 }
 #harvestToastText {
-  font-size: 17px;
+  font-size: 18px;
   font-weight: 600;
   color: #fdf6e3;
 }
@@ -525,7 +525,7 @@ canvas {
 }
 .inventory-kicker {
   color: #b9c9b1;
-  font-size: 12px;
+  font-size: 18px;
   letter-spacing: 0.24em;
 }
 #inventoryTitle {
@@ -609,7 +609,7 @@ canvas {
 }
 .inventory-item-label {
   color: #ded8c9;
-  font-size: 14px;
+  font-size: 18px;
 }
 .inventory-item-count {
   position: absolute;
@@ -622,7 +622,7 @@ canvas {
 .inventory-footer {
   margin-top: 18px;
   color: rgba(232, 224, 205, 0.58);
-  font-size: 12px;
+  font-size: 18px;
   text-align: right;
 }
 @media (max-width: 620px) {
@@ -652,7 +652,7 @@ canvas {
   align-self: center;
   margin-right: 8px;
   color: #f2d08c;
-  font-size: 13px;
+  font-size: 18px;
   font-weight: 700;
   letter-spacing: 0.12em;
   white-space: nowrap;
@@ -667,7 +667,7 @@ canvas {
   border-bottom: 0;
   border-radius: 9px 9px 0 0;
   font: inherit;
-  font-size: 16px;
+  font-size: 18px;
   letter-spacing: 0.08em;
   cursor: pointer;
 }
@@ -776,7 +776,7 @@ canvas {
 .menu-info-card span {
   justify-self: end;
   color: rgba(232, 224, 205, 0.58);
-  font-size: 12px;
+  font-size: 18px;
 }
 @media (max-width: 620px) {
   .inventory-menu-label {
@@ -785,11 +785,11 @@ canvas {
   .inventory-tab {
     min-width: 74px;
     padding-inline: 10px;
-    font-size: 14px;
+    font-size: 18px;
   }
   #inventoryClose {
     padding-inline: 8px;
-    font-size: 11px;
+    font-size: 18px;
   }
 }
 
@@ -839,12 +839,12 @@ canvas {
   margin: 0 0 28px;
   color: #9a9a9a;
   letter-spacing: 0.3em;
-  font-size: 13px;
+  font-size: 18px;
   text-transform: uppercase;
 }
 #titlePrompt {
   margin: 0;
-  font-size: 16px;
+  font-size: 18px;
   color: #555;
   animation: titlePromptPulse 1.6s ease-in-out infinite;
 }
@@ -868,7 +868,7 @@ canvas {
 }
 .titleMenuBtn {
   font-family: inherit;
-  font-size: 16px;
+  font-size: 18px;
   padding: 12px 18px;
   border: 1px solid #2b2b2b;
   border-radius: 6px;
@@ -892,7 +892,7 @@ canvas {
 }
 #titleQuitMessage {
   margin-top: 18px;
-  font-size: 13px;
+  font-size: 18px;
   color: #9a9a9a;
 }
 #titleSystemHeading {
@@ -986,11 +986,11 @@ canvas {
   cursor: default;
 }
 .titleSlotNum {
-  font-size: 14px;
+  font-size: 18px;
   font-weight: 700;
 }
 .titleSlotSummary {
-  font-size: 11px;
+  font-size: 18px;
   opacity: 0.75;
   text-align: right;
 }
@@ -1031,7 +1031,7 @@ canvas {
   gap: 10px;
   text-align: center;
   padding: 28px 32px;
-  background: #fff;
+  background: #f3e7ce;
   color: #2b2b2b;
   border-radius: 10px;
   min-width: 260px;
@@ -1057,7 +1057,7 @@ canvas {
 }
 #pauseQuitMessage {
   margin-top: 18px;
-  font-size: 13px;
+  font-size: 18px;
   color: #9a9a9a;
 }
 #pauseLoadSlotsPanel .titleMenuBtn,
@@ -1106,7 +1106,7 @@ canvas {
 }
 .pauseTutorialTopicNumber {
   color: #947342;
-  font-size: 13px;
+  font-size: 18px;
   letter-spacing: 0.12em;
 }
 .pauseTutorialTopic strong,
@@ -1133,7 +1133,7 @@ canvas {
 }
 .pauseTutorialEyebrow {
   color: #947342;
-  font-size: 11px;
+  font-size: 18px;
   letter-spacing: 0.18em;
 }
 .pauseTutorialPageNumber {
@@ -1212,7 +1212,7 @@ canvas {
 }
 .pauseTutorialCopy > span {
   color: #947342;
-  font-size: 12px;
+  font-size: 18px;
   letter-spacing: 0.12em;
 }
 .pauseTutorialCopy h3 {
@@ -1237,7 +1237,7 @@ canvas {
   border: 1px solid #cbb992;
   border-bottom-width: 3px;
   border-radius: 6px;
-  font: 12px inherit;
+  font: 18px inherit;
 }
 .pauseTutorialDots {
   display: flex;
@@ -1260,7 +1260,7 @@ canvas {
 .pauseTutorialHint {
   margin: -4px 0 0;
   color: #8b8478;
-  font-size: 12px;
+  font-size: 18px;
 }
 @media (max-width: 720px) {
   .pauseTutorialStep {
