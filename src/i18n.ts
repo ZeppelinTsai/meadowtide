@@ -1,8 +1,7 @@
-// i18n.ts — 語言系統骨架。目前只有木匠事件（src/carpenter-quest.ts）真的
-// 掛了三種語言的翻譯，其餘對話（NPC 閒聊、其他角色事件）仍是純中文字串，
-// 這是刻意的試點範圍，不是遺漏。之後要幫哪個場景上多語言，把該場景的
-// 字串改成 t("key") 呼叫、把對應翻譯加進下面 TRANSLATIONS 就好，不用
-// 動這個檔案的 t()/setLocale() 本體。
+import { UI_TRANSLATIONS } from "./ui-translations";
+
+// i18n.ts — 共用語言入口。新文本使用 t("key")；既有中文 UI／對話在
+// 完成穩定 key 遷移前先走 translateText(source) 與 ui-translations.ts。
 //
 // 使用方式（瀏覽器 devtools console，遊戲跑起來之後就能打）：
 //   meadowtideI18n.setLocale("en")   // 切到英文
@@ -15,8 +14,7 @@
 // - 語言只在「下一次觸發新對話」時生效，已經顯示在畫面上的對話框不會
 //   即時重繪成新語言——因為 dialogue.ts 的 showDialogSequence() 是把整段
 //   對話陣列在觸發當下算好存進 dialogQueue，t() 只在那個當下被呼叫一次。
-// - 沒有持久化：重新整理頁面、或存讀檔，都會回到預設語言 zh；正式的語言
-//   選單（UI、記住玩家選擇存進存檔）之後有需求再做。
+// - 語言偏好由 settings.ts 保存，與音量／解析度同屬裝置設定，不綁單一存檔。
 // - 沒有處理立繪/CG 檔名依語言切換——目前所有語言共用同一套
 //   public/assets/portraits、public/assets/cg，不用另外準備多語言素材。
 
@@ -25,6 +23,10 @@ export const SUPPORTED_LOCALES: Locale[] = ["zh", "en", "ja"];
 export const DEFAULT_LOCALE: Locale = "zh";
 
 let currentLocale: Locale = DEFAULT_LOCALE;
+const localeListeners = new Set<(locale: Locale) => void>();
+const originalText = new WeakMap<Node, string>();
+const originalAttributes = new WeakMap<Element, Map<string, string>>();
+const warnedMissingSources = new Set<string>();
 
 export function getLocale(): Locale {
   return currentLocale;
@@ -38,10 +40,19 @@ export function setLocale(locale: string): boolean {
     return false;
   }
   currentLocale = locale as Locale;
+  if (typeof document !== "undefined") {
+    document.documentElement.lang = currentLocale === "zh" ? "zh-Hant" : currentLocale;
+  }
+  localeListeners.forEach((listener) => listener(currentLocale));
   console.log(
     `[i18n] 語言已切換為 "${currentLocale}"（下一次觸發的對話會套用新語言）`,
   );
   return true;
+}
+
+export function onLocaleChanged(listener: (locale: Locale) => void) {
+  localeListeners.add(listener);
+  return () => localeListeners.delete(listener);
 }
 
 type TranslationTree = { [key: string]: string | TranslationTree };
@@ -72,6 +83,41 @@ export function t(key: string): string {
   }
   console.warn(`[i18n] 找不到翻譯鍵 "${key}"`);
   return key;
+}
+
+/** Translate legacy source text while it is being migrated to stable t() keys. */
+export function translateText(source: string): string {
+  if (currentLocale === "zh") return source;
+  const translated = UI_TRANSLATIONS[currentLocale][source];
+  if (translated !== undefined) return translated;
+  if (import.meta.env.DEV && /[一-龥]/.test(source) && !warnedMissingSources.has(source)) {
+    warnedMissingSources.add(source);
+    console.warn(`[i18n] 尚缺 ${currentLocale} 原文翻譯：${source}`);
+  }
+  return source;
+}
+
+/** Translate static HTML text and accessibility attributes, preserving the zh source. */
+export function translateDocument(root: ParentNode = document) {
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+  let node: Node | null = null;
+  while ((node = walker.nextNode())) {
+    if (["SCRIPT", "STYLE"].includes(node.parentElement?.tagName || "")) continue;
+    if (!originalText.has(node)) originalText.set(node, node.textContent || "");
+    const source = originalText.get(node) || "";
+    const match = source.match(/^(\s*)(.*?)(\s*)$/s);
+    if (match && match[2]) node.textContent = match[1] + translateText(match[2]) + match[3];
+  }
+  root.querySelectorAll?.("[aria-label], [title], [alt]").forEach((element) => {
+    const saved = originalAttributes.get(element) || new Map<string, string>();
+    for (const attr of ["aria-label", "title", "alt"]) {
+      if (element.hasAttribute(attr) && !saved.has(attr)) {
+        saved.set(attr, element.getAttribute(attr) || "");
+      }
+      if (saved.has(attr)) element.setAttribute(attr, translateText(saved.get(attr)!));
+    }
+    originalAttributes.set(element, saved);
+  });
 }
 
 // ==============================================================
@@ -211,9 +257,7 @@ const TRANSLATIONS: Record<Locale, TranslationTree> = {
 };
 
 // ==============================================================
-// 瀏覽器 console 切換語言的入口。刻意不寫成 Vite 環境變數或正式 UI
-// 選單——現階段只是給你在瀏覽器開發者工具手動測試多語言對話用，正式的
-// 語言選單（UI、記住玩家選擇存進存檔）之後有需求再做。guard 住
+// 瀏覽器 console 切換語言的入口仍保留作除錯用途；正式入口在系統選單。
 // typeof window，避免這個模組萬一被 Node 腳本 import 時噴錯。
 // ==============================================================
 if (typeof window !== "undefined") {

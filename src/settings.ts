@@ -4,6 +4,7 @@ export type GameSettings = {
   sfxVolume: number;
   muted: boolean;
   windowResolution: string;
+  locale: "zh" | "ja" | "en";
 };
 
 const STORAGE_KEY = "meadowtide.settings";
@@ -13,6 +14,7 @@ const DEFAULTS: GameSettings = {
   sfxVolume: 1,
   muted: false,
   windowResolution: "1280x720",
+  locale: "zh",
 };
 const listeners = new Set<(settings: GameSettings) => void>();
 
@@ -33,6 +35,9 @@ function loadSettings(): GameSettings {
       windowResolution: typeof saved.windowResolution === "string"
         ? saved.windowResolution
         : DEFAULTS.windowResolution,
+      locale: ["zh", "ja", "en"].includes(saved.locale)
+        ? saved.locale
+        : DEFAULTS.locale,
     };
   } catch {
     return { ...DEFAULTS };

@@ -4,6 +4,7 @@ import { isInventoryOpen, setInventoryOpen } from "./inventory-ui";
 import { loadGame, setActiveSaveSlot } from "./input-save";
 import { renderSaveSlotButtons } from "./save-slot-ui";
 import { mountSystemSettings } from "./system-settings-ui";
+import { translateText } from "./i18n";
 
 // ==============================================================
 // 遊戲中 Esc 暫停選單——2026-08-26 Zeppelin 要求「參照主選單或背包做好
@@ -72,18 +73,18 @@ export function initPauseMenu() {
 
   function renderTutorialPage() {
     const page = WALKING_TUTORIAL[tutorialPage];
-    tutorialCardKicker.textContent = page.kicker;
-    tutorialCardTitle.textContent = page.title;
-    tutorialCardText.textContent = page.text;
+    tutorialCardKicker.textContent = translateText(page.kicker);
+    tutorialCardTitle.textContent = translateText(page.title);
+    tutorialCardText.textContent = translateText(page.text);
     tutorialPageNumber.textContent = `${tutorialPage + 1} / ${WALKING_TUTORIAL.length}`;
     tutorialKeys.replaceChildren(...page.keys.map((label) => {
       const key = document.createElement("kbd");
-      key.textContent = label;
+      key.textContent = translateText(label);
       return key;
     }));
     tutorialImage.hidden = true;
     tutorialImageFallback.hidden = false;
-    tutorialImage.alt = page.alt;
+    tutorialImage.alt = translateText(page.alt);
     tutorialImage.onload = () => {
       tutorialImage.hidden = false;
       tutorialImageFallback.hidden = true;

@@ -1,5 +1,6 @@
 import { gameSettings, toggleMasterMuted, updateSettings } from "./settings";
 import { showUiToast } from "./ui-toast";
+import { getLocale, setLocale, translateText } from "./i18n";
 
 const RESOLUTIONS = ["1280x720", "1600x900", "1920x1080"];
 
@@ -40,12 +41,13 @@ function makeButton(text: string, onClick: (button: HTMLButtonElement) => void) 
 
 export function mountSystemSettings(container: HTMLElement) {
   container.replaceChildren();
-  const fullscreen = makeButton("全螢幕：關", async (button) => {
+  const stateLabel = (label: string, enabled: boolean) =>
+    `${translateText(label)}：${translateText(enabled ? "開" : "關")}`;
+  const fullscreen = makeButton(stateLabel("全螢幕", false), async (button) => {
     try {
       if (document.fullscreenElement) await document.exitFullscreen();
       else await document.documentElement.requestFullscreen();
-      button.textContent =
-        "全螢幕：" + (document.fullscreenElement ? "開" : "關");
+      button.textContent = stateLabel("全螢幕", !!document.fullscreenElement);
       showUiToast(
         "顯示設定",
         document.fullscreenElement ? "已開啟全螢幕" : "已離開全螢幕",
@@ -54,15 +56,41 @@ export function mountSystemSettings(container: HTMLElement) {
       showUiToast("顯示設定", "目前環境無法切換全螢幕");
     }
   });
-  fullscreen.textContent =
-    "全螢幕：" + (document.fullscreenElement ? "開" : "關");
+  fullscreen.textContent = stateLabel("全螢幕", !!document.fullscreenElement);
+
+  const language = document.createElement("label");
+  language.className = "systemSettingRow systemSettingSelect";
+  const languageName = document.createElement("span");
+  languageName.textContent = translateText("語言");
+  const languageSelect = document.createElement("select");
+  languageSelect.setAttribute("aria-label", translateText("語言"));
+  ([
+    ["zh", "繁體中文"],
+    ["ja", "日本語"],
+    ["en", "English"],
+  ] as const).forEach(([value, label]) => {
+    const option = document.createElement("option");
+    option.value = value;
+    option.textContent = label;
+    option.selected = value === getLocale();
+    languageSelect.append(option);
+  });
+  languageSelect.addEventListener("change", () => {
+    const locale = languageSelect.value as "zh" | "ja" | "en";
+    updateSettings({ locale });
+    setLocale(locale);
+    mountSystemSettings(container);
+    container.querySelector<HTMLSelectElement>("select[aria-label]")?.focus();
+    showUiToast("系統設定", "語言已切換");
+  });
+  language.append(languageName, languageSelect);
 
   const resolution = document.createElement("label");
   resolution.className = "systemSettingRow systemSettingSelect";
   const resolutionName = document.createElement("span");
-  resolutionName.textContent = "視窗解析度";
+  resolutionName.textContent = translateText("視窗解析度");
   const select = document.createElement("select");
-  select.setAttribute("aria-label", "視窗解析度");
+  select.setAttribute("aria-label", translateText("視窗解析度"));
   RESOLUTIONS.forEach((size) => {
     const option = document.createElement("option");
     option.value = size;
@@ -78,23 +106,24 @@ export function mountSystemSettings(container: HTMLElement) {
       return;
     }
     window.resizeTo(width, height);
-    showUiToast("顯示設定", "視窗解析度 " + width + " × " + height);
+    showUiToast("顯示設定", translateText("視窗解析度") + " " + width + " × " + height);
   });
   resolution.append(resolutionName, select);
 
   const mute = makeButton("", (button) => {
     const muted = toggleMasterMuted();
-    button.textContent = "全部靜音：" + (muted ? "開" : "關");
+    button.textContent = stateLabel("全部靜音", muted);
     showUiToast("音量設定", muted ? "已全部靜音" : "已恢復音量");
   });
-  mute.textContent = "全部靜音：" + (gameSettings.muted ? "開" : "關");
+  mute.textContent = stateLabel("全部靜音", gameSettings.muted);
 
   container.append(
+    language,
     fullscreen,
     resolution,
-    makeVolumeRow("總音量", "masterVolume"),
-    makeVolumeRow("音樂音量", "musicVolume"),
-    makeVolumeRow("音效音量", "sfxVolume"),
+    makeVolumeRow(translateText("總音量"), "masterVolume"),
+    makeVolumeRow(translateText("音樂音量"), "musicVolume"),
+    makeVolumeRow(translateText("音效音量"), "sfxVolume"),
     mute,
   );
   return container.querySelector<HTMLElement>("button, input, select");

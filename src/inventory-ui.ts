@@ -11,6 +11,7 @@ import {
 } from "./props";
 import { setTimePauseSource } from "./time-pause";
 import { getDisplayedStars, getRelationship } from "./affection";
+import { getLocale, translateText } from "./i18n";
 
 type InventoryTab = "bag" | "materials" | "cooking" | "relationships";
 type InventoryEntry = {
@@ -142,7 +143,7 @@ export function renderInventory() {
   if (!visibleEntries.length) {
     const empty = document.createElement("div");
     empty.className = "inventory-empty";
-    empty.textContent = "目前沒有物品";
+    empty.textContent = translateText("目前沒有物品");
     grid.appendChild(empty);
     return;
   }
@@ -172,7 +173,7 @@ export function renderInventory() {
 
     const label = document.createElement("div");
     label.className = "inventory-item-label";
-    label.textContent = item.label;
+    label.textContent = translateText(item.label);
 
     slot.append(icon, count, label);
     grid.appendChild(slot);
@@ -189,13 +190,16 @@ function renderRelationships() {
     const card = document.createElement("article");
     card.className = "menu-info-card";
     const heading = document.createElement("h3");
-    heading.textContent = label;
+    heading.textContent = translateText(label);
     const value = document.createElement("strong");
     value.textContent = `${getDisplayedStars(id)} ★`;
     const caption = document.createElement("span");
+    const pointLabel = translateText("點");
     caption.textContent = relationship.currentLock
-      ? `${relationship.points} 點・${relationship.currentLock} 星鎖定`
-      : `${relationship.points} 點`;
+      ? getLocale() === "en"
+        ? `${relationship.points} ${pointLabel} · ${relationship.currentLock}${translateText("星鎖定")}`
+        : `${relationship.points} ${pointLabel}・${relationship.currentLock} ${translateText("星鎖定")}`
+      : `${relationship.points} ${pointLabel}`;
     card.append(heading, value, caption);
     grid.appendChild(card);
   });

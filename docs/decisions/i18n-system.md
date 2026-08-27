@@ -2,14 +2,30 @@
 
 > 從 `AGENTS.md` 搬過來的架構決策，仍然有效。
 
+## 正式語言設定（2026-08-28）
 
-`src/i18n.ts` 是查表骨架：`t(key)` 依目前語言回傳翻譯字串，key 用點分隔
+- 支援繁體中文 `zh`、日文 `ja`、英文 `en`。
+- 標題畫面與遊戲中暫停選單共用的「系統」頁都提供語言下拉選單。
+- 選擇保存在 `meadowtide.settings` 的 `locale` 欄位；這是裝置偏好，與音量、
+  解析度相同，不綁定某一格遊戲存檔。
+- `src/i18n.ts` 除了穩定 key 的 `t()`，也提供 `translateText(source)` 舊字串
+  遷移入口與 `translateDocument()` 靜態 HTML 翻譯。
+- `src/ui-translations.ts` 是仍使用中文原文的舊 UI／動態文字之日英過渡表；
+  新功能仍應使用穩定的 `t("namespace.key")`，不要持續擴大原文查表。
+- 靜態 `index.html`、系統設定、教學、HUD 日期／天氣、存檔摘要、資訊選單、
+  對話顯示、選項與 Toast 已接入共同翻譯入口。無翻譯時保留繁體中文，
+  不顯示空白或翻譯 key。
+- 切換語言會立即重繪靜態 UI；已經排入 `dialogQueue` 的整段事件內容仍以
+  觸發當下語言為準，關閉後重新觸發才會完整套用新語言。
+
+
+`src/i18n.ts` 的 `t(key)` 依目前語言回傳翻譯字串，key 用點分隔
 對應巢狀結構（例如 `"carpenter.dock.mayorIntro"`）；`setLocale(code)` 切換
-語言。**目前只有 `carpenter.*` 這一組翻譯是完整的**，對應
+語言。**目前劇情事件中只有 `carpenter.*` 這一組採完整穩定 key**，對應
 `src/carpenter-quest.ts` 木匠事件的四段對話、材料不足提示、村長／木匠的
 對話框名牌，涵蓋 `zh`（預設）／`en`／`ja` 三種語言。其他對話（`npc-defs.ts`
-的 `npcLine()` 閒聊、之後其他角色的事件）還沒接上 i18n，仍是純中文字串，
-這是刻意先驗證機制堪用、不是遺漏——其他場景要上多語言時，照
+的 `npcLine()` 閒聊、其他角色事件）會先通過 `translateText()` 過渡表；
+還沒有日英翻譯的原文會安全退回中文。其他場景正式遷移時，照
 `carpenter.*` 的結構在 `TRANSLATIONS` 裡新增一個頂層 key、把該場景的字串
 換成 `t("key")` 呼叫即可，不用動 `t()`/`setLocale()` 本體。
 
@@ -41,4 +57,3 @@ meadowtideI18n.locales           // 列出支援的語言代碼 ["zh","en","ja"]
 - 缺翻譯時 `t()` 會退回 `zh` 並在 console 印一行警告，不會讓對話框空白或
   丟例外；兩邊都查不到才會直接印出 key 本身當文字內容，方便一眼看出是
   哪一句漏翻。
-

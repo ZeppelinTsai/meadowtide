@@ -28,6 +28,7 @@ import {
   cookMeal,
 } from "./game-state";
 import { updateSeasonAndDate } from "./game-clock";
+import { getLocale, translateText } from "./i18n";
 import {
   FishTierDef,
   FishTierKey,
@@ -1287,12 +1288,16 @@ export function updateHud() {
 
   // 標題：春季 ・ 第 3 日（上旬）・ 週二
   // 改成春月3日(二)
-  const seasonName = SEASON_NAMES[gameState.currentSeason] ?? "";
+  const seasonName = translateText(SEASON_NAMES[gameState.currentSeason] ?? "");
   const seasonDay = getSeasonDay();
   const period = getSeasonPeriod();
   const weekday = weekdayLabelForDay(gameState.currentDay);
-  hudDateEl.innerHTML =
-    seasonName + `月${seasonDay}日` + `<span>(${weekday})</span>`;
+  const locale = getLocale();
+  hudDateEl.innerHTML = locale === "en"
+    ? `${seasonName} ${seasonDay}<span>(${["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][gameState.currentDay % 7]})</span>`
+    : locale === "ja"
+      ? `${seasonName}${seasonDay}日<span>(${["日", "月", "火", "水", "木", "金", "土"][gameState.currentDay % 7]})</span>`
+      : seasonName + `月${seasonDay}日` + `<span>(${weekday})</span>`;
 
   // 大字時間
   hudTimeEl.textContent = `${String(hh).padStart(2, "0")}:${String(mm).padStart(2, "0")}`;
@@ -1306,7 +1311,7 @@ export function updateHud() {
     const day = gameState.currentDay + offset;
     const weatherKey =
       offset === 0 ? gameState.currentWeather : weatherForDay(day);
-    const label = WEATHER_NAMES[weatherKey] ?? weatherKey;
+    const label = translateText(WEATHER_NAMES[weatherKey] ?? weatherKey);
 
     const emojiEl = dayEl.querySelector(".hud-weather-emoji");
     const labelEl = dayEl.querySelector(".hud-weather-label");
@@ -1315,7 +1320,7 @@ export function updateHud() {
       // 流星雨只掛在「今天」
       labelEl.innerHTML =
         offset === 0 && meteorShowerLabel
-          ? `${label}<br><b style="color:#a9d8ff;font-size:18px">${meteorShowerLabel}</b>`
+          ? `${label}<br><b style="color:#a9d8ff;font-size:18px">${translateText(meteorShowerLabel)}</b>`
           : label;
     }
   });

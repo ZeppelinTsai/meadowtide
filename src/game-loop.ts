@@ -17,6 +17,7 @@ import {
 import { isGameTimePaused, updateGameClock } from "./game-clock";
 import { isGameplayPaused } from "./time-pause";
 import { isInventoryOpen } from "./inventory-ui";
+import { translateText } from "./i18n";
 import { rollFishTier, COUNTER_DIRECTION } from "./fishing";
 import { pollGamepad } from "./gamepad-input";
 import {
@@ -635,7 +636,7 @@ export function animate(now) {
     fishHintEl.textContent = gameState.fishFeedback.text;
     fishHintEl.style.display = "block";
   } else if (gameState.fishingState === "casting") {
-    fishHintEl.textContent = "拋竿中……";
+    fishHintEl.textContent = translateText("拋竿中……");
     fishHintEl.style.display = "block";
   } else {
     fishHintEl.style.display = "none";
@@ -667,7 +668,7 @@ export function animate(now) {
       if (event.kind === "rush") {
         // 暴衝事件正確動作是「別按任何鍵」(見設計筆記 3.5 節)，用警示配色
         // 的文字取代方向鍵符號，一眼看出跟平常「按對應方向」不一樣。
-        fishActionKeyEl.textContent = "別按！";
+        fishActionKeyEl.textContent = translateText("別按！");
         fishActionKeyEl.classList.add("warn");
       } else {
         const ARROW: Record<string, string> = {

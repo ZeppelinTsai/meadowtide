@@ -1,5 +1,6 @@
 import { npcs } from "./npc-runtime";
 import { gameState } from "./game-state";
+import { translateText } from "./i18n";
 
 export const dialogEl = document.getElementById("dialog");
 export const dialogTextEl = document.getElementById("dialogText");
@@ -95,12 +96,12 @@ export function normalizeDialogLine(line) {
   return typeof line === "string" ? { text: line } : line;
 }
 export function renderDialogLine(line) {
-  dialogTextEl.textContent = line.text;
+  dialogTextEl.textContent = translateText(line.text);
   setDialogCg(line.cg || null);
   setDialogPortrait(line.speaker || null);
   if (line.name || line.speaker) {
     const npc = npcs.find((n) => n.id === line.speaker);
-    dialogNameEl.textContent = line.name || (npc && npc.name) || line.speaker;
+    dialogNameEl.textContent = translateText(line.name || (npc && npc.name) || line.speaker);
     dialogNameEl.style.display = "block";
   } else {
     dialogNameEl.style.display = "none";
@@ -207,7 +208,7 @@ function renderChoicePage() {
   pageOptions.forEach((opt, i) => {
     const btn = document.createElement("button");
     btn.className = "dialogChoiceBtn";
-    btn.textContent = `${i + 1}. ${opt.label}`;
+    btn.textContent = `${i + 1}. ${translateText(opt.label)}`;
     btn.onclick = () => resolveChoice(opt.value);
     dialogChoicesEl.appendChild(btn);
   });
