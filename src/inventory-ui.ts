@@ -12,7 +12,7 @@ import {
 import { setTimePauseSource } from "./time-pause";
 import { getDisplayedStars, getRelationship } from "./affection";
 
-type InventoryTab = "bag" | "materials" | "cooking" | "relationships";
+type InventoryTab = "map" | "bag" | "materials" | "cooking" | "relationships";
 type InventoryEntry = {
   id: string;
   tab: InventoryTab;
@@ -24,6 +24,7 @@ type InventoryEntry = {
 };
 
 const TABS: { id: InventoryTab; label: string }[] = [
+  { id: "map", label: "地圖" },
   { id: "bag", label: "物品" },
   { id: "materials", label: "素材" },
   { id: "cooking", label: "料理" },
@@ -39,7 +40,7 @@ const tabButtons = Array.from(
 );
 
 let open = false;
-let activeTabIndex = 0;
+let activeTabIndex = 1;
 const modelIconCache = new Map<string, string>();
 
 function oreModel(kind: string) {
@@ -133,7 +134,12 @@ function setActiveTab(index: number, focus = false) {
 export function renderInventory() {
   grid.innerHTML = "";
   const activeId = TABS[activeTabIndex].id;
+  grid.classList.toggle("inventory-grid-map", activeId === "map");
   grid.classList.toggle("inventory-grid-info", activeId === "relationships");
+  if (activeId === "map") {
+    renderWorldMap();
+    return;
+  }
   if (activeId === "relationships") {
     renderRelationships();
     return;
@@ -177,6 +183,24 @@ export function renderInventory() {
     slot.append(icon, count, label);
     grid.appendChild(slot);
   });
+}
+
+function renderWorldMap() {
+  const map = document.createElement("section");
+  map.className = "world-map";
+  map.setAttribute("aria-label", "海風牧歌地圖");
+  [
+    { id: "mountain", label: "山區" },
+    { id: "old-village", label: "城鎮" },
+    { id: "living-area", label: "牧場" },
+    { id: "port", label: "港口" },
+  ].forEach((location) => {
+    const marker = document.createElement("div");
+    marker.className = `world-map-location world-map-location-${location.id}`;
+    marker.innerHTML = `<span aria-hidden="true">●</span><strong>${location.label}</strong>`;
+    map.appendChild(marker);
+  });
+  grid.appendChild(map);
 }
 
 function renderRelationships() {
@@ -226,6 +250,12 @@ export function toggleInventory() {
   setInventoryOpen(!open);
 }
 
+export function openInventoryTab(tab: InventoryTab) {
+  const index = TABS.findIndex((entry) => entry.id === tab);
+  if (index >= 0) setActiveTab(index);
+  setInventoryOpen(true);
+}
+
 tabButtons.forEach((button, index) => {
   button.addEventListener("click", () => setActiveTab(index, true));
 });
@@ -235,6 +265,14 @@ addEventListener("keydown", (event) => {
   if (key === "q" && !event.repeat) {
     event.preventDefault();
     toggleInventory();
+    return;
+  }
+  if (key === "m" && !event.repeat) {
+    event.preventDefault();
+    if (!gameState.player || gameState.cutsceneActive) return;
+    const mapIsOpen = open && TABS[activeTabIndex].id === "map";
+    if (mapIsOpen) setInventoryOpen(false);
+    else openInventoryTab("map");
     return;
   }
   if (!open || event.repeat) return;
@@ -251,6 +289,10 @@ closeButton.addEventListener("click", () => setInventoryOpen(false));
 document.getElementById("quickInfoMenuBtn")?.addEventListener("click", () => {
   if (!gameState.player || gameState.cutsceneActive) return;
   setInventoryOpen(true);
+});
+document.getElementById("quickMapMenuBtn")?.addEventListener("click", () => {
+  if (!gameState.player || gameState.cutsceneActive) return;
+  openInventoryTab("map");
 });
 overlay.addEventListener("click", (event) => {
   if (event.target === overlay) setInventoryOpen(false);

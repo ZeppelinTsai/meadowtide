@@ -1,6 +1,5 @@
 import { gameState } from "./game-state";
-import { gameSettings, getMasterOutput, onSettingsChanged, toggleMasterMuted } from "./settings";
-import { showUiToast } from "./ui-toast";
+import { gameSettings, getMasterOutput, onSettingsChanged } from "./settings";
 
 // 5.5) 背景音樂：季節日夜旋律層 + 天氣疊加層，全部經 GainNode 淡入淡出
 // ==============================================================
@@ -231,10 +230,7 @@ addEventListener(
   "keydown",
   (e) => {
     initializeMusic();
-    if (e.key.toLowerCase() === "m" && !e.repeat) {
-      const muted = toggleMasterMuted();
-      showUiToast("音量設定", muted ? "已全部靜音" : "已恢復音量");
-    }
+    // M 已改為地圖快捷鍵；靜音保留在系統設定。
   },
   { capture: true },
 );

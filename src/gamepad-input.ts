@@ -36,6 +36,7 @@ let rightStickX = 0;
 let rightStickY = 0;
 let prevRightStickButton = false;
 let prevStartButton = false;
+let prevSelectButton = false;
 
 export function getGamepadLookInput() {
   return { x: rightStickX, y: rightStickY };
@@ -104,6 +105,10 @@ export function pollGamepad() {
   if (startButton && !prevStartButton) dispatchKey("keydown", "Escape");
   if (!startButton && prevStartButton) dispatchKey("keyup", "Escape");
   prevStartButton = startButton;
+  const selectButton = !!pad.buttons[8]?.pressed;
+  if (selectButton && !prevSelectButton) dispatchKey("keydown", "m");
+  if (!selectButton && prevSelectButton) dispatchKey("keyup", "m");
+  prevSelectButton = selectButton;
 
   let dx = pad.axes[0] ?? 0;
   let dz = pad.axes[1] ?? 0;

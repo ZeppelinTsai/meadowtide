@@ -13,6 +13,10 @@
   </head>
   <body>
     <div id="ui">
+      <button id="quickMapMenuBtn" class="quickMenuBtn" type="button" aria-keyshortcuts="M">
+        ◉ 地圖
+        <small>M／Select</small>
+      </button>
       <button
         id="quickInfoMenuBtn"
         class="quickMenuBtn"
@@ -63,6 +67,7 @@
         <header class="inventory-header">
           <span class="inventory-menu-label">資訊</span>
           <div id="inventoryTabs" role="tablist" aria-label="資訊選單分頁">
+            <button class="inventory-tab" type="button" role="tab" aria-selected="false" data-inventory-tab="map" tabindex="-1">地圖</button>
             <button
               class="inventory-tab active"
               type="button"
@@ -109,7 +114,7 @@
         </header>
         <div id="inventoryGrid"></div>
         <footer class="inventory-footer">
-          ← →／手把 LB RB 切換分頁　・　Q／Y 關閉
+          ← →／手把 LB RB 切換分頁　・　M／Select 地圖　・　Q／Y 關閉
         </footer>
       </section>
     </div>
