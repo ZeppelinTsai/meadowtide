@@ -75,6 +75,7 @@ import {
   gatherNodeMeshes,
   oreNodeMeshes,
   celestialSparkleMaterials,
+  southIndoorWallMeshes,
 } from "./scene-registries";
 import {
   findSouthernShoreSandZ,
@@ -256,6 +257,7 @@ export function buildMap(mapName) {
   gatherNodeMeshes.length = 0;
   oreNodeMeshes.length = 0;
   celestialSparkleMaterials.length = 0;
+  southIndoorWallMeshes.length = 0;
   // 場景專屬物件可能在前面的 port／oldVillage 分支建好；動畫登記表必須
   // 在任何場景建置之前清空，不能等到共用海面收尾才清，否則模型看得到、
   // animate() 卻收不到登記項目，浪花會完全靜止。
@@ -3041,9 +3043,25 @@ export function buildMap(mapName) {
         const winEntry = (map.windows || []).find(
           (w) => w.x === x && w.z === z,
         );
-        plateauGroup.add(
-          makeInteriorWall(x, z, winEntry ? winEntry.side : null),
+        const interiorWall = makeInteriorWall(
+          x,
+          z,
+          winEntry ? winEntry.side : null,
         );
+        plateauGroup.add(interiorWall);
+        // z 是 tiles 陣列最後一列＝南牆＝離攝影機最近那排，登記進
+        // southIndoorWallMeshes 讓 game-loop.ts 依鏡頭模式切換可見度
+        // (見 scene-registries.ts 該常數上面的說明)。2026-08-27 玩家
+        // 反饋「最左右兩個要顯示」——南牆兩端跟東西牆交接的那兩塊
+        // 牆角(x=0/x=row.length-1)故意不登記，保持一直顯示，讓房間
+        // 兩側邊界/牆角深度感還在，只把中間那段(真正擋住視線的部分)
+        // 交給鏡頭模式切換。
+        if (
+          z === map.tiles.length - 1 &&
+          x !== 0 &&
+          x !== row.length - 1
+        )
+          southIndoorWallMeshes.push(interiorWall);
       } else if (tile === 1 && mapName === "stalactiteCave") {
         // 洞窟牆體只求「看起來是石壁」，不像 house 那樣做門窗開口——
         // 純方塊+粗糙岩灰材質，跟外面洞口(makeOldVillageStalactiteCaveEntrance)
@@ -3067,6 +3085,11 @@ export function buildMap(mapName) {
         wall.castShadow = true;
         wall.receiveShadow = true;
         plateauGroup.add(wall);
+        // 同上面 house 分支的登記邏輯：z 是這張地圖 tiles 陣列的最後一
+        // 列就是南牆，交給 game-loop.ts 依鏡頭模式切換可見度；跟 house
+        // 分支一樣，兩端牆角(x=0/x=row.length-1)不登記、一直顯示。
+        if (z === map.tiles.length - 1 && x !== 0 && x !== row.length - 1)
+          southIndoorWallMeshes.push(wall);
       } else if (tile === 1 && mapName === "mountainCave") {
         // 山之洞牆體——跟鐘乳石洞窟同一套「純方塊+粗糙岩灰材質」寫法，
         // 只是牆色改混當層(gameState.mountainMineFloor)的礦石階層色。
@@ -3088,6 +3111,9 @@ export function buildMap(mapName) {
         wall.castShadow = true;
         wall.receiveShadow = true;
         plateauGroup.add(wall);
+        // 同上，登記南牆給 game-loop.ts 切換可見度；兩端牆角同樣不登記。
+        if (z === map.tiles.length - 1 && x !== 0 && x !== row.length - 1)
+          southIndoorWallMeshes.push(wall);
       } else if (tile === 2) {
         // 山腰平台(waist)這幾棵改用行道樹(makeAvenueTree)——那個模型
         // 本來就跟著季節變色(春粉紅/夏綠/秋橙紅/冬白)，剛好對應概念圖

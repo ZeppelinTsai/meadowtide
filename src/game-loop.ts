@@ -125,6 +125,7 @@ import {
   sampleDirectedSeaWave,
   gangplankMeshes,
   prologueRefs,
+  southIndoorWallMeshes,
 } from "./scene-registries";
 
 // 釣魚 QTE 浮動 HUD 用——可重複利用的 Vector3，每幀 project(camera) 前
@@ -1144,6 +1145,17 @@ export function animate(now) {
   const ferryDocked = !isNightTime();
   gangplankMeshes.forEach((mesh) => {
     mesh.visible = ferryDocked;
+  });
+  // 室內南牆(離攝影機最近那排，見 scene-registries.ts 的
+  // southIndoorWallMeshes 說明)——2026-08-27 玩家反饋：標準跟隨鏡頭
+  // 底下這排牆整片擋住房間內部看不到裡面，只有 F4 鏡頭調整模式／
+  // 第一人稱模式底下才需要看到真正完整的牆。跟上面 gangplankMeshes
+  // 同一套「登記進陣列、animate() 逐幀切換 .visible」的慣例，不需要
+  // 重新蓋地圖，切鏡頭模式那一幀就會跟著換。
+  const standardCameraMode =
+    !isFirstPersonModeActive() && !isCameraAdjustModeActive();
+  southIndoorWallMeshes.forEach((mesh) => {
+    mesh.visible = !standardCameraMode;
   });
   if (isOutdoorMap()) {
     scene.background = sky;

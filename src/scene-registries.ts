@@ -93,6 +93,18 @@ export const prologueRefs: {
       // PointsMaterial 的 opacity 做出閃爍(跟 foamMeshes/windowMats 這些
       // 其他「登記進陣列、animate() 逐幀處理」的特效同一套慣例)。
       export const celestialSparkleMaterials: import("three").PointsMaterial[] = [];
+      // 室內南牆(tiles 陣列最後一列，z 最大、離攝影機最近、正對玩家視線
+      // 那一整排)——2026-08-27 玩家反饋「標準鏡頭模式時不要渲染下方的
+      // 牆壁」：這排牆在預設跟隨鏡頭下整片擋住房間內部看不到裡面，但
+      // F4 鏡頭調整模式/第一人稱模式底下還是要看得到真正完整的牆(調整
+      // 鏡頭要看到牆的實際位置、第一人稱是站在房間裡自己轉頭看牆)，
+      // 所以不能直接不蓋這排牆，只能蓋出來、登記進這裡，animate() 逐幀
+      // 依目前鏡頭模式切換 .visible——跟 gangplankMeshes/thresholdMarker
+      // Meshes 這些其他「登記進陣列、animate() 逐幀處理可見度」的表同一
+      // 套慣例。目前涵蓋 house/stalactiteCave/mountainCave 三張室內地圖
+      // (INDOOR_MAPS，見 environment.ts)，buildMap() 蓋牆迴圈裡統一判斷
+      // 「這是不是 tiles 陣列的最後一列」來登記，不用個別地圖各寫一次。
+      export const southIndoorWallMeshes: import("three").Object3D[] = [];
       export const EAST_SEA_WAVE_DIRECTION = Object.freeze({ x: -1, z: 0 });
       export const SOUTH_SEA_WAVE_DIRECTION = Object.freeze({ x: 0, z: -1 });
       export const WEST_SEA_WAVE_DIRECTION = Object.freeze({ x: 1, z: 0 });
