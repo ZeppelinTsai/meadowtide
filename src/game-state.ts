@@ -427,7 +427,6 @@ export function nearAnyNpc() {
     const dx = gameState.playerGridPos.x - n.mesh.position.x,
       dz = gameState.playerGridPos.z - n.mesh.position.z;
     if (Math.sqrt(dx * dx + dz * dz) <= 4) {
-      n.memory++;
       return true;
     }
     return false;

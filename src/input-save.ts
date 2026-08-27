@@ -103,6 +103,12 @@ import {
 } from "./props";
 import { syncFarmVisuals } from "./farm-visuals";
 import {
+  exportRelationships,
+  getRelationship,
+  restoreRelationships,
+} from "./affection";
+import { completeNpcDailyConversation } from "./affection-ui";
+import {
   scene,
   renderer,
   clearMeteors,
@@ -216,8 +222,9 @@ export function getSaveSlotSummaries(): SaveSlotSummary[] {
 }
 
 export function saveGame(slot = "default") {
+  npcs.forEach((npc) => getRelationship(npc.id));
   const data = {
-    version: 4,
+    version: 5,
     activeSaveSlot,
     elapsed: gameState.elapsed,
     currentDay: gameState.currentDay,
@@ -237,6 +244,7 @@ export function saveGame(slot = "default") {
     inventory: { ...inventory },
     crops: JSON.parse(JSON.stringify(cropState)),
     npcMemory: npcs.map((npc) => ({ id: npc.id, memory: npc.memory })),
+    relationships: exportRelationships(),
     carpenterQuest: { ...carpenterQuest },
     oysterRackState: JSON.parse(JSON.stringify(oysterRackState)),
     feederUnits: gameState.feederUnits,
@@ -302,6 +310,18 @@ export function loadGame(
     const npc = npcs.find((candidate) => candidate.id === savedNpc.id);
     if (npc) npc.memory = savedNpc.memory;
   });
+  if (data.relationships) {
+    restoreRelationships(data.relationships);
+  } else {
+    restoreRelationships(
+      Object.fromEntries(
+        (data.npcMemory || []).map((savedNpc) => [
+          savedNpc.id,
+          { points: Math.max(0, Number(savedNpc.memory) || 0) },
+        ]),
+      ),
+    );
+  }
   if (data.carpenterQuest) {
     Object.assign(carpenterQuest, data.carpenterQuest);
     if (carpenterQuest.stage === "en_route_village")
@@ -714,8 +734,10 @@ addEventListener("keydown", (e) => {
       // 接在後面串成一組，不是讓共餐搶走閒聊——玩家單純想打招呼時不該
       // 連一句「哈囉」都聽不到。
       const merged = mergeChefMealIntoChatLine(chatLine);
-      if (merged) showDialogSequence(merged);
-      else showDialog(chatLine);
+      const onConversationComplete = () =>
+        completeNpcDailyConversation(nearby.id);
+      if (merged) showDialogSequence(merged, onConversationComplete);
+      else showDialogSequence([chatLine], onConversationComplete);
       return;
     }
   }
@@ -1195,6 +1217,7 @@ export function collidesAt(mapName, x, z, half = 0.22) {
   npcs: npcs.map((n) => ({
     id: n.id,
     memory: n.memory,
+    relationship: getRelationship(n.id),
     pos: { x: n.mesh.position.x, z: n.mesh.position.z },
   })),
   crops: JSON.parse(JSON.stringify(cropState)),

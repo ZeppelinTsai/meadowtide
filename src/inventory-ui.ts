@@ -1,7 +1,6 @@
 import * as THREE from "three";
 import { gameState, inventory, RECIPES } from "./game-state";
 import { ORE_TIERS } from "./mine";
-import { npcs } from "./npc-runtime";
 import {
   makeCropMesh,
   makeFishProp,
@@ -11,6 +10,7 @@ import {
   makeWoodPile,
 } from "./props";
 import { setTimePauseSource } from "./time-pause";
+import { getDisplayedStars, getRelationship } from "./affection";
 
 type InventoryTab = "bag" | "materials" | "cooking" | "relationships";
 type InventoryEntry = {
@@ -185,15 +185,17 @@ function renderRelationships() {
     { id: "carpenter", label: "木匠" },
   ];
   relationships.forEach(({ id, label }) => {
-    const npc = npcs.find((entry) => entry.id === id);
+    const relationship = getRelationship(id);
     const card = document.createElement("article");
     card.className = "menu-info-card";
     const heading = document.createElement("h3");
     heading.textContent = label;
     const value = document.createElement("strong");
-    value.textContent = String(npc?.memory ?? 0);
+    value.textContent = `${getDisplayedStars(id)} ★`;
     const caption = document.createElement("span");
-    caption.textContent = "印象";
+    caption.textContent = relationship.currentLock
+      ? `${relationship.points} 點・${relationship.currentLock} 星鎖定`
+      : `${relationship.points} 點`;
     card.append(heading, value, caption);
     grid.appendChild(card);
   });

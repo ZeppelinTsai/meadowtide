@@ -95,3 +95,5 @@ export const FISH_REEL_SFX = [
 export const FISH_BITE_SFX = [
   "kenney_interface-sounds/Audio/drop_004.ogg",
 ];
+export const RELATIONSHIP_EVENT_SFX =
+  "kenney_interface-sounds/Audio/confirmation_004.ogg";

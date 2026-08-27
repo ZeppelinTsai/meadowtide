@@ -1,4 +1,5 @@
 import { carpenterQuest, LAYOUT, NORTH_EXPANSION } from "./layout-maps";
+import { getDisplayedStars } from "./affection";
 
 // 3) NPC 行程表（跟 v11 相同，schedule 完全不需要知道怎麼走）
 // ==============================================================
@@ -158,9 +159,10 @@ export function npcLine(npc) {
       name: "村長",
     };
   }
-  if (npc.memory <= 0)
+  const stars = getDisplayedStars(npc.id);
+  if (stars <= 0)
     return { text: "「哈囉，天氣不錯。」", speaker: npc.id, name: npc.name };
-  if (npc.memory < 3)
+  if (stars < 3)
     return {
       text: "「我有看到你在種東西喔，加油。」",
       speaker: npc.id,
