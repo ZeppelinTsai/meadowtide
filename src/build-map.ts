@@ -120,7 +120,7 @@ import {
 // 撞過一次)。排在這裡確保 scene-sky.ts 早就由上面幾個 import 完整求值
 // 過，不會再繞回循環。
 import { showChoice } from "./dialogue";
-import { makeHeroPlayer, makeMountainGuardian } from "./humanoid";
+import { makeGoddess, makeHeroPlayer, makeMountainGuardian } from "./humanoid";
 import { isPointBlockedByScaledBuilding } from "./building-scale";
 import {
   makeTree,
@@ -2838,6 +2838,17 @@ export function buildMap(mapName) {
     }
   }
   if (mapName === "oldVillage") {
+    const goddessPosition = LAYOUT.oldVillage.goddess;
+    const goddess = makeGoddess();
+    goddess.position.set(
+      goddessPosition.x,
+      oldVillageGroundY(goddessPosition.x, goddessPosition.z),
+      goddessPosition.z,
+    );
+    // 人形預設面朝本地 -Z；旋轉 180 度後面向地圖下方（+Z）。
+    goddess.rotation.y = Math.PI;
+    plateauGroup.add(goddess);
+
     // 廣場(LAYOUT.oldVillage.plaza：x=22~32,z=4~25)裡放兩盞路燈、兩張
     // 長椅，位置刻意離廣場邊界(x=22/33、跟港口門的垂直通道)有一段
     // 緩衝，不會卡到既有的門檻/道路。

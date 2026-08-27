@@ -287,6 +287,9 @@ export const LAYOUT = {
       torii: { x: 0, z: 28, scale: LANDMARK_TORII_SCALE },
       cube: { x: -2, z: 15, width: 5, depth: 6, height: 1.6 },
     },
+    // 女神是北側祠堂平台上的純視覺角色。這裡使用西擴前座標，
+    // MAP_SHIFT_REGISTRY 會隨 oldVillage 西擴 100 格後變成 (100,22)。
+    goddess: { x: 0, z: 22 },
     // x=95~115 的南岸每欄在 z=35~37 之間小幅進退；固定序列避免載圖漂移。
     northBeachSouthEdge: {
       x: -5,

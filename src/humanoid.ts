@@ -1215,6 +1215,168 @@ export function addDefaultHumanoidSmile(
         return makeAdventurerHero(false);
       }
 
+      // 舊村女神祠堂平台上的靜態女神。概念圖特徵：水藍長髮、青綠眼睛、
+      // 白色立領長裙、藍綠外裙、半透明披帛與貝殼／珊瑚髮飾。純視覺模型，
+      // 不掛 parts 動畫、NPC 排程、碰撞、對話或互動；臉仍朝本地 -Z。
+      export function makeGoddess() {
+        const group: any = new THREE.Group();
+        const mat = (color, options: THREE.MeshStandardMaterialParameters = {}) =>
+          new THREE.MeshStandardMaterial({ color, flatShading: true, ...options });
+        const skinMat = mat(0xf2c7a9);
+        const whiteMat = mat(0xf2eee4);
+        const paleBlueMat = mat(0x9ddce5);
+        const oceanMat = mat(0x2589a8);
+        const deepOceanMat = mat(0x17677f);
+        const hairMat = mat(0x5bb9cd);
+        const hairShadeMat = mat(0x328ca5);
+        const goldMat = mat(0xd4ad68, { metalness: 0.25, roughness: 0.5 });
+        const pearlMat = mat(0xf3f1df, { metalness: 0.05, roughness: 0.28 });
+        const eyeMat = mat(0x157c89);
+        const sheerMat = mat(0x9edee8, {
+          transparent: true,
+          opacity: 0.48,
+          depthWrite: false,
+          side: THREE.DoubleSide,
+        });
+
+        // 腳底 y=0；裙身以多層低多邊形錐台組成，不露出腿部穿模。
+        for (const side of [-1, 1]) {
+          const boot = new THREE.Mesh(new THREE.BoxGeometry(0.13, 0.18, 0.22), paleBlueMat);
+          boot.position.set(side * 0.105, 0.09, -0.035);
+          boot.castShadow = true;
+          group.add(boot);
+          const bootBand = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.035, 0.225), goldMat);
+          bootBand.position.set(side * 0.105, 0.105, -0.04);
+          group.add(bootBand);
+        }
+        const innerSkirt = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.19, 0.34, 0.7, 8),
+          whiteMat,
+        );
+        innerSkirt.position.y = 0.46;
+        innerSkirt.castShadow = true;
+        group.add(innerSkirt);
+        for (const side of [-1, 1]) {
+          const outerSkirt = new THREE.Mesh(
+            new THREE.ConeGeometry(0.28, 0.72, 4, 1, true),
+            side < 0 ? oceanMat : paleBlueMat,
+          );
+          outerSkirt.scale.set(0.72, 1, 0.72);
+          outerSkirt.position.set(side * 0.17, 0.47, 0.02);
+          outerSkirt.rotation.y = Math.PI / 4;
+          outerSkirt.rotation.z = side * -0.07;
+          group.add(outerSkirt);
+        }
+        const torso = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.16, 0.205, 0.38, 8),
+          whiteMat,
+        );
+        torso.position.y = 0.84;
+        torso.castShadow = true;
+        group.add(torso);
+        const waist = new THREE.Mesh(new THREE.CylinderGeometry(0.205, 0.205, 0.075, 8), deepOceanMat);
+        waist.position.y = 0.66;
+        group.add(waist);
+        const shellBuckle = new THREE.Mesh(new THREE.SphereGeometry(0.065, 7, 5), goldMat);
+        shellBuckle.scale.set(1.2, 0.58, 0.32);
+        shellBuckle.position.set(0, 0.665, -0.205);
+        group.add(shellBuckle);
+        const collar = new THREE.Mesh(new THREE.CylinderGeometry(0.105, 0.14, 0.12, 8), paleBlueMat);
+        collar.position.y = 1.045;
+        group.add(collar);
+        const pendant = new THREE.Mesh(new THREE.OctahedronGeometry(0.035, 0), oceanMat);
+        pendant.position.set(0, 0.98, -0.174);
+        group.add(pendant);
+
+        // 手臂保持自然下垂；半透明披袖掛在肩後，形成概念圖的大披帛輪廓。
+        for (const side of [-1, 1]) {
+          const upperArm = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.05, 0.27, 7), skinMat);
+          upperArm.position.set(side * 0.235, 0.84, 0);
+          upperArm.rotation.z = side * -0.13;
+          group.add(upperArm);
+          const forearm = new THREE.Mesh(new THREE.CylinderGeometry(0.038, 0.045, 0.25, 7), skinMat);
+          forearm.position.set(side * 0.27, 0.59, -0.005);
+          forearm.rotation.z = side * -0.08;
+          group.add(forearm);
+          const hand = new THREE.Mesh(new THREE.SphereGeometry(0.047, 7, 5), skinMat);
+          hand.scale.set(0.75, 1.18, 0.7);
+          hand.position.set(side * 0.285, 0.445, -0.015);
+          group.add(hand);
+          const sleeve = new THREE.Mesh(new THREE.ConeGeometry(0.19, 0.64, 4, 1, true), sheerMat);
+          sleeve.scale.set(0.72, 1, 0.58);
+          sleeve.position.set(side * 0.29, 0.69, 0.08);
+          sleeve.rotation.z = side * -0.2;
+          sleeve.rotation.y = Math.PI / 4;
+          group.add(sleeve);
+        }
+
+        const head = new THREE.Mesh(new THREE.SphereGeometry(0.195, 10, 8), skinMat);
+        head.scale.set(0.94, 1.08, 0.92);
+        head.position.y = 1.175;
+        head.castShadow = true;
+        group.add(head);
+        // 髮帽抬高並縮短前後半徑，避免像早期廚師模型一樣蓋住眼睛。
+        const hairCap = new THREE.Mesh(new THREE.SphereGeometry(0.21, 10, 8), hairMat);
+        hairCap.scale.set(1.03, 0.68, 0.76);
+        hairCap.position.set(0, 1.285, 0.018);
+        group.add(hairCap);
+        for (const side of [-1, 1]) {
+          const eye = new THREE.Mesh(new THREE.SphereGeometry(0.019, 7, 5), eyeMat);
+          eye.scale.set(1.1, 0.62, 0.34);
+          eye.position.set(side * 0.068, 1.205, -0.181);
+          group.add(eye);
+          const brow = new THREE.Mesh(new THREE.BoxGeometry(0.065, 0.012, 0.01), hairShadeMat);
+          brow.position.set(side * 0.068, 1.245, -0.186);
+          brow.rotation.z = side * -0.12;
+          group.add(brow);
+          const frontLock = new THREE.Mesh(new THREE.ConeGeometry(0.05, 0.27, 5), hairMat);
+          frontLock.position.set(side * 0.115, 1.19, -0.135);
+          frontLock.rotation.z = side * 0.18;
+          frontLock.rotation.x = -0.12;
+          group.add(frontLock);
+        }
+        const nose = new THREE.Mesh(new THREE.ConeGeometry(0.025, 0.058, 5), skinMat);
+        nose.rotation.x = Math.PI / 2;
+        nose.position.set(0, 1.165, -0.19);
+        group.add(nose);
+        addDefaultHumanoidSmile(group, 1.12, -0.191, 0x9b5f55);
+
+        // 長髮從後腦一路垂到腰下，用交錯髮束避免整片像實心披風。
+        [-0.19, -0.11, -0.035, 0.045, 0.12, 0.19].forEach((x, index) => {
+          const length = 0.58 + (index % 3) * 0.08;
+          const strand = new THREE.Mesh(
+            new THREE.ConeGeometry(0.075, length, 5),
+            index % 2 ? hairMat : hairShadeMat,
+          );
+          strand.position.set(x, 0.98 - length * 0.17, 0.115 + Math.abs(x) * 0.16);
+          strand.rotation.z = x * -0.32;
+          strand.rotation.x = 0.08;
+          group.add(strand);
+        });
+        // 側邊珊瑚枝、珍珠與飄帶。
+        for (let i = 0; i < 3; i++) {
+          const coral = new THREE.Mesh(new THREE.CylinderGeometry(0.009, 0.012, 0.16, 5), goldMat);
+          coral.position.set(0.205 + i * 0.025, 1.31 + i * 0.025, 0.015);
+          coral.rotation.z = -0.45 - i * 0.2;
+          group.add(coral);
+          const pearl = new THREE.Mesh(new THREE.SphereGeometry(0.025 - i * 0.003, 7, 5), pearlMat);
+          pearl.position.set(0.215 + i * 0.035, 1.28 + i * 0.055, -0.015);
+          group.add(pearl);
+        }
+        for (const side of [-1, 1]) {
+          const ribbon = new THREE.Mesh(new THREE.ConeGeometry(0.08, 0.42, 4, 1, true), sheerMat);
+          ribbon.scale.set(0.55, 1, 0.35);
+          ribbon.position.set(side * 0.22, 1.05, 0.2);
+          ribbon.rotation.z = side * -0.34;
+          ribbon.rotation.x = 0.22;
+          group.add(ribbon);
+        }
+
+        // 頭髮主體最高點約 1.428；珊瑚／飄帶是額外裝飾，不納入統一身高校正。
+        group.scale.setScalar(humanoidScale(1.428));
+        return group;
+      }
+
       // 山頂鳥居前的靜態守護者角色：銀白長髮半束、綠色和服外套配金色葉紋、
       // 紅色腰繩、褐色縛口袴褲、深褐金邊靴。沿用 makeAdventurerHero 的
       // 軀幹/頭部 Y 座標與 1.265 未縮放基準高度（髮冠頂端同樣落在 y=1.265），
