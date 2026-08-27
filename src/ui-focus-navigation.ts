@@ -100,6 +100,13 @@ export function initUiFocusNavigation() {
     if (!direction) return;
     const root = getActiveUiRoot();
     if (!root) return;
+    const focused = document.activeElement;
+    if (
+      (direction === "left" || direction === "right") &&
+      (focused instanceof HTMLInputElement || focused instanceof HTMLSelectElement)
+    ) {
+      return;
+    }
     event.preventDefault();
     moveFocus(root, direction);
   });

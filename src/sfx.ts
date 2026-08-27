@@ -1,4 +1,6 @@
 // ==============================================================
+import { gameSettings, getMasterOutput } from "./settings";
+
 // 一次性音效——跟 music.ts 的 BGM 系統不一樣：BGM 是常駐 loop、經
 // AudioContext 的 GainNode 做淡入淡出；這裡單純「觸發當下播一次就丟
 // 掉」，用原生 <audio> 就好，不用接進 BGM 那張 GainNode 圖。
@@ -35,7 +37,7 @@ function loadSfxTemplate(path: string): HTMLAudioElement {
 export function playSfx(path: string, volume = SFX_VOLUME) {
   const template = loadSfxTemplate(path);
   const instance = template.cloneNode(true) as HTMLAudioElement;
-  instance.volume = volume;
+  instance.volume = Math.max(0, Math.min(1, volume * getMasterOutput() * gameSettings.sfxVolume));
   // 使用者互動前瀏覽器可能擋自動播放；這裡的呼叫點都掛在 E 鍵/採集這類
   // 使用者手勢底下，理論上不會被擋，但 play() 回傳的 Promise 失敗時安靜
   // 吞掉，不要讓音效問題打斷遊戲邏輯。

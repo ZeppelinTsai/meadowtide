@@ -1,4 +1,6 @@
 import { gameState } from "./game-state";
+import { gameSettings, getMasterOutput, onSettingsChanged, toggleMasterMuted } from "./settings";
+import { showUiToast } from "./ui-toast";
 
 // 5.5) 背景音樂：季節日夜旋律層 + 天氣疊加層，全部經 GainNode 淡入淡出
 // ==============================================================
@@ -125,7 +127,7 @@ export function initializeMusic() {
   }
   gameState.audioContext = new AudioContextClass();
   musicMasterGain = gameState.audioContext.createGain();
-  musicMasterGain.gain.value = gameState.musicMuted ? 0 : 1;
+  musicMasterGain.gain.value = getMasterOutput() * gameSettings.musicVolume;
   musicMasterGain.connect(gameState.audioContext.destination);
   Object.entries(BGM_TRACKS).forEach(([key, filename]) =>
     createMusicTrack(key, filename),
@@ -139,8 +141,14 @@ export function setMusicMuted(muted) {
   if (!musicMasterGain || !gameState.audioContext) return;
   const now = gameState.audioContext.currentTime;
   musicMasterGain.gain.cancelScheduledValues(now);
-  musicMasterGain.gain.setTargetAtTime(muted ? 0 : 1, now, 0.08);
+  musicMasterGain.gain.setTargetAtTime(
+    muted ? 0 : getMasterOutput() * gameSettings.musicVolume,
+    now,
+    0.08,
+  );
 }
+
+onSettingsChanged(() => setMusicMuted(gameSettings.muted));
 
 export function updateMusic(nightFactor, dt) {
   if (!musicReady) return;
@@ -223,8 +231,10 @@ addEventListener(
   "keydown",
   (e) => {
     initializeMusic();
-    if (e.key.toLowerCase() === "m" && !e.repeat)
-      setMusicMuted(!gameState.musicMuted);
+    if (e.key.toLowerCase() === "m" && !e.repeat) {
+      const muted = toggleMasterMuted();
+      showUiToast("音量設定", muted ? "已全部靜音" : "已恢復音量");
+    }
   },
   { capture: true },
 );

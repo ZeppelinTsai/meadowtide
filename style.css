@@ -64,7 +64,7 @@ body {
   width: 90vw;
   min-height: 170px;
   box-sizing: border-box;
-  z-index: 15;
+  z-index: 110;
   isolation: isolate;
 }
 #dialog::before {
@@ -739,6 +739,35 @@ canvas {
 }
 #titleSystem .titleMenuBtn {
   width: 220px;
+}
+.systemSettings {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: min(360px, 82vw);
+  margin-bottom: 10px;
+}
+.systemSettings > .titleMenuBtn {
+  width: 100% !important;
+}
+.systemSettingRow {
+  display: grid;
+  grid-template-columns: 92px 1fr 44px;
+  align-items: center;
+  gap: 10px;
+  min-height: 42px;
+  text-align: left;
+}
+.systemSettingRow input,
+.systemSettingRow select {
+  min-width: 0;
+}
+.systemSettingRow output {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.systemSettingSelect {
+  grid-template-columns: 92px 1fr;
 }
 
 /* 讀取遊戲的 9 格存檔清單——跟 .titleMenuBtn 同一套白底黑框風格，但要

@@ -3,7 +3,7 @@ import { dialogQueue, activeChoice } from "./dialogue";
 import { isInventoryOpen, setInventoryOpen } from "./inventory-ui";
 import { loadGame, setActiveSaveSlot } from "./input-save";
 import { renderSaveSlotButtons } from "./save-slot-ui";
-import { setMusicMuted } from "./music";
+import { mountSystemSettings } from "./system-settings-ui";
 
 // ==============================================================
 // 遊戲中 Esc 暫停選單——2026-08-26 Zeppelin 要求「參照主選單或背包做好
@@ -21,9 +21,12 @@ import { setMusicMuted } from "./music";
 type PauseStep = "menu" | "loadSlots" | "tutorial" | "tutorialCards" | "system";
 
 const WALKING_TUTORIAL = [
-  { kicker: "基本操作", title: "開始行走", text: "使用方向鍵移動主角。斜向輸入也能自然地穿過田間與村道。", keys: ["W A S D", "左搖桿"], image: "/assets/tutorial/walking-1.png", alt: "主角在農場道路上行走" },
-  { kicker: "加快腳步", title: "奔跑探索", text: "按住奔跑鍵再移動，可以更快抵達村莊、山區與港口。", keys: ["Shift + WASD", "手把奔跑鍵"], image: "/assets/tutorial/walking-2.png", alt: "主角沿著海岸快速奔跑" },
-  { kicker: "觀察四周", title: "調整視角", text: "轉動視角確認前方道路與可互動物件；靠近目標後依畫面提示互動。", keys: ["滑鼠", "右搖桿", "E／手把互動鍵"], image: "/assets/tutorial/walking-3.png", alt: "主角面向村莊中的互動目標" },
+  { kicker: "第一章・基本操作", title: "移動與觀察", text: "用 WASD 或左搖桿移動；滑鼠與右搖桿控制鏡頭，滾輪或 LT／RT 調整遠近。", keys: ["W A S D", "左搖桿", "滑鼠／右搖桿"], image: "/assets/tutorial/walking-1.png", alt: "主角在農場道路上行走" },
+  { kicker: "第一章・基本操作", title: "互動與次要操作", text: "靠近人物或物件後按 E／A 互動。收成等次要操作使用 R／X；B 固定作為返回。", keys: ["E／A 確認", "R／X 次要操作", "Esc／B 返回"], image: "/assets/tutorial/walking-2.png", alt: "主角靠近可互動物件" },
+  { kicker: "第一章・基本操作", title: "開啟選單", text: "Q／Y 開啟資訊選單，Esc／Start 開啟暫停選單，Tab／R3 切換視角。", keys: ["Q／Y 資訊", "Esc／Start 暫停", "Tab／R3 視角"], image: "/assets/tutorial/walking-3.png", alt: "遊戲中的資訊與暫停選單" },
+  { kicker: "第一章・基本操作", title: "操作選單", text: "方向鍵、WASD、左搖桿或方向鍵移動焦點；Enter、Space 或 A 確認，Esc、Backspace 或 B 返回。", keys: ["方向鍵／WASD", "Enter／Space／A", "Esc／Backspace／B"], image: "/assets/tutorial/walking-3.png", alt: "在遊戲選單中移動焦點" },
+  { kicker: "第一章・基本操作", title: "分頁與清單", text: "使用 Q／E、PageUp／PageDown 或 LB／RB 切換分頁；滑鼠滾輪可捲動長清單與教學卡片。", keys: ["Q／E", "LB／RB", "滑鼠滾輪"], image: "/assets/tutorial/walking-3.png", alt: "切換資訊選單分頁" },
+  { kicker: "第一章・基本操作", title: "聲音快捷鍵", text: "按 M 可快速全部靜音，再按一次恢復原本音量。所有設定操作都會顯示提示。", keys: ["M 全部靜音"], image: "/assets/tutorial/walking-3.png", alt: "調整遊戲音量設定" },
 ];
 
 function byId<T extends HTMLElement>(id: string): T {
@@ -44,7 +47,7 @@ export function initPauseMenu() {
   const loadSlotsBackButton = byId<HTMLButtonElement>(
     "pauseLoadSlotsBackBtn",
   );
-  const muteButton = byId<HTMLButtonElement>("pauseMuteBtn");
+  const systemSettings = byId<HTMLElement>("pauseSystemSettings");
   const systemBackButton = byId<HTMLButtonElement>("pauseSystemBackBtn");
   const tutorialBackButton = byId<HTMLButtonElement>("pauseTutorialBackBtn");
   const tutorialCardsBackButton = byId<HTMLButtonElement>("pauseTutorialCardsBackBtn");
@@ -108,17 +111,16 @@ export function initPauseMenu() {
     renderTutorialPage();
   }
 
-  function updateMuteLabel() {
-    muteButton.textContent = gameState.musicMuted ? "音樂：關" : "音樂：開";
-  }
-
   function setStep(nextStep: PauseStep) {
     step = nextStep;
     overlay.dataset.step = nextStep;
     if (nextStep === "loadSlots") {
       renderSaveSlotButtons(loadSlotsList, loadFromSlotInGame);
     }
-    if (nextStep === "system") updateMuteLabel();
+    if (nextStep === "system") {
+      const firstSetting = mountSystemSettings(systemSettings);
+      requestAnimationFrame(() => firstSetting?.focus());
+    }
     if (nextStep === "tutorialCards") {
       renderTutorialPage();
       requestAnimationFrame(() => tutorialCarousel.focus());
@@ -156,11 +158,6 @@ export function initPauseMenu() {
     closePauseMenu();
   }
 
-  function toggleMute() {
-    setMusicMuted(!gameState.musicMuted);
-    updateMuteLabel();
-  }
-
   resumeButton.addEventListener("click", closePauseMenu);
   loadButton.addEventListener("click", () => setStep("loadSlots"));
   tutorialButton.addEventListener("click", () => setStep("tutorial"));
@@ -182,7 +179,6 @@ export function initPauseMenu() {
   loadSlotsBackButton.addEventListener("click", () => setStep("menu"));
   systemButton.addEventListener("click", () => setStep("system"));
   systemBackButton.addEventListener("click", () => setStep("menu"));
-  muteButton.addEventListener("click", toggleMute);
   // 結束遊戲跟標題畫面那顆按鈕行為一致：分頁沒辦法被網頁自己強制關掉
   // (除非分頁本身是用 window.open() 開的)，盡力嘗試、其餘交給
   // window.close() 失敗時分頁本來就還開著，玩家自己按返回就好，不用

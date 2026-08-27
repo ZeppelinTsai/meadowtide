@@ -66,6 +66,9 @@ const prevHeld = { w: false, a: false, s: false, d: false, e: false, q: false, r
 const prevShoulder = { left: false, right: false };
 const prevUiDirection = { up: false, down: false, left: false, right: false };
 let prevUiConfirm = false;
+let prevCancelButton = false;
+let prevZoomIn = false;
+let prevZoomOut = false;
 
 function syncKey(key: keyof typeof prevHeld, held: boolean) {
   if (held === prevHeld[key]) return;
@@ -87,6 +90,12 @@ export function pollGamepad() {
   if (rightStickButton && !prevRightStickButton) dispatchKey("keydown", "Tab");
   if (!rightStickButton && prevRightStickButton) dispatchKey("keyup", "Tab");
   prevRightStickButton = rightStickButton;
+  const zoomOut = (pad.buttons[6]?.value ?? 0) > 0.55;
+  const zoomIn = (pad.buttons[7]?.value ?? 0) > 0.55;
+  if (zoomOut && !prevZoomOut) window.dispatchEvent(new WheelEvent("wheel", { deltaY: 100 }));
+  if (zoomIn && !prevZoomIn) window.dispatchEvent(new WheelEvent("wheel", { deltaY: -100 }));
+  prevZoomOut = zoomOut;
+  prevZoomIn = zoomIn;
 
   // Start/Menu 鍵(標準映射 buttons[9])＝暫停選單(pause-menu.ts)，直接合成
   // Escape 鍵盤事件——跟上面 Tab 是同一招，暫停選單本來就是掛在鍵盤 Esc
@@ -111,6 +120,7 @@ export function pollGamepad() {
 
   const uiNavigation = isUiNavigationActive();
   const confirmButton = !!pad.buttons[0]?.pressed;
+  const cancelButton = !!pad.buttons[1]?.pressed;
   if (uiNavigation) {
     leftStickX = 0;
     leftStickZ = 0;
@@ -128,7 +138,19 @@ export function pollGamepad() {
     };
     (Object.keys(directions) as Array<keyof typeof directions>).forEach((key) => {
       if (directions[key] && !prevUiDirection[key]) {
-        dispatchKey("keydown", "Arrow" + key[0].toUpperCase() + key.slice(1));
+        const focused = document.activeElement;
+        if (
+          (key === "left" || key === "right") &&
+          focused instanceof HTMLInputElement &&
+          focused.type === "range"
+        ) {
+          const step = Number(focused.step) || 1;
+          const next = Number(focused.value) + (key === "right" ? step : -step);
+          focused.value = String(Math.max(Number(focused.min), Math.min(Number(focused.max), next)));
+          focused.dispatchEvent(new Event("input", { bubbles: true }));
+        } else {
+          dispatchKey("keydown", "Arrow" + key[0].toUpperCase() + key.slice(1));
+        }
       }
       if (!directions[key] && prevUiDirection[key]) {
         dispatchKey("keyup", "Arrow" + key[0].toUpperCase() + key.slice(1));
@@ -153,6 +175,8 @@ export function pollGamepad() {
       }
     }
     prevUiConfirm = confirmButton;
+    if (cancelButton && !prevCancelButton) dispatchKey("keydown", "Escape");
+    if (!cancelButton && prevCancelButton) dispatchKey("keyup", "Escape");
   } else {
     (Object.keys(prevUiDirection) as Array<keyof typeof prevUiDirection>).forEach(
       (key) => {
@@ -170,8 +194,9 @@ export function pollGamepad() {
     syncKey("w", dz < 0);
     syncKey("s", dz > 0);
     syncKey("e", confirmButton);
-    syncKey("r", !!pad.buttons[1]?.pressed); // B 鍵（standard mapping）＝收割牧草
+    syncKey("r", !!pad.buttons[2]?.pressed); // X 鍵（standard mapping）＝次要操作／收成
   }
+  prevCancelButton = cancelButton;
   syncKey("q", !!pad.buttons[3]?.pressed); // Y 鍵（standard mapping）＝資訊選單
 
   const leftShoulder = !!pad.buttons[4]?.pressed;

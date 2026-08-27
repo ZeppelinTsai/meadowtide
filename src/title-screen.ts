@@ -1,9 +1,9 @@
 import { buildMap, fadeIn, loadMap } from "./build-map";
-import { gameState } from "./game-state";
 import { loadGame, migrateLegacyDefaultSave, setActiveSaveSlot } from "./input-save";
 import { renderSaveSlotButtons } from "./save-slot-ui";
-import { initializeMusic, setMusicMuted } from "./music";
+import { initializeMusic } from "./music";
 import { hasSaveData, startPrologueScene } from "./prologue";
+import { mountSystemSettings } from "./system-settings-ui";
 
 type TitleStep = "splash" | "menu" | "system" | "loadSlots";
 
@@ -26,7 +26,7 @@ export function initTitleScreen() {
   const quitButton = byId<HTMLButtonElement>("titleQuitBtn");
   const quitMessage = byId<HTMLElement>("titleQuitMessage");
   const systemBackButton = byId<HTMLButtonElement>("titleSystemBackBtn");
-  const muteButton = byId<HTMLButtonElement>("titleMuteBtn");
+  const systemSettings = byId<HTMLElement>("titleSystemSettings");
   const loadSlotsList = byId<HTMLElement>("titleLoadSlotsList");
   const loadSlotsBackButton = byId<HTMLButtonElement>(
     "titleLoadSlotsBackBtn",
@@ -38,7 +38,10 @@ export function initTitleScreen() {
     titleScreen.dataset.step = nextStep;
     requestAnimationFrame(() => {
       if (nextStep === "menu") newGameButton.focus();
-      if (nextStep === "system") muteButton.focus();
+      if (nextStep === "system") {
+        const firstSetting = mountSystemSettings(systemSettings);
+        firstSetting?.focus();
+      }
       if (nextStep === "loadSlots") {
         const firstEnabled = loadSlotsList.querySelector<HTMLButtonElement>(
           "button:not(:disabled)",
@@ -48,15 +51,10 @@ export function initTitleScreen() {
     });
   }
 
-  function updateMuteLabel() {
-    muteButton.textContent = gameState.musicMuted ? "音樂：關" : "音樂：開";
-  }
-
   function enterMenu() {
     if (step !== "splash") return;
     initializeMusic();
     continueButton.hidden = !hasSaveData();
-    updateMuteLabel();
     setStep("menu");
   }
 
@@ -96,11 +94,6 @@ export function initTitleScreen() {
     setStep("loadSlots");
   }
 
-  function toggleMute() {
-    setMusicMuted(!gameState.musicMuted);
-    updateMuteLabel();
-  }
-
   function attemptQuit() {
     window.close();
     quitMessage.hidden = false;
@@ -113,7 +106,6 @@ export function initTitleScreen() {
   systemButton.addEventListener("click", () => setStep("system"));
   systemBackButton.addEventListener("click", () => setStep("menu"));
   loadSlotsBackButton.addEventListener("click", () => setStep("menu"));
-  muteButton.addEventListener("click", toggleMute);
   quitButton.addEventListener("click", attemptQuit);
 
   setStep("splash");
