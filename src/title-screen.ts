@@ -4,6 +4,7 @@ import { renderSaveSlotButtons } from "./save-slot-ui";
 import { initializeMusic } from "./music";
 import { hasSaveData, startPrologueScene } from "./prologue";
 import { mountSystemSettings } from "./system-settings-ui";
+import { pollGamepad } from "./gamepad-input";
 
 type TitleStep = "splash" | "menu" | "system" | "loadSlots";
 
@@ -32,6 +33,8 @@ export function initTitleScreen() {
     "titleLoadSlotsBackBtn",
   );
   let step: TitleStep = "splash";
+  let titleActive = true;
+  let titleGamepadReleased = false;
 
   function setStep(nextStep: TitleStep) {
     step = nextStep;
@@ -59,6 +62,7 @@ export function initTitleScreen() {
   }
 
   function hideTitleScreen() {
+    titleActive = false;
     titleScreen.classList.add("titleScreen--hidden");
     window.setTimeout(() => {
       titleScreen.style.display = "none";
@@ -109,4 +113,24 @@ export function initTitleScreen() {
   quitButton.addEventListener("click", attemptQuit);
 
   setStep("splash");
+  // 主遊戲 animate() 在 player 尚未建立時會提早返回，因此標題畫面必須
+  // 自己輪詢手把。A 由既有 UI confirm 路徑轉成 Enter；其他按鈕也能符合
+  // 「按任意鍵開始」，進主選單後同一輪詢繼續負責方向與 A 確認。
+  const pollTitleGamepad = () => {
+    if (!titleActive) return;
+    const anyButtonPressed = Array.from(navigator.getGamepads?.() || []).some(
+      (pad) => pad?.buttons.some((button) => button.pressed),
+    );
+    if (step === "splash") {
+      if (anyButtonPressed) enterMenu();
+    } else if (!titleGamepadReleased) {
+      // 越過 splash 的那顆按鈕必須先放開，否則按住 A 會在下一幀立刻
+      // 啟動已聚焦的「開始新遊戲」，Y／Start 也可能洩漏成遊戲快捷鍵。
+      titleGamepadReleased = !anyButtonPressed;
+    } else {
+      pollGamepad();
+    }
+    requestAnimationFrame(pollTitleGamepad);
+  };
+  requestAnimationFrame(pollTitleGamepad);
 }

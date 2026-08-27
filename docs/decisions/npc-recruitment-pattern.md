@@ -1,5 +1,10 @@
 # NPC 招募流程模式（以木匠為範例）
 
+木匠護送的 escorting／village_scene_done 階段，村長與木匠會在玩家身後
+保持一般 NPC 對話半徑內，因此 input-save.ts 必須停用這兩個階段的一般
+鄰近 NPC 閒聊。事件指定對話仍由 scripted touch/interact event 觸發，不能
+為了擋身後村長而一起關閉。
+
 > 從 `AGENTS.md` 搬過來的架構決策——這是之後每個新角色招募事件都該複製的框架，不是一次性的木匠專屬筆記。
 
 
@@ -43,4 +48,3 @@ carpenterQuest.constructionStartDay >= CARPENTER_CONSTRUCTION_DAYS`
   驅動的窗戶，晚上自動隨 `nightFactor` 亮燈，不用另外寫特效。
 - **存讀檔**：`carpenterQuest` 整包存進 `saveGame()`/`loadGame()`，讀檔
   時會一併還原木匠 mesh 的顯示狀態。
-

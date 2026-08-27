@@ -677,9 +677,14 @@ addEventListener("keydown", (e) => {
   }
 
   if (
-    gameState.currentMapName === "livingArea" ||
-    gameState.currentMapName === "oldVillage"
+    (gameState.currentMapName === "livingArea" ||
+      gameState.currentMapName === "oldVillage") &&
+    carpenterQuest.stage !== "escorting" &&
+    carpenterQuest.stage !== "village_scene_done"
   ) {
+    // 木匠護送中村長與木匠會沿玩家走過的軌跡跟在身後，距離必然落在一般
+    // NPC 對話半徑內。此時 E／A 是前方互動，不應被身後跟隨者攔截；
+    // 護送事件自己的觸碰對話走上面的 scripted events，不受這裡影響。
     const nearby = npcs.find((n) => {
       if (!n.mesh.visible) return false; // 木匠抵達前不算「在場」，不能對話
       if (n.map !== gameState.currentMapName) return false;

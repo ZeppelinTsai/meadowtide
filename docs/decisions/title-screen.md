@@ -1,5 +1,11 @@
 # 開局標題畫面：src/title-screen.ts
 
+標題畫面在玩家模型建立前必須自行呼叫 pollGamepad()；主遊戲 animate()
+會因 gameState.player 尚不存在而提早返回，不能依賴它輪詢。Splash 階段
+任一手把按鈕都可進入主選單，且必須等該按鈕放開後才啟用一般 UI confirm，
+避免按住 A 直接誤觸開始新遊戲，或讓 Y／Start 洩漏成遊戲快捷鍵。離開標題後
+立即停止標題輪詢，避免與遊戲迴圈重複讀取。
+
 > 2026-08-26 新增，架構決策摘要。完整討論脈絡見
 > `docs/history/changelog.md` 最後一節。
 
