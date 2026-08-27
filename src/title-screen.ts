@@ -85,8 +85,8 @@ export function initTitleScreen() {
     setActiveSaveSlot(sourceSlot);
     if (!loadGame(saveName, { initializeTargetMap: true })) {
       console.warn(`[title-screen] 讀取 ${saveName} 失敗：找不到存檔`);
+      fadeIn();
     }
-    fadeIn();
   }
 
   function openLoadSlots() {

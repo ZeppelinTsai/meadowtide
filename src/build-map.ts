@@ -3891,7 +3891,7 @@ export function isBlocked(mapName, x, z) {
   return false;
 }
 
-export function loadMap(mapName, startPos) {
+export function loadMap(mapName, startPos, onLoaded?: () => void) {
   gameState.isSitting = false;
   fadeOut(() => {
     // 06:00／18:00 只代表「下一次換圖可刷新」。必須等目標地圖真的不同才
@@ -3989,6 +3989,7 @@ export function loadMap(mapName, startPos) {
         npc.lastTargetKey = null;
       });
     }
+    onLoaded?.();
     fadeIn();
   });
 }

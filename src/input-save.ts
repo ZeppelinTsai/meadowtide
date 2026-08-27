@@ -90,7 +90,7 @@ import {
   handleChoiceDigitKey,
   advanceChoicePage,
 } from "./dialogue";
-import { buildMap, loadMap, isBlocked, events } from "./build-map";
+import { loadMap, isBlocked, events } from "./build-map";
 import { isInventoryOpen } from "./inventory-ui";
 import {
   updateAvenueTreeColors,
@@ -355,11 +355,25 @@ export function loadGame(
       ...data.mountainOreNodes,
     );
   }
-  // 標題畫面讀檔時尚未建立任何正式場景。必須先還原上面的洞窟樓層、
-  // 礦點等狀態，再直接建置存檔目標地圖；不可先建立 livingArea 當中繼，
-  // 否則玩家會看見生活區後才跳到真正位置。
+  const finishRestoringVisualState = () => {
+    updateAvenueTreeColors();
+    updateSeasonalTreeColors();
+    updateSeasonalGroundColors();
+    growCropsForNewDay();
+    syncFarmVisuals();
+    clearMeteors();
+    scheduleNextMeteor(true);
+    updateHud();
+  };
+
+  // 標題畫面讀檔時尚未建立玩家或正式場景，必須走完整的 loadMap 流程。
+  // 只呼叫 buildMap 會留下 player=null，遊戲迴圈便會持續顯示黑畫面。
   if (options.initializeTargetMap) {
-    buildMap(data.currentMapName || "livingArea");
+    const targetMap = data.currentMapName || "livingArea";
+    const restoredPosition = data.player || MAPS[targetMap].playerStart;
+    if (data.player) gameState.facing = data.player.facing || gameState.facing;
+    loadMap(targetMap, restoredPosition, finishRestoringVisualState);
+    return true;
   }
   if (data.player) {
     const targetMap = data.currentMapName || "livingArea";
@@ -405,14 +419,7 @@ export function loadGame(
         );
     }
   }
-  updateAvenueTreeColors();
-  updateSeasonalTreeColors();
-  updateSeasonalGroundColors();
-  growCropsForNewDay();
-  syncFarmVisuals();
-  clearMeteors();
-  scheduleNextMeteor(true);
-  updateHud();
+  finishRestoringVisualState();
   return true;
 }
 (window as any).saveGame = saveGame;
