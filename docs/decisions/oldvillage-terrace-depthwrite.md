@@ -89,9 +89,16 @@ polygonOffset 是同一類問題(共平面 z-fighting)的另一種標準修法�
 比對北灘神社平台扶手——新拆出來的其中一段扶手 elevation 剛好也是 3(跟
 `terraces.upper.elevation`/`northBeachPlatform.elevation` 同值)，混進了
 這個 filter，但測試只用 `.some()` 找特定座標、沒有用數量比對，不受影響。
-(這個環境目前跑不動 `npm run test:map-tools`——`esbuild` 裝的是
-win32-x64 binary、目前的執行環境是 linux-x64，是既有的環境問題，不是這次
-改動造成的，需要另外在正確平台上 `npm install` 一次 esbuild 才能修。)
+(2026-08-27 更新：這個環境曾經跑不動 `npm run test:map-tools`——
+`node_modules` 裡的 `esbuild`/`rollup` 平台 binary 是 win32-x64，執行環境
+是 linux-x64，是既有的環境問題，不是這次改動造成的。已經在這個環境重新
+`npm install` 一次，補齊 linux-x64 binary 後恢復正常，見
+`docs/decisions/dev-environment-notes.md`。重新用測試跑過一次後，抓到
+`map-transitions.test.ts` 裡有一段「舊城鎮西側與南側各擴充 100 格海面」的
+快照斷言還停在 `northBeachPlatform.segments` 的 `{x:97,z:29,width:7,depth:3}`
+舊值——這正是這份文件「第三輪修正」把 `depth` 改成 `2.5` 之前的數字，測試
+在那次改動當下沒能跟著跑（因為當時測試整套跑不動），現在補上
+`depth: 2.5` 讓斷言跟實際程式碼一致，32 個 map-tools 測試全數通過。)
 
 實際視覺結果一樣需要 Zeppelin 在遊戲裡重新確認。
 

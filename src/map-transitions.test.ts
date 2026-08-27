@@ -214,7 +214,7 @@ test("舊城鎮西側與南側各擴充 100 格海面", () => {
     { x: 97, z: 21, width: 7, depth: 6 },
     { x: 104, z: 21, width: 1, depth: 2 },
     { x: 96, z: 27, width: 8, depth: 2 },
-    { x: 97, z: 29, width: 7, depth: 3 },
+    { x: 97, z: 29, width: 7, depth: 2.5 },
     { x: 96, z: 15, width: 1, depth: 2 },
     { x: 104, z: 18, width: 1, depth: 2 },
     { x: 96, z: 24, width: 1, depth: 2 },
