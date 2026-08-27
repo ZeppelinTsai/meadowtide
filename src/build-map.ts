@@ -2714,18 +2714,60 @@ export function buildMap(mapName) {
       // rotationDegrees:180)呼叫 3 次，只有 baseY 往上疊，疊出來是 3
       // 座完全相同的螺旋堆疊在一起(不是把角度也接續算下去、做成一條
       // 連續大螺旋)——單座總爬升 6.3，3 座疊起來總高度 18.9。
-      const celestialSegmentRise = 42 * 0.15;
-      const celestialTotalHeight = celestialSegmentRise * 3;
-      for (let segment = 0; segment < 3; segment++) {
+      //
+      // 2026-08-27 玩家實測回報「複製三個會導致無法接連」——問題就出在
+      // 上一段講的「不是把角度也接續算下去」：3 座全部用同一個
+      // rotationDegrees(=180)，也就是每一座的第 0 階角度都相同，只有
+      // baseY 不同。但單一座內部的角度是從 i=0 掃到 i=steps-1(=41)，
+      // 掃過 41×20=820 度，對 360 取餘是 100 度——也就是「爬完一座
+      // 天梯後，實際站的角度位置」比「這座的起點角度」多轉了 100 度。
+      // 下一座卻是原地從跟第一座一模一樣的起點角度(180 度)重新開始，
+      // 兩座之間憑空多出一段 100 度、完全沒有踏面的空隙，玩家爬到
+      // 第一座頂端根本接不到第二座——這就是回報的「無法接連」。
+      // (baseY 那段疊高度的算法本身沒問題：第 N 座的第 0 階，高度
+      // 正好接在第 N-1 座最後一階之後再加一階，本來就是連續的；只有
+      // 角度沒有跟著接續，兩者對不上。)
+      //
+      // 修法：不能讓每一座的 rotationDegrees 都相同，下一座的起點角度
+      // 要接著上一座的終點角度、往同一個方向繼續轉，用跟單座內部
+      // 「每階多轉 angleStepDegrees」同一條規則往外推——把 N 座想成
+      // 同一條連續螺旋只是分批建立 mesh，第 N 座的第 0 階在角度上必須
+      // 等於「假設沒有分段，連續數到第 N 座第 0 階應該在的角度」，算
+      // 出來是每複製一份要多轉 steps × angleStepDegrees(=42×20=840，
+      // 對 360 取餘 =120 度)，不是玩家原本猜測的 90 度——90 度只是
+      // 縮小了對不齊的落差，兩座踏面仍然不會真正相接；只有精算出來的
+      // 120 度才會讓相鄰兩座首尾剛好差一個 angleStepDegrees，跟座內
+      // 每階的間距完全一致，接起來才會是真正連續、沒有斷點的一條
+      // 螺旋緞帶。角度遞增的方向沿用原本每階角度遞增(+angleStepDegrees)
+      // 同一個轉向，跟玩家講的「逆時針」是同一個方向，只是把猜測的
+      // 90 度換成精算出來的 120 度。
+      //
+      // 高度改 5 倍：原本 3 座疊出的總高度是 18.9，玩家要求改成 5 倍
+      // (=94.5)。維持「每一份 6.3」(=42 階 × 0.15/階)這個單位不變，
+      // 把複製份數從 3 改成 15(=3×5)疊出 94.5——沿用原本「複製 N 份」
+      // 這個機制，只把 N 從 3 改成 15；配合上面角度接續的修正公式，
+      // 15 份會連成一條完整不斷開的螺旋，不是 15 座互相獨立、各自
+      // 斷開的堆疊。
+      const celestialSteps = 42;
+      const celestialAngleStepDegrees = 20;
+      const celestialRisePerStep = 0.15;
+      const celestialSegmentRise = celestialSteps * celestialRisePerStep;
+      const celestialCopies = 15;
+      const celestialTotalHeight = celestialSegmentRise * celestialCopies;
+      // 每複製一份要多轉的角度——見上面註解的推導，等於「單座內部
+      // 掃過的完整角度」(steps × angleStepDegrees)對 360 取餘。
+      const celestialContinuationDegrees =
+        (celestialSteps * celestialAngleStepDegrees) % 360;
+      for (let segment = 0; segment < celestialCopies; segment++) {
         const { group: celestialStaircase } = makeCelestialSpiralStaircase({
           x: celestialCorner.x,
           z: celestialCorner.z,
           baseY: segment * celestialSegmentRise,
-          steps: 42,
+          steps: celestialSteps,
           radius: 0.9,
-          risePerStep: 0.15,
-          angleStepDegrees: 20,
-          rotationDegrees: 180,
+          risePerStep: celestialRisePerStep,
+          angleStepDegrees: celestialAngleStepDegrees,
+          rotationDegrees: 180 + segment * celestialContinuationDegrees,
           treadWidth: 1.86,
         });
         plateauGroup.add(celestialStaircase);

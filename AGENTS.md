@@ -157,6 +157,7 @@
 - `props.ts`(場景道具/建築/自然物件 factory)已拆成 `props-nature.ts`/`props-buildings.ts`/`props-decor.ts`/`props-resources.ts` 四檔，`props.ts` 只剩 re-export barrel → `docs/decisions/props-file-split.md`
 - 為什麼 `build-map.ts`/`layout-maps.ts`/`game-loop.ts` 沒有跟著 `props.ts` 一起拆(單一巨型函式 / 執行順序耦合的評估) → `docs/decisions/large-files-split-assessment.md`
 - 開發環境雜項(`npm run test:map-tools` 曾經跑不動的 esbuild 平台問題、`tsc` incremental 加速、CRLF 換行符號漂移雜訊) → `docs/decisions/dev-environment-notes.md`
+- 人形角色 `humanoidScale()` 校正方法／新角色頭髮太高聳導致身體比例矮一截的教訓(廚師案例) → `docs/decisions/humanoid-scale-calibration.md`
 
 ## 採集點延後刷新與多 agent 提交
 
