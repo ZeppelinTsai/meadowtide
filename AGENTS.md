@@ -69,8 +69,6 @@
   檢查再建置；`npm run preview` 預覽產物。Three.js 固定為 npm 套件 `0.128.0`，
   不要改回 CDN，也不要使用高版本才有的 API。
 
-
-
 ## 座標系統 — 先讀這段再動任何座標
 
 - Grid-based，`TILE = 1` 單位。
@@ -119,7 +117,6 @@
   `width` 改名或加型別註解強制區分「陣列大小」跟「城鎮邊界」兩個概念，
   目前先用 `townEdgeX` 這個補丁擋住已知的兩處。
 
-
 ## Tile 數值圖例
 
 | 值  | 意義                                 | 可走 |
@@ -135,7 +132,6 @@
 
 農地不是靠 tile 數值渲染的——`FARMLAND_TILES` 是獨立算出來的座標清單，
 種植/收成/渲染都讀這個清單，不讀陣列本身的值。
-
 
 ## 系統速查（詳細架構決策見 `docs/decisions/`）
 
@@ -181,7 +177,6 @@
   之後定的，比上一條「各 commit 各的」更明確：不是「各自 commit」，是
   「乾脆只有一邊 commit」。
 
-
 ## 朝向/旋轉的慣例 — 這裡出過至少兩次 bug
 
 - **人形角色統一高度為 `1.0` 世界單位**（鞋底到頭頂／頭髮主體頂端），接近專案
@@ -207,7 +202,6 @@
   臉部位置調整整體 Y/Z 與顏色，不要另做 Torus 半圓、大嘴或下垂苦瓜嘴；只有
   劇情明確要求驚訝、難過等特殊表情時才另外製作。
 
-
 ## 除錯工具：`scripts/map-debug.ts`
 
 在**改任何座標之前跟之後**都跑一次：
@@ -228,7 +222,6 @@ npm run map-debug -- --map=port --legend
 
 工具目前只印地圖網格跟 `buildings`/`playerStart`，`--landmarks` 是預留的
 空殼（疊印 NPC/裝飾物位置），還沒實作。
-
 
 ## 建筑缩放除错：`scripts/building-debug.ts`
 
@@ -251,7 +244,6 @@ npm run building-debug
 
 主屋、动物小屋及旧城镇每栋房屋都必须出现在报告中。改动完成后还要跑
 `npm run build`；涉及地图位置时，另按上节要求在前后跑 `map-debug`。
-
 
 ## 地圖座標平移工具：`src/region-paint.ts`、`src/map-shift.ts`、`scripts/audit-raw-coordinates.ts`
 
@@ -284,10 +276,10 @@ npm run building-debug
   `LAYOUT.oldVillage`），不要整包 `LAYOUT` 一起丟，否則會搬到不相干地圖的座標。
   舊城鎮目前由 `OLD_VILLAGE_OCEAN_EXPANSION` 在西側與南側各加 100 格海面；
   西擴的座標根節點必須包含 `OLD_VILLAGE_RAILS`，擴充後 `LAYOUT.oldVillage.width/
-  height` 必須以實際 tile grid 回填。`npm run test:map-tools` 會驗證新增區域全為
+height` 必須以實際 tile grid 回填。`npm run test:map-tools` 會驗證新增區域全為
   tile `9`、洞口／房門等單軸座標有同步移動、港口傳送仍連通。
   港口東側則由 `PORT_OCEAN_EXPANSION.east=50` 透過 `shiftMapLayout(..., "east",
-  fillValue: 9)` 追加外海；東擴不得平移既有座標，完成後必須用 tile grid 實際寬度
+fillValue: 9)` 追加外海；東擴不得平移既有座標，完成後必須用 tile grid 實際寬度
   回填 `LAYOUT.port.width`。同一組測試會確認新增 50 欄全為 tile `9`、玩家起點與
   舊城鎮傳送端點未移動。
   `makePortScene()` 的北側港區高台右緣必須使用 `LAYOUT.port.eastOceanCutout.x`，
@@ -316,7 +308,6 @@ npm run building-debug
   npm run test:map-tools
   ```
 
-
 ## 傳送點與整張地圖平移（2026-08-25 已實作）
 
 - `src/map-transitions.ts` 的 `createTransitionEvents()` 是世界地圖雙向連線的
@@ -344,7 +335,6 @@ npm run building-debug
   不雙重位移，並以 BFS 驗證山區／舊城鎮／兩側南灘的抵達點到門檻之間仍有
   連續可走地磚，防止 `path()` 對零或負寬度靜默不畫。
 
-
 ## 辅助程序与新规则
 
 - 遇到需要反复人工计算或容易产生两套答案的问题（坐标平移、视觉缩放与碰撞、
@@ -362,7 +352,6 @@ npm run building-debug
 - 辅助程序必须维持可在 Node 环境直接 import 的边界，不得为了检查数据而启动
   renderer、读取 `document` 或依赖浏览器全局。
 
-
 ## 已知還沒做 / 刻意簡化的部分
 
 - **F2 俯視規劃模式**（格線、半透明分區、方向鍵搬動整塊區域、即時檢查
@@ -371,7 +360,6 @@ npm run building-debug
   （沒有窗戶屋頂、沒有真的水流動畫），佈局優先，美術之後回頭補。
 - 動物、NPC 沒有真的路徑規劃避開新地形變化（例如懸崖/斜坡），目前只在
   已知安全的區域內活動。
-
 
 ## 建議的工作方式
 
@@ -387,3 +375,16 @@ npm run building-debug
   改動）消失了，而且好幾次提交都沒被發現。開工前務必先跟使用者確認目前
   檔案狀態，寧可多問一句，也不要事後才發現改動不見了。
 
+## 開發環境與建置注意事項 (Dev Environment Notes)
+
+1. **跨平台換行符號規範 (.gitattributes)**
+   - 本專案採用 `eol=lf` 規範。在 Windows 與 Linux 混合開發環境下，請確保編輯器存檔為 LF，避免產生無意義的 CRLF/LF diff 雜訊。
+
+2. **TypeScript 增量編譯 (Incremental Build)**
+   - `tsconfig.json` 已啟動 `incremental: true`，快取檔生成於 `node_modules/.tsbuildinfo`。執行型別檢查時請優先維護快取，以控制在 CLI/Bash 工具的執行時間限制（~43 秒）內。
+
+3. **跨平台原生模組 (Native Binaries)**
+   - 由於開發環境包含 Windows 主機與 Linux 虛擬機/容器，執行 `npm test` 或工具鏈前，若遇到平台不匹配錯誤（如 `esbuild`），須確保 `node_modules` 補齊 `linux-x64` 之二進位依賴。
+
+4. **測試回歸驗證**
+   - 涉及 3D 座標、地圖轉換、z-fighting 參數調整時，不能僅依賴 `tsc --noEmit` 型別檢查。改動後必須實測執行 `npm run test`（或特定單元測試），避免快照與邏輯斷言過期。
