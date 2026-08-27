@@ -12,22 +12,22 @@ body {
   right: 12px;
   z-index: 10;
   color: #eee;
-  background: rgba(0, 0, 0, 0.55);
-  padding: 10px 14px;
-  border-radius: 8px;
-  font-size: 13px;
+  background: transparent;
+  padding: 10px;
+  border-radius: 10px;
+  font-size: 20px;
   line-height: 1.6;
   pointer-events: auto;
   display: flex;
-  gap: 8px;
+  gap: 10px;
 }
 .quickMenuBtn {
-  min-width: 112px;
-  padding: 9px 12px;
+  min-width: 100px;
+  padding: 10px;
   border: 1px solid rgba(255, 255, 255, 0.34);
   border-radius: 8px;
-  background: rgba(2, 18, 38, 0.86);
-  color: #fff;
+  background: rgba(243, 231, 206, 0.7);
+  color: #493025;
   font: inherit;
   font-weight: 700;
   cursor: pointer;
@@ -35,13 +35,13 @@ body {
 .quickMenuBtn small {
   display: block;
   margin-top: 2px;
-  color: #8ecfff;
-  font-size: 11px;
+  color: #493025;
+  font-size: 18px;
   font-weight: 600;
 }
 .quickMenuBtn:hover,
 .quickMenuBtn:focus-visible {
-  background: rgba(19, 59, 91, 0.94);
+  background: rgba(243, 231, 206, 0.5);
   outline: 3px solid #f2b84b;
   outline-offset: 2px;
 }
