@@ -1,0 +1,29 @@
+# 設定預設行為：所有文字檔統一強制使用 LF 換行
+* text=auto eol=lf
+
+# 程式碼與設定檔：明確鎖定 LF
+*.ts text eol=lf
+*.tsx text eol=lf
+*.js text eol=lf
+*.jsx text eol=lf
+*.json text eol=lf
+*.md text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+*.css text eol=lf
+*.html text eol=lf
+
+# 批次檔（Windows 專用，必須維持 CRLF）
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# 二進位檔案：禁止 Git 對其進行任何文字/換行符號轉換
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.webp binary
+*.ttf binary
+*.woff binary
+*.woff2 binary
