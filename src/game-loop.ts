@@ -117,7 +117,6 @@ import {
   pastureGrassBlades,
   gatherNodeMeshes,
   celestialSparkleMaterials,
-
   EAST_SEA_WAVE,
   NORTH_SEA_WAVE,
   EAST_SEA_WAVE_DIRECTION,
@@ -284,7 +283,9 @@ export function animate(now) {
   if (gameState.pendingAutosave && !gameState.cutsceneActive) {
     saveGame("autosave");
     gameState.pendingAutosave = false;
-    console.info(`[自動存檔] 已於 06:00 儲存（來源：第 ${getActiveSaveSlot()} 格）`);
+    console.info(
+      `[自動存檔] 已於 06:00 儲存（來源：第 ${getActiveSaveSlot()} 格）`,
+    );
   }
   // 天梯閃耀星點——跟 foamMeshes/windowMats 這些其他「登記進陣列、
   // animate() 逐幀處理」的特效同一套慣例。只有站在山之洞第25層時這個
@@ -367,7 +368,11 @@ export function animate(now) {
     // X / Z 分開檢查碰撞，撞到一個軸還能沿著另一個軸繼續滑，這是「平穩」的關鍵
     const tryX = gameState.player.position.x + stepX;
     if (
-      !collidesAt(gameState.currentMapName, tryX, gameState.player.position.z) &&
+      !collidesAt(
+        gameState.currentMapName,
+        tryX,
+        gameState.player.position.z,
+      ) &&
       canTraverseVillageHeight(
         gameState.player.position.x,
         gameState.player.position.z,
@@ -378,7 +383,11 @@ export function animate(now) {
       gameState.player.position.x = tryX;
     const tryZ = gameState.player.position.z + stepZ;
     if (
-      !collidesAt(gameState.currentMapName, gameState.player.position.x, tryZ) &&
+      !collidesAt(
+        gameState.currentMapName,
+        gameState.player.position.x,
+        tryZ,
+      ) &&
       canTraverseVillageHeight(
         gameState.player.position.x,
         gameState.player.position.z,
@@ -413,7 +422,8 @@ export function animate(now) {
   // 室內與礦坑會暫停世界時間(gameState.elapsed)，但玩家仍能在場景內移動。
   // 走路若使用世界時間當相位，就會只平移、不擺手腳；視覺動畫改讀持續前進
   // 的 effectElapsed。是否播放仍由 isMoving 決定，選單／對話 dt=0 時不會踏步。
-  else animateRun(gameState.player, gameState.isMoving, gameState.effectElapsed);
+  else
+    animateRun(gameState.player, gameState.isMoving, gameState.effectElapsed);
   // 2026-08-26 第六輪反饋「主角剛落地是陷進碼頭的」——animateRun()/
   // animateSit() 剛剛那行會直接覆寫 position.y 成走路/待機用的 bob 值，
   // 序幕在 updatePrologueCutscene() 裡辛苦算出來的甲板/跳板/碼頭高度
@@ -547,17 +557,16 @@ export function animate(now) {
     ((window as any).__fishHintEl = document.getElementById("fishHint"));
   const fishActionHudEl =
     (window as any).__fishActionHudEl ||
-    ((window as any).__fishActionHudEl = document.getElementById(
-      "fishActionHud",
-    ));
+    ((window as any).__fishActionHudEl =
+      document.getElementById("fishActionHud"));
   const fishActionKeyEl =
     (window as any).__fishActionKeyEl ||
-    ((window as any).__fishActionKeyEl = document.getElementById(
-      "fishActionKey",
-    ));
+    ((window as any).__fishActionKeyEl =
+      document.getElementById("fishActionKey"));
   if (
     !nearWater() &&
-    (gameState.fishingState === "casting" || gameState.fishingState === "biting")
+    (gameState.fishingState === "casting" ||
+      gameState.fishingState === "biting")
   ) {
     // 走離水邊自動取消——但拉扯期(reeling)不取消，正在跟魚角力時腳下
     // 站的位置不該影響(而且 reeling 期間移動鍵本身已經被鎖住，走不了)，
@@ -681,19 +690,16 @@ export function animate(now) {
   // 到期(elapsed > until)就清掉，這裡只負責把目前狀態同步到 DOM ---
   const harvestToastEl =
     (window as any).__harvestToastEl ||
-    ((window as any).__harvestToastEl = document.getElementById(
-      "harvestToast",
-    ));
+    ((window as any).__harvestToastEl =
+      document.getElementById("harvestToast"));
   const harvestToastTitleEl =
     (window as any).__harvestToastTitleEl ||
-    ((window as any).__harvestToastTitleEl = document.getElementById(
-      "harvestToastTitle",
-    ));
+    ((window as any).__harvestToastTitleEl =
+      document.getElementById("harvestToastTitle"));
   const harvestToastTextEl =
     (window as any).__harvestToastTextEl ||
-    ((window as any).__harvestToastTextEl = document.getElementById(
-      "harvestToastText",
-    ));
+    ((window as any).__harvestToastTextEl =
+      document.getElementById("harvestToastText"));
   if (
     gameState.harvestFeedback &&
     gameState.elapsed > gameState.harvestFeedback.until
@@ -769,7 +775,8 @@ export function animate(now) {
       if (!gameState.cutsceneActive) {
         events
           .filter(
-            (ev) => ev.map === gameState.currentMapName && ev.trigger === "touch",
+            (ev) =>
+              ev.map === gameState.currentMapName && ev.trigger === "touch",
           )
           .filter((ev) => ev.x === roundedX && ev.z === roundedZ)
           .forEach((ev) => ev.action());
@@ -941,6 +948,8 @@ export function animate(now) {
   const gameHour = phase * TIME_CONFIG.gameHoursPerDay;
   const animalsShouldBeHome =
     gameHour < 6 || gameHour >= 18 || isUnsafeAnimalWeather();
+  // 20:00 備援：地形複雜導致直線走不到門口時，強制送回穀倉，避免整夜卡在戶外。
+  const forceAnimalsHome = gameHour >= 20 || isUnsafeAnimalWeather();
 
   // --- 動物投餵機／放牧結算：早上 8 點結算放牧，傍晚 18 點結算投餵機。---
   // 用 SettledDay 記錄「這天結算過了嗎」，避免同一天內每一幀都重算；
@@ -989,7 +998,9 @@ export function animate(now) {
     } else if (isAnimalPositionSafe(a, oldX, nextZ)) {
       a.mesh.position.z = nextZ;
     }
-    return Math.hypot(a.mesh.position.x - oldX, a.mesh.position.z - oldZ) > 1e-6;
+    return (
+      Math.hypot(a.mesh.position.x - oldX, a.mesh.position.z - oldZ) > 1e-6
+    );
   };
   const rescueAnimalFromObstacle = (a) => {
     if (isAnimalPositionSafe(a, a.mesh.position.x, a.mesh.position.z)) return;
@@ -1015,6 +1026,19 @@ export function animate(now) {
   animals.forEach((a) => {
     let moving = false;
     if (a.state === "out") rescueAnimalFromObstacle(a);
+
+    // 20:00 後（或惡劣天氣）仍在外 → 直接進穀倉
+    if (forceAnimalsHome && a.state === "out") {
+      a.state = "in";
+      a.mesh.visible = false;
+      a.mesh.position.set(BARN_DOOR.x, 0, BARN_DOOR.z);
+      a.target = null;
+      a.routeTarget = null;
+      a.wanderState = "resting";
+      animateAnimalWalk(a, false, gameState.elapsed);
+      return;
+    }
+
     if (animalsShouldBeHome) {
       if (a.state === "out") {
         // 18:00 後不管原本是否正在休息，都立即往穀倉移動。
@@ -1029,9 +1053,11 @@ export function animate(now) {
             a.mesh.position.x + (dx / dist) * step,
             a.mesh.position.z + (dz / dist) * step,
           );
-          // 動物模型的頭朝本地 +X，不是跟角色一樣朝 -Z，所以要多轉 -90°，
-          // 跟魚的朝向公式是同一個修正（見上面 fishSchool 那段）
+          // 動物模型的頭朝本地 +X，不是跟角色一樣朝 -Z，所以要多轉 -90°
           a.mesh.rotation.y = Math.atan2(dx, dz) - Math.PI / 2;
+
+          // 可選：卡住太久也提早進備援（例如連續多幀沒前進）
+          // 若之後要加強，可在 animal 物件上加 stuckFrames / lastX lastZ 計數
         } else {
           a.state = "in";
           a.mesh.visible = false;
@@ -1260,13 +1286,7 @@ export function animate(now) {
   const cameraShotOverride = updateCameraShots(frameDt);
   const cameraAdjustOverride = cameraShotOverride
     ? null
-    : updateCameraAdjustMode(
-        frameDt,
-        false,
-        false,
-        false,
-        false,
-      );
+    : updateCameraAdjustMode(frameDt, false, false, false, false);
   const cameraOverride = cameraShotOverride ?? cameraAdjustOverride;
   if (cameraOverride) {
     gameState.zoom = cameraOverride.zoom;
