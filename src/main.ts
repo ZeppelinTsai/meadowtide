@@ -2,6 +2,7 @@ import { animate } from "./game-loop";
 import { initTitleScreen } from "./title-screen";
 import { initPauseMenu } from "./pause-menu";
 import "./inventory-ui";
+import "./map-menu";
 import { initUiFocusNavigation } from "./ui-focus-navigation";
 
 // 開局改成先進標題畫面(title-screen.ts)：按任意鍵→主選單，玩家自己選

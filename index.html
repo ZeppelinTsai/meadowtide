@@ -57,6 +57,20 @@
         </div>
       </div>
     </div>
+    <div id="mapOverlay" aria-hidden="true" data-game-menu="closed">
+      <section id="mapPanel" role="dialog" aria-modal="true" aria-label="地圖">
+        <header class="map-menu-header">
+          <h2>地圖</h2>
+          <button id="mapClose" type="button">M／Select　關閉</button>
+        </header>
+        <section class="world-map" aria-label="海風牧歌地圖">
+          <div class="world-map-location world-map-location-mountain"><span aria-hidden="true">●</span><strong>山區</strong></div>
+          <div class="world-map-location world-map-location-old-village"><span aria-hidden="true">●</span><strong>城鎮</strong></div>
+          <div class="world-map-location world-map-location-living-area"><span aria-hidden="true">●</span><strong>牧場</strong></div>
+          <div class="world-map-location world-map-location-port"><span aria-hidden="true">●</span><strong>港口</strong></div>
+        </section>
+      </section>
+    </div>
     <div id="inventoryOverlay" aria-hidden="true" data-game-menu="closed">
       <section
         id="inventoryPanel"
@@ -67,7 +81,6 @@
         <header class="inventory-header">
           <span class="inventory-menu-label">資訊</span>
           <div id="inventoryTabs" role="tablist" aria-label="資訊選單分頁">
-            <button class="inventory-tab" type="button" role="tab" aria-selected="false" data-inventory-tab="map" tabindex="-1">地圖</button>
             <button
               class="inventory-tab active"
               type="button"
@@ -114,7 +127,7 @@
         </header>
         <div id="inventoryGrid"></div>
         <footer class="inventory-footer">
-          ← →／手把 LB RB 切換分頁　・　M／Select 地圖　・　Q／Y 關閉
+          ← →／手把 LB RB 切換分頁　・　Q／Y 關閉
         </footer>
       </section>
     </div>

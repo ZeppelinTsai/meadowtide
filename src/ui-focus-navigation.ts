@@ -2,6 +2,7 @@ const UI_ROOT_SELECTORS = [
   "#titleScreen:not(.titleScreen--hidden)",
   "#pauseMenu.open",
   "#inventoryOverlay.open",
+  "#mapOverlay.open",
   "#dialogChoices",
 ];
 
