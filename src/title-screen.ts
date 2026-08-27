@@ -15,7 +15,7 @@ function byId<T extends HTMLElement>(id: string): T {
 
 export function initTitleScreen() {
   // 開局第一件事：舊版單一 "default" 存檔搬進 slot1，之後所有讀存檔
-  // 判斷(hasSaveData()、renderSaveSlotButtons()...)都只認 slot1..slot9，
+  // 判斷與清單都只認 autosave/slot1..slot9，
   // 這行要跑在它們之前，見 input-save.ts 的 migrateLegacyDefaultSave()。
   migrateLegacyDefaultSave();
 
@@ -78,14 +78,14 @@ export function initTitleScreen() {
     startPrologueScene();
   }
 
-  function loadFromSlot(slotNum: number) {
+  function loadFromSlot(saveName: string, sourceSlot: number) {
     hideTitleScreen();
-    setActiveSaveSlot(slotNum);
+    setActiveSaveSlot(sourceSlot);
     buildMap("livingArea");
     loadMap("livingArea", undefined);
     window.setTimeout(() => {
-      if (!loadGame("slot" + slotNum)) {
-        console.warn(`[title-screen] 讀取第 ${slotNum} 格失敗：找不到存檔`);
+      if (!loadGame(saveName)) {
+        console.warn(`[title-screen] 讀取 ${saveName} 失敗：找不到存檔`);
       }
       fadeIn();
     }, 500);

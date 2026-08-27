@@ -741,31 +741,47 @@ canvas {
   font-size: 24px;
 }
 #titleLoadSlotsList {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 10px;
-  width: 420px;
   margin-bottom: 20px;
+}
+.saveSlotList {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  width: min(520px, 82vw);
+  max-height: min(58vh, 560px);
+  padding: 4px;
+  overflow-y: auto;
+  box-sizing: border-box;
 }
 .titleSlotBtn {
   font-family: inherit;
-  padding: 10px 8px;
+  min-height: 58px;
+  padding: 11px 16px;
   border: 1px solid #2b2b2b;
   border-radius: 6px;
   background: #fff;
   color: #2b2b2b;
   cursor: pointer;
-  text-align: center;
+  text-align: left;
   display: flex;
-  flex-direction: column;
-  gap: 4px;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
   transition:
     background 0.15s ease,
     color 0.15s ease;
 }
+.titleSlotBtn--autosave {
+  border-color: #3e7291;
+  background: #eef7fb;
+}
 .titleSlotBtn:hover:not(:disabled) {
   background: #2b2b2b;
   color: #fff;
+}
+.titleSlotBtn--autosave:hover:not(:disabled) {
+  background: #2f657f;
 }
 .titleSlotBtn:disabled {
   opacity: 0.4;
@@ -778,6 +794,7 @@ canvas {
 .titleSlotSummary {
   font-size: 11px;
   opacity: 0.75;
+  text-align: right;
 }
 #titleLoadSlots .titleMenuBtn {
   width: 220px;
@@ -848,6 +865,9 @@ canvas {
 #pauseLoadSlotsPanel .titleMenuBtn,
 #pauseSystemPanel .titleMenuBtn {
   width: 220px;
+}
+#pauseLoadSlotsList {
+  margin-bottom: 10px;
 }
 
 .pauseTutorialStep { width: min(900px, 90vw); max-height: 86vh; box-sizing: border-box; }

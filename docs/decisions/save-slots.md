@@ -1,4 +1,4 @@
-# 存檔系統：9 格 + 每日 06:00 自動存檔
+# 存檔系統：9 格手動存檔 + 每日 06:00 獨立自動存檔
 
 > 從 `AGENTS.md` 搬過來的架構/設計決策，仍然有效。
 
@@ -12,11 +12,11 @@
 - `migrateLegacyDefaultSave()`：開局第一件事(`title-screen.ts` 的
   `initTitleScreen()` 最前面呼叫)，把舊版 `meadowtide.save.default`
   搬進 `slot1`、刪掉舊 key，只搬一次(`slot1` 已經有資料就不會覆蓋)。
-- `getSaveSlotSummaries()`：回傳 9 格各自有沒有資料+簡短摘要(第幾天/
-  季節/地圖)，給主選單「讀取遊戲」畫面用。
+- `getSaveSlotSummaries()`：回傳 autosave 與 9 格手動存檔各自有沒有資料
+  及簡短摘要(第幾天/季節/地圖)，給共用讀取清單使用。
 - `getActiveSaveSlot()`/`setActiveSaveSlot()`：「目前在玩哪一格」，開新
   遊戲固定設 1(還沒有開局選格數的介面)、讀取某一格時設成該格號、
-  Shift+數字手動存檔時也會更新——每日自動存檔(見下面)存的就是這一格。
+  Shift+數字手動存檔時也會更新。autosave 會記錄這個來源格號，但不覆寫它。
 
 ## 熱鍵：Shift+1~9 存、1~9 讀
 
@@ -46,12 +46,23 @@ slot 給 `migrateLegacyDefaultSave()` 讀一次搬家用，新程式碼不應該
 `gameState.pendingAutosave` 這個共用旗標傳遞，真正的 `saveGame()` 呼叫
 在 `game-loop.ts` 的 `animate()`，每幀檢查這個旗標，`cutsceneActive`
 期間延後(避免存到過場演出中途的暫態，例如船還在外海、玩家位置被演出
-接管的那種狀態)，旗標留著，過場結束後下一幀補存。存的格數是
-`getActiveSaveSlot()`。
+接管的那種狀態)，旗標留著，過場結束後下一幀補存。資料寫入獨立的
+`meadowtide.save.autosave`，不覆寫手動 slot；存檔內容同時記錄
+`activeSaveSlot`，從 autosave 載入後能恢復來源手動格。
 
 放在 `gameState` 上而不是用回呼/回傳值傳遞，是因為時間推進有兩個呼叫點
 (每幀正常前進、`game-clock.ts` 自己的 N 鍵快轉監聽)，用共用旗標才不會
 漏接快轉那條路徑觸發的自動存檔。
+
+## 2026-08-27 共用縱向讀取清單
+
+`save-slot-ui.ts` 的 `renderSaveSlotButtons()` 是開始畫面與遊戲中暫停
+選單唯一的讀取清單渲染來源。順序固定為最上方 autosave，接著 slot1～slot9；
+使用同一套單欄、可捲動 UI 與摘要格式，不得在兩個畫面各自建立另一套
+slot markup 或 CSS。
+
+`prologue.ts` 的存檔存在判斷也包含 autosave。即使玩家沒有建立手動存檔，
+只要 06:00 autosave 存在，標題畫面仍會顯示「繼續遊戲」。
 
 ## 尚未做的事
 

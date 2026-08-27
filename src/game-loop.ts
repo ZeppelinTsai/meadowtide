@@ -281,9 +281,9 @@ export function animate(now) {
   // 延後存檔，避免存到過場演出中途的暫態(船在外海、玩家位置被演出接管
   // 那種狀態)；旗標留著，過場結束後下一幀就會補存。
   if (gameState.pendingAutosave && !gameState.cutsceneActive) {
-    saveGame("slot" + getActiveSaveSlot());
+    saveGame("autosave");
     gameState.pendingAutosave = false;
-    console.info(`[自動存檔] 第 ${getActiveSaveSlot()} 格已於 06:00 自動儲存`);
+    console.info(`[自動存檔] 已於 06:00 儲存（來源：第 ${getActiveSaveSlot()} 格）`);
   }
   // 天梯閃耀星點——跟 foamMeshes/windowMats 這些其他「登記進陣列、
   // animate() 逐幀處理」的特效同一套慣例。只有站在山之洞第25層時這個

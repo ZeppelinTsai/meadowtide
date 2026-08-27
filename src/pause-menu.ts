@@ -143,15 +143,15 @@ export function initPauseMenu() {
     overlay.dataset.gameMenu = "closed";
   }
 
-  function loadFromSlotInGame(slotNum: number) {
+  function loadFromSlotInGame(saveName: string, sourceSlot: number) {
     // 跟 title-screen.ts 的 loadFromSlot() 不同：這裡已經在遊戲裡、地圖
     // 跟 gameState.player 都已經存在，不用先 buildMap()/loadMap() 打地基
     // 再等 500ms——loadGame() 自己遇到存檔地圖跟目前不同時，內部就會呼叫
     // loadMap() 處理過場淡出，同一張地圖則直接原地搬玩家座標。
-    setActiveSaveSlot(slotNum);
-    const ok = loadGame("slot" + slotNum);
+    setActiveSaveSlot(sourceSlot);
+    const ok = loadGame(saveName);
     if (!ok) {
-      console.warn(`[暫停選單] 讀取第 ${slotNum} 格失敗：找不到存檔`);
+      console.warn(`[暫停選單] 讀取 ${saveName} 失敗：找不到存檔`);
     }
     closePauseMenu();
   }

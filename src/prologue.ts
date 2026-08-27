@@ -48,6 +48,9 @@ export function shouldPlayPrologueOnBoot(): boolean {
     if (localStorage.getItem(SAVE_KEY_PREFIX + "default") !== null) {
       return false;
     }
+    if (localStorage.getItem(SAVE_KEY_PREFIX + "autosave") !== null) {
+      return false;
+    }
     for (let i = 1; i <= SAVE_SLOT_COUNT; i++) {
       if (localStorage.getItem(SAVE_KEY_PREFIX + "slot" + i) !== null) {
         return false;

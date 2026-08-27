@@ -23,23 +23,26 @@ function slotSummaryText(summary: SaveSlotSummary): string {
   return `第 ${(summary.currentDay ?? 0) + 1} 天・${season}季・${mapName}`;
 }
 
-// container 底下清空重建 9 個 button.titleSlotBtn(CSS 見 style.css 的
-// 「讀取遊戲的 9 格存檔清單」那段)；空格 disabled、有資料的格子點下去
-// 呼叫 onPick(slotNumber)。
+// container 底下清空重建 autosave + 9 個手動 slot；空格 disabled，
+// 有資料的項目點下去回傳實際 saveName 與其來源手動格。
 export function renderSaveSlotButtons(
   container: HTMLElement,
-  onPick: (slot: number) => void,
+  onPick: (saveName: string, sourceSlot: number) => void,
 ) {
   container.innerHTML = "";
+  container.classList.add("saveSlotList");
   getSaveSlotSummaries().forEach((summary) => {
     const button = document.createElement("button");
     button.type = "button";
-    button.className = "titleSlotBtn";
+    button.className =
+      "titleSlotBtn" + (summary.isAutosave ? " titleSlotBtn--autosave" : "");
     button.disabled = !summary.exists;
 
     const numEl = document.createElement("span");
     numEl.className = "titleSlotNum";
-    numEl.textContent = `第 ${summary.slot} 格`;
+    numEl.textContent = summary.isAutosave
+      ? "自動存檔"
+      : `第 ${summary.slot} 格`;
 
     const summaryEl = document.createElement("span");
     summaryEl.className = "titleSlotSummary";
@@ -47,7 +50,9 @@ export function renderSaveSlotButtons(
 
     button.append(numEl, summaryEl);
     if (summary.exists) {
-      button.addEventListener("click", () => onPick(summary.slot));
+      button.addEventListener("click", () =>
+        onPick(summary.saveName, summary.sourceSlot),
+      );
     }
     container.appendChild(button);
   });

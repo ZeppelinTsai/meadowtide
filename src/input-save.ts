@@ -134,7 +134,7 @@ export function setActiveSaveSlot(slot: number) {
 }
 
 // 舊版只有一個 "default" 存檔；9 格系統上線後只讀一次，把裡面的內容
-// 搬進第 1 格，搬完就刪掉舊 key——之後全部程式碼都只認 slot1..slot9，
+// 搬進第 1 格，搬完就刪掉舊 key——之後只認 autosave/slot1..slot9，
 // 不會有兩份資料同時存在造成「到底哪份才是最新」的疑惑。呼叫端要在任何
 // 讀 slot 資料之前先呼叫這個(目前只有 title-screen.ts 的
 // initTitleScreen() 開局呼叫一次)。
@@ -154,43 +154,67 @@ export function migrateLegacyDefaultSave() {
 }
 
 export interface SaveSlotSummary {
-  slot: number;
+  saveName: string;
+  slot: number | null;
+  sourceSlot: number;
+  isAutosave: boolean;
   exists: boolean;
   currentDay?: number;
   currentSeason?: number;
   currentMapName?: string;
 }
 
-// 給主選單「讀取遊戲」畫面用：9 格各自有沒有資料、簡短摘要(第幾天/
+// 給共用讀取清單使用：autosave 與 9 格手動存檔各自有沒有資料、摘要(第幾天/
 // 季節/在哪張地圖)。故意不讀 elapsed 算到分鐘，摘要只求一眼看出「這格
 // 大概是哪次進度」，不是精確時間戳記。
 export function getSaveSlotSummaries(): SaveSlotSummary[] {
   const summaries: SaveSlotSummary[] = [];
-  for (let i = 1; i <= SAVE_SLOT_COUNT; i++) {
-    const raw = localStorage.getItem(SAVE_KEY_PREFIX + "slot" + i);
+  const targets = [
+    { saveName: "autosave", slot: null, isAutosave: true },
+    ...Array.from({ length: SAVE_SLOT_COUNT }, (_, index) => ({
+      saveName: "slot" + (index + 1),
+      slot: index + 1,
+      isAutosave: false,
+    })),
+  ];
+  targets.forEach((target) => {
+    const raw = localStorage.getItem(SAVE_KEY_PREFIX + target.saveName);
     if (!raw) {
-      summaries.push({ slot: i, exists: false });
-      continue;
+      summaries.push({
+        ...target,
+        sourceSlot: target.slot ?? 1,
+        exists: false,
+      });
+      return;
     }
     try {
       const data = JSON.parse(raw);
       summaries.push({
-        slot: i,
+        ...target,
+        sourceSlot: Math.min(
+          SAVE_SLOT_COUNT,
+          Math.max(1, Number(data.activeSaveSlot) || target.slot || 1),
+        ),
         exists: true,
         currentDay: Number(data.currentDay) || 0,
         currentSeason: Number(data.currentSeason) || 0,
         currentMapName: data.currentMapName || "livingArea",
       });
     } catch (err) {
-      summaries.push({ slot: i, exists: false });
+      summaries.push({
+        ...target,
+        sourceSlot: target.slot ?? 1,
+        exists: false,
+      });
     }
-  }
+  });
   return summaries;
 }
 
 export function saveGame(slot = "default") {
   const data = {
     version: 4,
+    activeSaveSlot,
     elapsed: gameState.elapsed,
     currentDay: gameState.currentDay,
     currentPhase: gameState.currentPhase,
