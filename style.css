@@ -9,7 +9,7 @@ body {
 #ui {
   position: fixed;
   top: 12px;
-  left: 12px;
+  right: 12px;
   z-index: 10;
   color: #eee;
   background: rgba(0, 0, 0, 0.55);
@@ -23,27 +23,45 @@ body {
   color: #ffd479;
 }
 
-/* hud */
+/* --- 共同定義：文字改暗色為主，並上白粗邊框 --- */
+.hud-date,
+.hud-date .hud-weekday,
+.hud-time,
+.hud-weather-when,
+.hud-weather-day[data-offset="0"] .hud-weather-label,
+.hud-weather-day[data-offset="0"] .hud-weather-when {
+  /* 1. 改為暗色系文字 */
+  color: #493025 !important;
+
+  /* 2. 八方向米白色粗邊框 (2px) */
+  text-shadow:
+    3px 0px 0px #f3e7ce,
+    -3px 0px 0px #f3e7ce,
+    0px 3px 0px #f3e7ce,
+    0px -3px 0px #f3e7ce,
+    3px 3px 0px #f3e7ce,
+    -3px -3px 0px #f3e7ce,
+    3px -3px 0px #f3e7ce,
+    -3px 3px 0px #f3e7ce,
+    /* 可自由疊加一層淡淡的環境陰影，讓整體更立體 */ 0px 2px 4px
+      rgba(0, 0, 0, 0.15) !important;
+}
+
 /* hud */
 #hud {
   position: fixed;
   top: 12px;
-  right: 12px;
+  left: 12px;
   z-index: 10;
   min-width: 168px;
   padding: 12px 16px 14px;
-  color: #fff;
-  background: rgba(8, 12, 16, 0.62);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 12px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.28);
-  backdrop-filter: blur(6px);
-  text-align: center; /* 改為置中 */
-  line-height: 1.25;
+  /* 移除原本的 color: #fff */
+  background: transparent;
+  text-align: center;
+  line-height: 1.2;
   pointer-events: none;
   user-select: none;
-
-  /* 新增：將容器本身轉為 Flex 並置中內部元素 */
+  font-weight: 700;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -51,32 +69,26 @@ body {
 
 .hud-date {
   font-size: 28px;
-  font-weight: 600;
   letter-spacing: 0.04em;
-  color: rgba(255, 245, 220, 0.92);
 }
 
 .hud-date .hud-weekday {
   margin-left: 0.35em;
-  color: rgba(180, 210, 255, 0.9);
-  font-weight: 500;
 }
 
 .hud-time {
   margin: 4px 0 10px;
-  font-size: 35px;
-  font-weight: 700;
+  font-size: 50px;
+  font-weight: 800;
   font-variant-numeric: tabular-nums;
   letter-spacing: 0.06em;
-  color: #fff;
-  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.35);
 }
 
 .hud-weather-row {
   display: flex;
-  justify-content: center; /* 改為置中 */
+  justify-content: center;
   gap: 10px;
-  width: 100%; /* 確保橫排佔滿空間以利置中 */
+  width: 100%;
 }
 
 .hud-weather-day {
@@ -84,35 +96,47 @@ body {
   flex-direction: column;
   align-items: center;
   min-width: 44px;
-  gap: 2px;
+  gap: 6px; /* 稍微增加間距讓圓圈 emoji 更美觀 */
 }
 
+/* --- Emoji 改為黑邊白底圓圈包圍 --- */
 .hud-weather-emoji {
   font-size: 20px;
-  line-height: 1.1;
-  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.35));
+  line-height: 1;
+
+  /* 圓圈外觀設定 */
+  background-color: #f3e7ce; /* 米黃底 */
+  border: 2px solid #493025; /* 黑邊 */
+  border-radius: 50%; /* 圓圈 */
+
+  /* 內襯與置中 確保 emoji 在圓圈正中央 */
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  /* 移除原本的 drop-shadow，改用黑邊的整體陰影 (可選) */
+  box-shadow: 0 2px 4px rgba(73, 48, 37, 0.15);
 }
 
 .hud-weather-label {
   font-size: 11px;
-  color: rgba(255, 255, 255, 0.88);
   white-space: nowrap;
   display: none;
 }
 
 .hud-weather-when {
-  font-size: 18px;
-  color: rgba(200, 210, 220, 0.65);
+  font-size: 20px;
   letter-spacing: 0.06em;
 }
 
-/* 今天稍強調一點 */
+/* 今天稍強調一點 (主要靠字體粗細區隔，因為顏色已被暗色與白框統一) */
 .hud-weather-day[data-offset="0"] .hud-weather-label {
-  color: #ffe9a8;
-  font-weight: 600;
+  font-weight: 900;
 }
 .hud-weather-day[data-offset="0"] .hud-weather-when {
-  color: rgba(255, 233, 168, 0.75);
+  font-weight: 900;
 }
 
 #fade {
