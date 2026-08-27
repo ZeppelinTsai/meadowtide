@@ -374,17 +374,4 @@ fillValue: 9)` 追加外海；東擴不得平移既有座標，完成後必須�
   的渲染修正、一次是整個三地圖骨架（連同 oldVillage／port／buildMap 相關
   改動）消失了，而且好幾次提交都沒被發現。開工前務必先跟使用者確認目前
   檔案狀態，寧可多問一句，也不要事後才發現改動不見了。
-
-## 開發環境與建置注意事項 (Dev Environment Notes)
-
-1. **跨平台換行符號規範 (.gitattributes)**
-   - 本專案採用 `eol=lf` 規範。在 Windows 與 Linux 混合開發環境下，請確保編輯器存檔為 LF，避免產生無意義的 CRLF/LF diff 雜訊。
-
-2. **TypeScript 增量編譯 (Incremental Build)**
-   - `tsconfig.json` 已啟動 `incremental: true`，快取檔生成於 `node_modules/.tsbuildinfo`。執行型別檢查時請優先維護快取，以控制在 CLI/Bash 工具的執行時間限制（~43 秒）內。
-
-3. **跨平台原生模組 (Native Binaries)**
-   - 由於開發環境包含 Windows 主機與 Linux 虛擬機/容器，執行 `npm test` 或工具鏈前，若遇到平台不匹配錯誤（如 `esbuild`），須確保 `node_modules` 補齊 `linux-x64` 之二進位依賴。
-
-4. **測試回歸驗證**
-   - 涉及 3D 座標、地圖轉換、z-fighting 參數調整時，不能僅依賴 `tsc --noEmit` 型別檢查。改動後必須實測執行 `npm run test`（或特定單元測試），避免快照與邏輯斷言過期。
+- 本專案採用 `eol=lf` 規範。在 Windows 與 Linux 混合開發環境下，請確保編輯器存檔為 LF，避免產生無意義的 CRLF/LF diff 雜訊。
