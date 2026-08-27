@@ -236,10 +236,10 @@ addEventListener("keydown", (event) => {
     return;
   }
   if (!open || event.repeat) return;
-  if (event.key === "ArrowLeft" || event.key === "[") {
+  if (event.key === "[") {
     event.preventDefault();
     setActiveTab(activeTabIndex - 1, true);
-  } else if (event.key === "ArrowRight" || event.key === "]") {
+  } else if (event.key === "]") {
     event.preventDefault();
     setActiveTab(activeTabIndex + 1, true);
   }

@@ -1,3 +1,9 @@
+import {
+  focusFirstUiElement,
+  getActiveUiRoot,
+  isUiNavigationActive,
+} from "./ui-focus-navigation";
+
 // ==============================================================
 // 搖桿輸入(移動 + 互動鍵)——2026-08-26。
 //
@@ -58,6 +64,8 @@ function dispatchKey(type: "keydown" | "keyup", key: string) {
 // 且語意上也該跟真的鍵盤按著不放一樣只在「按下/放開那一刻」各觸發一次。
 const prevHeld = { w: false, a: false, s: false, d: false, e: false, q: false, r: false };
 const prevShoulder = { left: false, right: false };
+const prevUiDirection = { up: false, down: false, left: false, right: false };
+let prevUiConfirm = false;
 
 function syncKey(key: keyof typeof prevHeld, held: boolean) {
   if (held === prevHeld[key]) return;
@@ -101,14 +109,69 @@ export function pollGamepad() {
     else if (pad.buttons[13]?.pressed) dz = 1;
   }
 
-  leftStickX = dx;
-  leftStickZ = dz;
-  syncKey("a", dx < 0);
-  syncKey("d", dx > 0);
-  syncKey("w", dz < 0);
-  syncKey("s", dz > 0);
-  syncKey("e", !!pad.buttons[0]?.pressed);
-  syncKey("r", !!pad.buttons[1]?.pressed); // B 鍵（standard mapping）＝收割牧草
+  const uiNavigation = isUiNavigationActive();
+  const confirmButton = !!pad.buttons[0]?.pressed;
+  if (uiNavigation) {
+    leftStickX = 0;
+    leftStickZ = 0;
+    syncKey("a", false);
+    syncKey("d", false);
+    syncKey("w", false);
+    syncKey("s", false);
+    syncKey("e", false);
+    syncKey("r", false);
+    const directions = {
+      up: dz < 0,
+      down: dz > 0,
+      left: dx < 0,
+      right: dx > 0,
+    };
+    (Object.keys(directions) as Array<keyof typeof directions>).forEach((key) => {
+      if (directions[key] && !prevUiDirection[key]) {
+        dispatchKey("keydown", "Arrow" + key[0].toUpperCase() + key.slice(1));
+      }
+      if (!directions[key] && prevUiDirection[key]) {
+        dispatchKey("keyup", "Arrow" + key[0].toUpperCase() + key.slice(1));
+      }
+      prevUiDirection[key] = directions[key];
+    });
+    if (confirmButton && !prevUiConfirm) {
+      const focused = document.activeElement;
+      const root = getActiveUiRoot();
+      if (
+        root &&
+        focused instanceof HTMLElement &&
+        root.contains(focused) &&
+        focused.matches("button:not(:disabled), a[href], [role=tab]")
+      ) {
+        focused.click();
+      } else if (!focusFirstUiElement()) {
+        // 標題 splash 沒有可聚焦項目，仍需用按鍵事件進入主選單。
+        document.dispatchEvent(
+          new KeyboardEvent("keydown", { key: "Enter", bubbles: true }),
+        );
+      }
+    }
+    prevUiConfirm = confirmButton;
+  } else {
+    (Object.keys(prevUiDirection) as Array<keyof typeof prevUiDirection>).forEach(
+      (key) => {
+        if (prevUiDirection[key]) {
+          dispatchKey("keyup", "Arrow" + key[0].toUpperCase() + key.slice(1));
+          prevUiDirection[key] = false;
+        }
+      },
+    );
+    prevUiConfirm = confirmButton;
+    leftStickX = dx;
+    leftStickZ = dz;
+    syncKey("a", dx < 0);
+    syncKey("d", dx > 0);
+    syncKey("w", dz < 0);
+    syncKey("s", dz > 0);
+    syncKey("e", confirmButton);
+    syncKey("r", !!pad.buttons[1]?.pressed); // B 鍵（standard mapping）＝收割牧草
+  }
   syncKey("q", !!pad.buttons[3]?.pressed); // Y 鍵（standard mapping）＝資訊選單
 
   const leftShoulder = !!pad.buttons[4]?.pressed;

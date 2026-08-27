@@ -721,6 +721,13 @@ canvas {
   background: #2b2b2b;
   color: #fff;
 }
+.titleMenuBtn:focus,
+.titleSlotBtn:focus,
+#inventoryOverlay button:focus,
+#pauseMenu button:focus {
+  outline: 3px solid #f2b84b;
+  outline-offset: 3px;
+}
 #titleQuitMessage {
   margin-top: 18px;
   font-size: 13px;

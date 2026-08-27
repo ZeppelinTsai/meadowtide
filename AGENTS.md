@@ -143,6 +143,7 @@
 - 背景音樂 + 一次性音效系統 → `docs/decisions/audio-system.md`
 - 遊戲時間節奏、採集點刷新座標規則 → `docs/decisions/time-and-pause.md`
 - 二選一提示 UI `showChoice()` → `docs/decisions/ui-choice-system.md`
+- 所有 UI 的方向鍵／手把焦點導覽與可達性要求 → `docs/decisions/ui-focus-navigation.md`
 - 洞窟採礦系統 `mine.ts` → `docs/decisions/mining-system.md`
 - 釣魚 QTE 系統 `fishing.ts` → `docs/decisions/fishing-qte-system.md`
 - 搖桿輸入與震動 → `docs/decisions/gamepad-input.md`
