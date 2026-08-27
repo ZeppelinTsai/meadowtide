@@ -335,13 +335,30 @@ export function makeRestArea(area) {
 
   // 有爐盆、烤網與四腳的烤肉架。
   const grill = new THREE.Group();
+
+  // 1. 腳架：長度 0.48，中心點設在 y = 0.24，底部剛好貼齊地面 (y = 0)，頂端在 y = 0.48
+  [-0.14, 0.14].forEach((lx) =>
+    [-0.09, 0.09].forEach((lz) => {
+      const leg = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.018, 0.022, 0.48, 5),
+        darkMat,
+      );
+      leg.position.set(lx, 0.24, lz); // 修正：0.25 -> 0.24
+      leg.castShadow = true;
+      grill.add(leg);
+    }),
+  );
+
+  // 2. 爐盆：高 0.2，底部貼齊腳架頂端 (y = 0.44)，中心點設在 y = 0.54 (頂端到 y = 0.64)
   const bowl = new THREE.Mesh(
     new THREE.CylinderGeometry(0.27, 0.19, 0.2, 10),
     darkMat,
   );
-  bowl.position.y = 0.53;
+  bowl.position.y = 0.54; // 修正：0.53 -> 0.54
   bowl.castShadow = true;
   grill.add(bowl);
+
+  // 3. 烤網：厚度 0.025，中心點設在 y = 0.6525，剛好貼平在爐盆上緣
   const grate = new THREE.Mesh(
     new THREE.CylinderGeometry(0.25, 0.25, 0.025, 12),
     new THREE.MeshStandardMaterial({
@@ -350,19 +367,11 @@ export function makeRestArea(area) {
       roughness: 0.45,
     }),
   );
-  grate.position.y = 0.65;
+  grate.position.y = 0.6525; // 修正：0.65 -> 0.6525
+  grate.castShadow = true;
   grill.add(grate);
-  [-0.14, 0.14].forEach((lx) =>
-    [-0.09, 0.09].forEach((lz) => {
-      const leg = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.018, 0.022, 0.48, 5),
-        darkMat,
-      );
-      leg.position.set(lx, 0.25, lz);
-      grill.add(leg);
-    }),
-  );
-  grill.position.set(4.15, 1.55, 0.2);
+
+  grill.position.set(4.15, 0, 0.2);
   g.add(grill);
 
   function makeLounger(px, pz, rotation) {
