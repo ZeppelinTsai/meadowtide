@@ -2,6 +2,7 @@ import * as THREE from "three";
 import {
   gameState,
   TIME_CONFIG,
+  dayLength,
   CAST_ANIM_DURATION,
   getNightFactor,
   isNightTime,
@@ -14,7 +15,11 @@ import {
   settleFeederConsumption,
   pastureGrassStageAt,
 } from "./game-state";
-import { isGameTimePaused, updateGameClock } from "./game-clock";
+import {
+  isGameTimePaused,
+  updateGameClock,
+  updateSeasonAndDate,
+} from "./game-clock";
 import { isGameplayPaused } from "./time-pause";
 import { isInventoryOpen } from "./inventory-ui";
 import { translateText } from "./i18n";
@@ -279,7 +284,13 @@ export function animate(now) {
   const dt = isGameplayPaused() ? 0 : frameDt;
   const clockDt = isGameTimePaused() ? 0 : frameDt;
   gameState.effectElapsed += frameDt; // 不受暫停影響，純視覺效果一律吃這個
-  updateGameClock(clockDt);
+  if (gameState.titlePresentationActive) {
+    // 標題展示採現實 1 秒＝遊戲世界 1 秒，只更新天體時鐘，不觸發跨日玩法副作用。
+    gameState.elapsed += frameDt * (dayLength / (24 * 60 * 60));
+    updateSeasonAndDate();
+  } else {
+    updateGameClock(clockDt);
+  }
   // 每日 06:00 自動存檔——旗標由 game-clock.ts 的 updateGameClock() 設,
   // 這裡才真的呼叫 saveGame()(game-clock.ts 不能直接呼叫，會跟
   // input-save.ts 形成循環 import，見該檔案註解)。cutsceneActive 期間

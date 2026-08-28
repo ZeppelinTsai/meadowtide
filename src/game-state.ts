@@ -30,6 +30,7 @@ export const gameState = {
   // 用回呼/回傳值傳遞，是因為時間推進有兩個呼叫點(每幀正常前進、N 鍵
   // 快轉)，用共用旗標才不會漏接快轉那條路徑觸發的自動存檔。
   pendingAutosave: false,
+  titlePresentationActive: false,
   pouchCollectedDay: -1,
   currentDay: 0,
   currentPhase: 0, // 一天中的比例(0~1)，animate() 每幀更新，E 鍵事件也要讀
@@ -238,11 +239,16 @@ export const AUTUMN_GRASS_MAPLE_YELLOW = 0xe0a934;
 // 不要各自重寫一份 lerp 公式。
 export function mapleAutumnColor(seed: number) {
   return new THREE.Color(AUTUMN_GRASS_MAPLE_RED)
-    .lerp(new THREE.Color(AUTUMN_GRASS_MAPLE_YELLOW), hash2(seed * 3.7, seed * 1.3))
+    .lerp(
+      new THREE.Color(AUTUMN_GRASS_MAPLE_YELLOW),
+      hash2(seed * 3.7, seed * 1.3),
+    )
     .offsetHSL(0, 0, (seed - 0.5) * 0.06);
 }
 export function getSeasonGrassTone(seasonIndex = gameState.currentSeason) {
-  const key = TIME_CONFIG.seasons[seasonIndex] as keyof typeof SEASON_GRASS_TONES;
+  const key = TIME_CONFIG.seasons[
+    seasonIndex
+  ] as keyof typeof SEASON_GRASS_TONES;
   return SEASON_GRASS_TONES[key];
 }
 export const METEOR_CONFIG = Object.freeze({
@@ -361,7 +367,8 @@ export function rollWeatherForSeason(
     gameState.weatherSchedules[scheduleKey] ||
     (gameState.weatherSchedules[scheduleKey] =
       createSeasonWeatherSchedule(absoluteSeason));
-  const seasonDayIndex = ((day % TIME_CONFIG.daysPerSeason) + TIME_CONFIG.daysPerSeason) %
+  const seasonDayIndex =
+    ((day % TIME_CONFIG.daysPerSeason) + TIME_CONFIG.daysPerSeason) %
     TIME_CONFIG.daysPerSeason;
   // seasonIndex 保留在介面中，讓既有呼叫端不必改；排程以 absolute day 為準。
   void seasonIndex;
@@ -610,10 +617,7 @@ function pastureCandidateTiles(day: number) {
 }
 
 export type PastureHarvestResult =
-  | "harvested"
-  | "not-grass"
-  | "regrowing"
-  | "feeder-full";
+  "harvested" | "not-grass" | "regrowing" | "feeder-full";
 
 export function harvestPastureGrass(
   x: number,
@@ -741,7 +745,10 @@ export function refreshGatherNodes(force = false) {
     for (const kind of ["wood", "stone"] as const) {
       for (let index = 0; index < GATHER_NODES_PER_KIND; index++) {
         const pickIndex = candidates.findIndex((cell) =>
-          used.every((taken) => Math.abs(taken.x - cell.x) + Math.abs(taken.z - cell.z) >= 2),
+          used.every(
+            (taken) =>
+              Math.abs(taken.x - cell.x) + Math.abs(taken.z - cell.z) >= 2,
+          ),
         );
         if (pickIndex < 0) throw new Error(`採集點候選格不足：${zone}/${kind}`);
         const [cell] = candidates.splice(pickIndex, 1);
@@ -763,7 +770,8 @@ export function refreshGatherNodes(force = false) {
 export function harvestGatherNode(kind: GatherKind, x: number, z: number) {
   const label = kind === "wood" ? "木材" : "石頭";
   const node = (kind === "wood" ? WOOD_NODES : STONE_NODES).find(
-    (candidate) => candidate.x === x && candidate.z === z && !candidate.collected,
+    (candidate) =>
+      candidate.x === x && candidate.z === z && !candidate.collected,
   );
   if (!node) return 0;
   const amount =
@@ -800,7 +808,12 @@ export interface Recipe {
 export const RECIPES: Recipe[] = [
   { id: "grilledVeggie", name: "烤蔬菜", tier: "普通", cost: { harvested: 2 } },
   { id: "seafoodSoup", name: "海鮮湯", tier: "普通", cost: { fish: 2 } },
-  { id: "garlicGreens", name: "蒜炒野菜", tier: "喜歡", cost: { harvested: 3 } },
+  {
+    id: "garlicGreens",
+    name: "蒜炒野菜",
+    tier: "喜歡",
+    cost: { harvested: 3 },
+  },
   { id: "bakedOyster", name: "奶油烤牡蠣", tier: "喜歡", cost: { oysters: 2 } },
   {
     id: "islandPlatter",
@@ -816,8 +829,11 @@ const RECIPE_TIER_RANK: Record<Recipe["tier"], number> = {
 };
 
 function canAffordRecipe(recipe: Recipe) {
-  return (Object.entries(recipe.cost) as [keyof typeof recipe.cost, number][]).every(
-    ([key, amount]) => inventory[key as "harvested" | "fish" | "oysters"] >= amount,
+  return (
+    Object.entries(recipe.cost) as [keyof typeof recipe.cost, number][]
+  ).every(
+    ([key, amount]) =>
+      inventory[key as "harvested" | "fish" | "oysters"] >= amount,
   );
 }
 
@@ -838,11 +854,11 @@ export function cookMeal(): Recipe | null {
     };
     return null;
   }
-  (Object.entries(recipe.cost) as ["harvested" | "fish" | "oysters", number][]).forEach(
-    ([key, amount]) => {
-      inventory[key] -= amount;
-    },
-  );
+  (
+    Object.entries(recipe.cost) as ["harvested" | "fish" | "oysters", number][]
+  ).forEach(([key, amount]) => {
+    inventory[key] -= amount;
+  });
   inventory.dishes[recipe.id] = (inventory.dishes[recipe.id] || 0) + 1;
   gameState.harvestFeedback = {
     kind: "success",

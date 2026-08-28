@@ -899,13 +899,17 @@ canvas {
   position: fixed;
   inset: 0;
   z-index: 100;
-  background: transparent;
+  background-color: #f3e7ce;
+  transition: opacity 0.4s ease, background-color 0.25s ease;
   color: #2b2b2b;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: opacity 0.4s ease;
 }
+#titleScreen.titleSceneReady {
+  background-color: transparent;
+}
+
 #titleScreen.titleScreen--hidden {
   opacity: 0;
   pointer-events: none;

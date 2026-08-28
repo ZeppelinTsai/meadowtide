@@ -129,6 +129,7 @@ export function initTitleScreen() {
 
   const titleScreen = byId<HTMLElement>("titleScreen");
   document.body.classList.add("title-presentation");
+  gameState.titlePresentationActive = true;
   const previewTime = getTitlePreviewTime();
   const previewHour = previewTime.currentPhase * 24;
   const titlePreset = getTitleScenePreset(previewHour);
@@ -155,6 +156,9 @@ export function initTitleScreen() {
   }
   gameState.player.visible = false;
   setPresentationCamera(titlePreset.camera);
+  requestAnimationFrame(() =>
+    requestAnimationFrame(() => titleScreen.classList.add("titleSceneReady")),
+  );
   const continueButton = byId<HTMLButtonElement>("titleContinueBtn");
   const newGameButton = byId<HTMLButtonElement>("titleNewGameBtn");
   const systemButton = byId<HTMLButtonElement>("titleSystemBtn");
@@ -210,6 +214,7 @@ export function initTitleScreen() {
   function hideTitleScreen() {
     titleActive = false;
     document.body.classList.remove("title-presentation");
+    gameState.titlePresentationActive = false;
     setTitleMusicPeriod(null);
     setPresentationCamera(null);
     gameState.player = previous.player;
@@ -332,6 +337,9 @@ export function initTitleScreen() {
   // 「按任意鍵開始」，進主選單後同一輪詢繼續負責方向與 A 確認。
   const pollTitleGamepad = () => {
     if (!titleActive) return;
+    setTitleMusicPeriod(
+      getTitleScenePreset(gameState.currentPhase * 24).period,
+    );
     const anyButtonPressed = Array.from(navigator.getGamepads?.() || []).some(
       (pad) => pad?.buttons.some((button) => button.pressed),
     );
