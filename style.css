@@ -944,9 +944,12 @@ canvas {
 #titleContent {
   display: flex;
   width: 100%;
+  height: 100%;
+  min-width: 0;
   min-height: 0;
   align-items: center;
   justify-content: center;
+  overflow: hidden;
 }
 #titleScreen[data-step="splash"] #titleSplash,
 #titleScreen[data-step="menu"] #titleMenu,
@@ -1041,7 +1044,7 @@ canvas {
 }
 #titleLogo {
   margin: 0;
-  font-size: clamp(44px, 8vh, 80px);
+  font-size: clamp(80px, 8vh, 80px);
   letter-spacing: 0.08em;
   font-weight: 700;
   color: #493025;
@@ -1074,7 +1077,7 @@ canvas {
   margin: 0;
   color: #493025;
   letter-spacing: 0.3em;
-  font-size: clamp(20px, 4vh, 45px);
+  font-size: clamp(45px, 4vh, 45px);
   text-transform: uppercase;
   text-shadow:
     3px 0px 0px #f3e7ce,
@@ -1151,12 +1154,25 @@ canvas {
   font-size: 18px;
   color: #9a9a9a;
 }
+#titleLoadSlots,
+#titleSystem {
+  width: min(720px, calc(100vw - 32px));
+  height: calc(100% - 16px);
+  max-height: 720px;
+  box-sizing: border-box;
+  overflow: hidden;
+  background: #f3e7ce;
+  padding: clamp(14px, 3vw, 30px);
+  border-radius: 10px;
+}
 #titleSystemHeading {
-  margin: 0 0 20px;
+  flex: 0 0 auto;
+  margin: 0 0 12px;
   font-size: 24px;
 }
 #titleSystem .titleMenuBtn {
-  width: 220px;
+  flex: 0 0 auto;
+  width: min(220px, 100%);
 }
 .systemSettings {
   display: flex;
@@ -1170,7 +1186,7 @@ canvas {
 }
 .systemSettingRow {
   display: grid;
-  grid-template-columns: 92px 1fr 44px;
+  grid-template-columns: minmax(88px, auto) minmax(0, 1fr) 44px;
   align-items: center;
   gap: 10px;
   min-height: 42px;
@@ -1185,24 +1201,39 @@ canvas {
   font-variant-numeric: tabular-nums;
 }
 .systemSettingSelect {
-  grid-template-columns: 92px 1fr;
+  grid-template-columns: minmax(88px, auto) minmax(0, 1fr);
 }
 
 /* 讀取遊戲的 9 格存檔清單——跟 .titleMenuBtn 同一套白底黑框風格，但要
    放兩行文字(格數+摘要)，所以另外開一組 class，不直接沿用 .titleMenuBtn。 */
+#titleSystemSettings {
+  flex: 1 1 auto;
+  width: 100%;
+  max-width: 620px;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  padding: 4px;
+}
 #titleLoadSlotsHeading {
-  margin: 0 0 20px;
+  flex: 0 0 auto;
+  margin: 0 0 12px;
   font-size: 24px;
 }
 #titleLoadSlotsList {
-  margin-bottom: 20px;
+  flex: 1 1 auto;
+  width: 100%;
+  min-height: 0;
+  margin-bottom: 12px;
+  overflow: hidden;
 }
 .saveSlotList {
   display: flex;
   flex-direction: column;
   gap: 9px;
-  width: min(520px, 82vw);
-  max-height: min(58vh, 560px);
+  width: 100%;
+  height: 100%;
+  max-height: none;
   padding: 4px;
   overflow-y: auto;
   box-sizing: border-box;
@@ -1251,7 +1282,32 @@ canvas {
   text-align: right;
 }
 #titleLoadSlots .titleMenuBtn {
-  width: 220px;
+  flex: 0 0 auto;
+  width: min(220px, 100%);
+}
+@media (max-width: 520px), (max-height: 560px) {
+  #titleLoadSlots,
+  #titleSystem {
+    width: calc(100vw - 16px);
+    height: calc(100% - 8px);
+    padding: 12px;
+    border-radius: 8px;
+  }
+  #titleSystemHeading,
+  #titleLoadSlotsHeading {
+    margin-bottom: 8px;
+  }
+  .systemSettings {
+    width: 100%;
+  }
+  .systemSettingRow {
+    gap: 6px;
+  }
+  .titleSlotBtn {
+    min-height: 52px;
+    padding: 8px 10px;
+    gap: 10px;
+  }
 }
 
 /* ==============================================================

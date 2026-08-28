@@ -104,3 +104,7 @@
 ## Header 與 Content 不重疊
 
 `#titleScreen` 使用兩列 grid：第一列是自然佔位的共用 header，第二列 `#titleContent` 才置中目前步驟。禁止讓 header 回到 fixed/absolute，否則主選單不會計入標題高度。Logo 與 Subtitle 在矮視窗以 `clamp()` 縮放，最小仍須高於 18px。
+
+## 系統／讀檔面板 RWD
+
+標題的 `#titleSystem` 與 `#titleLoadSlots` 必須限制在 `#titleContent` 的可用寬高內：外框盡量占滿但不得超出 viewport，標題與返回鍵固定，中央 `#titleSystemSettings`／`.saveSlotList` 使用 `min-height: 0` 與內部垂直捲動。窄於 520px 或矮於 560px 時縮小安全邊距，但所有文字仍不得低於 18px。修改後執行 `npm run build`。
