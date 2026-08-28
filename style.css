@@ -1054,18 +1054,54 @@ canvas {
     /* 可自由疊加一層淡淡的環境陰影，讓整體更立體 */ 0px 2px 4px
       rgba(0, 0, 0, 0.15) !important;
 }
+.titleLogoGroup {
+  position: fixed;
+  top: 30px;
+  left: 50%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+  transform: translateX(-50%);
+}
+#titleSplash #titleLogo {
+  position: static;
+  transform: none;
+}
 #titleSubtitle {
-  margin: 0 0 28px;
-  color: #9a9a9a;
+  margin: 0;
+  color: #493025;
   letter-spacing: 0.3em;
-  font-size: 18px;
+  font-size: 45px;
   text-transform: uppercase;
+  text-shadow:
+    3px 0px 0px #f3e7ce,
+    -3px 0px 0px #f3e7ce,
+    0px 3px 0px #f3e7ce,
+    0px -3px 0px #f3e7ce,
+    3px 3px 0px #f3e7ce,
+    -3px -3px 0px #f3e7ce,
+    3px -3px 0px #f3e7ce,
+    -3px 3px 0px #f3e7ce,
+    /* 可自由疊加一層淡淡的環境陰影，讓整體更立體 */ 0px 2px 4px
+      rgba(0, 0, 0, 0.15) !important;
 }
 #titlePrompt {
   margin: 0;
-  font-size: 18px;
-  color: #555;
+  font-size: 30px;
+  color: #493025;
   animation: titlePromptPulse 1.6s ease-in-out infinite;
+  text-shadow:
+    3px 0px 0px #f3e7ce,
+    -3px 0px 0px #f3e7ce,
+    0px 3px 0px #f3e7ce,
+    0px -3px 0px #f3e7ce,
+    3px 3px 0px #f3e7ce,
+    -3px -3px 0px #f3e7ce,
+    3px -3px 0px #f3e7ce,
+    -3px 3px 0px #f3e7ce,
+    /* 可自由疊加一層淡淡的環境陰影，讓整體更立體 */ 0px 2px 4px
+      rgba(0, 0, 0, 0.15) !important;
 }
 @keyframes titlePromptPulse {
   0%,
