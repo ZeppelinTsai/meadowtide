@@ -55,6 +55,14 @@
 /滾輪試出想要的構圖 → `C` 記下來 → 換下一個構圖繼續 `C` → 滿意後把
 console 印出的清單複製進事件程式碼，呼叫 `playCameraShots()`。
 
+## 第一人稱構圖記錄：Tab + C
+
+Tab 進入第一人稱後，移動／轉動到指定構圖並按 C，console 會累積輸出
+`{ mode: "firstPerson", positionX, positionY, positionZ, yaw, pitch, fov, duration }`。
+每次重新進入第一人稱會清空上一組記錄。這份格式保存透視鏡頭的世界位置與朝向，
+不能和 F4 正交鏡頭的 `focusX/focusZ/zoom` 混用；後續事件播放器接第一人稱鏡頭時
+應直接讀這份格式，不要反推成正交鏡頭參數。
+
 **已知限制**：方向鍵在 `game-loop.ts` 平常也是 WASD 的替代移動鍵；
 `gameState.cutsceneActive` 為 `true` 時那段移動判定整個不執行，方向鍵
 才不會同時「鏡頭在動、玩家也在走」。目前只在過場期間（`cutsceneActive`

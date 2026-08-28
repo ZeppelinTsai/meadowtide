@@ -72,7 +72,11 @@ import {
 } from "./layout-maps";
 import { tryShareChefMeal, mergeChefMealIntoChatLine } from "./chef-quest";
 import { previewPrologue } from "./prologue";
-import { toggleFirstPersonMode } from "./first-person-camera";
+import {
+  isFirstPersonModeActive,
+  recordFirstPersonCameraShot,
+  toggleFirstPersonMode,
+} from "./first-person-camera";
 import {
   beginCameraAdjustMode,
   endCameraAdjustMode,
@@ -491,9 +495,14 @@ addEventListener("keydown", (event) => {
         gameState.player.position.z,
       );
     }
-  } else if (event.key.toLowerCase() === "c" && isCameraAdjustModeActive()) {
-    event.preventDefault();
-    recordCameraAdjustShot();
+  } else if (event.key.toLowerCase() === "c") {
+    if (isCameraAdjustModeActive()) {
+      event.preventDefault();
+      recordCameraAdjustShot();
+    } else if (isFirstPersonModeActive()) {
+      event.preventDefault();
+      recordFirstPersonCameraShot();
+    }
   }
 });
 
