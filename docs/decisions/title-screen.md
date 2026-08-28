@@ -100,3 +100,7 @@
 ## Header／Content 結構
 
 `#titleScreen` 只保留一份共用 `header.titleLogoGroup`，內含 `#titleLogo` 與緊貼其下的 `#titleSubtitle`；所有會隨 `data-step` 切換的 splash 提示、主選單、命名、外型、系統與讀檔面板都放在 `main#titleContent`。禁止在 menu 或其他步驟再複製第二份 Logo。
+
+## Header 與 Content 不重疊
+
+`#titleScreen` 使用兩列 grid：第一列是自然佔位的共用 header，第二列 `#titleContent` 才置中目前步驟。禁止讓 header 回到 fixed/absolute，否則主選單不會計入標題高度。Logo 與 Subtitle 在矮視窗以 `clamp()` 縮放，最小仍須高於 18px。

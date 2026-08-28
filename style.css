@@ -918,9 +918,10 @@ canvas {
     opacity 0.4s ease,
     background-color 0.25s ease;
   color: #2b2b2b;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  justify-items: center;
+  align-items: stretch;
 }
 #titleScreen.titleSceneReady {
   background-color: transparent;
@@ -938,7 +939,14 @@ canvas {
   gap: 10px;
   text-align: center;
   padding: 24px;
-  margin-top: 50px;
+  margin: 0;
+}
+#titleContent {
+  display: flex;
+  width: 100%;
+  min-height: 0;
+  align-items: center;
+  justify-content: center;
 }
 #titleScreen[data-step="splash"] #titleSplash,
 #titleScreen[data-step="menu"] #titleMenu,
@@ -1032,12 +1040,8 @@ canvas {
   }
 }
 #titleLogo {
-  position: fixed;
-  top: 30px;
-  left: 50%;
-  transform: translateX(-50%);
   margin: 0;
-  font-size: 80px;
+  font-size: clamp(44px, 8vh, 80px);
   letter-spacing: 0.08em;
   font-weight: 700;
   color: #493025;
@@ -1054,14 +1058,13 @@ canvas {
       rgba(0, 0, 0, 0.15) !important;
 }
 .titleLogoGroup {
-  position: fixed;
-  top: 30px;
-  left: 50%;
+  position: relative;
+  z-index: 1;
+  margin-top: clamp(12px, 4vh, 30px);
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 0;
-  transform: translateX(-50%);
 }
 .titleLogoGroup #titleLogo {
   position: static;
@@ -1071,7 +1074,7 @@ canvas {
   margin: 0;
   color: #493025;
   letter-spacing: 0.3em;
-  font-size: 45px;
+  font-size: clamp(20px, 4vh, 45px);
   text-transform: uppercase;
   text-shadow:
     3px 0px 0px #f3e7ce,
