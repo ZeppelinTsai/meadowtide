@@ -113,6 +113,13 @@ let hasTouchedDock = false; // 「腳踏上碼頭」的一次性判定，見 wal
 // animateRun()/animateSit() 之後再呼叫 reapplyProloguePlayerY() 蓋
 // 回去，兩邊「蓋 Y」的順序反過來，序幕的高度才能是最後贏的那個。
 let lastPlayerY = 0;
+let flyerPaper: THREE.Group | null = null;
+let flyerPoseWeight = 0;
+let flyerPoseAnimation = 0;
+let flyerPoseStart = 0;
+let flyerPoseFrom = 0;
+let flyerPoseTo = 0;
+let flyerPoseDuration = 1;
 // 序幕演出用的固定鏡頭縮放——見 startPrologueScene() 內的設定。
 const PROLOGUE_ZOOM = 5;
 const PROLOGUE_MAYOR_X = 3;
@@ -236,6 +243,62 @@ function syncLastPlayerY() {
 export function reapplyProloguePlayerY() {
   if (!gameState.cutsceneActive) return;
   gameState.player.position.y = lastPlayerY;
+  if (flyerPoseWeight > 0 && gameState.player.parts) {
+    // animateRun() 在這之前會把手臂往待機角度拉回；事件姿勢必須最後套用。
+    gameState.player.parts.armL.rotation.x = 1.18 * flyerPoseWeight;
+    gameState.player.parts.armL.rotation.z = -0.2 * flyerPoseWeight;
+    gameState.player.parts.armR.rotation.x = 1.24 * flyerPoseWeight;
+    gameState.player.parts.armR.rotation.z = 0.16 * flyerPoseWeight;
+  }
+}
+
+function animateFlyerPose(to: number, duration: number, done?: () => void) {
+  flyerPoseAnimation++;
+  const animationId = flyerPoseAnimation;
+  flyerPoseStart = performance.now();
+  flyerPoseFrom = flyerPoseWeight;
+  flyerPoseTo = to;
+  flyerPoseDuration = Math.max(0.01, duration);
+  const tick = (now: number) => {
+    if (animationId !== flyerPoseAnimation) return;
+    const t = Math.min(1, (now - flyerPoseStart) / (flyerPoseDuration * 1000));
+    const eased = 1 - Math.pow(1 - t, 3);
+    flyerPoseWeight = THREE.MathUtils.lerp(flyerPoseFrom, flyerPoseTo, eased);
+    if (t < 1) requestAnimationFrame(tick);
+    else done?.();
+  };
+  requestAnimationFrame(tick);
+}
+
+function showFlyerPaper() {
+  const arm = gameState.player?.parts?.armR as THREE.Group | undefined;
+  if (!arm) return;
+  if (!flyerPaper) {
+    flyerPaper = new THREE.Group();
+    const sheet = new THREE.Mesh(
+      new THREE.BoxGeometry(0.34, 0.25, 0.012),
+      new THREE.MeshStandardMaterial({ color: 0xf1e3bf, roughness: 0.95 }),
+    );
+    flyerPaper.add(sheet);
+    const ink = new THREE.MeshBasicMaterial({ color: 0x75664f });
+    for (let i = 0; i < 4; i++) {
+      const line = new THREE.Mesh(new THREE.BoxGeometry(0.23 - i * 0.025, 0.012, 0.006), ink);
+      line.position.set(-0.025, 0.065 - i * 0.045, -0.009);
+      flyerPaper.add(line);
+    }
+  }
+  arm.add(flyerPaper);
+  flyerPaper.position.set(-0.11, -0.39, -0.2);
+  flyerPaper.rotation.set(-0.15, 0.08, -0.08);
+  flyerPaper.visible = true;
+  animateFlyerPose(1, 0.45);
+}
+
+function hideFlyerPaper() {
+  animateFlyerPose(0, 0.35, () => {
+    if (flyerPaper?.parent) flyerPaper.parent.remove(flyerPaper);
+    if (flyerPaper) flyerPaper.visible = false;
+  });
 }
 
 // 跳板還收在船頭那幾個階段(atSea/approaching)每幀呼叫——不是真的用
@@ -365,6 +428,7 @@ function startWelcomeDialogue() {
 }
 
 function startShipDialogue() {
+  showFlyerPaper();
   // 這顆鏡頭從傳單出現一路保持到船長說完「東西收一收吧」。duration
   // 只表示補間時間；最後的 true 讓鏡頭到位後持續接管，直到對話完成時
   // 明確 stop，避免 1.5 秒後在台詞中途跳回自動跟隨。
@@ -381,6 +445,7 @@ function startShipDialogue() {
   showDialogSequence(
     PROLOGUE_SCRIPT.flyer,
     () => {
+      hideFlyerPaper();
       stopCameraShots();
       beginStage("approaching");
     },

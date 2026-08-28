@@ -163,6 +163,10 @@ function bowWorldPoint(localPoint: THREE.Vector3): THREE.Vector3 {
 `onLoaded` 已建立玩家與港口參照後，才以 `alreadyFaded` 啟動序章。這條流程會
 讓 `loadMap` 回呼回傳 `false`，抑制一般換圖自己的 `fadeIn()`，避免普通港口
 閃現以及初始化期間輸入讀取未建立的 `player.position`。
+船上傳單使用程式生成的低模紙張，掛在主角右手肩膀支點下；雙臂以事件姿勢權重
+約 0.45 秒抬起，船長最後一句結束後約 0.35 秒放下並移除紙張。因一般待機動畫每幀
+會重設手臂，傳單姿勢必須在 `animateRun()` 後由
+`reapplyProloguePlayerY()` 同一個末段覆寫點重新套用。
 
 可閱讀的序章文字集中在 `src/story/chapters/prologue-script.ts`；`src/prologue.ts`
 只負責船、跳板、人物走位與串接段落。序章依序涵蓋傳單、港口、城鎮、牧場、
