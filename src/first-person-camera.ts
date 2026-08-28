@@ -14,6 +14,40 @@ firstPersonCamera.rotation.order = "YXZ";
 // 必須由 scene graph 遍歷；否則第一人稱啟用後那些子物件會整組消失。
 scene.add(firstPersonCamera);
 
+const presentationCamera = new THREE.PerspectiveCamera(
+  65,
+  innerWidth / innerHeight,
+  0.05,
+  220,
+);
+presentationCamera.rotation.order = "YXZ";
+scene.add(presentationCamera);
+let presentationCameraActive = false;
+
+export interface PresentationCameraState {
+  positionX: number;
+  positionY: number;
+  positionZ: number;
+  yaw: number;
+  pitch: number;
+  fov: number;
+}
+
+export function setPresentationCamera(state: PresentationCameraState | null) {
+  presentationCameraActive = state !== null;
+  if (!state) return;
+  presentationCamera.position.set(
+    state.positionX,
+    state.positionY,
+    state.positionZ,
+  );
+  presentationCamera.rotation.set(state.pitch, state.yaw, 0);
+  presentationCamera.fov = state.fov;
+  presentationCamera.aspect = innerWidth / innerHeight;
+  presentationCamera.updateProjectionMatrix();
+  presentationCamera.updateMatrixWorld(true);
+}
+
 const LOOK_SPEED = 1.9;
 const MOUSE_SENSITIVITY = 0.0022;
 const EYE_HEIGHT = 0.82;
@@ -111,6 +145,7 @@ export function updateFirstPersonCamera(dt: number) {
 }
 
 export function getGameplayCamera(defaultCamera: THREE.Camera) {
+  if (presentationCameraActive) return presentationCamera;
   return active ? firstPersonCamera : defaultCamera;
 }
 
@@ -124,4 +159,6 @@ addEventListener("mousemove", (event) => {
 addEventListener("resize", () => {
   firstPersonCamera.aspect = innerWidth / innerHeight;
   firstPersonCamera.updateProjectionMatrix();
+  presentationCamera.aspect = innerWidth / innerHeight;
+  presentationCamera.updateProjectionMatrix();
 });

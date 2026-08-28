@@ -1,6 +1,11 @@
 import * as THREE from "three";
 import { buildMap, fadeIn, loadMap } from "./build-map";
-import { getTitlePreviewTime, loadGame, migrateLegacyDefaultSave, setActiveSaveSlot } from "./input-save";
+import {
+  getTitlePreviewTime,
+  loadGame,
+  migrateLegacyDefaultSave,
+  setActiveSaveSlot,
+} from "./input-save";
 import { renderSaveSlotButtons } from "./save-slot-ui";
 import { initializeMusic, setTitleMusicPeriod } from "./music";
 import { hasSaveData, startPrologueScene } from "./prologue";
@@ -9,9 +14,67 @@ import { pollGamepad } from "./gamepad-input";
 import { gameState } from "./game-state";
 import { makeFemaleHeroPlayer, makeMaleHeroPlayer } from "./humanoid";
 import { resetStoryState } from "./story/story-state";
-import { renderer, scene } from "./scene-sky";
+import { scene } from "./scene-sky";
+import {
+  setPresentationCamera,
+  type PresentationCameraState,
+} from "./first-person-camera";
 
-type TitleStep = "splash" | "menu" | "profileName" | "appearance" | "system" | "loadSlots";
+type TitleStep =
+  "splash" | "menu" | "profileName" | "appearance" | "system" | "loadSlots";
+
+type TitlePeriod = "day" | "afternoon" | "night";
+type TitleScenePreset = {
+  period: TitlePeriod;
+  startHour: number;
+  camera: PresentationCameraState;
+};
+
+// 可擴充的時段展示範本；日期、季節、天氣與精確時刻仍優先讀取存檔。
+export const TITLE_SCENE_PRESETS: readonly TitleScenePreset[] = [
+  {
+    period: "day",
+    startHour: 6,
+    camera: {
+      positionX: 18.27,
+      positionY: 2.38,
+      positionZ: 8.01,
+      yaw: -7.276,
+      pitch: 0.103,
+      fov: 65,
+    },
+  },
+  {
+    period: "afternoon",
+    startHour: 12,
+    camera: {
+      positionX: 18.27,
+      positionY: 2.38,
+      positionZ: 8.01,
+      yaw: -7.276,
+      pitch: 0.103,
+      fov: 65,
+    },
+  },
+  {
+    period: "night",
+    startHour: 18,
+    camera: {
+      positionX: 18.27,
+      positionY: 2.38,
+      positionZ: 8.01,
+      yaw: -7.276,
+      pitch: 0.103,
+      fov: 65,
+    },
+  },
+];
+
+function getTitleScenePreset(hour: number) {
+  if (hour >= 18 || hour < 6) return TITLE_SCENE_PRESETS[2];
+  if (hour >= 12) return TITLE_SCENE_PRESETS[1];
+  return TITLE_SCENE_PRESETS[0];
+}
 
 function byId<T extends HTMLElement>(id: string): T {
   const element = document.getElementById(id);
@@ -23,7 +86,11 @@ function renderAppearancePreview(
   image: HTMLImageElement,
   makeModel: () => THREE.Object3D,
 ) {
-  const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true, preserveDrawingBuffer: true });
+  const renderer = new THREE.WebGLRenderer({
+    alpha: true,
+    antialias: true,
+    preserveDrawingBuffer: true,
+  });
   renderer.setPixelRatio(1);
   renderer.setSize(240, 280, false);
   renderer.setClearColor(0x000000, 0);
@@ -39,7 +106,14 @@ function renderAppearancePreview(
   const size = bounds.getSize(new THREE.Vector3());
   const halfHeight = Math.max(size.y * 0.62, 0.62);
   const halfWidth = Math.max(size.x * 0.62, halfHeight * (240 / 280));
-  const camera = new THREE.OrthographicCamera(-halfWidth, halfWidth, halfHeight, -halfHeight, 0.1, 10);
+  const camera = new THREE.OrthographicCamera(
+    -halfWidth,
+    halfWidth,
+    halfHeight,
+    -halfHeight,
+    0.1,
+    10,
+  );
   camera.position.set(center.x, center.y, center.z - 3);
   camera.lookAt(center);
   renderer.render(scene, camera);
@@ -54,13 +128,18 @@ export function initTitleScreen() {
   migrateLegacyDefaultSave();
 
   const titleScreen = byId<HTMLElement>("titleScreen");
+  document.body.classList.add("title-presentation");
   const previewTime = getTitlePreviewTime();
   const previewHour = previewTime.currentPhase * 24;
-  setTitleMusicPeriod(previewHour >= 18 || previewHour < 6 ? "night" : previewHour >= 12 ? "afternoon" : "day");
+  const titlePreset = getTitleScenePreset(previewHour);
+  setTitleMusicPeriod(titlePreset.period);
   const previous = {
-    player: gameState.player, currentMapName: gameState.currentMapName,
-    currentDay: gameState.currentDay, currentSeason: gameState.currentSeason,
-    currentPhase: gameState.currentPhase, currentWeather: gameState.currentWeather,
+    player: gameState.player,
+    currentMapName: gameState.currentMapName,
+    currentDay: gameState.currentDay,
+    currentSeason: gameState.currentSeason,
+    currentPhase: gameState.currentPhase,
+    currentWeather: gameState.currentWeather,
     elapsed: gameState.elapsed,
   };
   gameState.currentDay = previewTime.currentDay;
@@ -69,24 +148,13 @@ export function initTitleScreen() {
   gameState.currentWeather = previewTime.currentWeather as any;
   gameState.elapsed = previewTime.elapsed;
   buildMap("livingArea");
-  if (gameState.player) gameState.player.visible = false;
-  const titleCamera = new THREE.PerspectiveCamera(65, innerWidth / innerHeight, 0.05, 220);
-  titleCamera.rotation.order = "YXZ";
-  titleCamera.position.set(18.27, 2.38, 8.01);
-  titleCamera.rotation.set(0.103, -7.276, 0);
-  titleCamera.updateMatrixWorld(true);
-  requestAnimationFrame(() => requestAnimationFrame(() => {
-      renderer.render(scene, titleCamera);
-      titleScreen.style.backgroundImage = "url('" + renderer.domElement.toDataURL("image/jpeg", 0.86) + "')";
-      gameState.player = previous.player;
-      gameState.currentMapName = previous.currentMapName;
-      gameState.currentDay = previous.currentDay;
-      gameState.currentSeason = previous.currentSeason;
-      gameState.currentPhase = previous.currentPhase;
-      gameState.currentWeather = previous.currentWeather;
-      gameState.elapsed = previous.elapsed;
-    }),
-  );
+  if (!gameState.player) {
+    // 主迴圈在沒有玩家時會直接跳過；使用完整主角模型作為不顯示、不存檔的展示驅動器。
+    gameState.player = makeMaleHeroPlayer();
+    scene.add(gameState.player);
+  }
+  gameState.player.visible = false;
+  setPresentationCamera(titlePreset.camera);
   const continueButton = byId<HTMLButtonElement>("titleContinueBtn");
   const newGameButton = byId<HTMLButtonElement>("titleNewGameBtn");
   const systemButton = byId<HTMLButtonElement>("titleSystemBtn");
@@ -95,15 +163,19 @@ export function initTitleScreen() {
   const playerNameInput = byId<HTMLInputElement>("titlePlayerNameInput");
   const nameConfirmButton = byId<HTMLButtonElement>("titleNameConfirmBtn");
   const nameBackButton = byId<HTMLButtonElement>("titleNameBackBtn");
-  const maleAppearanceButton = byId<HTMLButtonElement>("titleMaleAppearanceBtn");
-  const femaleAppearanceButton = byId<HTMLButtonElement>("titleFemaleAppearanceBtn");
-  const appearanceBackButton = byId<HTMLButtonElement>("titleAppearanceBackBtn");
+  const maleAppearanceButton = byId<HTMLButtonElement>(
+    "titleMaleAppearanceBtn",
+  );
+  const femaleAppearanceButton = byId<HTMLButtonElement>(
+    "titleFemaleAppearanceBtn",
+  );
+  const appearanceBackButton = byId<HTMLButtonElement>(
+    "titleAppearanceBackBtn",
+  );
   const systemBackButton = byId<HTMLButtonElement>("titleSystemBackBtn");
   const systemSettings = byId<HTMLElement>("titleSystemSettings");
   const loadSlotsList = byId<HTMLElement>("titleLoadSlotsList");
-  const loadSlotsBackButton = byId<HTMLButtonElement>(
-    "titleLoadSlotsBackBtn",
-  );
+  const loadSlotsBackButton = byId<HTMLButtonElement>("titleLoadSlotsBackBtn");
   let step: TitleStep = "splash";
   let titleActive = true;
   let titleGamepadReleased = false;
@@ -137,7 +209,16 @@ export function initTitleScreen() {
 
   function hideTitleScreen() {
     titleActive = false;
+    document.body.classList.remove("title-presentation");
     setTitleMusicPeriod(null);
+    setPresentationCamera(null);
+    gameState.player = previous.player;
+    gameState.currentMapName = previous.currentMapName;
+    gameState.currentDay = previous.currentDay;
+    gameState.currentSeason = previous.currentSeason;
+    gameState.currentPhase = previous.currentPhase;
+    gameState.currentWeather = previous.currentWeather;
+    gameState.elapsed = previous.elapsed;
     titleScreen.classList.add("titleScreen--hidden");
     window.setTimeout(() => {
       titleScreen.style.display = "none";
@@ -180,8 +261,14 @@ export function initTitleScreen() {
   }
 
   function chooseAppearance(appearance: "male" | "female") {
-    maleAppearanceButton.setAttribute("aria-checked", String(appearance === "male"));
-    femaleAppearanceButton.setAttribute("aria-checked", String(appearance === "female"));
+    maleAppearanceButton.setAttribute(
+      "aria-checked",
+      String(appearance === "male"),
+    );
+    femaleAppearanceButton.setAttribute(
+      "aria-checked",
+      String(appearance === "female"),
+    );
     startNewGame(appearance);
   }
 
@@ -218,8 +305,12 @@ export function initTitleScreen() {
   nameConfirmButton.addEventListener("click", confirmPlayerName);
   nameBackButton.addEventListener("click", () => setStep("menu"));
   appearanceBackButton.addEventListener("click", () => setStep("profileName"));
-  maleAppearanceButton.addEventListener("click", () => chooseAppearance("male"));
-  femaleAppearanceButton.addEventListener("click", () => chooseAppearance("female"));
+  maleAppearanceButton.addEventListener("click", () =>
+    chooseAppearance("male"),
+  );
+  femaleAppearanceButton.addEventListener("click", () =>
+    chooseAppearance("female"),
+  );
   continueButton.addEventListener("click", openLoadSlots);
   systemButton.addEventListener("click", () => setStep("system"));
   systemBackButton.addEventListener("click", () => setStep("menu"));

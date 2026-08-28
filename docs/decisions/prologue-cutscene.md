@@ -179,3 +179,7 @@ function bowWorldPoint(localPoint: THREE.Vector3): THREE.Vector3 {
 教學文字
 指向正式 E 鍵種植、釣魚與爐灶系統；後續加入逐項任務閘門時，必須讀正式玩法的成功
 結果，不得另做一套假的種田、釣魚或料理判定。
+
+## 演出期間 HUD
+
+主迴圈依 `gameState.cutsceneActive` 切換 `body.cutscene-presentation`。所有事件演出期間隱藏遊戲 HUD 與右上快捷卡，只保留演出所需的對話、選項與轉場；事件結束後自動恢復。

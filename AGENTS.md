@@ -382,6 +382,8 @@ fillValue: 9)` 追加外海；東擴不得平移既有座標，完成後必須�
 - 動物、NPC 沒有真的路徑規劃避開新地形變化（例如懸崖/斜坡），目前只在
   已知安全的區域內活動。
 
+- **Windows ACL／apply_patch 失敗處理**：若內建 apply_patch 回報 apply deny-read ACLs，只嘗試一次；不要再重試同一入口或 apply_patch.bat 包裝器。立即改用能保留精確差異的替代編輯方式，完成後必須用 git diff --check、相關測試與 npm run build 驗證。
+
 ## 建議的工作方式
 
 - 每次調整佈局：先跑一次 `npm run map-debug -- --map=<地圖名> --legend` 看現況 →

@@ -270,6 +270,10 @@ gameState.lastFrame = performance.now();
 export function animate(now) {
   requestAnimationFrame(animate);
   if (!gameState.player) return;
+  document.body.classList.toggle(
+    "cutscene-presentation",
+    gameState.cutsceneActive,
+  );
   const frameDt = Math.min((now - gameState.lastFrame) / 1000, 0.05);
   gameState.lastFrame = now;
   const dt = isGameplayPaused() ? 0 : frameDt;
