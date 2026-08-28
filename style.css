@@ -1288,10 +1288,16 @@ canvas {
 @media (max-width: 520px), (max-height: 560px) {
   #titleLoadSlots,
   #titleSystem {
-    width: calc(100vw - 16px);
-    height: calc(100% - 8px);
+    position: fixed;
+    inset: 8px;
+    z-index: 10;
+    width: auto;
+    height: auto;
+    max-width: none;
+    max-height: none;
     padding: 12px;
     border-radius: 8px;
+    box-shadow: 0 10px 36px rgba(0, 0, 0, 0.36);
   }
   #titleSystemHeading,
   #titleLoadSlotsHeading {
