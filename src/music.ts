@@ -1,4 +1,10 @@
-import { gameState } from "./game-state";
+import {
+  gameState,
+  getSeasonDay,
+  isNightTime,
+  METEOR_SHOWER_SCHEDULE,
+} from "./game-state";
+import { isOutdoorMap } from "./environment";
 import { gameSettings, getMasterOutput, onSettingsChanged } from "./settings";
 
 // 5.5) 背景音樂：季節日夜旋律層 + 天氣疊加層，全部經 GainNode 淡入淡出
@@ -20,6 +26,7 @@ export const BGM_TRACKS = {
   seaCaveAmbient: "StockTune-Moonlit Sirens Of Atlantis_1787682578.mp3",
   mountainCaveAmbient: "StockTune-Celestial Ice Cave Echoes_1787682579.mp3",
   homeAmbient: "StockTune-Golden Hour Bedroom Pop_1787954329.mp3",
+  meteorShowerNight: "StockTune-Emerald Sky Dreaming_1787957687.mp3",
   titleDay: "StockTune-Gentle Ocean Breeze_1787921271.mp3",
   titleAfternoon: "StockTune-Oceanic Sunset Breeze_1787921165.mp3",
   titleNight: "StockTune-Sea Breeze Serenity_1787921163.mp3",
@@ -166,6 +173,12 @@ export function updateMusic(nightFactor, dt) {
   // 地圖自己的常駐曲；離開地圖後 locationKey 查不到，才交還給下面天氣/
   // 季節那套嚴格單軌邏輯。
   const locationKey = LOCATION_MUSIC_KEYS[gameState.currentMapName];
+  const meteorShowerKey =
+    isOutdoorMap() &&
+    isNightTime() &&
+    Boolean(METEOR_SHOWER_SCHEDULE[getSeasonDay()])
+      ? "meteorShowerNight"
+      : null;
   // 嚴格單軌：壞天氣時由天氣曲取代旋律；晴天只選日曲或夜曲其中一首。
   const fairWeather =
     gameState.currentWeather === "clear" ||
@@ -174,6 +187,8 @@ export function updateMusic(nightFactor, dt) {
     ? titleMusicKey
     : locationKey
     ? locationKey
+    : meteorShowerKey
+    ? meteorShowerKey
     : fairWeather
       ? nightFactor >= 0.5
         ? nightKey

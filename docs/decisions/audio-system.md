@@ -71,8 +71,8 @@ src/settings.ts 是顯示與音量偏好的單一資料源，使用 meadowtide.s
 
 ### BGM 優先序（2026-08-25 已實作地域這層）
 
-播放哪一首曲目由高到低分五層：**特殊事件 BGM > 通用事件 BGM > 地域 BGM >
-天氣 BGM > 季節 BGM**。目前只有「地域／天氣／季節」三層有實作，
+播放哪一首曲目由高到低分六層：**特殊事件 BGM > 通用事件 BGM > 地域 BGM >
+天象 BGM > 天氣 BGM > 季節 BGM**。目前已有「地域／天象／天氣／季節」四層，
 「特殊事件」跟「通用事件」對應的遊戲系統（劇情節點、突發事件之類）還
 沒做，先只是把優先序的位置定下來，之後真的要做時直接在
 `updateMusic()` 裡的 `desiredKey` 判斷式插在 `locationKey` 之前即可，不
@@ -144,6 +144,13 @@ src/settings.ts 是顯示與音量偏好的單一資料源，使用 meadowtide.s
   收竿結算時呼叫 `playRandomSfx(FISH_REEL_SFX)`。新增其他動作的音效時，
   比照這個模式：在 `sfx.ts` 加一組路徑陣列，在對應的遊戲邏輯分支呼叫
   `playRandomSfx()`，不用另外包裝或建立新的播放器。
+
+### 流星雨夜晚的天象 BGM
+
+每季第 11～14 日的流星雨期間，只有在戶外且 `isNightTime()` 成立時播放
+`meteorShowerNight`（*Emerald Sky Dreaming*）。判定直接共用
+`METEOR_SHOWER_SCHEDULE`、`getSeasonDay()` 與流星畫面的夜間門檻；白天、
+室內與洞窟不播放。地域曲優先於天象曲。
 
 ### Home location music
 
