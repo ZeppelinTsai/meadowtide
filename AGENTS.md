@@ -156,6 +156,7 @@
 - 搖桿輸入與震動 → `docs/decisions/gamepad-input.md`
 - 序幕過場（開場第一天演出）`prologue.ts` → `docs/decisions/prologue-cutscene.md`
 - 開局標題畫面 `title-screen.ts` → `docs/decisions/title-screen.md`
+- 共用黑色載入遮罩 `loading-screen.ts` → `docs/decisions/loading-screen.md`
 - 過場鏡頭系統(換位置/焦點/zoom，F4 手動調整模式) `cutscene-camera.ts` → `docs/decisions/cutscene-camera.md`
 - 存檔系統（10 格；Shift+1-9 存第 1-9 格、Shift+0 存第 10 格；1-9/0 讀檔；每日 06:00 自動存檔）`input-save.ts`/`game-clock.ts` → `docs/decisions/save-slots.md`
 - 雲上天宮 50×50 空殼、山之洞第 25 層／mountain 雙向傳送 → docs/decisions/sky-palace.md
@@ -383,6 +384,11 @@ fillValue: 9)` 追加外海；東擴不得平移既有座標，完成後必須�
   已知安全的區域內活動。
 
 - **Windows ACL／apply_patch 失敗處理**：若內建 apply_patch 回報 apply deny-read ACLs，只嘗試一次；不要再重試同一入口或 apply_patch.bat 包裝器。立即改用能保留精確差異的替代編輯方式，完成後必須用 git diff --check、相關測試與 npm run build 驗證。
+
+
+## 共用載入畫面
+
+- 需要遮住場景初始化、換圖或大型資源載入時，統一使用 `src/loading-screen.ts` 的 `showLoadingScreen()`／`hideLoadingScreen()` 與 `index.html#loadingScreen`。開始工作前必須 `await showLoadingScreen()`，讓黑幕實際畫出至少一幀；完成後才 `await hideLoadingScreen()`。禁止另外新增載入遮罩或用 `#fade`／標題背景冒充，避免首次載入露出 HUD、未完成 WebGL 畫面或黑底閃爍。驗證至少執行 `npm run build`。
 
 ## 建議的工作方式
 

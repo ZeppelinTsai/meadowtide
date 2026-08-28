@@ -15,6 +15,7 @@ import { gameState } from "./game-state";
 import { makeFemaleHeroPlayer, makeMaleHeroPlayer } from "./humanoid";
 import { resetStoryState } from "./story/story-state";
 import { scene } from "./scene-sky";
+import { hideLoadingScreen } from "./loading-screen";
 import { animals } from "./npc-runtime";
 import {
   setPresentationCamera,
@@ -160,7 +161,10 @@ export function initTitleScreen() {
   gameState.player.visible = false;
   setPresentationCamera(titlePreset.camera);
   requestAnimationFrame(() =>
-    requestAnimationFrame(() => titleScreen.classList.add("titleSceneReady")),
+    requestAnimationFrame(() => {
+      titleScreen.classList.add("titleSceneReady");
+      void hideLoadingScreen();
+    }),
   );
   const continueButton = byId<HTMLButtonElement>("titleContinueBtn");
   const newGameButton = byId<HTMLButtonElement>("titleNewGameBtn");
