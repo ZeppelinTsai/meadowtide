@@ -1688,17 +1688,22 @@ export function animate(now) {
 
   // 牧草短／中／長三階段由 pastureDepletedTiles 的遊戲日齡決定：
   // 收割／放牧當天變短，之後長到中段，第三天恢復成熟。風擺仍逐幀更新。
-  gameState.grassAnimationAccumulator += dt;
+  // The title presentation pauses gameplay, but its scenery must remain alive.
+  // Use real visual time there and keep the wind deliberately gentler than gameplay.
+  const isTitleGrassPreview = gameState.titlePresentationActive;
+  gameState.grassAnimationAccumulator += isTitleGrassPreview ? frameDt : dt;
   if (gameState.grassAnimationAccumulator >= 1 / 20) {
     gameState.grassAnimationAccumulator = 0;
-    const windSpeed =
-      gameState.currentWeather === "typhoon"
+    const windSpeed = isTitleGrassPreview
+      ? 0.72
+      : gameState.currentWeather === "typhoon"
         ? 4.8
         : gameState.currentWeather === "storm"
           ? 3.8
           : 2.15;
-    const weatherWindStrength =
-      gameState.currentWeather === "typhoon"
+    const weatherWindStrength = isTitleGrassPreview
+      ? 0
+      : gameState.currentWeather === "typhoon"
         ? 0.34
         : gameState.currentWeather === "storm"
           ? 0.2
@@ -1711,8 +1716,9 @@ export function animate(now) {
         tuft.userData.tileZ,
       );
       setPastureGrassStage(tuft, logicalStage < 0 ? 0 : logicalStage);
-      const sway =
-        0.16 + tuft.userData.stage * 0.09 + weatherWindStrength * 0.22;
+      const sway = isTitleGrassPreview
+        ? 0.035 + tuft.userData.stage * 0.012
+        : 0.16 + tuft.userData.stage * 0.09 + weatherWindStrength * 0.22;
       // 雨勢朝 +X；草繞 Z 軸負向傾斜時也會倒向 +X。
       const weatherWindPush =
         weatherWindStrength *
@@ -1738,7 +1744,8 @@ export function animate(now) {
           : 0;
       tuft.userData.blades.forEach((pivot) => {
         const wave =
-          gameState.elapsed * windSpeed +
+          (isTitleGrassPreview ? gameState.effectElapsed : gameState.elapsed) *
+            windSpeed +
           pivot.userData.phase +
           wx * 0.72 +
           wz * 0.28;

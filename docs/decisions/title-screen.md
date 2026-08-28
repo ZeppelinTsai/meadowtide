@@ -108,3 +108,7 @@
 ## 系統／讀檔面板 RWD
 
 標題的 `#titleSystem` 與 `#titleLoadSlots` 在所有螢幕尺寸都是 `position: fixed; inset: 0` 的全畫面 modal，必須提升到 header 上方並完整覆蓋 Logo 區，不受兩列 grid 的第二列高度限制。標題與返回鍵固定，中央 `#titleSystemSettings`／`.saveSlotList` 使用 `min-height: 0` 與內部垂直捲動；一般畫面用彈性安全內距，小於 520px 或矮於 560px 時改用 12px 內距。所有文字仍不得低於 18px。修改後執行 `npm run build`。
+
+## Title scene ambient motion
+
+The living-area preview stays as a live Three.js scene rather than a still image. Pasture grass continues updating while gameplay is paused by using real visual time (`frameDt` and `effectElapsed`), with a fixed low-amplitude breeze. Gameplay grass retains its existing weather-driven timing and strength.
