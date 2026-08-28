@@ -767,18 +767,77 @@ canvas {
 .inventory-grid-info {
   grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)) !important;
 }
-.map-menu-header { display: flex; align-items: center; justify-content: space-between; gap: 20px; margin-bottom: 18px; }
-.map-menu-header h2 { margin: 0; font-size: 28px; }
-.map-menu-header button { padding: 10px 14px; font: inherit; font-size: 18px; cursor: pointer; }
-#mapPanel { width: min(900px, 90vw); padding: 24px; box-sizing: border-box; background: #f4ead4; border: 2px solid #c9a86a; border-radius: 14px; box-shadow: 0 24px 70px rgba(0,0,0,.58); }
-.world-map { position: relative; min-height: 430px; overflow: hidden; color: #252525; background: #fff; border: 2px solid #c9a86a; border-radius: 10px; }
-.world-map-location { position: absolute; display: grid; justify-items: center; gap: 4px; min-width: 90px; font-size: 20px; text-align: center; transform: translate(-50%, -50%); }
-.world-map-location span { color: #9b623e; font-size: 30px; line-height: 1; }
-.world-map-location-mountain { left: 25%; top: 25%; }
-.world-map-location-old-village { left: 25%; top: 75%; }
-.world-map-location-living-area { left: 75%; top: 25%; }
-.world-map-location-port { left: 75%; top: 75%; }
-@media (max-width: 620px) { .world-map { min-height: 360px; } }
+.map-menu-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  margin-bottom: 18px;
+}
+.map-menu-header h2 {
+  margin: 0;
+  font-size: 28px;
+}
+.map-menu-header button {
+  padding: 10px 14px;
+  font: inherit;
+  font-size: 18px;
+  cursor: pointer;
+}
+#mapPanel {
+  width: min(900px, 90vw);
+  padding: 24px;
+  box-sizing: border-box;
+  background: #f4ead4;
+  border: 2px solid #c9a86a;
+  border-radius: 14px;
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.58);
+}
+.world-map {
+  position: relative;
+  min-height: 430px;
+  overflow: hidden;
+  color: #252525;
+  background: #fff;
+  border: 2px solid #c9a86a;
+  border-radius: 10px;
+}
+.world-map-location {
+  position: absolute;
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+  min-width: 90px;
+  font-size: 20px;
+  text-align: center;
+  transform: translate(-50%, -50%);
+}
+.world-map-location span {
+  color: #9b623e;
+  font-size: 30px;
+  line-height: 1;
+}
+.world-map-location-mountain {
+  left: 25%;
+  top: 25%;
+}
+.world-map-location-old-village {
+  left: 25%;
+  top: 75%;
+}
+.world-map-location-living-area {
+  left: 75%;
+  top: 25%;
+}
+.world-map-location-port {
+  left: 75%;
+  top: 75%;
+}
+@media (max-width: 620px) {
+  .world-map {
+    min-height: 360px;
+  }
+}
 .menu-info-card {
   display: grid;
   grid-template-columns: 1fr auto;
