@@ -151,7 +151,7 @@ export function initTitleScreen() {
   gameState.elapsed = previewTime.elapsed;
   buildMap("livingArea");
   // 標題只展示自然環境；動物仍留在 runtime 資料中，但不加入展示 scene。
-  animals.forEach((animal) => animal.mesh.removeFromParent());
+  animals.forEach((animal) => animal.mesh.parent?.remove(animal.mesh));
   if (!gameState.player) {
     // 主迴圈在沒有玩家時會直接跳過；使用完整主角模型作為不顯示、不存檔的展示驅動器。
     gameState.player = makeMaleHeroPlayer();
