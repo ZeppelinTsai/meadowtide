@@ -1031,8 +1031,7 @@ canvas {
     height: 190px;
   }
 }
-#titleLogo,
-#titleMenuLogo {
+#titleLogo {
   position: fixed;
   top: 30px;
   left: 50%;
@@ -1064,7 +1063,7 @@ canvas {
   gap: 0;
   transform: translateX(-50%);
 }
-#titleSplash #titleLogo {
+.titleLogoGroup #titleLogo {
   position: static;
   transform: none;
 }
@@ -1111,9 +1110,6 @@ canvas {
   50% {
     opacity: 1;
   }
-}
-#titleMenuLogo {
-  margin-bottom: 24px;
 }
 #titleMenuButtons {
   display: flex;

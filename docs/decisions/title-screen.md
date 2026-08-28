@@ -96,3 +96,7 @@
 ## 標題場景動物
 
 標題生活區不顯示牧場動物。地圖建置後只將 `animals[].mesh` 從展示 scene 移除，不修改動物資料或正式地圖生成；開始新遊戲／讀檔重建地圖後照常出現。
+
+## Header／Content 結構
+
+`#titleScreen` 只保留一份共用 `header.titleLogoGroup`，內含 `#titleLogo` 與緊貼其下的 `#titleSubtitle`；所有會隨 `data-step` 切換的 splash 提示、主選單、命名、外型、系統與讀檔面板都放在 `main#titleContent`。禁止在 menu 或其他步驟再複製第二份 Logo。

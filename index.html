@@ -416,111 +416,116 @@
          再進主選單。純白底、不吃任何圖片素材，z-index 特意開最高(100)，
          蓋過 #fade(20)/#dialog(15) 等既有疊層。 -->
     <div id="titleScreen" data-step="splash">
-      <div id="titleSplash" class="titleStep">
-        <div class="titleLogoGroup">
-          <h1 id="titleLogo">海風牧歌</h1>
-          <p id="titleSubtitle">Meadowtide</p>
+      <header class="titleLogoGroup">
+        <h1 id="titleLogo">海風牧歌</h1>
+        <p id="titleSubtitle">Meadowtide</p>
+      </header>
+      <main id="titleContent">
+        <div id="titleSplash" class="titleStep">
+          <p id="titlePrompt">按任意鍵開始</p>
         </div>
-        <p id="titlePrompt">按任意鍵開始</p>
-      </div>
-      <div id="titleMenu" class="titleStep">
-        <h1 id="titleMenuLogo">海風牧歌</h1>
-        <nav id="titleMenuButtons">
-          <button type="button" id="titleNewGameBtn" class="titleMenuBtn">
-            開始新遊戲
-          </button>
+        <div id="titleMenu" class="titleStep">
+          <nav id="titleMenuButtons">
+            <button type="button" id="titleNewGameBtn" class="titleMenuBtn">
+              開始新遊戲
+            </button>
+            <button
+              type="button"
+              id="titleContinueBtn"
+              class="titleMenuBtn"
+              hidden
+            >
+              繼續遊戲
+            </button>
+            <button type="button" id="titleSystemBtn" class="titleMenuBtn">
+              系統
+            </button>
+            <button type="button" id="titleQuitBtn" class="titleMenuBtn">
+              結束遊戲
+            </button>
+          </nav>
+          <p id="titleQuitMessage" hidden>
+            感謝遊玩《海風牧歌》，可以安全關閉這個分頁了。
+          </p>
+        </div>
+        <div id="titleProfileName" class="titleStep titleProfileStep">
+          <p class="titleProfilePrompt">
+            您就是新的牧場主是吧，那麼請您在這裡簽下名字
+          </p>
+          <label for="titlePlayerNameInput">牧場主姓名</label>
+          <input
+            id="titlePlayerNameInput"
+            type="text"
+            maxlength="16"
+            autocomplete="off"
+            aria-describedby="titlePlayerNameHint"
+          />
+          <small id="titlePlayerNameHint">最多 16 個字元</small>
+          <div class="titleProfileActions">
+            <button type="button" id="titleNameBackBtn" class="titleMenuBtn">
+              返回
+            </button>
+            <button
+              type="button"
+              id="titleNameConfirmBtn"
+              class="titleMenuBtn"
+              disabled
+            >
+              簽名
+            </button>
+          </div>
+        </div>
+        <div id="titleAppearance" class="titleStep titleProfileStep">
+          <h2>請選擇外型</h2>
+          <div
+            class="titleAppearanceChoices"
+            role="radiogroup"
+            aria-label="玩家外型"
+          >
+            <button
+              type="button"
+              id="titleMaleAppearanceBtn"
+              class="titleAppearanceCard"
+              role="radio"
+              aria-checked="false"
+            >
+              <img id="titleMaleAppearancePreview" alt="男性牧場主外型" />
+              <strong>男性外型</strong>
+            </button>
+            <button
+              type="button"
+              id="titleFemaleAppearanceBtn"
+              class="titleAppearanceCard"
+              role="radio"
+              aria-checked="false"
+            >
+              <img id="titleFemaleAppearancePreview" alt="女性牧場主外型" />
+              <strong>女性外型</strong>
+            </button>
+          </div>
           <button
             type="button"
-            id="titleContinueBtn"
+            id="titleAppearanceBackBtn"
             class="titleMenuBtn"
-            hidden
           >
-            繼續遊戲
-          </button>
-          <button type="button" id="titleSystemBtn" class="titleMenuBtn">
-            系統
-          </button>
-          <button type="button" id="titleQuitBtn" class="titleMenuBtn">
-            結束遊戲
-          </button>
-        </nav>
-        <p id="titleQuitMessage" hidden>
-          感謝遊玩《海風牧歌》，可以安全關閉這個分頁了。
-        </p>
-      </div>
-      <div id="titleProfileName" class="titleStep titleProfileStep">
-        <p class="titleProfilePrompt">
-          您就是新的牧場主是吧，那麼請您在這裡簽下名字
-        </p>
-        <label for="titlePlayerNameInput">牧場主姓名</label>
-        <input
-          id="titlePlayerNameInput"
-          type="text"
-          maxlength="16"
-          autocomplete="off"
-          aria-describedby="titlePlayerNameHint"
-        />
-        <small id="titlePlayerNameHint">最多 16 個字元</small>
-        <div class="titleProfileActions">
-          <button type="button" id="titleNameBackBtn" class="titleMenuBtn">
             返回
           </button>
-          <button
-            type="button"
-            id="titleNameConfirmBtn"
-            class="titleMenuBtn"
-            disabled
-          >
-            簽名
+        </div>
+        <div id="titleSystem" class="titleStep">
+          <h2 id="titleSystemHeading">系統</h2>
+          <div id="titleSystemSettings" class="systemSettings"></div>
+          <button type="button" id="titleSystemBackBtn" class="titleMenuBtn">
+            返回
           </button>
         </div>
-      </div>
-      <div id="titleAppearance" class="titleStep titleProfileStep">
-        <h2>請選擇外型</h2>
-        <div
-          class="titleAppearanceChoices"
-          role="radiogroup"
-          aria-label="玩家外型"
-        >
-          <button
-            type="button"
-            id="titleMaleAppearanceBtn"
-            class="titleAppearanceCard"
-            role="radio"
-            aria-checked="false"
-          >
-            <img id="titleMaleAppearancePreview" alt="男性牧場主外型" />
-            <strong>男性外型</strong>
-          </button>
-          <button
-            type="button"
-            id="titleFemaleAppearanceBtn"
-            class="titleAppearanceCard"
-            role="radio"
-            aria-checked="false"
-          >
-            <img id="titleFemaleAppearancePreview" alt="女性牧場主外型" />
-            <strong>女性外型</strong>
+        <div id="titleLoadSlots" class="titleStep">
+          <h2 id="titleLoadSlotsHeading">選擇存檔</h2>
+          <div id="titleLoadSlotsList"></div>
+          <button type="button" id="titleLoadSlotsBackBtn" class="titleMenuBtn">
+            返回
           </button>
         </div>
-        <button type="button" id="titleAppearanceBackBtn" class="titleMenuBtn">
-          返回
-        </button>
-      </div>
-      <div id="titleSystem" class="titleStep">
-        <h2 id="titleSystemHeading">系統</h2>
-        <div id="titleSystemSettings" class="systemSettings"></div>
-        <button type="button" id="titleSystemBackBtn" class="titleMenuBtn">
-          返回
-        </button>
-      </div>
-      <div id="titleLoadSlots" class="titleStep">
-        <h2 id="titleLoadSlotsHeading">選擇存檔</h2>
-        <div id="titleLoadSlotsList"></div>
-        <button type="button" id="titleLoadSlotsBackBtn" class="titleMenuBtn">
-          返回
-        </button>
-      </div>
+      </main>
     </div>
     <script type="module" src="/src/main.ts"></script>
   </body>
