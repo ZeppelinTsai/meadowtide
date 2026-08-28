@@ -906,6 +906,7 @@ canvas {
   opacity: 0;
   pointer-events: none;
 }
+/* 置底 */
 .titleStep {
   display: none;
   flex-direction: column;
@@ -913,6 +914,7 @@ canvas {
   gap: 10px;
   text-align: center;
   padding: 24px;
+  margin-top: 50px;
 }
 #titleScreen[data-step="splash"] #titleSplash,
 #titleScreen[data-step="menu"] #titleMenu,
@@ -1007,8 +1009,12 @@ canvas {
 }
 #titleLogo,
 #titleMenuLogo {
+  position: fixed;
+  top: 30px;
+  left: 50%;
+  transform: translateX(-50%);
   margin: 0;
-  font-size: 44px;
+  font-size: 80px;
   letter-spacing: 0.08em;
   font-weight: 700;
 }
@@ -1041,7 +1047,9 @@ canvas {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  width: 220px;
+  width: auto;
+  min-width: 300px;
+  max-width: min(500px, 82vw);
 }
 .titleMenuBtn {
   font-family: inherit;
