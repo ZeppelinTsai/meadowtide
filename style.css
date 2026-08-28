@@ -1154,6 +1154,8 @@ canvas {
   font-size: 18px;
   color: #9a9a9a;
 }
+#titleProfileName,
+#titleAppearance,
 #titleLoadSlots,
 #titleSystem {
   position: fixed;
