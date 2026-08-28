@@ -107,4 +107,4 @@
 
 ## 系統／讀檔面板 RWD
 
-標題的 `#titleSystem` 與 `#titleLoadSlots` 必須限制在 `#titleContent` 的可用寬高內：外框盡量占滿但不得超出 viewport，標題與返回鍵固定，中央 `#titleSystemSettings`／`.saveSlotList` 使用 `min-height: 0` 與內部垂直捲動。窄於 520px 或矮於 560px 時改為 `position: fixed; inset: 8px` 的 modal，提升到 header 上方並覆蓋 Logo 區，不再受兩列 grid 的第二列高度限制；所有文字仍不得低於 18px。修改後執行 `npm run build`。
+標題的 `#titleSystem` 與 `#titleLoadSlots` 在所有螢幕尺寸都是 `position: fixed; inset: 0` 的全畫面 modal，必須提升到 header 上方並完整覆蓋 Logo 區，不受兩列 grid 的第二列高度限制。標題與返回鍵固定，中央 `#titleSystemSettings`／`.saveSlotList` 使用 `min-height: 0` 與內部垂直捲動；一般畫面用彈性安全內距，小於 520px 或矮於 560px 時改用 12px 內距。所有文字仍不得低於 18px。修改後執行 `npm run build`。

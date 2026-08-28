@@ -1156,14 +1156,18 @@ canvas {
 }
 #titleLoadSlots,
 #titleSystem {
-  width: min(720px, calc(100vw - 32px));
-  height: calc(100% - 16px);
-  max-height: 720px;
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  width: auto;
+  height: auto;
+  max-width: none;
+  max-height: none;
   box-sizing: border-box;
   overflow: hidden;
   background: #f3e7ce;
-  padding: clamp(14px, 3vw, 30px);
-  border-radius: 10px;
+  padding: clamp(24px, 5vw, 64px);
+  border-radius: 0;
 }
 #titleSystemHeading {
   flex: 0 0 auto;
@@ -1223,6 +1227,7 @@ canvas {
 #titleLoadSlotsList {
   flex: 1 1 auto;
   width: 100%;
+  max-width: 720px;
   min-height: 0;
   margin-bottom: 12px;
   overflow: hidden;
@@ -1288,16 +1293,7 @@ canvas {
 @media (max-width: 520px), (max-height: 560px) {
   #titleLoadSlots,
   #titleSystem {
-    position: fixed;
-    inset: 8px;
-    z-index: 10;
-    width: auto;
-    height: auto;
-    max-width: none;
-    max-height: none;
     padding: 12px;
-    border-radius: 8px;
-    box-shadow: 0 10px 36px rgba(0, 0, 0, 0.36);
   }
   #titleSystemHeading,
   #titleLoadSlotsHeading {
