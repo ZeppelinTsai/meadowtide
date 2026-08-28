@@ -182,6 +182,42 @@ export interface SaveSlotSummary {
   currentMapName?: string;
 }
 
+export interface TitlePreviewTime {
+  currentDay: number;
+  currentSeason: number;
+  currentPhase: number;
+  currentWeather: string;
+  elapsed: number;
+}
+
+export function getTitlePreviewTime(): TitlePreviewTime {
+  if (gameState.player) return {
+    currentDay: gameState.currentDay,
+    currentSeason: gameState.currentSeason,
+    currentPhase: gameState.currentPhase,
+    currentWeather: gameState.currentWeather,
+    elapsed: gameState.elapsed,
+  };
+  let latest: (TitlePreviewTime & { savedAt: number }) | null = null;
+  for (const saveName of ["autosave", ...Array.from({ length: SAVE_SLOT_COUNT }, (_, i) => "slot" + (i + 1))]) {
+    const raw = localStorage.getItem(SAVE_KEY_PREFIX + saveName);
+    if (!raw) continue;
+    try {
+      const data = JSON.parse(raw);
+      const candidate = {
+        currentDay: Number(data.currentDay) || 0,
+        currentSeason: Number(data.currentSeason) || 0,
+        currentPhase: Number(data.currentPhase) || 0,
+        currentWeather: data.currentWeather || "clear",
+        elapsed: Number(data.elapsed) || 0,
+        savedAt: Number(data.savedAt) || Number(data.elapsed) || 0,
+      };
+      if (!latest || candidate.savedAt > latest.savedAt) latest = candidate;
+    } catch {}
+  }
+  return latest ?? { currentDay: 0, currentSeason: 0, currentPhase: 10 / 24, currentWeather: "clear", elapsed: 0 };
+}
+
 // 給共用讀取清單使用：autosave 與 10 格手動存檔各自有沒有資料、摘要(第幾天/
 // 季節/在哪張地圖)。故意不讀 elapsed 算到分鐘，摘要只求一眼看出「這格
 // 大概是哪次進度」，不是精確時間戳記。
@@ -233,6 +269,7 @@ export function saveGame(slot = "default") {
   npcs.forEach((npc) => getRelationship(npc.id));
   const data = {
     version: 7,
+    savedAt: Date.now(),
     playerProfile: {
       name: gameState.playerName,
       appearance: gameState.playerAppearance,

@@ -1,14 +1,15 @@
 import * as THREE from "three";
-import { fadeIn, loadMap } from "./build-map";
-import { loadGame, migrateLegacyDefaultSave, setActiveSaveSlot } from "./input-save";
+import { buildMap, fadeIn, loadMap } from "./build-map";
+import { getTitlePreviewTime, loadGame, migrateLegacyDefaultSave, setActiveSaveSlot } from "./input-save";
 import { renderSaveSlotButtons } from "./save-slot-ui";
-import { initializeMusic } from "./music";
+import { initializeMusic, setTitleMusicPeriod } from "./music";
 import { hasSaveData, startPrologueScene } from "./prologue";
 import { mountSystemSettings } from "./system-settings-ui";
 import { pollGamepad } from "./gamepad-input";
 import { gameState } from "./game-state";
 import { makeFemaleHeroPlayer, makeMaleHeroPlayer } from "./humanoid";
 import { resetStoryState } from "./story/story-state";
+import { renderer, scene } from "./scene-sky";
 
 type TitleStep = "splash" | "menu" | "profileName" | "appearance" | "system" | "loadSlots";
 
@@ -53,6 +54,39 @@ export function initTitleScreen() {
   migrateLegacyDefaultSave();
 
   const titleScreen = byId<HTMLElement>("titleScreen");
+  const previewTime = getTitlePreviewTime();
+  const previewHour = previewTime.currentPhase * 24;
+  setTitleMusicPeriod(previewHour >= 18 || previewHour < 6 ? "night" : previewHour >= 12 ? "afternoon" : "day");
+  const previous = {
+    player: gameState.player, currentMapName: gameState.currentMapName,
+    currentDay: gameState.currentDay, currentSeason: gameState.currentSeason,
+    currentPhase: gameState.currentPhase, currentWeather: gameState.currentWeather,
+    elapsed: gameState.elapsed,
+  };
+  gameState.currentDay = previewTime.currentDay;
+  gameState.currentSeason = previewTime.currentSeason;
+  gameState.currentPhase = previewTime.currentPhase;
+  gameState.currentWeather = previewTime.currentWeather as any;
+  gameState.elapsed = previewTime.elapsed;
+  buildMap("livingArea");
+  if (gameState.player) gameState.player.visible = false;
+  const titleCamera = new THREE.PerspectiveCamera(65, innerWidth / innerHeight, 0.05, 220);
+  titleCamera.rotation.order = "YXZ";
+  titleCamera.position.set(18.27, 2.38, 8.01);
+  titleCamera.rotation.set(0.103, -7.276, 0);
+  titleCamera.updateMatrixWorld(true);
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+      renderer.render(scene, titleCamera);
+      titleScreen.style.backgroundImage = "url('" + renderer.domElement.toDataURL("image/jpeg", 0.86) + "')";
+      gameState.player = previous.player;
+      gameState.currentMapName = previous.currentMapName;
+      gameState.currentDay = previous.currentDay;
+      gameState.currentSeason = previous.currentSeason;
+      gameState.currentPhase = previous.currentPhase;
+      gameState.currentWeather = previous.currentWeather;
+      gameState.elapsed = previous.elapsed;
+    }),
+  );
   const continueButton = byId<HTMLButtonElement>("titleContinueBtn");
   const newGameButton = byId<HTMLButtonElement>("titleNewGameBtn");
   const systemButton = byId<HTMLButtonElement>("titleSystemBtn");
@@ -103,6 +137,7 @@ export function initTitleScreen() {
 
   function hideTitleScreen() {
     titleActive = false;
+    setTitleMusicPeriod(null);
     titleScreen.classList.add("titleScreen--hidden");
     window.setTimeout(() => {
       titleScreen.style.display = "none";

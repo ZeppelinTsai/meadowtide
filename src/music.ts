@@ -19,6 +19,9 @@ export const BGM_TRACKS = {
   blizzard: "StockTune-Gliding Alpine White Peaks_1787119663.mp3",
   seaCaveAmbient: "StockTune-Moonlit Sirens Of Atlantis_1787682578.mp3",
   mountainCaveAmbient: "StockTune-Celestial Ice Cave Echoes_1787682579.mp3",
+  titleDay: "StockTune-Gentle Ocean Breeze_1787921271.mp3",
+  titleAfternoon: "StockTune-Oceanic Sunset Breeze_1787921165.mp3",
+  titleNight: "StockTune-Sea Breeze Serenity_1787921163.mp3",
 };
 export const SEASON_MUSIC_KEYS = [
   ["springDay", "springNight"],
@@ -49,6 +52,10 @@ export const BGM_LOOP_TAIL_TRIM = 0.65; // 提前避開結尾留白／編碼 pad
 let musicMasterGain: GainNode | null = null;
 let musicReady = false;
 let pendingMusicKey: string | null = null;
+let titleMusicKey: string | null = null;
+export function setTitleMusicPeriod(period: "day" | "afternoon" | "night" | null) {
+  titleMusicKey = period ? period === "day" ? "titleDay" : period === "afternoon" ? "titleAfternoon" : "titleNight" : null;
+}
 type MusicTrack = {
   audio: HTMLAudioElement;
   gain: GainNode;
@@ -161,7 +168,9 @@ export function updateMusic(nightFactor, dt) {
   const fairWeather =
     gameState.currentWeather === "clear" ||
     gameState.currentWeather === "cloudy";
-  const desiredKey = locationKey
+  const desiredKey = titleMusicKey
+    ? titleMusicKey
+    : locationKey
     ? locationKey
     : fairWeather
       ? nightFactor >= 0.5
