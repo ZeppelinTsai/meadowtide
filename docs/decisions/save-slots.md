@@ -85,3 +85,7 @@ slot markup 或 CSS。
   `renderSaveSlotButtons()`(抽到 `save-slot-ui.ts`，`title-screen.ts`
   跟 `pause-menu.ts` 都呼叫這份，不重寫)，見
   `docs/decisions/pause-menu.md`。
+
+## Save format v8
+
+Save data now includes animalInteractions: per-animal last-petted day, last-harvested day, and the carried animal ID. inventory.animalProducts stores milk, wool, and eggs. Missing fields from older saves restore to safe defaults.

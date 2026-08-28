@@ -69,3 +69,7 @@ KeyboardEvent(...))`），直接餵給 `input-save.ts` 既有的全域
   放線/暴衝誤觸/收穫成功/斷線失敗）純憑感覺草擬數值，還沒有人拿真的
   搖桿測過手感，之後實測回報「哪幾種感覺不出差異/太弱/太吵」再回來調
   這個檔案的 `FISHING_HAPTICS` 物件即可，呼叫端完全不用動。
+
+## 2026-08-29 contextual world-action mapping
+
+World actions now use physical west/north/east buttons. Standard Gamepad indices are 2/3/1; prompts render Nintendo Y/X/A or Xbox X/Y/B. UI confirmation remains the physical south button (index 0). Information uses button 8 (Minus/View), map uses button 10 (L3), and Start remains pause. The system setting supports auto, Nintendo, and Xbox layouts. See context-interaction-and-navigation.md.

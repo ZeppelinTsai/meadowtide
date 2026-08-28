@@ -5,6 +5,7 @@ export type GameSettings = {
   muted: boolean;
   windowResolution: string;
   locale: "zh" | "ja" | "en";
+  controllerLayout: "auto" | "nintendo" | "xbox";
 };
 
 const STORAGE_KEY = "meadowtide.settings";
@@ -15,6 +16,7 @@ const DEFAULTS: GameSettings = {
   muted: false,
   windowResolution: "1280x720",
   locale: "zh",
+  controllerLayout: "auto",
 };
 const listeners = new Set<(settings: GameSettings) => void>();
 
@@ -38,6 +40,9 @@ function loadSettings(): GameSettings {
       locale: ["zh", "ja", "en"].includes(saved.locale)
         ? saved.locale
         : DEFAULTS.locale,
+      controllerLayout: ["auto", "nintendo", "xbox"].includes(saved.controllerLayout)
+        ? saved.controllerLayout
+        : DEFAULTS.controllerLayout,
     };
   } catch {
     return { ...DEFAULTS };

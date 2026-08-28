@@ -1,3 +1,5 @@
+import { executeContextInteraction, consumeLegacyPrimaryBypass } from "./context-interaction-ui";
+import { exportAnimalInteractionState, restoreAnimalInteractionState } from "./animal-interactions";
 import {
   gameState,
   inventory,
@@ -268,7 +270,7 @@ export function getSaveSlotSummaries(): SaveSlotSummary[] {
 export function saveGame(slot = "default") {
   npcs.forEach((npc) => getRelationship(npc.id));
   const data = {
-    version: 7,
+    version: 8,
     savedAt: Date.now(),
     playerProfile: {
       name: gameState.playerName,
@@ -290,7 +292,8 @@ export function saveGame(slot = "default") {
           facing: gameState.facing,
         }
       : null,
-    inventory: { ...inventory },
+    inventory: JSON.parse(JSON.stringify(inventory)),
+    animalInteractions: exportAnimalInteractionState(),
     crops: JSON.parse(JSON.stringify(cropState)),
     npcMemory: npcs.map((npc) => ({ id: npc.id, memory: npc.memory })),
     relationships: exportRelationships(),
@@ -347,6 +350,8 @@ export function loadGame(
     ? data.pouchCollectedDay
     : -1;
   Object.assign(inventory, data.inventory || {});
+  if (data.inventory?.animalProducts) Object.assign(inventory.animalProducts, data.inventory.animalProducts);
+  restoreAnimalInteractionState(data.animalInteractions);
   gameState.feederUnits = Number.isFinite(data.feederUnits)
     ? Math.max(0, Math.min(FEEDER_CAPACITY, data.feederUnits))
     : gameState.feederUnits;
@@ -590,6 +595,7 @@ document.addEventListener("visibilitychange", () => {
 });
 
 addEventListener("keydown", (event) => {
+  if (event.key.toLowerCase() === "r" && !event.repeat && executeContextInteraction("secondary")) { event.preventDefault(); return; }
   if (
     event.key.toLowerCase() !== "r" ||
     event.repeat ||
@@ -633,6 +639,10 @@ addEventListener("keydown", (event) => {
 // 頁看到的選項；選項超過一頁(CHOICE_PAGE_SIZE=3)時 Tab 鍵循環翻頁——
 // preventDefault 是因為 Tab 預設會把瀏覽器焦點移出畫布，會讓後續鍵盤
 // 輸入吃不到。
+addEventListener("keydown", (event) => {
+  if (event.key.toLowerCase() === "f" && !event.repeat && !event.ctrlKey && !event.metaKey && executeContextInteraction("tertiary")) event.preventDefault();
+});
+
 addEventListener("keydown", (e) => {
   if (handleChoiceDigitKey(e.key)) {
     e.preventDefault();
@@ -754,6 +764,8 @@ addEventListener("keydown", (e) => {
     gameState.isSitting = false;
     return;
   }
+
+  if (!consumeLegacyPrimaryBypass() && executeContextInteraction("primary")) return;
 
   if (
     gameState.currentMapName === "livingArea" &&
