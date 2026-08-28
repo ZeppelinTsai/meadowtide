@@ -1,4 +1,5 @@
 import { executeContextInteraction, consumeLegacyPrimaryBypass } from "./context-interaction-ui";
+import { isPrimaryInteractionKey } from "./context-interaction";
 import { exportAnimalInteractionState, restoreAnimalInteractionState } from "./animal-interactions";
 import {
   gameState,
@@ -742,9 +743,29 @@ renderer.domElement.addEventListener("touchend", endPinch);
 renderer.domElement.addEventListener("touchcancel", endPinch);
 
 addEventListener("keydown", (e) => {
-  // 標題畫面切進新遊戲時，地圖／玩家建立有一個非同步淡出空窗。鍵盤 E
-  // 或手把 A 若剛好在這時送進來，不應往下讀尚未存在的 player.position。
-  if (e.key.toLowerCase() !== "e" || gameState.ePressed || !gameState.player) return;
+  // The title transition can briefly have no usable world player. Primary aliases
+  // must also stay with focused UI controls and never pass through an open menu.
+  if (
+    !isPrimaryInteractionKey(e.key) ||
+    gameState.ePressed ||
+    !gameState.player
+  )
+    return;
+  if (
+    gameState.titlePresentationActive ||
+    document.querySelector('[data-game-menu="open"]')
+  )
+    return;
+  const target = e.target instanceof HTMLElement ? e.target : null;
+  const isConfirmAlias = e.key.toLowerCase() !== "e";
+  if (
+    isConfirmAlias &&
+    target?.closest(
+      'button, input, select, textarea, a, [role="button"], [contenteditable="true"]',
+    )
+  )
+    return;
+  if (isConfirmAlias) e.preventDefault();
   gameState.ePressed = true;
 
   if (isInventoryOpen()) return;
@@ -1093,7 +1114,7 @@ addEventListener("keydown", (e) => {
   }
 });
 addEventListener("keyup", (e) => {
-  if (e.key.toLowerCase() === "e") gameState.ePressed = false;
+  if (isPrimaryInteractionKey(e.key)) gameState.ePressed = false;
 });
 
 // ==============================================================

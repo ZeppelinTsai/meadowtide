@@ -3,6 +3,7 @@ import test from "node:test";
 import {
   chooseInteractionTarget,
   gamepadPromptFor,
+  isPrimaryInteractionKey,
   promptFor,
   type InteractionCandidate,
   type InteractionSlot,
@@ -60,4 +61,13 @@ test("Nintendo 與 Xbox 顯示同一組實體西北東鍵的正確名稱", () =>
     slots.map((slot) => promptFor(slot, "keyboardMouse", "xbox")),
     ["E", "R", "F"],
   );
+});
+
+test("E, Enter, and Space share the primary keyboard action", () => {
+  assert.equal(isPrimaryInteractionKey("e"), true);
+  assert.equal(isPrimaryInteractionKey("E"), true);
+  assert.equal(isPrimaryInteractionKey("Enter"), true);
+  assert.equal(isPrimaryInteractionKey(" "), true);
+  assert.equal(isPrimaryInteractionKey("Spacebar"), true);
+  assert.equal(isPrimaryInteractionKey("r"), false);
 });

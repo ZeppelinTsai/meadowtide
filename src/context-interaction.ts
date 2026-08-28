@@ -23,6 +23,16 @@ export const INTERACTION_KEYS: Record<InteractionSlot, string> = {
   tertiary: "F",
 };
 
+export function isPrimaryInteractionKey(key: string) {
+  const normalized = key.toLowerCase();
+  return (
+    normalized === "e" ||
+    normalized === "enter" ||
+    key === " " ||
+    normalized === "spacebar"
+  );
+}
+
 export function gamepadPromptFor(
   slot: InteractionSlot,
   layout: ControllerLayout,

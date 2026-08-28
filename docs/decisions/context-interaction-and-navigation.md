@@ -2,7 +2,7 @@
 
 ## Input contract
 
-- Keyboard world actions are `E` (primary), `R` (secondary), and `F` (tertiary).
+- Keyboard world actions are `E` (primary), `R` (secondary), and `F` (tertiary). `Enter` and `Space` are aliases for the primary action; `E` remains the displayed default. Enter/Space retain UI confirmation when a control is focused and never pass through an open menu or title screen.
 - Standard Gamepad physical west/north/east buttons drive those same slots. The
   prompt layer renders them as Nintendo `Y/X/A` or Xbox `X/Y/B`.
 - UI confirmation remains the physical south button. World mappings must not be
