@@ -20,7 +20,8 @@
     "test:save-slots": "tsx --test src/save-slot-config.test.ts",
     "test:story": "tsx --test src/story/story-system.test.ts",
     "story-audit": "tsx scripts/story-audit.ts",
-    "test:context-interaction": "tsx --test src/context-interaction.test.ts src/navigation.test.ts"
+    "test:context-interaction": "tsx --test src/context-interaction.test.ts src/navigation.test.ts",
+    "test:first-person": "tsx --test src/first-person-movement.test.ts"
   },
   "dependencies": {
     "three": "0.128.0"

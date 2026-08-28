@@ -29,9 +29,11 @@ import { rollFishTier, COUNTER_DIRECTION } from "./fishing";
 import { pollGamepad } from "./gamepad-input";
 import {
   getGameplayCamera,
+  getFirstPersonYaw,
   isFirstPersonModeActive,
   updateFirstPersonCamera,
 } from "./first-person-camera";
+import { firstPersonMoveVector } from "./first-person-movement";
 import { vibrateGamepad, FISHING_HAPTICS } from "./gamepad-haptics";
 import { playRandomSfx, FISH_BITE_SFX } from "./sfx";
 import {
@@ -337,7 +339,6 @@ export function animate(now) {
     dz = 0;
   if (
     !gameState.cutsceneActive &&
-    !isFirstPersonModeActive() &&
     !isCameraAdjustModeActive()
   ) {
     if (keys["w"] || keys["arrowup"]) dz -= 1;
@@ -352,6 +353,11 @@ export function animate(now) {
       // 「離開水邊自動取消」。
       dx = 0;
       dz = 0;
+    }
+    if (isFirstPersonModeActive() && (dx !== 0 || dz !== 0)) {
+      const firstPersonMove = firstPersonMoveVector(dx, dz, getFirstPersonYaw());
+      dx = firstPersonMove.x;
+      dz = firstPersonMove.z;
     }
     const manualInput = Math.hypot(dx, dz) > 0;
     if (manualInput) cancelPlayerNavigation();
@@ -421,7 +427,7 @@ export function animate(now) {
     )
       gameState.player.position.z = tryZ;
 
-    if (gameState.isMoving) {
+    if (gameState.isMoving && !isFirstPersonModeActive()) {
       // 角色模型的鼻子／腮紅在本地 -Z 面，因此移動方向要比「+Z 為正面」
       // 的通用公式多轉半圈；否則臉會永遠朝向來時路。
       const targetAngle = Math.atan2(dx, dz) + Math.PI;

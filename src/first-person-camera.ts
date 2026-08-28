@@ -73,6 +73,10 @@ export function isFirstPersonModeActive() {
   return active;
 }
 
+export function getFirstPersonYaw() {
+  return yaw;
+}
+
 export function toggleFirstPersonMode() {
   if (!gameState.player) return;
   active = !active;
@@ -142,6 +146,7 @@ export function updateFirstPersonCamera(dt: number) {
   );
   firstPersonCamera.rotation.set(pitch, yaw, 0);
   firstPersonCamera.updateMatrixWorld();
+  gameState.player.rotation.y = yaw;
 }
 
 export function getGameplayCamera(defaultCamera: THREE.Camera) {

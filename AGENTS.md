@@ -144,6 +144,7 @@
 
 - 世界觀/星空（`scene-sky.ts`）→ `docs/decisions/world-and-sky.md`
 - 事件演出鏡頭級距（zoom 2/5/10/20 這四個值）→ `docs/decisions/camera-zoom.md`
+- First-person camera-relative movement (W/S forward/back, A/D strafe, mouse/right-stick look) -> docs/decisions/first-person-movement.md
 - 湖面／海面水體生成規則 → `docs/decisions/water-generation.md`（**這份是硬規則等級，改水體/岸線前務必看**）
 - NPC 招募流程模式（以木匠為範例）→ `docs/decisions/npc-recruitment-pattern.md`
 - 多語言 i18n 系統 → `docs/decisions/i18n-system.md`
