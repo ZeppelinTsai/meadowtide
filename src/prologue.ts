@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { dayLength, gameState } from "./game-state";
+import { dayLength, gameState, inventory } from "./game-state";
 import { LAYOUT } from "./layout-maps";
 import { showDialogSequence } from "./dialogue";
 import { npcs, npcGroup } from "./npc-runtime";
@@ -9,7 +9,8 @@ import { isCameraShotsPlaying, isCameraAdjustModeActive } from "./cutscene-camer
 import { animateWalk } from "./humanoid";
 import { getScheduleTarget } from "./npc-defs";
 import { SAVE_SLOT_COUNT } from "./save-slot-config";
-import { completeStoryEvent } from "./story/story-state";
+import { completeStoryEvent, hasCompletedStoryEvent } from "./story/story-state";
+import { PROLOGUE_SCRIPT } from "./story/chapters/prologue-script";
 
 // ==============================================================
 // 序幕：開場第一天演出——主角乘（makePortScene() 裡本來就停在港口的
@@ -112,6 +113,7 @@ const PROLOGUE_CAPTAIN_X = 5;
 const PROLOGUE_CAPTAIN_Z = 21;
 const PROLOGUE_HOUR = 10;
 const PROLOGUE_PHASE = PROLOGUE_HOUR / 24;
+const FREE_TIME_PHASE = 15 / 24;
 
 function lockPrologueDateTime() {
   gameState.elapsed = dayLength * PROLOGUE_PHASE;
@@ -317,21 +319,11 @@ function startWelcomeDialogue() {
   }
   showDialogSequence(
     [
-      {
-        text: "「啊，真的來了！我還怕你臨時反悔呢。」",
-        speaker: "mayor",
-        name: "村長",
-      },
-      {
-        text: "「（把纜繩繫在柱子上，隨口接話）她可是天天來這邊等，比我還準時。」",
-        speaker: "captain",
-        name: "船長",
-      },
-      {
-        text: "「（瞪他一眼，隨即轉回笑臉）路上還順利吧？行李就這些？跟我來，先帶你認識一下島上的地方。」",
-        speaker: "mayor",
-        name: "村長",
-      },
+      ...PROLOGUE_SCRIPT.tour,
+      ...PROLOGUE_SCRIPT.farming,
+      ...PROLOGUE_SCRIPT.house,
+      ...PROLOGUE_SCRIPT.fishing,
+      ...PROLOGUE_SCRIPT.cooking,
     ],
     () => {
       const captain = npcs.find((npc) => npc.id === "captain");
@@ -347,25 +339,25 @@ function startWelcomeDialogue() {
         captain.path = [];
         captain.pathIndex = 0;
       }
+      if (!hasCompletedStoryEvent("main.prologue.arrival")) {
+        // 作物種類尚未拆欄位：三根蘿蔔與三朵蘑菇暫存為六份通用採收品。
+        inventory.seeds += 9;
+        inventory.fish += 3;
+        inventory.harvested += 6;
+        gameState.rodLevel = Math.max(1, gameState.rodLevel);
+      }
       beginStage("done");
       completeStoryEvent("main.prologue.arrival");
       gameState.cutsceneActive = false;
+      gameState.elapsed = dayLength * FREE_TIME_PHASE;
+      gameState.currentPhase = FREE_TIME_PHASE;
     },
   );
 }
 
 function startShipDialogue() {
   showDialogSequence(
-    [
-      "[主角從口袋裡拿出一張翻到摺痕發白的傳單]",
-      "『海風牧歌——徵求願意重新開始的人。免費修繕住宅・生活補助・船運銷售管道一應俱全。連絡人：村長』",
-      "[看了不知道第幾遍了，還是有點不敢相信，真的會有人為了一座快要沒人的島，寫這種傳單]",
-      {
-        text: "「（回頭喊了一聲）欸，前面就到了，東西收一收吧！」",
-        speaker: "captain",
-        name: "船長",
-      },
-    ],
+    PROLOGUE_SCRIPT.flyer,
     () => {
       beginStage("approaching");
     },
