@@ -9,6 +9,7 @@ import { isCameraShotsPlaying, isCameraAdjustModeActive } from "./cutscene-camer
 import { animateWalk } from "./humanoid";
 import { getScheduleTarget } from "./npc-defs";
 import { SAVE_SLOT_COUNT } from "./save-slot-config";
+import { completeStoryEvent } from "./story/story-state";
 
 // ==============================================================
 // 序幕：開場第一天演出——主角乘（makePortScene() 裡本來就停在港口的
@@ -347,6 +348,7 @@ function startWelcomeDialogue() {
         captain.pathIndex = 0;
       }
       beginStage("done");
+      completeStoryEvent("main.prologue.arrival");
       gameState.cutsceneActive = false;
     },
   );

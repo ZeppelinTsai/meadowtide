@@ -111,6 +111,7 @@ import {
 import { completeNpcDailyConversation } from "./affection-ui";
 import { weatherIconSvg } from "./weather-icons";
 import { SAVE_SLOT_COUNT, saveSlotForDigitCode } from "./save-slot-config";
+import { exportStoryState, restoreStoryState } from "./story/story-state";
 import {
   scene,
   renderer,
@@ -227,7 +228,7 @@ export function getSaveSlotSummaries(): SaveSlotSummary[] {
 export function saveGame(slot = "default") {
   npcs.forEach((npc) => getRelationship(npc.id));
   const data = {
-    version: 6,
+    version: 7,
     playerProfile: {
       name: gameState.playerName,
       appearance: gameState.playerAppearance,
@@ -252,6 +253,7 @@ export function saveGame(slot = "default") {
     crops: JSON.parse(JSON.stringify(cropState)),
     npcMemory: npcs.map((npc) => ({ id: npc.id, memory: npc.memory })),
     relationships: exportRelationships(),
+    story: exportStoryState(),
     carpenterQuest: { ...carpenterQuest },
     oysterRackState: JSON.parse(JSON.stringify(oysterRackState)),
     feederUnits: gameState.feederUnits,
@@ -284,6 +286,8 @@ export function loadGame(
   const raw = localStorage.getItem(SAVE_KEY_PREFIX + slot);
   if (!raw) return false;
   const data = JSON.parse(raw);
+  // v6 以前没有 story 栏位；restore 会补齐默认值，不让旧存档失效。
+  restoreStoryState(data.story);
   gameState.playerName = typeof data.playerProfile?.name === "string" && data.playerProfile.name.trim()
     ? data.playerProfile.name.trim().slice(0, 16)
     : "牧場主";

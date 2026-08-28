@@ -14,6 +14,8 @@
 - `src/game-loop.ts`、`src/game-clock.ts`：逐幀更新與遊戲時間。
 - `src/scene-sky.ts`、`src/weather-particles.ts`、`src/music.ts`：天空、天氣與音樂。
 - `src/*-quest.ts`：各角色劇情狀態機。
+- `src/story/`：正式劇情的永久 ID、registry、狀態、條件、runner 與章節資料；
+  既有 `*-quest.ts` 會逐段遷移，見 `docs/decisions/story-system.md`。
 - `src/prologue.ts`：開場第一天演出（序幕），見
   `docs/decisions/prologue-cutscene.md`。
 - `scripts/map-debug.ts`：可直接 import 地圖資料的 Node 除錯工具。
@@ -164,6 +166,16 @@
 - 為什麼 `build-map.ts`/`layout-maps.ts`/`game-loop.ts` 沒有跟著 `props.ts` 一起拆(單一巨型函式 / 執行順序耦合的評估) → `docs/decisions/large-files-split-assessment.md`
 - 開發環境雜項(`npm run test:map-tools` 曾經跑不動的 esbuild 平台問題、`tsc` incremental 加速、CRLF 換行符號漂移雜訊) → `docs/decisions/dev-environment-notes.md`
 - 人形角色 `humanoidScale()` 校正方法／新角色頭髮太高聳導致身體比例矮一截的教訓(廚師案例) → `docs/decisions/humanoid-scale-calibration.md`
+- 正式劇情永久 ID、registry、條件、runner、v7 存檔與稽核工具 → `docs/decisions/story-system.md`
+
+## 正式劇情資料規則
+
+- `src/story/story-registry.ts` 的 `STORY_EVENTS` 是正式事件唯一索引；事件、选择、
+  奖励 ID 一旦写入存档不得随意改名，也不得从运行端绕过 registry 直接读取章节。
+- 玩家可见台词在事件步骤中只填 i18n key；开发标题与摘要不作为玩家文字。
+- 新增或修改剧情资料后必须执行 `npm run story-audit`、`npm run test:story` 与
+  `npm run build`。audit 会以非零退出码阻止重复 ID、缺少前置、循环依赖、空事件
+  与重复奖励等会让剧情难以查找或重复发奖的错误。
 
 ## 採集點延後刷新與多 agent 提交
 

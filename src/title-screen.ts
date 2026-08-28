@@ -8,6 +8,7 @@ import { mountSystemSettings } from "./system-settings-ui";
 import { pollGamepad } from "./gamepad-input";
 import { gameState } from "./game-state";
 import { makeFemaleHeroPlayer, makeMaleHeroPlayer } from "./humanoid";
+import { resetStoryState } from "./story/story-state";
 
 type TitleStep = "splash" | "menu" | "profileName" | "appearance" | "system" | "loadSlots";
 
@@ -113,6 +114,7 @@ export function initTitleScreen() {
     // 介面，之後真的要做「遊戲中隨時選單」時(Zeppelin 已經說之後要在
     // Esc/手把預設鍵位放，見 pause-menu.ts)可以再讓這裡改成可選。
     setActiveSaveSlot(1);
+    resetStoryState();
     gameState.playerName = playerNameInput.value.trim().slice(0, 16);
     gameState.playerAppearance = appearance;
     hideTitleScreen();
