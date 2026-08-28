@@ -85,6 +85,22 @@ export function mountSystemSettings(container: HTMLElement) {
   });
   language.append(languageName, languageSelect);
 
+  const controller = document.createElement("label");
+  controller.className = "systemSettingRow systemSettingSelect";
+  const controllerName = document.createElement("span");
+  controllerName.textContent = "Controller layout";
+  const controllerSelect = document.createElement("select");
+  controllerSelect.setAttribute("aria-label", "Controller layout");
+  ([["auto", "Auto"], ["nintendo", "Nintendo"], ["xbox", "Xbox"]] as const).forEach(([value, label]) => {
+    const option = document.createElement("option"); option.value = value; option.textContent = label; option.selected = value === gameSettings.controllerLayout; controllerSelect.append(option);
+  });
+  controllerSelect.addEventListener("change", () => {
+    updateSettings({ controllerLayout: controllerSelect.value as "auto" | "nintendo" | "xbox" });
+    dispatchEvent(new CustomEvent("controller-layout-changed"));
+    showUiToast("Controller", controllerSelect.selectedOptions[0]?.textContent || "Auto");
+  });
+  controller.append(controllerName, controllerSelect);
+
   const resolution = document.createElement("label");
   resolution.className = "systemSettingRow systemSettingSelect";
   const resolutionName = document.createElement("span");
@@ -119,6 +135,7 @@ export function mountSystemSettings(container: HTMLElement) {
 
   container.append(
     language,
+    controller,
     fullscreen,
     resolution,
     makeVolumeRow(translateText("總音量"), "masterVolume"),

@@ -21,6 +21,8 @@ import {
   updateSeasonAndDate,
 } from "./game-clock";
 import { isGameplayPaused } from "./time-pause";
+import { cancelPlayerNavigation, getAutoMoveDirection } from "./player-navigation";
+import { isAnimalCarried, updateCarriedAnimalPose } from "./animal-interactions";
 import { isInventoryOpen } from "./inventory-ui";
 import { translateText } from "./i18n";
 import { rollFishTier, COUNTER_DIRECTION } from "./fishing";
@@ -350,6 +352,12 @@ export function animate(now) {
       // 「離開水邊自動取消」。
       dx = 0;
       dz = 0;
+    }
+    const manualInput = Math.hypot(dx, dz) > 0;
+    if (manualInput) cancelPlayerNavigation();
+    else if (!gameState.isSitting && gameState.fishingState === "idle") {
+      const autoDirection = getAutoMoveDirection();
+      if (autoDirection) { dx = autoDirection.x; dz = autoDirection.z; }
     }
     const inputLen = Math.hypot(dx, dz);
     // dt===0 代表對話開著／遊戲暫停：主角完全鎖住，不只是不移動位置，
@@ -1039,7 +1047,9 @@ export function animate(now) {
     }
   };
 
+  updateCarriedAnimalPose();
   animals.forEach((a) => {
+    if (isAnimalCarried(a.id)) return;
     let moving = false;
     if (a.state === "out") rescueAnimalFromObstacle(a);
 

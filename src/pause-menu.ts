@@ -23,8 +23,9 @@ type PauseStep = "menu" | "loadSlots" | "tutorial" | "tutorialCards" | "system";
 
 const WALKING_TUTORIAL = [
   { kicker: "第一章・基本操作", title: "移動與觀察", text: "用 WASD 或左搖桿移動；滑鼠與右搖桿控制鏡頭，滾輪或 LT／RT 調整遠近。", keys: ["W A S D", "左搖桿", "滑鼠／右搖桿"], image: "/assets/tutorial/walking-1.png", alt: "主角在農場道路上行走" },
-  { kicker: "第一章・基本操作", title: "互動與次要操作", text: "靠近人物或物件後按 E／A 互動。收成等次要操作使用 R／X；B 固定作為返回。", keys: ["E／A 確認", "R／X 次要操作", "Esc／B 返回"], image: "/assets/tutorial/walking-2.png", alt: "主角靠近可互動物件" },
-  { kicker: "第一章・基本操作", title: "開啟選單", text: "M／Select 開啟地圖，Q／Y 開啟資訊選單，Esc／Start 開啟暫停選單。", keys: ["M／Select 地圖", "Q／Y 資訊", "Esc／Start 暫停"], image: "/assets/tutorial/walking-3.png", alt: "遊戲中的地圖、資訊與暫停選單" },
+  { kicker: "第一章・基本操作", title: "智慧型情境互動", text: "靠近目標時，左下會顯示當下可用動作。鍵盤使用 E／R／F；Nintendo 使用 Y／X／A，Xbox 使用 X／Y／B。", keys: ["E／R／F", "Nintendo Y／X／A", "Xbox X／Y／B"], image: "/assets/tutorial/walking-2.png", alt: "主角靠近可互動物件" },
+  { kicker: "第一章・基本操作", title: "點擊行走與互動", text: "點擊或輕觸地面可自動繞開障礙前往；點擊物件會走到可操作位置並執行主要互動。手動移動會立即取消自動行走。", keys: ["滑鼠左鍵／單點", "點左下動作", "WASD 取消"], image: "/assets/tutorial/walking-2.png", alt: "主角自動走向可互動目標" },
+  { kicker: "第一章・基本操作", title: "開啟選單", text: "M／L3 開啟地圖，Q／Nintendo Minus／Xbox View 開啟資訊選單，Esc／Start 開啟暫停選單。", keys: ["M／L3 地圖", "Q／Minus／View 資訊", "Esc／Start 暫停"], image: "/assets/tutorial/walking-3.png", alt: "遊戲中的地圖、資訊與暫停選單" },
   { kicker: "第一章・基本操作", title: "操作選單", text: "方向鍵、WASD、左搖桿或方向鍵移動焦點；Enter、Space 或 A 確認，Esc、Backspace 或 B 返回。", keys: ["方向鍵／WASD", "Enter／Space／A", "Esc／Backspace／B"], image: "/assets/tutorial/walking-3.png", alt: "在遊戲選單中移動焦點" },
   { kicker: "第一章・基本操作", title: "分頁與清單", text: "使用 Q／E、PageUp／PageDown 或 LB／RB 切換分頁；滑鼠滾輪可捲動長清單與教學卡片。", keys: ["Q／E", "LB／RB", "滑鼠滾輪"], image: "/assets/tutorial/walking-3.png", alt: "切換資訊選單分頁" },
   { kicker: "第一章・基本操作", title: "聲音設定", text: "總音量、音效與音樂大小可在系統選單調整；每次設定操作都會顯示提示。", keys: ["系統選單／聲音"], image: "/assets/tutorial/walking-3.png", alt: "調整遊戲音量設定" },

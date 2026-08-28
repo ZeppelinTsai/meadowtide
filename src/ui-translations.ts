@@ -151,6 +151,11 @@ export const UI_TRANSLATIONS: DraftTranslations = {
       "Switch tabs with Q/E, PageUp/PageDown, or LB/RB. Use the mouse wheel to scroll long lists and tutorial cards.",
     "總音量、音效與音樂大小可在系統選單調整；每次設定操作都會顯示提示。":
       "Adjust master, SFX, and music volume in Settings. A notification appears after each change.",
+    "智慧型情境互動": "Smart Context Actions",
+    "點擊行走與互動": "Point-and-Click Movement",
+    "靠近目標時，左下會顯示當下可用動作。鍵盤使用 E／R／F；Nintendo 使用 Y／X／A，Xbox 使用 X／Y／B。": "Available actions appear at the lower left. Use E/R/F on keyboard, Y/X/A on Nintendo, or X/Y/B on Xbox.",
+    "點擊或輕觸地面可自動繞開障礙前往；點擊物件會走到可操作位置並執行主要互動。手動移動會立即取消自動行走。": "Click or tap the ground to navigate around obstacles. Click an object to approach and perform its primary action. Manual movement cancels auto-walk.",
+    "M／L3 開啟地圖，Q／Nintendo Minus／Xbox View 開啟資訊選單，Esc／Start 開啟暫停選單。": "M/L3 opens the map, Q/Nintendo Minus/Xbox View opens Information, and Esc/Start opens the pause menu.",
   },
   ja: {
     地圖: "マップ",
@@ -296,5 +301,10 @@ export const UI_TRANSLATIONS: DraftTranslations = {
       "Q／E、PageUp／PageDown、LB／RBでタブを切替。長いリストや説明カードはホイールでスクロールできます。",
     "總音量、音效與音樂大小可在系統選單調整；每次設定操作都會顯示提示。":
       "マスター音量、効果音、音楽は設定メニューで調整できます。変更のたびに通知が表示されます。",
+    "智慧型情境互動": "スマートアクション",
+    "點擊行走與互動": "クリック移動と交互",
+    "靠近目標時，左下會顯示當下可用動作。鍵盤使用 E／R／F；Nintendo 使用 Y／X／A，Xbox 使用 X／Y／B。": "使えるアクションは左下に表示されます。キーボードは E/R/F、Nintendo は Y/X/A、Xbox は X/Y/B です。",
+    "點擊或輕觸地面可自動繞開障礙前往；點擊物件會走到可操作位置並執行主要互動。手動移動會立即取消自動行走。": "地面をクリックまたはタップすると障害物を避けて移動します。物をクリックすると近づいて主要アクションを行います。手動移動で自動移動を解除します。",
+    "M／L3 開啟地圖，Q／Nintendo Minus／Xbox View 開啟資訊選單，Esc／Start 開啟暫停選單。": "M/L3 でマップ、Q/Nintendo Minus/Xbox View で情報、Esc/Start でポーズを開きます。",
   },
 };

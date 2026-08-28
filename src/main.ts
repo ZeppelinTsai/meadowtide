@@ -6,6 +6,7 @@ import "./map-menu";
 import { initUiFocusNavigation } from "./ui-focus-navigation";
 import { setLocale, translateDocument, onLocaleChanged } from "./i18n";
 import { gameSettings } from "./settings";
+import { initContextInteraction } from "./context-interaction-ui";
 
 // 開局改成先進標題畫面(title-screen.ts)：按任意鍵→主選單，玩家自己選
 // 「開始新遊戲」(序幕)或「繼續遊戲」(讀檔進生活區)，不再是開局自動
@@ -16,6 +17,7 @@ translateDocument();
 onLocaleChanged(() => translateDocument());
 initTitleScreen();
 initUiFocusNavigation();
+initContextInteraction();
 // 遊戲中 Esc 暫停選單(pause-menu.ts)——跟標題畫面各自獨立初始化，靠
 // gameState.player 存不存在互斥(標題畫面階段還沒有 player，Esc 監聽會
 // 直接跳過)，不用互相知道對方的狀態。

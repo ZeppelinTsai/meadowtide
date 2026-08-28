@@ -3,6 +3,7 @@ import {
   getActiveUiRoot,
   isUiNavigationActive,
 } from "./ui-focus-navigation";
+import { markGamepadInput } from "./input-device";
 
 // ==============================================================
 // 搖桿輸入(移動 + 互動鍵)——2026-08-26。
@@ -36,7 +37,6 @@ let rightStickX = 0;
 let rightStickY = 0;
 let prevRightStickButton = false;
 let prevStartButton = false;
-let prevSelectButton = false;
 
 export function getGamepadLookInput() {
   return { x: rightStickX, y: rightStickY };
@@ -63,7 +63,7 @@ function dispatchKey(type: "keydown" | "keyup", key: string) {
 // 丟合成事件(邊緣觸發)——每幀都丟事件不只沒必要，E 鍵那組合成 keydown
 // 如果每幀重複丟，會被 gameState.ePressed 擋掉變成永遠只有第一幀有效，
 // 且語意上也該跟真的鍵盤按著不放一樣只在「按下/放開那一刻」各觸發一次。
-const prevHeld = { w: false, a: false, s: false, d: false, e: false, q: false, r: false };
+const prevHeld = { w: false, a: false, s: false, d: false, e: false, r: false, f: false, q: false, m: false };
 const prevShoulder = { left: false, right: false };
 const prevUiDirection = { up: false, down: false, left: false, right: false };
 let prevUiConfirm = false;
@@ -100,7 +100,6 @@ function releaseAllGamepadInputs() {
   prevZoomOut = false;
   prevRightStickButton = false;
   prevStartButton = false;
-  prevSelectButton = false;
   prevShoulder.left = false;
   prevShoulder.right = false;
 }
@@ -122,6 +121,7 @@ export function pollGamepad() {
   }
   const pad = firstConnectedGamepad();
   if (!pad) return;
+  if (pad.buttons.some((button) => button.pressed) || pad.axes.some((axis) => Math.abs(axis) >= STICK_DEADZONE)) markGamepadInput(pad);
 
   rightStickX = Math.abs(pad.axes[2] ?? 0) >= STICK_DEADZONE ? (pad.axes[2] ?? 0) : 0;
   rightStickY = Math.abs(pad.axes[3] ?? 0) >= STICK_DEADZONE ? (pad.axes[3] ?? 0) : 0;
@@ -143,10 +143,6 @@ export function pollGamepad() {
   if (startButton && !prevStartButton) dispatchKey("keydown", "Escape");
   if (!startButton && prevStartButton) dispatchKey("keyup", "Escape");
   prevStartButton = startButton;
-  const selectButton = !!pad.buttons[8]?.pressed;
-  if (selectButton && !prevSelectButton) dispatchKey("keydown", "m");
-  if (!selectButton && prevSelectButton) dispatchKey("keyup", "m");
-  prevSelectButton = selectButton;
 
   let dx = pad.axes[0] ?? 0;
   let dz = pad.axes[1] ?? 0;
@@ -173,6 +169,7 @@ export function pollGamepad() {
     syncKey("s", false);
     syncKey("e", false);
     syncKey("r", false);
+    syncKey("f", false);
     const directions = {
       up: dz < 0,
       down: dz > 0,
@@ -236,11 +233,13 @@ export function pollGamepad() {
     syncKey("d", dx > 0);
     syncKey("w", dz < 0);
     syncKey("s", dz > 0);
-    syncKey("e", confirmButton);
-    syncKey("r", !!pad.buttons[2]?.pressed); // X 鍵（standard mapping）＝次要操作／收成
+    syncKey("e", !!pad.buttons[2]?.pressed);
+    syncKey("r", !!pad.buttons[3]?.pressed);
+    syncKey("f", !!pad.buttons[1]?.pressed); // physical east: Nintendo A / Xbox B
   }
   prevCancelButton = cancelButton;
-  syncKey("q", !!pad.buttons[3]?.pressed); // Y 鍵（standard mapping）＝資訊選單
+  syncKey("q", !!pad.buttons[8]?.pressed);
+  syncKey("m", !!pad.buttons[10]?.pressed); // L3: map
 
   const leftShoulder = !!pad.buttons[4]?.pressed;
   const rightShoulder = !!pad.buttons[5]?.pressed;

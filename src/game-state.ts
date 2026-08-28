@@ -192,6 +192,7 @@ export const inventory = {
   wood: 10,
   stone: 5,
   oysters: 0,
+  animalProducts: { milk: 0, wool: 0, egg: 0 },
   // 鐘乳石洞窟礦石——跟木材/石頭是不同系統(見 mine.ts)，5 階對應
   // 銅/銀/金/星晶/神晶，數值型別跟其他資源一致方便 HUD 共用格式化邏輯。
   copper: 0,
