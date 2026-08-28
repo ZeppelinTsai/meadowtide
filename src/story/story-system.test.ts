@@ -3,6 +3,7 @@ import test from "node:test";
 import { auditStoryRegistry } from "./story-audit";
 import { evaluateStoryEvent } from "./story-conditions";
 import { runStoryEvent, type StoryRuntimeAdapter } from "./story-runner";
+import { createStoryRuntimeAdapter } from "./story-runtime-adapter";
 import {
   createDefaultStoryState,
   normalizeStoryState,
@@ -99,4 +100,26 @@ test("獎勵動作失敗時不會提前登記為已領取", async () => {
   await assert.rejects(() => runStoryEvent(event, context, adapter), /inventory unavailable/);
   assert.deepEqual(storyState.claimedRewards, []);
   assert.equal(storyState.activeEventId, null);
+});
+
+test("runtime adapter 轉送鏡頭、移動、引路、傳送並輪詢玩法條件", async () => {
+  const executed: string[] = [];
+  let checks = 0;
+  const adapter = createStoryRuntimeAdapter({
+    async dialogue() { executed.push("dialogue"); },
+    async choice() { return "ok"; },
+    async camera() { executed.push("camera"); },
+    async move() { executed.push("move"); },
+    async follow() { executed.push("follow"); },
+    async teleport() { executed.push("teleport"); },
+    async grantItem() { executed.push("grantItem"); },
+    check() { checks++; return checks >= 2; },
+  });
+  await adapter.execute({ type: "camera", shots: [{ focusX: 46.39, focusZ: 23.78, zoom: 0.55, yaw: -2.55, pitch: 0.365, duration: 1.5 }] });
+  await adapter.execute({ type: "move", actorId: "mayor", target: { x: 46.54, z: 19.44 } });
+  await adapter.execute({ type: "follow", leaderId: "mayor", followerId: "player", destination: { mapId: "oldVillage", x: 46.54, z: 19.44 } });
+  await adapter.execute({ type: "teleport", mapId: "oldVillage", target: { x: 46.54, z: 19.44 } });
+  await adapter.execute({ type: "waitFor", condition: { type: "cropCount", areaId: "tutorialPlot", count: 9 }, pollMilliseconds: 0 });
+  assert.deepEqual(executed, ["camera", "move", "follow", "teleport"]);
+  assert.equal(checks, 2);
 });

@@ -19,6 +19,28 @@ export interface StoryChoiceOption {
   steps?: StoryStep[];
 }
 
+export interface StoryCameraShot {
+  focusX: number;
+  focusZ: number;
+  zoom: number;
+  yaw?: number;
+  pitch?: number;
+  duration: number;
+}
+
+export interface StoryWorldTarget {
+  mapId?: string;
+  x: number;
+  z: number;
+}
+
+export type StoryWaitCondition =
+  | { type: "flag"; key: string; equals: StoryFlagValue }
+  | { type: "cropCount"; areaId: string; count: number }
+  | { type: "fishCaught"; count: number }
+  | { type: "recipeCooked"; recipeId: string; count?: number }
+  | { type: "actorReached"; actorId: string; target: StoryWorldTarget; tolerance?: number };
+
 export type StoryStep =
   | { type: "dialogue"; textKey: string; speakerId?: string }
   | {
@@ -29,9 +51,26 @@ export type StoryStep =
     }
   | { type: "setFlag"; key: string; value: StoryFlagValue }
   | { type: "wait"; milliseconds: number }
-  | { type: "camera"; targetId: string; zoom: 2 | 5 | 10 | 20 }
-  | { type: "move"; actorId: string; targetId: string }
-  | { type: "teleport"; mapId: string; targetId: string }
+  | { type: "waitFor"; condition: StoryWaitCondition; pollMilliseconds?: number }
+  | { type: "camera"; shots: StoryCameraShot[]; waitForCompletion?: boolean }
+  | {
+      type: "move";
+      actorId: string;
+      target: StoryWorldTarget;
+      speed?: number;
+      facing?: "up" | "down" | "left" | "right";
+      waitForArrival?: boolean;
+    }
+  | {
+      type: "follow";
+      leaderId: string;
+      followerId: string;
+      destination: StoryWorldTarget;
+      speed?: number;
+      maxDistance?: number;
+      reminderTextKey?: string;
+    }
+  | { type: "teleport"; mapId: string; target: StoryWorldTarget }
   | { type: "grantItem"; rewardId: string; itemId: string; amount: number };
 
 export interface StoryEvent {

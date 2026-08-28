@@ -30,8 +30,14 @@
 
 触发条件目前包括：手动、前置事件完成／未完成、旗标、地图、日期、季节、时段、
 NPC 好感度与物品数量。步骤目前包括：对话、选择、旗标、等待、镜头、角色移动、
-传送与给予物品。runner 不直接 import DOM／Three.js，而由 `StoryRuntimeAdapter`
+传送与给予物品。角色移动使用明确的 `{ mapId?, x, z }`，引路步骤另外记录领路者、
+跟随者、目的地、速度、最大距离与提醒文字；玩法等待可检查指定田区播种数、捕鱼数、
+完成食谱、旗标或演员抵达。镜头步骤直接保存多颗
+`{ focusX, focusZ, zoom, yaw?, pitch?, duration }`，可原样贴入 F4/C 的记录结果。
+runner 不直接 import DOM／Three.js，而由 `StoryRuntimeAdapter`
 执行表现层动作，以免形成新循环依赖。
+`createStoryRuntimeAdapter()` 统一把对话、选择、镜头、移动、引路、传送、奖励接回
+浏览器系统，并内建 `wait`／`waitFor` 的 Promise 与轮询逻辑。
 
 ## 存档规则
 

@@ -47,6 +47,28 @@ function walkSteps(
         errors.push(`${event.id}/${step.rewardId}: 獎勵數量必須大於 0`);
       }
     }
+    if (step.type === "camera") {
+      if (!step.shots.length) errors.push(event.id + ": camera 至少需要一顆鏡頭");
+      step.shots.forEach((shot, index) => {
+        const values = [shot.focusX, shot.focusZ, shot.zoom, shot.duration, shot.yaw ?? 0, shot.pitch ?? 0];
+        if (values.some((value) => !Number.isFinite(value)) || shot.zoom <= 0 || shot.duration < 0) {
+          errors.push(event.id + ": camera 第 " + (index + 1) + " 顆參數不合法");
+        }
+      });
+    }
+    if (step.type === "move" || step.type === "teleport") {
+      if (!Number.isFinite(step.target.x) || !Number.isFinite(step.target.z)) {
+        errors.push(event.id + ": " + step.type + " 目的地座標不合法");
+      }
+    }
+    if (step.type === "follow") {
+      if (!Number.isFinite(step.destination.x) || !Number.isFinite(step.destination.z)) {
+        errors.push(event.id + ": follow 目的地座標不合法");
+      }
+      if (step.maxDistance !== undefined && step.maxDistance <= 0) {
+        errors.push(event.id + ": follow maxDistance 必須大於 0");
+      }
+    }
   }
 }
 

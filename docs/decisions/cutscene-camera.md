@@ -90,9 +90,14 @@ zoom 動不了」——查了一下，`F7` 是 Chrome／Firefox 內建的「插�
 
 ## 尚未做的事
 
-- 目前沒有任何事件實際呼叫 `playCameraShots()`——這一輪只交付系統本身
-  跟 F4 調整工具，序幕（或未來的市集事件）要接上鏡頭清單得等 Zeppelin
-  用 F4 試出想要的構圖之後再寫進去。
+src/story/chapters/prologue-script.ts 已保存第一組序幕引路鏡頭
+PROLOGUE_GUIDE_CAMERA_SHOTS。正式事件的 camera step 直接攜帶同格式的多顆
+鏡頭清單，由 runtime adapter 接到 playCameraShots()；不再只用 targetId
+間接查另一份鏡頭資料。
+
+- 序幕事件資料已登記第一組引路鏡頭，但既有序幕仍標記為
+  `execution: "external"`；等瀏覽器 bindings 接入正式序幕狀態機後，才會由
+  runner 實際呼叫 `playCameraShots()`。
 - `duration` 之外沒有可調的 easing 函式，統一用內建的
   `easeInOutQuad`；之後真的需要不同轉場手感（例如硬切、慢入快出）再加
   參數。
