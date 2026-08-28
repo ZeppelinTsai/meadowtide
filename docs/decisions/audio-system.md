@@ -95,7 +95,7 @@ src/settings.ts 是顯示與音量偏好的單一資料源，使用 meadowtide.s
   `public/assets/audio/bgm/`、在 `BGM_TRACKS` 加一筆、在
   `LOCATION_MUSIC_KEYS` 對應地圖 key 補一行即可。
 
-**還沒選、之後可能需要的分類**（使用者提過，還沒動手找）：慶典、房內、
+**還沒選、之後可能需要的分類**（使用者提過，還沒動手找）：慶典、
 戀愛事件、搞笑事件——這些是「特定場景觸發」的配樂，跟上面「環境常駐」
 的音樂是不同層級，等對應的遊戲系統（節慶活動、室內場景、好感度/戀愛
 事件、劇情觸發的喜劇橋段）真的做出來、需要配樂的時候再找，不要現在
@@ -144,3 +144,7 @@ src/settings.ts 是顯示與音量偏好的單一資料源，使用 meadowtide.s
   收竿結算時呼叫 `playRandomSfx(FISH_REEL_SFX)`。新增其他動作的音效時，
   比照這個模式：在 `sfx.ts` 加一組路徑陣列，在對應的遊戲邏輯分支呼叫
   `playRandomSfx()`，不用另外包裝或建立新的播放器。
+
+### Home location music
+
+The player home interior map house uses the location track homeAmbient (Golden Hour Bedroom Pop). Entering the house overrides outdoor weather/season music; leaving it returns selection to the outdoor rules.

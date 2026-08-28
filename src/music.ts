@@ -19,6 +19,7 @@ export const BGM_TRACKS = {
   blizzard: "StockTune-Gliding Alpine White Peaks_1787119663.mp3",
   seaCaveAmbient: "StockTune-Moonlit Sirens Of Atlantis_1787682578.mp3",
   mountainCaveAmbient: "StockTune-Celestial Ice Cave Echoes_1787682579.mp3",
+  homeAmbient: "StockTune-Golden Hour Bedroom Pop_1787954329.mp3",
   titleDay: "StockTune-Gentle Ocean Breeze_1787921271.mp3",
   titleAfternoon: "StockTune-Oceanic Sunset Breeze_1787921165.mp3",
   titleNight: "StockTune-Sea Breeze Serenity_1787921163.mp3",
@@ -40,6 +41,7 @@ export const SEASON_MUSIC_KEYS = [
 // 做地圖系統，先把曲目準備好(mountainCaveAmbient)，之後地圖 key 一旦
 // 確定，在這裡補一行就會自動生效，不用動 updateMusic()。
 export const LOCATION_MUSIC_KEYS: Record<string, string> = {
+  house: "homeAmbient",
   stalactiteCave: "seaCaveAmbient",
   // 山之洞地圖系統做出來了(mountainCave)，補上原本就準備好的
   // mountainCaveAmbient——不用碰 updateMusic()，查表就自動生效。
