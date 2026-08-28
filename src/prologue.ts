@@ -5,12 +5,20 @@ import { showDialogSequence } from "./dialogue";
 import { npcs, npcGroup } from "./npc-runtime";
 import { prologueRefs } from "./scene-registries";
 import { updateCameraFrustum } from "./scene-sky";
-import { isCameraShotsPlaying, isCameraAdjustModeActive } from "./cutscene-camera";
+import {
+  isCameraShotsPlaying,
+  isCameraAdjustModeActive,
+  playCameraShots,
+  stopCameraShots,
+} from "./cutscene-camera";
 import { animateWalk } from "./humanoid";
 import { getScheduleTarget } from "./npc-defs";
 import { SAVE_SLOT_COUNT } from "./save-slot-config";
 import { completeStoryEvent, hasCompletedStoryEvent } from "./story/story-state";
-import { PROLOGUE_SCRIPT } from "./story/chapters/prologue-script";
+import {
+  PROLOGUE_OPENING_CAMERA_SHOTS,
+  PROLOGUE_SCRIPT,
+} from "./story/chapters/prologue-script";
 
 // ==============================================================
 // 序幕：開場第一天演出——主角乘（makePortScene() 裡本來就停在港口的
@@ -114,6 +122,7 @@ const PROLOGUE_CAPTAIN_Z = 21;
 const PROLOGUE_HOUR = 10;
 const PROLOGUE_PHASE = PROLOGUE_HOUR / 24;
 const FREE_TIME_PHASE = 15 / 24;
+const PROLOGUE_FADE_SECONDS = 1;
 
 function lockPrologueDateTime() {
   gameState.elapsed = dayLength * PROLOGUE_PHASE;
@@ -356,15 +365,31 @@ function startWelcomeDialogue() {
 }
 
 function startShipDialogue() {
+  // 這顆鏡頭從傳單出現一路保持到船長說完「東西收一收吧」。duration
+  // 只表示補間時間；最後的 true 讓鏡頭到位後持續接管，直到對話完成時
+  // 明確 stop，避免 1.5 秒後在台詞中途跳回自動跟隨。
+  playCameraShots(
+    PROLOGUE_OPENING_CAMERA_SHOTS,
+    gameState.player.position.x,
+    gameState.player.position.z,
+    gameState.zoom,
+    undefined,
+    0,
+    Math.PI / 2 - Math.PI / 4,
+    true,
+  );
   showDialogSequence(
     PROLOGUE_SCRIPT.flyer,
     () => {
+      stopCameraShots();
       beginStage("approaching");
     },
   );
 }
 
-export function startPrologueScene(opts: { force?: boolean } = {}) {
+export function startPrologueScene(
+  opts: { force?: boolean; alreadyFaded?: boolean } = {},
+) {
   if (!opts.force && stage !== "inactive" && stage !== "done") return;
   if (!prologueRefs.ferry || !prologueRefs.gangplank) {
     console.warn(
@@ -373,6 +398,9 @@ export function startPrologueScene(opts: { force?: boolean } = {}) {
     return;
   }
   const fadeEl = document.getElementById("fade") as HTMLElement;
+  // 序章開場比一般換圖慢：先用一秒淡到黑，完成船／角色定位後再用一秒
+  // 淡入第一顆鏡頭。只覆寫這次序章，淡入完成後恢復 style.css 的全域值。
+  fadeEl.style.transition = `opacity ${PROLOGUE_FADE_SECONDS}s ease`;
   gameState.cutsceneActive = true;
   lockPrologueDateTime();
   lockPrologueZoom();
@@ -413,8 +441,11 @@ export function startPrologueScene(opts: { force?: boolean } = {}) {
     lockPrologueZoom();
     beginStage("atSea");
     fadeEl.style.opacity = "0";
-    startShipDialogue();
-  }, 400);
+    setTimeout(() => {
+      fadeEl.style.transition = "";
+      startShipDialogue();
+    }, PROLOGUE_FADE_SECONDS * 1000);
+  }, opts.alreadyFaded ? 0 : PROLOGUE_FADE_SECONDS * 1000);
 }
 
 // 開發用：跳過存檔判斷、無條件從頭重播一次，方便邊看畫面邊調參數。

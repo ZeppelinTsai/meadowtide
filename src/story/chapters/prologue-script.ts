@@ -8,6 +8,9 @@ export const PROLOGUE_GUIDE_CAMERA_SHOTS: StoryCameraShot[] = [
   { focusX: 46.39, focusZ: 23.78, zoom: 0.55, yaw: -2.55, pitch: 0.365, duration: 1.5 },
   { focusX: 46.54, focusZ: 19.44, zoom: 0.61, yaw: -0.462, pitch: 0.299, duration: 1.5 },
 ];
+export const PROLOGUE_OPENING_CAMERA_SHOTS: StoryCameraShot[] = [
+  { focusX: 46, focusZ: 20.42, zoom: 0.68, yaw: -0.438, pitch: 0.425, duration: 1.5 },
+];
 
 // 序章文字的單一資料源。鏡頭、走位與實際操作閘門留在 prologue.ts。
 export const PROLOGUE_SCRIPT: Record<string, DialogueLine[]> = {

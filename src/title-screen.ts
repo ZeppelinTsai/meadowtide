@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { buildMap, fadeIn, loadMap } from "./build-map";
+import { fadeIn, loadMap } from "./build-map";
 import { loadGame, migrateLegacyDefaultSave, setActiveSaveSlot } from "./input-save";
 import { renderSaveSlotButtons } from "./save-slot-ui";
 import { initializeMusic } from "./music";
@@ -117,10 +117,18 @@ export function initTitleScreen() {
     resetStoryState();
     gameState.playerName = playerNameInput.value.trim().slice(0, 16);
     gameState.playerAppearance = appearance;
+    // 標題畫面淡出前先在底下鋪全黑，避免 loadMap 尚未完成、序章尚未把
+    // 渡輪搬到外海時，普通港口場景從兩層淡出之間閃現一幀。
+    const fade = byId<HTMLElement>("fade");
+    fade.style.transition = "none";
+    fade.style.opacity = "1";
     hideTitleScreen();
-    buildMap("port");
-    loadMap("port", undefined);
-    startPrologueScene();
+    loadMap("port", undefined, () => {
+      // 玩家與港口參照都建立完成後才開序章；回傳 false 要求 loadMap
+      // 不自行 fadeIn，淡入時機交給序章的一秒專屬轉場。
+      startPrologueScene({ alreadyFaded: true });
+      return false;
+    });
   }
 
   function openProfileName() {

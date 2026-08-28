@@ -37,6 +37,7 @@ let fromZoom = 5;
 let fromYaw = 0;
 let fromPitch = Math.PI / 2 - Math.PI / 4;
 let onComplete: (() => void) | null = null;
+let holdLastShot = false;
 
 export function isCameraShotsPlaying(): boolean {
   return shotIndex >= 0 && shotIndex < shots.length;
@@ -54,6 +55,7 @@ export function playCameraShots(
   done?: () => void,
   currentYaw = 0,
   currentPitch = Math.PI / 2 - Math.PI / 4,
+  holdAtEnd = false,
 ) {
   if (!list.length) {
     done?.();
@@ -68,6 +70,7 @@ export function playCameraShots(
   fromYaw = currentYaw;
   fromPitch = currentPitch;
   onComplete = done ?? null;
+  holdLastShot = holdAtEnd;
 }
 
 export function stopCameraShots() {
@@ -75,6 +78,7 @@ export function stopCameraShots() {
   shotIndex = -1;
   shotElapsed = 0;
   onComplete = null;
+  holdLastShot = false;
 }
 
 /**
@@ -103,6 +107,16 @@ export function updateCameraShots(
     fromZoom = shot.zoom;
     fromYaw = targetYaw;
     fromPitch = targetPitch;
+    if (holdLastShot && shotIndex === shots.length - 1) {
+      shotElapsed = Math.max(0, shot.duration);
+      return {
+        focusX: shot.focusX,
+        focusZ: shot.focusZ,
+        zoom: shot.zoom,
+        yaw: targetYaw,
+        pitch: targetPitch,
+      };
+    }
     shotIndex++;
     shotElapsed = 0;
     if (shotIndex >= shots.length) {

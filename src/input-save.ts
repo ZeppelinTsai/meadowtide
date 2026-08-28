@@ -686,7 +686,9 @@ renderer.domElement.addEventListener("touchend", endPinch);
 renderer.domElement.addEventListener("touchcancel", endPinch);
 
 addEventListener("keydown", (e) => {
-  if (e.key.toLowerCase() !== "e" || gameState.ePressed) return;
+  // 標題畫面切進新遊戲時，地圖／玩家建立有一個非同步淡出空窗。鍵盤 E
+  // 或手把 A 若剛好在這時送進來，不應往下讀尚未存在的 player.position。
+  if (e.key.toLowerCase() !== "e" || gameState.ePressed || !gameState.player) return;
   gameState.ePressed = true;
 
   if (isInventoryOpen()) return;

@@ -156,6 +156,14 @@ function bowWorldPoint(localPoint: THREE.Vector3): THREE.Vector3 {
   同一個慣例，之後真的要幫序幕上多語言時再一起補。
 # 序章劇本資料
 
+序章首次顯示採用專屬的一秒淡黑加一秒淡入；角色與渡輪在全黑期間定位，第一顆
+鏡頭完全顯示後才開啟傳單對話。淡入完成會移除 inline transition，其他換圖仍沿用
+全域 0.4 秒設定。
+新遊戲從標題畫面進入時，標題底下必須先鋪黑幕；等 `loadMap("port")` 的
+`onLoaded` 已建立玩家與港口參照後，才以 `alreadyFaded` 啟動序章。這條流程會
+讓 `loadMap` 回呼回傳 `false`，抑制一般換圖自己的 `fadeIn()`，避免普通港口
+閃現以及初始化期間輸入讀取未建立的 `player.position`。
+
 可閱讀的序章文字集中在 `src/story/chapters/prologue-script.ts`；`src/prologue.ts`
 只負責船、跳板、人物走位與串接段落。序章依序涵蓋傳單、港口、城鎮、牧場、
 住宅、釣魚、料理，完成後發放九包種子、三份魚、六份通用採收食材及基礎釣竿，
