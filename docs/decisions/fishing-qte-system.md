@@ -40,8 +40,12 @@ player.z).project(camera)` 算螢幕座標——這是跟著 `scene-sky.ts` 既�
 `.project(camera)` 太陽/月亮天際遮罩用法抄的技巧，第一次用在 DOM 定位
 上），內含一個當下要按的按鍵/方向大字。兩組 UI 互斥顯示。
 
+**水域與點擊釣魚**：`src/fishing-water.ts` 將 tile `6`（湖）與 `9`（海）
+統一視為可釣水域；`nearWater()` 不再限制地圖。各場景水面建立時登記到
+`fishingWaterMeshes`，標準鏡頭點擊水面會用既有 BFS 找玩家連通區內最接近
+點擊處的岸邊，抵達後面向水面並呼叫原本 E 狀態機。魚種仍暫時共用，日後可
+依 `currentMapName`／水域 tile 分流。
+
 **已知簡化/未做**（完整清單見專案文件「還沒做」段落，這裡只列會影響
-之後改動的部分）：只有 `livingArea` 地圖能釣魚（`nearWater()` 判斷綁在
-`input-save.ts` 的 E 鍵處理，`currentMapName === "livingArea"` 這個條件
-寫死）；`rodLevel` 有欄位但沒有任何升級介面；魚的個性行為模版
+之後改動的部分）：`rodLevel` 有欄位但沒有任何升級介面；魚的個性行為模版
 （快魚/深水魚/跳躍魚…）全部還是同一種隨機方向。

@@ -54,6 +54,7 @@ import {
 import {
   windowMats,
   waterSurfaceMaterials,
+  fishingWaterMeshes,
   waterSkyUnderlayMaterials,
   outdoorLampLights,
   foamMeshes,
@@ -142,7 +143,6 @@ import {
   setPastureGrassStage,
   makeFlower,
   makeFruitTree,
-  makeWaterfallPlaceholder,
   makeOysterRack,
   makeRestArea,
   makeSmallGarden,
@@ -258,6 +258,7 @@ export function buildMap(mapName) {
   gameState.mapGroup = new THREE.Group();
   windowMats.length = 0;
   waterSurfaceMaterials.length = 0;
+  fishingWaterMeshes.length = 0;
   waterSkyUnderlayMaterials.length = 0;
   outdoorLampLights.length = 0;
   seasonalTreeLeafMaterials.length = 0;
@@ -1480,6 +1481,7 @@ export function buildMap(mapName) {
           geometry.attributes.position.array,
         );
         gameState.portWaterMeshes.push(water);
+        fishingWaterMeshes.push(water);
         gameState.mapGroup.add(water);
       };
       // 直接由最終 tile 9 掃描水面。先前南海、西海與切除區各畫一批透明
@@ -3450,6 +3452,7 @@ export function buildMap(mapName) {
       // 變成海面中間破一個洞。留出安全間距讓波浪永遠浮在地面之上
       gameState.oceanMesh.position.set(0, 0.13, 0);
       gameState.oceanMesh.receiveShadow = true;
+      fishingWaterMeshes.push(gameState.oceanMesh);
       gameState.mapGroup.add(gameState.oceanMesh);
 
       // 沙灘跟海交界處放幾組會捲上岸、碎開、又退回去的浪花——原本每一
@@ -3593,11 +3596,6 @@ export function buildMap(mapName) {
       gatherNodeMeshes.push({ group: pile, nodeId: n.id, map: "livingArea" });
     });
 
-    // 瀑布——湖西側邊緣，靜態占位，還沒做真的水流動畫
-    plateauGroup.add(
-      makeWaterfallPlaceholder(LAYOUT.lake.x + 0.5, LAYOUT.lake.z + 3),
-    );
-
     // 行道樹右側正式分成上下兩區：上方聚會／個人放鬆，下方小花園。
     plateauGroup.add(makeRestArea(LAYOUT.restArea));
     plateauGroup.add(makeSmallGarden(LAYOUT.garden));
@@ -3706,6 +3704,7 @@ export function buildMap(mapName) {
       );
       gameState.lakeMesh.position.set(centerX, 0.1, centerZ);
       gameState.lakeMesh.receiveShadow = true; // 房子跟樹的影子可以真的落在水面上
+      fishingWaterMeshes.push(gameState.lakeMesh);
       plateauGroup.add(gameState.lakeMesh);
       const lakeSkyUnderlay = new THREE.Mesh(
         lGeo.clone(),

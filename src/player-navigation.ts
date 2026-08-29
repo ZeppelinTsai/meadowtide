@@ -31,6 +31,10 @@ function plan(desired: GridPoint, interaction: NavigationInteraction | null) {
     (x,z,fromX,fromZ) => !safeAt(gameState.currentMapName,x,z) || dynamicBlocked(x,z,interaction?.id) || (fromX !== undefined && fromZ !== undefined && !canStep(gameState.currentMapName,fromX,fromZ,x,z)),
     interaction?.radius ?? 0);
 }
+export function findReachablePlayerDestination(desired: GridPoint) {
+  const path = plan(desired, null);
+  return path?.[path.length - 1] ?? null;
+}
 export function requestPlayerNavigation(desired: GridPoint, interaction: NavigationInteraction | null = null) {
   const path = plan(desired, interaction);
   if (!path || path.length < 1) { cancelPlayerNavigation(); showUiToast("\u7121\u6cd5\u79fb\u52d5", "\u7121\u6cd5\u8d70\u5230\u90a3\u88e1\u3002"); return false; }

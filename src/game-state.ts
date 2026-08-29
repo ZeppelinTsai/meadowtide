@@ -4,9 +4,9 @@ import {
   LAYOUT,
   MAPS,
   MOUNTAIN_GATE_BLOCKER,
-  isInsideLakeShape,
 } from "./layout-maps";
 import { npcs, hasPastureGrassAt } from "./npc-runtime";
+import { isNearFishingWater } from "./fishing-water";
 import { syncFarmVisuals } from "./farm-visuals";
 import { createWeatherSchedule } from "./weather-schedule";
 import { getScaledBuildingBounds } from "./building-scale";
@@ -404,32 +404,12 @@ export function isUnsafeAnimalWeather() {
 export const CAST_ANIM_DURATION = 0.45;
 
 export function nearWater() {
-  if (gameState.currentMapName !== "livingArea") return false;
-  const map = MAPS.livingArea;
-  const { x, z } = gameState.playerGridPos;
-  const nearOcean = [
-    [x + 1, z],
-    [x - 1, z],
-    [x, z + 1],
-    [x, z - 1],
-  ].some(([nx, nz]) => {
-    if (nz < 0 || nz >= map.tiles.length || nx < 0 || nx >= map.tiles[0].length)
-      return false;
-    return map.tiles[nz][nx] === 9;
-  });
-  if (nearOcean) return true;
-  // 岸石有碰撞後玩家會站得稍遠；加長偵測距離，仍可隔著石頭向湖內拋竿。
-  for (let i = 0; i < 24; i++) {
-    const angle = (i / 24) * Math.PI * 2;
-    if (
-      isInsideLakeShape(
-        gameState.player.position.x + Math.cos(angle) * 1.35,
-        gameState.player.position.z + Math.sin(angle) * 1.35,
-      )
-    )
-      return true;
-  }
-  return false;
+  if (!gameState.player) return false;
+  return isNearFishingWater(
+    gameState.currentMapName,
+    gameState.player.position.x,
+    gameState.player.position.z,
+  );
 }
 
 export function nearAnyNpc() {

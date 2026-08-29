@@ -1052,7 +1052,7 @@ addEventListener("keydown", (e) => {
     }
   }
 
-  if (gameState.currentMapName === "livingArea" && nearWater()) {
+  if (nearWater()) {
     if (gameState.fishingState === "idle") {
       playRandomSfx(FISH_CAST_SFX);
       gameState.fishingState = "casting";

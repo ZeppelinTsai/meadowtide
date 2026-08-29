@@ -46,9 +46,12 @@ click replaces the old destination. Dialogue, menus, cutscenes, fishing, and
 other paused states cancel it. Pointer release is treated as a click only below
 the drag threshold, so camera dragging does not trigger movement.
 
-First-person mode does not accept world-click navigation. A left click runs the same
-primary interaction path as keyboard `E` (including existing legacy fallback), while
-switching back to the standard camera restores point-and-click movement.
+First-person mode does not accept world-click navigation. Its left-button `pointerdown`
+immediately runs the same primary interaction path as keyboard `E` (including while a fish
+is biting, because pointer lock may consume `pointerup`). Switching back to the standard
+camera restores point-and-click movement. Clicking a registered water surface uses the same
+reachable-destination search to approach a connected shore, faces the clicked water, then
+dispatches the existing E fishing flow.
 
 ## Verification
 
