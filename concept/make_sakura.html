@@ -320,79 +320,6 @@
         color: #fff;
         font-size: 10px;
       }
-      #radial {
-        position: absolute;
-        z-index: 20;
-        width: 228px;
-        height: 228px;
-        transform: translate(-50%, -50%) scale(0.8);
-        opacity: 0;
-        pointer-events: none;
-        transition: 0.14s ease;
-      }
-      #radial.open {
-        opacity: 1;
-        transform: translate(-50%, -50%) scale(1);
-        pointer-events: auto;
-      }
-      .radial-back {
-        position: absolute;
-        inset: 29px;
-        border-radius: 50%;
-        background: #fffaf3f2;
-        border: 1px solid #fff;
-        box-shadow: 0 12px 35px #493c3844;
-      }
-      .radial-item {
-        position: absolute;
-        width: 72px;
-        height: 72px;
-        border: 0;
-        border-radius: 50%;
-        background: #fff;
-        color: #493c38;
-        box-shadow: 0 4px 14px #493c3833;
-        cursor: pointer;
-        font-weight: 800;
-        font-size: 11px;
-      }
-      .radial-item span {
-        display: block;
-        font-size: 23px;
-      }
-      .radial-item[data-mode="petal"] {
-        left: 78px;
-        top: 0;
-      }
-      .radial-item[data-mode="twig"] {
-        right: 3px;
-        top: 78px;
-      }
-      .radial-item[data-mode="brush"] {
-        left: 78px;
-        bottom: 0;
-      }
-      .radial-item[data-action="close"] {
-        left: 3px;
-        top: 78px;
-      }
-      .radial-item:hover,
-      .radial-item.active {
-        background: #f4c4d0;
-      }
-      .radial-center {
-        position: absolute;
-        left: 82px;
-        top: 82px;
-        width: 64px;
-        height: 64px;
-        border: 0;
-        border-radius: 50%;
-        background: #8c4058;
-        color: #fff;
-        font-size: 12px;
-        font-weight: 800;
-      }
       #inputHint {
         position: absolute;
         right: 16px;
@@ -405,9 +332,6 @@
         font-size: 11px;
         pointer-events: none;
       }
-      #scrim {
-        display: none;
-      }
       .quick-choice {
         display: block;
       }
@@ -416,6 +340,51 @@
       }
       #app {
         grid-template-columns: 1fr;
+      }
+      .bar-group {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+      #topbar {
+        top: 14px;
+        left: 14px;
+        right: 14px;
+        transform: none;
+        width: auto;
+        max-width: none;
+        justify-content: space-between;
+        pointer-events: none;
+      }
+      #topbar .bar-group {
+        pointer-events: auto;
+      }
+      #topbar .top-mode {
+        min-width: 58px;
+        padding: 0 10px;
+        white-space: nowrap;
+      }
+      #topbar .top-mode span {
+        margin-right: 3px;
+      }
+      #topbar .top-mode.active {
+        background: #f7dfe5;
+        color: #8c4058;
+      }
+      #topbar .top-template {
+        color: #8c4058;
+      }
+      #actionbar {
+        left: 14px;
+        right: 14px;
+        transform: none;
+        width: auto;
+        max-width: none;
+        justify-content: space-between;
+        pointer-events: none;
+      }
+      #actionbar .bar-group {
+        pointer-events: auto;
       }
       .quick-settings-panel {
         display: none;
@@ -584,14 +553,6 @@
         #app.panel-closed aside {
           transform: translateX(-105%);
         }
-        #app:not(.panel-closed) #scrim {
-          display: block;
-          position: fixed;
-          inset: 0;
-          z-index: 4;
-          background: #2e292733;
-          backdrop-filter: blur(2px);
-        }
         .brand {
           margin-bottom: 22px;
         }
@@ -604,7 +565,7 @@
         }
         #topbar {
           top: max(8px, env(safe-area-inset-top));
-          left: 68px;
+          left: var(--mobile-gutter);
           right: var(--mobile-right);
           width: auto;
           max-width: none;
@@ -620,6 +581,9 @@
           min-width: 36px;
           padding-inline: 9px;
           white-space: nowrap;
+        }
+        #topbar .bar-group {
+          flex: 0 0 auto;
         }
         #topbar .primary {
           padding-inline: 13px;
@@ -658,14 +622,6 @@
         .quick-settings-panel {
           right: var(--mobile-right);
           bottom: calc(70px + var(--mobile-bottom));
-        }
-        #radial {
-          width: min(228px, 66vw);
-          height: min(228px, 66vw);
-        }
-        .radial-item[data-mode="select"] {
-          right: 3px;
-          bottom: 3px;
         }
         #status {
           bottom: calc(76px + env(safe-area-inset-bottom));
@@ -777,7 +733,6 @@
           點畫布放置材料；拖曳可移動。材料重疊時會依碰撞自動墊高。畫筆會依落筆當下的堆疊結果，畫在整幅作品最上層。
         </p>
       </aside>
-      <div id="scrim" aria-hidden="true"></div>
       <main id="stage">
         <canvas id="canvas" aria-label="花瓣畫作編輯畫布"></canvas>
 
@@ -829,78 +784,81 @@
           aria-label="範本選擇"
         >
           <div class="quick-settings-head">
-            <strong>範本</strong>
+            <strong>選擇範本</strong>
             <button class="quick-settings-close" aria-label="關閉範本選擇">
               ×
             </button>
           </div>
           <div class="quick-setting quick-templates">
-            <label>選擇小範本</label>
             <div class="template-grid">
-              <button class="template-choice" data-template="branch">
-                枝上櫻花
+              <button class="template-choice" data-template="storm">
+                日和吹雪
               </button>
-              <button class="template-choice" data-template="cluster">
-                櫻花花簇
+              <button class="template-choice" data-template="wreath">
+                春日花環
               </button>
-              <button class="template-choice" data-template="breeze">
-                春日留白
+              <button class="template-choice" data-template="garden">
+                庭園落櫻
               </button>
             </div>
           </div>
         </section>
         <div id="inputHint" aria-live="polite">鍵鼠模式</div>
-
-        <div id="radial" role="menu" aria-label="材料選單">
-          <div class="radial-back"></div>
-          <button class="radial-item active" data-mode="petal">
-            <span>🌸</span>櫻花</button
-          ><button class="radial-item" data-mode="twig">
-            <span>⌇</span>樹枝</button
-          ><button class="radial-item" data-mode="brush">
-            <span>🖌️</span>畫筆</button
-          ><button class="radial-item" data-mode="select">
-            <span>🎯</span>調整</button
-          ><button class="radial-item" data-action="close">
-            <span>×</span>關閉</button
-          ><button class="radial-center" data-action="close">材料</button>
+        <div id="topbar" aria-label="主選單">
+          <div class="bar-group topbar-materials" aria-label="材料與選取模式">
+            <button class="top-mode active" data-mode="petal">
+              <span>🌸</span>櫻花
+            </button>
+            <button class="top-mode" data-mode="twig">
+              <span>⌇</span>樹枝
+            </button>
+            <button class="top-mode" data-mode="brush">
+              <span>🖌️</span>畫筆
+            </button>
+            <button class="top-mode" data-mode="select">
+              <span>🎯</span>選取
+            </button>
+            <button
+              class="top-mode top-template"
+              data-quick="template"
+              aria-label="開啟範本選擇"
+            >
+              範本
+            </button>
+          </div>
+          <div class="bar-group topbar-files" aria-label="檔案操作">
+            <button id="load">載入</button>
+            <button id="saveProject">存檔</button>
+          </div>
         </div>
         <div id="actionbar" aria-label="情境操作列">
-          <button data-act="mode">
-            <span class="key">Q</span><span id="modeName">櫻花</span>
-          </button>
-          <button id="undo"><span class="key">Ctrl+Z</span>復原</button>
-          <button id="redo"><span class="key">Ctrl+Y</span>重做</button>
-          <button id="new">清空</button>
-          <button id="load">載入</button>
-          <button id="saveProject">存檔</button>
-          <button data-act="rotateL"><span class="key">LT</span>左轉</button>
-          <button data-act="rotateR"><span class="key">RT</span>右轉</button>
-          <button data-act="duplicate"><span class="key">Y</span>複製</button>
-          <button data-act="remove">
-            <span class="key">X</span><span id="removeActionText">刪除</span>
-          </button>
-          <button
-            class="quick-choice"
-            data-quick="size"
-            aria-label="開啟尺寸選擇"
-          >
-            尺寸
-          </button>
-          <button
-            class="quick-choice"
-            data-quick="color"
-            aria-label="開啟顏色選擇"
-          >
-            顏色
-          </button>
-          <button
-            class="quick-choice"
-            data-quick="template"
-            aria-label="開啟範本選擇"
-          >
-            範本
-          </button>
+          <div class="bar-group actionbar-left">
+            <button id="undo"><span class="key">Ctrl+Z</span>復原</button>
+            <button id="redo"><span class="key">Ctrl+Y</span>重做</button>
+            <button id="new">清空</button>
+          </div>
+          <div class="bar-group actionbar-right">
+            <button data-act="rotateL"><span class="key">LT</span>左轉</button>
+            <button data-act="rotateR"><span class="key">RT</span>右轉</button>
+            <button data-act="duplicate"><span class="key">Y</span>複製</button>
+            <button data-act="remove">
+              <span class="key">X</span><span id="removeActionText">刪除</span>
+            </button>
+            <button
+              class="quick-choice"
+              data-quick="size"
+              aria-label="開啟尺寸選擇"
+            >
+              尺寸
+            </button>
+            <button
+              class="quick-choice"
+              data-quick="color"
+              aria-label="開啟顏色選擇"
+            >
+              顏色
+            </button>
+          </div>
         </div>
         <div id="status" aria-live="polite"></div>
         <div id="layerBadge">厚度碰撞：開啟 · 最上層繪畫：開啟</div>
@@ -922,6 +880,7 @@
           strokes = [],
           selected = null,
           drag = null,
+          rotating = false,
           painting = false,
           lastPaint = null,
           history = [],
@@ -1042,6 +1001,22 @@
           const yes = ctx.isPointInPath(p.x, p.y);
           ctx.restore();
           return yes;
+        }
+        function getRotateHandlePos(o) {
+          const distance = (o.type === "petal" ? 50 : 30) * o.scale;
+          const handleY = -distance;
+          const cos = Math.cos(o.angle);
+          const sin = Math.sin(o.angle);
+          return {
+            x: o.x + (0 * cos - handleY * sin),
+            y: o.y - 2 + (0 * sin + handleY * cos),
+          };
+        }
+        function hitRotateHandle(o, x, y) {
+          const hp = getRotateHandlePos(o);
+          const dx = x - hp.x;
+          const dy = y - hp.y;
+          return dx * dx + dy * dy <= 12 * 12;
         }
         function dims(o) {
           return o.type === "petal"
@@ -1183,14 +1158,32 @@
           ctx.restore();
           items.forEach(drawObject);
           drawTopStrokes();
-          if (selected)
+          if (selected) {
             tx(selected, -2, () => {
               selected.type === "petal" ? petalPath(ctx) : twigPath(ctx);
               ctx.strokeStyle = "#8c4058";
               ctx.setLineDash([4 / selected.scale, 4 / selected.scale]);
               ctx.lineWidth = 2 / selected.scale;
               ctx.stroke();
+
+              const handleY = -(selected.type === "petal" ? 50 : 30);
+              ctx.beginPath();
+              ctx.setLineDash([]);
+              ctx.moveTo(0, 0);
+              ctx.lineTo(0, handleY);
+              ctx.strokeStyle = "#c45170";
+              ctx.lineWidth = 1.5 / selected.scale;
+              ctx.stroke();
+
+              ctx.beginPath();
+              ctx.arc(0, handleY, 6 / selected.scale, 0, Math.PI * 2);
+              ctx.fillStyle = "#fff";
+              ctx.fill();
+              ctx.strokeStyle = "#c45170";
+              ctx.lineWidth = 2 / selected.scale;
+              ctx.stroke();
             });
+          }
         }
         function make(type, x, y) {
           return {
@@ -1212,91 +1205,207 @@
           items.push(o);
           return o;
         }
+
+        // 全新設計的三大範本（依據大小螢幕進行不同佈局與比例微調）
         function applyTemplate(name) {
           const p = paper();
           const cx = p.x + p.w / 2;
           const cy = p.y + p.h / 2;
+          const isMobile = W < 760;
           items = [];
           strokes = [];
           selected = null;
-          if (name === "branch") {
-            addTemplateObject(
-              "twig",
-              cx,
-              cy + p.h * 0.06,
-              1.05,
-              "#76513b",
-              -0.06,
-            );
-            [
-              [-0.28, -0.05, -0.22],
-              [-0.12, -0.18, 0.12],
-              [0.08, -0.09, -0.16],
-              [0.25, -0.22, 0.16],
-              [0.36, -0.02, -0.1],
-            ].forEach(([dx, dy, a]) =>
+
+          if (name === "storm") {
+            // 範本一：日和吹雪
+            if (isMobile) {
+              addTemplateObject(
+                "twig",
+                cx,
+                cy + p.h * 0.1,
+                0.9,
+                "#76513b",
+                -0.2,
+              );
+              [
+                [0, -0.2, 0.65, "#ef9fb5", 0.1],
+                [-0.15, -0.05, 0.7, "#f2b1c2", -0.4],
+                [0.15, 0.05, 0.6, "#ef9fb5", 0.5],
+                [-0.25, 0.2, 0.5, "#f7cad6", 0.8],
+                [0.2, -0.3, 0.55, "#ef9fb5", -0.6],
+              ].forEach(([dx, dy, s, c, a]) =>
+                addTemplateObject(
+                  "petal",
+                  cx + p.w * dx,
+                  cy + p.h * dy,
+                  s,
+                  c,
+                  a,
+                ),
+              );
+              strokes.push({
+                id: uid(),
+                color: "rgba(255,255,255,0.6)",
+                size: 4,
+                points: [
+                  { x: cx - p.w * 0.3, y: cy + p.h * 0.3 },
+                  { x: cx + p.w * 0.3, y: cy - p.h * 0.3 },
+                ],
+              });
+            } else {
+              addTemplateObject(
+                "twig",
+                cx - p.w * 0.15,
+                cy + p.h * 0.05,
+                1.1,
+                "#76513b",
+                -0.25,
+              );
+              addTemplateObject(
+                "twig",
+                cx + p.w * 0.2,
+                cy - p.h * 0.1,
+                0.85,
+                "#68432d",
+                0.3,
+              );
+              [
+                [-0.35, -0.15, 0.75, "#ef9fb5", 0.2],
+                [-0.18, 0.02, 0.8, "#f2b1c2", -0.3],
+                [0.05, -0.12, 0.7, "#ef9fb5", 0.4],
+                [0.28, -0.2, 0.85, "#f7cad6", -0.5],
+                [0.38, 0.1, 0.65, "#ef9fb5", 0.7],
+                [-0.05, 0.22, 0.6, "#f2b1c2", -0.8],
+              ].forEach(([dx, dy, s, c, a]) =>
+                addTemplateObject(
+                  "petal",
+                  cx + p.w * dx,
+                  cy + p.h * dy,
+                  s,
+                  c,
+                  a,
+                ),
+              );
+              strokes.push(
+                {
+                  id: uid(),
+                  color: "rgba(255,255,255,0.65)",
+                  size: 6,
+                  points: [
+                    { x: cx - p.w * 0.4, y: cy + p.h * 0.2 },
+                    { x: cx + p.w * 0.4, y: cy - p.h * 0.25 },
+                  ],
+                },
+                {
+                  id: uid(),
+                  color: "rgba(255,255,255,0.4)",
+                  size: 4,
+                  points: [
+                    { x: cx - p.w * 0.3, y: cy + p.h * 0.35 },
+                    { x: cx + p.w * 0.35, y: cy - p.h * 0.1 },
+                  ],
+                },
+              );
+            }
+          } else if (name === "wreath") {
+            // 範本二：春日花環
+            const count = isMobile ? 6 : 8;
+            const r = isMobile
+              ? Math.min(p.w, p.h) * 0.28
+              : Math.min(p.w, p.h) * 0.32;
+            const s = isMobile ? 0.6 : 0.75;
+            for (let i = 0; i < count; i++) {
+              const ang = (i * Math.PI * 2) / count;
+              const x = cx + Math.cos(ang) * r;
+              const y = cy + Math.sin(ang) * r;
               addTemplateObject(
                 "petal",
-                cx + p.w * dx,
-                cy + p.h * dy,
-                0.62,
-                "#ef9fb5",
-                a,
-              ),
-            );
-          } else if (name === "cluster") {
-            [
-              [0, 0, 0.86],
-              [-0.16, -0.06, 0.62],
-              [0.16, -0.06, 0.62],
-              [-0.1, 0.15, 0.58],
-              [0.1, 0.15, 0.58],
-              [0, -0.22, 0.56],
-            ].forEach(([dx, dy, s]) =>
-              addTemplateObject(
-                "petal",
-                cx + p.w * dx,
-                cy + p.h * dy,
+                x,
+                y,
                 s,
-                "#ef9fb5",
-                0,
-              ),
-            );
-          } else {
-            addTemplateObject(
-              "twig",
-              p.x + p.w * 0.38,
-              p.y + p.h * 0.68,
-              1.05,
-              "#76513b",
-              -0.18,
-            );
-            [
-              [0.2, 0.52, 0.58],
-              [0.38, 0.38, 0.68],
-              [0.56, 0.27, 0.54],
-            ].forEach(([dx, dy, s]) =>
+                i % 2 === 0 ? "#ef9fb5" : "#f2b1c2",
+                ang + Math.PI / 2,
+              );
+            }
+            if (!isMobile) {
+              addTemplateObject("twig", cx, cy - r, 0.8, "#76513b", 0);
+              addTemplateObject("twig", cx, cy + r, 0.8, "#76513b", Math.PI);
+            }
+          } else if (name === "garden") {
+            // 範本三：庭園落櫻
+            if (isMobile) {
               addTemplateObject(
-                "petal",
-                p.x + p.w * dx,
-                p.y + p.h * dy,
-                s,
-                "#f2b1c2",
+                "twig",
+                cx,
+                cy + p.h * 0.25,
+                1.0,
+                "#76513b",
+                0.05,
+              );
+              [
+                [-0.2, 0.28, 0.7, "#ef9fb5", 0.1],
+                [0, 0.22, 0.75, "#f2b1c2", -0.2],
+                [0.2, 0.3, 0.65, "#ef9fb5", 0.3],
+                [-0.1, 0.15, 0.6, "#f7cad6", 0.4],
+                [0.1, 0.12, 0.58, "#ef9fb5", -0.3],
+              ].forEach(([dx, dy, s, c, a]) =>
+                addTemplateObject(
+                  "petal",
+                  cx + p.w * dx,
+                  cy + p.h * dy,
+                  s,
+                  c,
+                  a,
+                ),
+              );
+            } else {
+              addTemplateObject(
+                "twig",
+                cx - p.w * 0.1,
+                cy + p.h * 0.25,
+                1.2,
+                "#76513b",
                 0.08,
-              ),
-            );
+              );
+              addTemplateObject(
+                "twig",
+                cx + p.w * 0.25,
+                cy + p.h * 0.2,
+                0.9,
+                "#68432d",
+                -0.3,
+              );
+              [
+                [-0.3, 0.28, 0.8, "#ef9fb5", 0.2],
+                [-0.12, 0.22, 0.85, "#f2b1c2", -0.1],
+                [0.08, 0.26, 0.75, "#ef9fb5", 0.3],
+                [0.26, 0.18, 0.8, "#f7cad6", -0.4],
+                [0.38, 0.28, 0.7, "#ef9fb5", 0.5],
+                [-0.22, 0.15, 0.65, "#f2b1c2", 0.6],
+                [0.18, 0.1, 0.6, "#ef9fb5", -0.2],
+              ].forEach(([dx, dy, s, c, a]) =>
+                addTemplateObject(
+                  "petal",
+                  cx + p.w * dx,
+                  cy + p.h * dy,
+                  s,
+                  c,
+                  a,
+                ),
+              );
+            }
           }
+
           settle();
           snap();
           draw();
           closeQuickSettings();
-          show(
-            "已套用「" +
-              { branch: "枝上櫻花", cluster: "櫻花花簇", breeze: "春日留白" }[
-                name
-              ] +
-              "」範本",
-          );
+          const titles = {
+            storm: "日和吹雪",
+            wreath: "春日花環",
+            garden: "庭園落櫻",
+          };
+          show("已套用「" + titles[name] + "」範本");
         }
 
         function point(e) {
@@ -1321,14 +1430,24 @@
         canvas.addEventListener("pointerdown", (e) => {
           const p = point(e);
           canvas.setPointerCapture(e.pointerId);
+
+          // 1. 畫筆模式
           if (mode === "brush") {
             painting = true;
             lastPaint = null;
             addPaint(p.x, p.y, true);
             return;
           }
-          const hit = topAt(p.x, p.y);
+
+          // 2. 旋轉控制點（僅在已有選取物件時生效）
+          if (selected && hitRotateHandle(selected, p.x, p.y)) {
+            rotating = true;
+            return;
+          }
+
+          // 3. 選取（select）模式：專門用來選取與拖曳既有物件
           if (mode === "select") {
+            const hit = topAt(p.x, p.y);
             if (hit) {
               selected = hit;
               settings.angle = Math.round((hit.angle * 180) / Math.PI);
@@ -1345,30 +1464,36 @@
             }
             return;
           }
-          if (hit) {
-            selected = hit;
-            drag = { dx: p.x - hit.x, dy: p.y - hit.y, moved: false };
-            settings.angle = Math.round((hit.angle * 180) / Math.PI);
-            settings.size = hit.scale;
-            settings.color = hit.color;
-            sync();
+
+          // 4. 放置模式（petal / twig）：點擊一律放置新物件，不自動選取舊物件
+          const q = paper();
+          if (p.x > q.x && p.x < q.x + q.w && p.y > q.y && p.y < q.y + q.h) {
+            const o = make(mode, p.x, p.y);
+            items.push(o);
+            selected = o; // 放置後聚焦在新放下的物件上
+            settle();
+            snap();
+            show(mode === "petal" ? "放下一朵櫻花" : "放下一根小樹枝");
           } else {
-            const q = paper();
-            if (p.x > q.x && p.x < q.x + q.w && p.y > q.y && p.y < q.y + q.h) {
-              const o = make(mode, p.x, p.y);
-              items.push(o);
-              selected = o;
-              settle();
-              snap();
-              show(mode === "petal" ? "放下一朵櫻花" : "放下一根小樹枝");
-            }
+            selected = null; // 點擊畫布外時取消選取
           }
           draw();
         });
+
         canvas.addEventListener("pointermove", (e) => {
           const p = point(e);
           if (painting) {
             addPaint(p.x, p.y);
+            return;
+          }
+          if (rotating && selected) {
+            const rad =
+              Math.atan2(p.y - selected.y, p.x - selected.x) + Math.PI / 2;
+            selected.angle = rad;
+            settings.angle = Math.round((rad * 180) / Math.PI);
+            sync();
+            settle();
+            draw();
             return;
           }
           if (drag && selected) {
@@ -1384,11 +1509,36 @@
             painting = false;
             lastPaint = null;
             snap();
-          } else if (drag?.moved) snap();
+          } else if (drag?.moved || rotating) {
+            snap();
+          }
           drag = null;
+          rotating = false;
         }
         canvas.addEventListener("pointerup", end);
         canvas.addEventListener("pointercancel", end);
+
+        canvas.addEventListener(
+          "wheel",
+          (e) => {
+            e.preventDefault();
+            const p = point(e);
+            const target = selected || topAt(p.x, p.y);
+            if (!target || mode === "brush") return;
+
+            const delta = e.deltaY < 0 ? 0.05 : -0.05;
+            target.scale = Math.min(1.8, Math.max(0.55, target.scale + delta));
+            if (target === selected) {
+              settings.size = target.scale;
+              sync();
+            }
+            settle();
+            snap();
+            draw();
+          },
+          { passive: false },
+        );
+
         function sync() {
           $("#color").value = settings.color;
           $("#size").value = settings.size * 100;
@@ -1414,14 +1564,6 @@
           canvas.classList.toggle("painting", m === "brush");
           if (m !== "brush" && m !== "select")
             settings.color = m === "twig" ? "#76513b" : "#ef9fb5";
-          $("#modeName").textContent =
-            m === "petal"
-              ? "櫻花"
-              : m === "twig"
-                ? "樹枝"
-                : m === "brush"
-                  ? "畫筆"
-                  : "調整";
           $("#removeText").textContent = m === "brush" ? "上一筆" : "刪除";
           $("#removeActionText").textContent =
             m === "brush" ? "上一筆" : "刪除";
@@ -1440,7 +1582,6 @@
           (b) =>
             (b.onclick = () => {
               setMode(b.dataset.mode);
-              closeRadial();
             }),
         );
         $("#color").oninput = (e) => {
@@ -1597,25 +1738,11 @@
           r.readAsText(f);
           e.target.value = "";
         };
-        const radial = $("#radial"),
-          quickSettings = {
-            size: $("#quickSettingsSize"),
-            color: $("#quickSettingsColor"),
-            template: $("#quickSettingsTemplate"),
-          };
-        function openRadial(x = W / 2, y = H / 2) {
-          const half = 120;
-          x = Math.max(half, Math.min(W - half, x));
-          y = Math.max(half, Math.min(H - half, y));
-          radial.style.left = x + "px";
-          radial.style.top = y + "px";
-          radial.classList.add("open");
-          radial.querySelector(".active")?.focus();
-        }
-        function closeRadial() {
-          radial.classList.remove("open");
-          canvas.focus?.();
-        }
+        const quickSettings = {
+          size: $("#quickSettingsSize"),
+          color: $("#quickSettingsColor"),
+          template: $("#quickSettingsTemplate"),
+        };
         function openQuickSettings(kind) {
           Object.values(quickSettings).forEach((panel) =>
             panel.classList.remove("open"),
@@ -1651,14 +1778,6 @@
             i = ms.indexOf(mode);
           setMode(ms[(i + n + ms.length) % ms.length]);
         }
-        radial
-          .querySelectorAll("[data-action=close]")
-          .forEach((b) => (b.onclick = closeRadial));
-        canvas.addEventListener("contextmenu", (e) => {
-          e.preventDefault();
-          const p = point(e);
-          openRadial(p.x, p.y);
-        });
         window.addEventListener(
           "pointerdown",
           (e) => {
@@ -1673,7 +1792,6 @@
           (b) =>
             (b.onclick = () => {
               const a = b.dataset.act;
-              if (a === "mode") openRadial(W / 2, H / 2);
               if (a === "rotateL") rotate(-15);
               if (a === "rotateR") rotate(15);
               if (a === "duplicate") $("#duplicate").click();
@@ -1712,12 +1830,6 @@
             e.preventDefault();
             e.shiftKey ? $("#redo").click() : $("#undo").click();
             return;
-          }
-          if (k === "q") {
-            e.preventDefault();
-            radial.classList.contains("open")
-              ? closeRadial()
-              : openRadial(W / 2, H / 2);
           }
           if (k === "1") setMode("petal");
           if (k === "2") setMode("twig");
@@ -1758,15 +1870,10 @@
             if (!g) continue;
             $("#inputHint").textContent = "手把模式";
             const old = prevPads[g.index] || [];
-            if (pressed(g, 4))
-              radial.classList.contains("open")
-                ? closeRadial()
-                : openRadial(W / 2, H / 2);
             if (pressed(g, 5)) cycleMode(1);
             if (pressed(g, 12)) selectStep(-1);
             if (pressed(g, 13)) selectStep(1);
             if (pressed(g, 1)) {
-              closeRadial();
               selected = null;
               draw();
             }
