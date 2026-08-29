@@ -756,12 +756,13 @@ renderer.domElement.addEventListener("touchcancel", endPinch);
 
 // A dialogue line uses the same primary-action semantics as E, but a world
 // pointer handler cannot receive clicks reliably when the dialogue UI covers
-// the canvas. Listen at window level and consume only an actual mouse left
-// button while a non-choice dialogue sequence is active. Interactive controls
+// the canvas. Listen at window level and consume the primary pointer action
+// (mouse left button, single-finger touch, or pen) while a non-choice dialogue
+// sequence is active. Interactive controls
 // keep their own click behavior so selecting a choice never advances twice.
 addEventListener("pointerdown", (event) => {
   if (
-    event.pointerType !== "mouse" ||
+    !event.isPrimary ||
     event.button !== 0 ||
     !gameState.player ||
     gameState.titlePresentationActive ||

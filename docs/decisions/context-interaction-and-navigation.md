@@ -11,10 +11,11 @@
   Nintendo Minus or Xbox View. The map is `M` or L3 (`button[10]`).
 - `src/input-device.ts` tracks the most recently used device and resolves the
   `auto`, `nintendo`, and `xbox` controller-layout setting.
-- While a non-choice dialogue sequence is open, mouse left-button `pointerdown`
-  advances the line through the same `advanceDialogSequence()` path as `E`.
-  Choice buttons and other interactive UI controls keep priority and never pass
-  the click through to dialogue advancement.
+- While a non-choice dialogue sequence is open, the primary `pointerdown`
+  (mouse left button, single-finger touch, or pen) advances the line through the
+  same `advanceDialogSequence()` path as `E`. Choice buttons and other
+  interactive UI controls keep priority and never pass the pointer action
+  through to dialogue advancement.
 
 ## Context resolution
 
