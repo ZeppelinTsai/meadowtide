@@ -1,10 +1,16 @@
 import * as THREE from "three";
 import { dayLength, gameState, inventory } from "./game-state";
-import { LAYOUT, oldVillageGroundY, portGroundY } from "./layout-maps";
+import {
+  LAYOUT,
+  isOnMountainStair,
+  mountainGroundY,
+  oldVillageGroundY,
+  portGroundY,
+} from "./layout-maps";
 import { showDialogSequence } from "./dialogue";
 import { npcs, npcGroup } from "./npc-runtime";
 import { prologueRefs } from "./scene-registries";
-import { updateCameraFrustum } from "./scene-sky";
+import { groundY, updateCameraFrustum } from "./scene-sky";
 import {
   isCameraShotsPlaying,
   isCameraAdjustModeActive,
@@ -14,7 +20,11 @@ import {
 import { animateWalk } from "./humanoid";
 import { getScheduleTarget } from "./npc-defs";
 import { SAVE_SLOT_COUNT } from "./save-slot-config";
-import { completeStoryEvent, hasCompletedStoryEvent } from "./story/story-state";
+import {
+  completeStoryEvent,
+  hasCompletedStoryEvent,
+} from "./story/story-state";
+import { setPresentationCamera } from "./first-person-camera";
 import {
   PROLOGUE_OPENING_CAMERA_SHOTS,
   PROLOGUE_SCRIPT,
@@ -92,6 +102,7 @@ type Stage =
   | "greeting"
   | "guidedWalking"
   | "mapTransition"
+  | "farmScan"
   | "done";
 
 type PrologueMapLoader = (
@@ -164,7 +175,11 @@ function placePrologueMayor() {
   const mayor = npcs.find((npc) => npc.id === "mayor");
   if (!mayor) return;
   mayor.mesh.visible = true;
-  mayor.mesh.position.set(PROLOGUE_MAYOR_X, LAYOUT.port.elevation, PROLOGUE_MAYOR_Z);
+  mayor.mesh.position.set(
+    PROLOGUE_MAYOR_X,
+    LAYOUT.port.elevation,
+    PROLOGUE_MAYOR_Z,
+  );
   // 人形正面是本地 -Z；面向世界 +X（畫面右方）需轉 -90 度。
   mayor.mesh.rotation.y = -Math.PI / 2;
 }
@@ -237,7 +252,8 @@ function bowWorldPoint(localPoint: THREE.Vector3): THREE.Vector3 {
 // 遠路(例如從 -90 度轉到 200 度，直接內插會經過 0 度整整轉 290 度，
 // 走最短路徑只需要反方向轉 70 度)。
 function lerpAngle(from: number, to: number, t: number): number {
-  const delta = (((to - from) % (Math.PI * 2)) + Math.PI * 3) % (Math.PI * 2) - Math.PI;
+  const delta =
+    ((((to - from) % (Math.PI * 2)) + Math.PI * 3) % (Math.PI * 2)) - Math.PI;
   return from + delta * t;
 }
 
@@ -300,7 +316,10 @@ function showFlyerPaper() {
     flyerPaper.add(sheet);
     const ink = new THREE.MeshBasicMaterial({ color: 0x75664f });
     for (let i = 0; i < 4; i++) {
-      const line = new THREE.Mesh(new THREE.BoxGeometry(0.23 - i * 0.025, 0.012, 0.006), ink);
+      const line = new THREE.Mesh(
+        new THREE.BoxGeometry(0.23 - i * 0.025, 0.012, 0.006),
+        ink,
+      );
       line.position.set(-0.025, 0.065 - i * 0.045, -0.009);
       flyerPaper.add(line);
     }
@@ -372,7 +391,11 @@ function computeWaypoints() {
   // 重播，避免模型座標與渡輪局部座標混用而斜切到右上。
   captainWaypoints = [
     new THREE.Vector3(PROLOGUE_CAPTAIN_X, LAYOUT.port.elevation, 22),
-    new THREE.Vector3(PROLOGUE_CAPTAIN_X, LAYOUT.port.elevation, PROLOGUE_CAPTAIN_Z),
+    new THREE.Vector3(
+      PROLOGUE_CAPTAIN_X,
+      LAYOUT.port.elevation,
+      PROLOGUE_CAPTAIN_Z,
+    ),
   ];
   waypointIndex = 0;
   captainWaypointIndex = 0;
@@ -388,15 +411,20 @@ function beginStage(next: Stage) {
 function guideGroundY(mapName: string, x: number, z: number): number {
   if (mapName === "port") return portGroundY(x, z);
   if (mapName === "oldVillage") return oldVillageGroundY(x, z) + 0.03;
-  return 0;
+  if (mapName === "mountain")
+    return mountainGroundY(x, z) + (isOnMountainStair(x, z) ? 0.3 : 0.08);
+  return groundY(x, z);
 }
 
 function placeGuideActor(actor: any, x: number, z: number) {
-  actor.mesh.position.set(x, guideGroundY(gameState.currentMapName, x, z), z);
+  const gy = guideGroundY(gameState.currentMapName, x, z);
+  actor.mesh.position.set(x, gy, z);
   actor.mesh.visible = true;
   actor.path = null;
   actor.pathIndex = 0;
   actor.lastTargetKey = null;
+  animateWalk(actor.mesh, false, gameState.effectElapsed);
+  actor.mesh.position.y = gy;
 }
 
 function startGuidedWalk(
@@ -437,7 +465,10 @@ function transitionPrologueMap(
   beginStage("mapTransition");
   prologueMapLoader(mapName, playerPosition, () => {
     const mayor = npcs.find((npc) => npc.id === "mayor");
-    if (mayor) placeGuideActor(mayor, mayorPosition.x, mayorPosition.z);
+    if (mayor) {
+      placeGuideActor(mayor, mayorPosition.x, mayorPosition.z);
+      mayor.mesh.rotation.y = 0;
+    }
     gameState.player.position.x = playerPosition.x;
     gameState.player.position.z = playerPosition.z;
     gameState.player.position.y = guideGroundY(
@@ -446,53 +477,82 @@ function transitionPrologueMap(
       playerPosition.z,
     );
     gameState.playerGridPos = { ...playerPosition };
+    gameState.player.rotation.y = 0;
     syncLastPlayerY();
     lockPrologueZoom();
     onLoaded();
   });
 }
 
+let farmScanProgress = 0;
+let farmScanOnComplete: (() => void) | null = null;
+const FARM_SCAN_LEG_DURATION = 3; // 每轉 90 度 1.35 秒
+const FARM_SCAN_TOTAL_DURATION = FARM_SCAN_LEG_DURATION * 4; // 4 段合計 5.4 秒
+
+function startFarmScan(onComplete: () => void) {
+  farmScanOnComplete = onComplete;
+  farmScanProgress = 0;
+  beginStage("farmScan");
+  gameState.player.visible = false;
+  // 初始第一人稱視角：朝正北 (yaw = 0)
+  setPresentationCamera({
+    positionX: gameState.player.position.x,
+    positionY: gameState.player.position.y + 0.82,
+    positionZ: gameState.player.position.z,
+    yaw: 0,
+    pitch: 0,
+    fov: 65,
+  });
+}
+
 function finishPrologueTour() {
   useGuideZoom = false;
   lockPrologueZoom();
-  showDialogSequence(
-    [
-      ...PROLOGUE_SCRIPT.tour.slice(9),
-      ...PROLOGUE_SCRIPT.farming,
-      ...PROLOGUE_SCRIPT.house,
-      ...PROLOGUE_SCRIPT.fishing,
-      ...PROLOGUE_SCRIPT.cooking,
-    ],
-    () => {
-      const captain = npcs.find((npc) => npc.id === "captain");
-      if (captain) {
-        captain.mesh.position.set(
-          PROLOGUE_CAPTAIN_X,
-          LAYOUT.port.elevation,
-          PROLOGUE_CAPTAIN_Z,
-        );
-        captain.mesh.rotation.y = Math.PI;
-        const scheduleTarget = getScheduleTarget(
-          captain.schedule,
-          gameState.currentPhase,
-        );
-        captain.lastTargetKey = scheduleTarget.x + "," + scheduleTarget.z;
-        captain.path = [];
-        captain.pathIndex = 0;
-      }
-      if (!hasCompletedStoryEvent("main.prologue.arrival")) {
-        inventory.seeds += 9;
-        inventory.fish += 3;
-        inventory.harvested += 6;
-        gameState.rodLevel = Math.max(1, gameState.rodLevel);
-      }
-      beginStage("done");
-      completeStoryEvent("main.prologue.arrival");
-      gameState.cutsceneActive = false;
-      gameState.elapsed = dayLength * FREE_TIME_PHASE;
-      gameState.currentPhase = FREE_TIME_PHASE;
-    },
-  );
+  // 1. 先播放村長抵達牧場台詞「到了。這裡就是你未來的牧場。」(PROLOGUE_SCRIPT.tour[9])
+  showDialogSequence([PROLOGUE_SCRIPT.tour[9]], () => {
+    // 2. 觸發第一人稱牧場掃視鏡頭：往左 90 度 -> 回正 -> 往右 90 度 -> 回正切回正常視角
+    startFarmScan(() => {
+      // 3. 掃視完成後切回正常視角，繼續後續牧場、種田、房屋、釣魚、料理對話
+      showDialogSequence(
+        [
+          ...PROLOGUE_SCRIPT.tour.slice(10),
+          ...PROLOGUE_SCRIPT.farming,
+          ...PROLOGUE_SCRIPT.house,
+          ...PROLOGUE_SCRIPT.fishing,
+          ...PROLOGUE_SCRIPT.cooking,
+        ],
+        () => {
+          const captain = npcs.find((npc) => npc.id === "captain");
+          if (captain) {
+            captain.mesh.position.set(
+              PROLOGUE_CAPTAIN_X,
+              LAYOUT.port.elevation,
+              PROLOGUE_CAPTAIN_Z,
+            );
+            captain.mesh.rotation.y = Math.PI;
+            const scheduleTarget = getScheduleTarget(
+              captain.schedule,
+              gameState.currentPhase,
+            );
+            captain.lastTargetKey = scheduleTarget.x + "," + scheduleTarget.z;
+            captain.path = [];
+            captain.pathIndex = 0;
+          }
+          if (!hasCompletedStoryEvent("main.prologue.arrival")) {
+            inventory.seeds += 9;
+            inventory.fish += 3;
+            inventory.harvested += 6;
+            gameState.rodLevel = Math.max(1, gameState.rodLevel);
+          }
+          beginStage("done");
+          completeStoryEvent("main.prologue.arrival");
+          gameState.cutsceneActive = false;
+          gameState.elapsed = dayLength * FREE_TIME_PHASE;
+          gameState.currentPhase = FREE_TIME_PHASE;
+        },
+      );
+    });
+  });
 }
 
 function startVillageToFarmGuide() {
@@ -518,10 +578,7 @@ function showVillagePlazaDialogue() {
 
 function startPortToVillageGuide() {
   startGuidedWalk(
-    [
-      LAYOUT.port.prologueGuide.start,
-      LAYOUT.port.prologueGuide.exit,
-    ],
+    [LAYOUT.port.prologueGuide.start, LAYOUT.port.prologueGuide.exit],
     () =>
       transitionPrologueMap(
         "oldVillage",
@@ -571,14 +628,11 @@ function startShipDialogue() {
     Math.PI / 2 - Math.PI / 4,
     true,
   );
-  showDialogSequence(
-    PROLOGUE_SCRIPT.flyer,
-    () => {
-      hideFlyerPaper();
-      stopCameraShots();
-      beginStage("approaching");
-    },
-  );
+  showDialogSequence(PROLOGUE_SCRIPT.flyer, () => {
+    hideFlyerPaper();
+    stopCameraShots();
+    beginStage("approaching");
+  });
 }
 
 export function startPrologueScene(
@@ -604,47 +658,50 @@ export function startPrologueScene(
   lockPrologueDateTime();
   lockPrologueZoom();
   fadeEl.style.opacity = "1";
-  setTimeout(() => {
-    const ferry = prologueRefs.ferry!;
-    ferry.position.x = prologueRefs.ferryRestX + SEA_OFFSET_X;
-    // 跳板：不是隱藏、是「收合貼在船頭」，一路跟著船——見
-    // syncGangplankToBow() 的註解。
-    prologueRefs.gangplank!.visible = true;
-    syncGangplankToBow();
-    setGangplankRailFlip(true); // 立起貼船頭：扶手搬到反面，見上面註解
-    npcGroup.visible = true;
-    const captain = npcs.find((n) => n.id === "captain");
-    if (captain) captain.mesh.visible = false; // 開船中，先不現身，靠岸繫繩時才出場
-    placePrologueMayor();
-    // 2026-08-26 第五輪反饋「不知道為什麼木匠跟著」——木匠本身平常不會
-    // 出現在演出設定裡，會被拖上船大機率是 game-loop.ts 的
-    // isCarpenterEscortActor 那段邏輯：只要 carpenterQuest.stage 是
-    // "escorting"/"village_scene_done"(這輪測試的瀏覽器如果之前手動
-    // 觸發過木匠碼頭事件，這個狀態會留著)，村長/木匠就會不看
-    // .mesh.visible、直接跟著玩家的走位軌跡跑，序幕演出全程都在搬動
-    // 玩家位置，木匠自然被拖上船。這裡先防守性地把他也關掉——如果
-    // carpenterQuest 真的在 escorting 狀態，這行擋得住畫面(该分支不看
-    // visible 就動位置，但 visible=false 至少不會被畫出來)，但沒有處理
-    // 根本的狀態殘留；如果清一次瀏覽器的存檔/重新整理後木匠還是跟著，
-    // 表示不是這個原因，要再往下查。
-    const carpenter = npcs.find((n) => n.id === "carpenter");
-    if (carpenter) carpenter.mesh.visible = false;
-    gameState.player.position.copy(bowWorldPoint(PLAYER_BOW_LOCAL));
-    gameState.player.visible = true;
-    gameState.isMoving = false;
-    // 面向碼頭方向(世界 -X)，像在等船靠岸。
-    faceDirection(LAYOUT.port.basin.x - LAYOUT.port.ferry.x, 0);
-    // 2026-08-26 Zeppelin 反饋「先鎖定事件預設zoom5，演出有需要調整時
-    // 我會講」——開演出時直接把鏡頭縮放釘死在這個值，不管玩家(或上次
-    // 除錯時)手動滾輪滾到哪個縮放，都從同一個已知距離開始。
-    lockPrologueZoom();
-    beginStage("atSea");
-    fadeEl.style.opacity = "0";
-    setTimeout(() => {
-      fadeEl.style.transition = "";
-      startShipDialogue();
-    }, PROLOGUE_FADE_SECONDS * 1000);
-  }, opts.alreadyFaded ? 0 : PROLOGUE_FADE_SECONDS * 1000);
+  setTimeout(
+    () => {
+      const ferry = prologueRefs.ferry!;
+      ferry.position.x = prologueRefs.ferryRestX + SEA_OFFSET_X;
+      // 跳板：不是隱藏、是「收合貼在船頭」，一路跟著船——見
+      // syncGangplankToBow() 的註解。
+      prologueRefs.gangplank!.visible = true;
+      syncGangplankToBow();
+      setGangplankRailFlip(true); // 立起貼船頭：扶手搬到反面，見上面註解
+      npcGroup.visible = true;
+      const captain = npcs.find((n) => n.id === "captain");
+      if (captain) captain.mesh.visible = false; // 開船中，先不現身，靠岸繫繩時才出場
+      placePrologueMayor();
+      // 2026-08-26 第五輪反饋「不知道為什麼木匠跟著」——木匠本身平常不會
+      // 出現在演出設定裡，會被拖上船大機率是 game-loop.ts 的
+      // isCarpenterEscortActor 那段邏輯：只要 carpenterQuest.stage 是
+      // "escorting"/"village_scene_done"(這輪測試的瀏覽器如果之前手動
+      // 觸發過木匠碼頭事件，這個狀態會留著)，村長/木匠就會不看
+      // .mesh.visible、直接跟著玩家的走位軌跡跑，序幕演出全程都在搬動
+      // 玩家位置，木匠自然被拖上船。這裡先防守性地把他也關掉——如果
+      // carpenterQuest 真的在 escorting 狀態，這行擋得住畫面(该分支不看
+      // visible 就動位置，但 visible=false 至少不會被畫出來)，但沒有處理
+      // 根本的狀態殘留；如果清一次瀏覽器的存檔/重新整理後木匠還是跟著，
+      // 表示不是這個原因，要再往下查。
+      const carpenter = npcs.find((n) => n.id === "carpenter");
+      if (carpenter) carpenter.mesh.visible = false;
+      gameState.player.position.copy(bowWorldPoint(PLAYER_BOW_LOCAL));
+      gameState.player.visible = true;
+      gameState.isMoving = false;
+      // 面向碼頭方向(世界 -X)，像在等船靠岸。
+      faceDirection(LAYOUT.port.basin.x - LAYOUT.port.ferry.x, 0);
+      // 2026-08-26 Zeppelin 反饋「先鎖定事件預設zoom5，演出有需要調整時
+      // 我會講」——開演出時直接把鏡頭縮放釘死在這個值，不管玩家(或上次
+      // 除錯時)手動滾輪滾到哪個縮放，都從同一個已知距離開始。
+      lockPrologueZoom();
+      beginStage("atSea");
+      fadeEl.style.opacity = "0";
+      setTimeout(() => {
+        fadeEl.style.transition = "";
+        startShipDialogue();
+      }, PROLOGUE_FADE_SECONDS * 1000);
+    },
+    opts.alreadyFaded ? 0 : PROLOGUE_FADE_SECONDS * 1000,
+  );
 }
 
 // 開發用：跳過存檔判斷、無條件從頭重播一次，方便邊看畫面邊調參數。
@@ -661,7 +718,9 @@ export function previewPrologue() {
 // 這兩個階段鏡頭要恢復正常跟著玩家，所以只在這三個「人還在船上」的
 // 階段回傳 true。
 export function isPrologueShipStage(): boolean {
-  return stage === "atSea" || stage === "approaching" || stage === "rampLowering";
+  return (
+    stage === "atSea" || stage === "approaching" || stage === "rampLowering"
+  );
 }
 
 // game-loop.ts 的 animate() 每幀呼叫；只有 gameState.cutsceneActive 為真
@@ -777,7 +836,8 @@ export function updatePrologueCutscene(dt: number) {
       Math.hypot(
         mayor.mesh.position.x - gameState.player.position.x,
         mayor.mesh.position.z - gameState.player.position.z,
-      ) <= GUIDE_FOLLOW_DISTANCE + 0.18
+      ) <=
+        GUIDE_FOLLOW_DISTANCE + 0.18
     ) {
       gameState.isMoving = false;
       const onComplete = guideOnComplete;
@@ -791,6 +851,53 @@ export function updatePrologueCutscene(dt: number) {
 
   if (stage === "mapTransition") {
     gameState.isMoving = false;
+    return;
+  }
+
+  if (stage === "farmScan") {
+    gameState.isMoving = false;
+    farmScanProgress = Math.min(
+      1,
+      farmScanProgress + dt / FARM_SCAN_TOTAL_DURATION,
+    );
+    const totalT = farmScanProgress * 4; // 0 ~ 4 代表 4 個 90 度轉向階段
+    const leg = Math.min(3, Math.floor(totalT));
+    const legT = totalT - leg; // 各階段內 0 ~ 1
+    // 平滑加減速 (easeInOut)
+    const eased = 0.5 - 0.5 * Math.cos(legT * Math.PI);
+
+    let currentYaw = 0;
+    if (leg === 0) {
+      // 0 -> 慢慢往左轉 90 度 (+PI / 2)
+      currentYaw = (Math.PI / 2) * eased;
+    } else if (leg === 1) {
+      // +PI / 2 -> 回到中間 (0)
+      currentYaw = (Math.PI / 2) * (1 - eased);
+    } else if (leg === 2) {
+      // 0 -> 再往右轉 90 度 (-PI / 2)
+      currentYaw = -(Math.PI / 2) * eased;
+    } else {
+      // -PI / 2 -> 往左轉 90 度回到原本狀態 (0)
+      currentYaw = -(Math.PI / 2) * (1 - eased);
+    }
+
+    setPresentationCamera({
+      positionX: gameState.player.position.x,
+      positionY: gameState.player.position.y + 0.82,
+      positionZ: gameState.player.position.z,
+      yaw: currentYaw,
+      pitch: 0,
+      fov: 65,
+    });
+
+    if (farmScanProgress >= 1) {
+      setPresentationCamera(null);
+      gameState.player.visible = true;
+      beginStage("inactive");
+      const cb = farmScanOnComplete;
+      farmScanOnComplete = null;
+      cb?.();
+    }
     return;
   }
 
@@ -935,7 +1042,9 @@ export function updatePrologueCutscene(dt: number) {
       captain.mesh.position.x += nx * step;
       captain.mesh.position.z += nz * step;
       captain.mesh.position.y = THREE.MathUtils.lerp(
-        captain.mesh.position.y, target.y, Math.min(1, step / dist),
+        captain.mesh.position.y,
+        target.y,
+        Math.min(1, step / dist),
       );
       captain.mesh.rotation.y = Math.atan2(-nx, -nz);
       const groundY = captain.mesh.position.y;

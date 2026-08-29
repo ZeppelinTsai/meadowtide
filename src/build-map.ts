@@ -79,10 +79,7 @@ import {
   celestialSparkleMaterials,
   southIndoorWallMeshes,
 } from "./scene-registries";
-import {
-  findSouthernShoreSandZ,
-  findWesternShoreSandX,
-} from "./shore-foam";
+import { findSouthernShoreSandZ, findWesternShoreSandX } from "./shore-foam";
 import {
   MINE_SIZE,
   MINE_FLOOR_MAX,
@@ -121,11 +118,7 @@ import {
 // 撞過一次)。排在這裡確保 scene-sky.ts 早就由上面幾個 import 完整求值
 // 過，不會再繞回循環。
 import { showChoice } from "./dialogue";
-import {
-  makeGoddess,
-  makeHeroPlayer,
-  makeMountainGuardian,
-} from "./humanoid";
+import { makeGoddess, makeHeroPlayer, makeMountainGuardian } from "./humanoid";
 import {
   markRuntimePlayerMesh,
   removeStalePlayerMeshes,
@@ -1145,7 +1138,13 @@ export function buildMap(mapName) {
       // 19.5)、下面 Box C(z=27，真正從 26.5 開始)無縫交棒。
       {
         const midWestStair = LAYOUT.oldVillage.westStairs[2];
-        addTerrace(20, 7, midWestStair.baseElevation, midWestStair.x, midWestStair.width);
+        addTerrace(
+          20,
+          7,
+          midWestStair.baseElevation,
+          midWestStair.x,
+          midWestStair.width,
+        );
       }
       const northPlatform = LAYOUT.oldVillage.northBeachPlatform;
       northPlatform.segments.forEach((segment) =>
@@ -1186,7 +1185,8 @@ export function buildMap(mapName) {
       );
       const platformStair = LAYOUT.oldVillage.westStairs.find(
         (stair) =>
-          stair.baseElevation === 0 && stair.elevation === northPlatform.elevation,
+          stair.baseElevation === 0 &&
+          stair.elevation === northPlatform.elevation,
       );
       const edgeDirections = [
         { dx: 1, dz: 0 },
@@ -1196,7 +1196,7 @@ export function buildMap(mapName) {
       ];
       let basaltIndex = 0;
       platformCells.forEach((key) => {
-        const [x, z] = key.split(',').map(Number);
+        const [x, z] = key.split(",").map(Number);
         edgeDirections.forEach(({ dx, dz }) => {
           if (platformCells.has(`${x + dx},${z + dz}`)) return;
           const isStairOpening =
@@ -1507,9 +1507,7 @@ export function buildMap(mapName) {
         LAYOUT.oldVillage.westBeach.z + 1,
       );
       const southFoamEndX =
-        LAYOUT.oldVillage.southBeach.x +
-        LAYOUT.oldVillage.southBeach.width -
-        2;
+        LAYOUT.oldVillage.southBeach.x + LAYOUT.oldVillage.southBeach.width - 2;
       const southFoamEndZ = oldVillageSouthBeachEndZ(southFoamEndX);
       for (let x = southFoamStartX; x <= southFoamEndX; x += 2) {
         const shoreZ = findSouthernShoreSandZ(
@@ -1535,9 +1533,7 @@ export function buildMap(mapName) {
           MAPS.oldVillage.tiles,
           z,
           LAYOUT.oldVillage.westBeach.x,
-          LAYOUT.oldVillage.westBeach.x +
-            LAYOUT.oldVillage.westBeach.width -
-            1,
+          LAYOUT.oldVillage.westBeach.x + LAYOUT.oldVillage.westBeach.width - 1,
         );
         if (shoreX === null) continue;
         const foam = makeFoam(shoreX - 0.65, z, 1500 + z * 1.37, {
@@ -1947,7 +1943,9 @@ export function buildMap(mapName) {
         const isHomeStairShoulder = (x: number, z: number) =>
           isHomeStairJoin(x, z, shoulderWidth);
         const isOpening = (x: number, z: number) =>
-          isStairOpening(x, z) || isTransferOpening(x, z) || isHomeStairJoin(x, z);
+          isStairOpening(x, z) ||
+          isTransferOpening(x, z) ||
+          isHomeStairJoin(x, z);
         // 跟樓梯的 isStairShoulder 同一個道理：開口本身(isTransferOpening)只
         // 決定牆面/扶手在哪裡不生成，但外圈頂點原本還是套用 irregularity
         // 隨機抖動，開口兩側最後一段扶手的端點就會落在抖動過的位置，跟
@@ -3060,11 +3058,7 @@ export function buildMap(mapName) {
         // 牆角(x=0/x=row.length-1)故意不登記，保持一直顯示，讓房間
         // 兩側邊界/牆角深度感還在，只把中間那段(真正擋住視線的部分)
         // 交給鏡頭模式切換。
-        if (
-          z === map.tiles.length - 1 &&
-          x !== 0 &&
-          x !== row.length - 1
-        )
+        if (z === map.tiles.length - 1 && x !== 0 && x !== row.length - 1)
           southIndoorWallMeshes.push(interiorWall);
       } else if (tile === 1 && mapName === "stalactiteCave") {
         // 洞窟牆體只求「看起來是石壁」，不像 house 那樣做門窗開口——
@@ -3818,7 +3812,7 @@ export function buildMap(mapName) {
   updateSeasonalGroundColors();
   scene.add(gameState.mapGroup);
   gameState.currentMapName = mapName;
-  npcGroup.position.y = mapName === "livingArea" ? PLATEAU_Y : 0;
+  npcGroup.position.y = 0;
   npcs.forEach((npc) => {
     if (npc.id === "carpenter") {
       npc.mesh.visible =
@@ -3898,7 +3892,7 @@ export function isBlocked(mapName, x, z) {
   }
   if (tz < 0 || tz >= map.tiles.length || tx < 0 || tx >= map.tiles[0].length)
     return true;
-  if (mapName === 'oldVillage') {
+  if (mapName === "oldVillage") {
     const cube = LAYOUT.oldVillage.northBeachPlatform.cube;
     if (
       x >= cube.x - 0.5 &&
@@ -4227,20 +4221,17 @@ export const events = [
           : -1;
       },
       trigger: "touch",
-      action: () =>
-        loadMap("skyPalace", { ...LAYOUT.skyPalace.caveArrival }),
+      action: () => loadMap("skyPalace", { ...LAYOUT.skyPalace.caveArrival }),
     }),
   ),
   ...Array.from(
     {
-      length:
-        LAYOUT.skyPalace.caveGate.width * LAYOUT.skyPalace.caveGate.depth,
+      length: LAYOUT.skyPalace.caveGate.width * LAYOUT.skyPalace.caveGate.depth,
     },
     (_, index) => ({
       map: "skyPalace",
       x:
-        LAYOUT.skyPalace.caveGate.x +
-        (index % LAYOUT.skyPalace.caveGate.width),
+        LAYOUT.skyPalace.caveGate.x + (index % LAYOUT.skyPalace.caveGate.width),
       z:
         LAYOUT.skyPalace.caveGate.z +
         Math.floor(index / LAYOUT.skyPalace.caveGate.width),
@@ -4309,16 +4300,13 @@ export const events = [
   },
   // 山之洞洞口——跟鐘乳石洞窟同一套「沿入口寬度整排都能走進去」寫法，
   // 座標用 LAYOUT.mountain.cave 現值推導。
-  ...Array.from(
-    { length: LAYOUT.mountain.cave.entranceWidth },
-    (_, i) => ({
-      map: "mountain",
-      x: LAYOUT.mountain.cave.entranceX + i,
-      z: LAYOUT.mountain.cave.z + LAYOUT.mountain.cave.depth - 1,
-      trigger: "touch",
-      action: () => enterMountainMine(),
-    }),
-  ),
+  ...Array.from({ length: LAYOUT.mountain.cave.entranceWidth }, (_, i) => ({
+    map: "mountain",
+    x: LAYOUT.mountain.cave.entranceX + i,
+    z: LAYOUT.mountain.cave.z + LAYOUT.mountain.cave.depth - 1,
+    trigger: "touch",
+    action: () => enterMountainMine(),
+  })),
   {
     // 上樓梯(疊箱子，往深處/山頂)——山之洞這裡可能不存在(頂層之後沒有
     // 更深了)，所以跟鐘乳石洞窟的下樓梯事件一樣用 ?? -1 安全預設。
@@ -4406,8 +4394,7 @@ export const events = [
     (_, index) => ({
       map: "port",
       x:
-        LAYOUT.port.carpenterMeet.x +
-        (index % LAYOUT.port.carpenterMeet.width),
+        LAYOUT.port.carpenterMeet.x + (index % LAYOUT.port.carpenterMeet.width),
       z:
         LAYOUT.port.carpenterMeet.z +
         Math.floor(index / LAYOUT.port.carpenterMeet.width),
