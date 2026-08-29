@@ -24,6 +24,7 @@ export const LANDMARK_TORII_SCALE = 2;
 export const LAYOUT = {
   livingArea: {
     oldVillageGate: { x: 20, z: 42, width: 3 },
+    prologueArrival: { player: { x: 21, z: 41 }, mayor: { x: 20, z: 41 } },
     portGate: { x: 34, z: 42, width: 14 },
     gatherZone: {
       x: 0,
@@ -322,6 +323,11 @@ export const LAYOUT = {
     houseVisualScale: 1.5,
     houseDoorWorldHeight: 1.05,
     livingGate: { x: 63, z: 0, width: 3 },
+    prologueGuide: {
+      arrival: { x: 75, z: 23 },
+      corner: { x: 64, z: 23 },
+      exit: { x: 64, z: 0 },
+    },
     portGate: {
       x: 76,
       z: 4,
@@ -746,6 +752,10 @@ export const LAYOUT = {
     playerArrival: { x: 7, z: 11 },
     carpenterMeet: { x: 3, z: 21, width: 3, height: 3 },
     townGate: { x: 3, z: 29 },
+    prologueGuide: {
+      start: { x: 4, z: 22 },
+      exit: { x: 0, z: 22 },
+    },
     shopRoad: { z: 14, height: 5 },
     basin: { x: 6, z: 18, width: 15, height: 9 },
     eastOceanCutout: { x: 23, z: 11, height: 6 },

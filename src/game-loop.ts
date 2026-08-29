@@ -824,7 +824,6 @@ export function animate(now) {
     // 排程於同一幀覆寫，否則船長會瞬移或偏離下船路線。
     if (
       gameState.cutsceneActive &&
-      gameState.currentMapName === "port" &&
       (n.id === "mayor" || n.id === "captain")
     )
       return;

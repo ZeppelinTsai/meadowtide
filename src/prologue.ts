@@ -1,6 +1,6 @@
 import * as THREE from "three";
 import { dayLength, gameState, inventory } from "./game-state";
-import { LAYOUT } from "./layout-maps";
+import { LAYOUT, oldVillageGroundY, portGroundY } from "./layout-maps";
 import { showDialogSequence } from "./dialogue";
 import { npcs, npcGroup } from "./npc-runtime";
 import { prologueRefs } from "./scene-registries";
@@ -90,7 +90,15 @@ type Stage =
   | "walking"
   | "captainWalking"
   | "greeting"
+  | "guidedWalking"
+  | "mapTransition"
   | "done";
+
+type PrologueMapLoader = (
+  mapName: string,
+  startPos: { x: number; z: number },
+  onLoaded?: () => void | false,
+) => void;
 
 let stage: Stage = "inactive";
 let stageProgress = 0; // 0~1，每個計時型階段自己歸零重算
@@ -100,6 +108,12 @@ let captainWaypointIndex = 0;
 let captainWaypoints: THREE.Vector3[] = [];
 let greetingDialogueStarted = false; // 防止 greeting 階段每幀重複呼叫 showDialogSequence
 let hasTouchedDock = false; // 「腳踏上碼頭」的一次性判定，見 walking 階段
+let prologueMapLoader: PrologueMapLoader | null = null;
+let guideWaypoints: THREE.Vector3[] = [];
+let guideWaypointIndex = 0;
+let guideTrail: THREE.Vector3[] = [];
+let guideOnComplete: (() => void) | null = null;
+let useGuideZoom = false;
 // 2026-08-26 第六輪反饋「主角剛落地是陷進碼頭的」——查出來的真正原因：
 // game-loop.ts 的 animate() 每幀在 updatePrologueCutscene() 之後，
 // 不管 cutsceneActive 是不是 true，都還是會呼叫 animateRun()/
@@ -122,6 +136,7 @@ let flyerPoseTo = 0;
 let flyerPoseDuration = 1;
 // 序幕演出用的固定鏡頭縮放——見 startPrologueScene() 內的設定。
 const PROLOGUE_ZOOM = 5;
+const PROLOGUE_GUIDE_ZOOM = 12;
 const PROLOGUE_MAYOR_X = 3;
 const PROLOGUE_MAYOR_Z = 22;
 const PROLOGUE_CAPTAIN_X = 5;
@@ -139,8 +154,9 @@ function lockPrologueDateTime() {
 }
 
 function lockPrologueZoom() {
-  if (gameState.zoom === PROLOGUE_ZOOM) return;
-  gameState.zoom = PROLOGUE_ZOOM;
+  const targetZoom = useGuideZoom ? PROLOGUE_GUIDE_ZOOM : PROLOGUE_ZOOM;
+  if (gameState.zoom === targetZoom) return;
+  gameState.zoom = targetZoom;
   updateCameraFrustum();
 }
 
@@ -176,6 +192,8 @@ const RAMP_LOWER_SECONDS = 1.4;
 // GANGPLANK_BOW_LOCAL 選錯邊或旋轉軸本身查。
 const RAMP_RAISED_ROTATION_Z = Math.PI / 2; // 收合貼船頭(90 度)時的角度
 const WALK_SPEED = 2.6; // 格/秒，下船這段用的是自己算的位移，不吃碰撞
+const GUIDE_FOLLOW_DISTANCE = 0.72;
+const GUIDE_FOLLOW_SPEED = WALK_SPEED * 1.25;
 
 // 2026-08-26 Zeppelin 反饋「把主角模型放到船頭並對著碼頭」——原本站
 // 甲板中段(local x=0.3，偏船尾側)，改到船頭(local x=-1.3，pen 前緣
@@ -367,10 +385,156 @@ function beginStage(next: Stage) {
   if (next !== "greeting") greetingDialogueStarted = false;
 }
 
+function guideGroundY(mapName: string, x: number, z: number): number {
+  if (mapName === "port") return portGroundY(x, z);
+  if (mapName === "oldVillage") return oldVillageGroundY(x, z) + 0.03;
+  return 0;
+}
+
+function placeGuideActor(actor: any, x: number, z: number) {
+  actor.mesh.position.set(x, guideGroundY(gameState.currentMapName, x, z), z);
+  actor.mesh.visible = true;
+  actor.path = null;
+  actor.pathIndex = 0;
+  actor.lastTargetKey = null;
+}
+
+function startGuidedWalk(
+  points: { x: number; z: number }[],
+  onComplete: () => void,
+) {
+  const mayor = npcs.find((npc) => npc.id === "mayor");
+  if (!mayor || points.length < 2) {
+    onComplete();
+    return;
+  }
+  placeGuideActor(mayor, points[0].x, points[0].z);
+  guideWaypoints = points.map(
+    ({ x, z }) =>
+      new THREE.Vector3(x, guideGroundY(gameState.currentMapName, x, z), z),
+  );
+  guideWaypointIndex = 1;
+  guideTrail = [mayor.mesh.position.clone()];
+  guideOnComplete = onComplete;
+  useGuideZoom = true;
+  lockPrologueZoom();
+  beginStage("guidedWalking");
+}
+
+function transitionPrologueMap(
+  mapName: string,
+  playerPosition: { x: number; z: number },
+  mayorPosition: { x: number; z: number },
+  onLoaded: () => void,
+) {
+  if (!prologueMapLoader) {
+    console.warn("[序幕] 尚未接入 loadMap，無法繼續跨地圖導覽。");
+    useGuideZoom = false;
+    beginStage("done");
+    gameState.cutsceneActive = false;
+    return;
+  }
+  beginStage("mapTransition");
+  prologueMapLoader(mapName, playerPosition, () => {
+    const mayor = npcs.find((npc) => npc.id === "mayor");
+    if (mayor) placeGuideActor(mayor, mayorPosition.x, mayorPosition.z);
+    gameState.player.position.x = playerPosition.x;
+    gameState.player.position.z = playerPosition.z;
+    gameState.player.position.y = guideGroundY(
+      mapName,
+      playerPosition.x,
+      playerPosition.z,
+    );
+    gameState.playerGridPos = { ...playerPosition };
+    syncLastPlayerY();
+    lockPrologueZoom();
+    onLoaded();
+  });
+}
+
+function finishPrologueTour() {
+  useGuideZoom = false;
+  lockPrologueZoom();
+  showDialogSequence(
+    [
+      ...PROLOGUE_SCRIPT.tour.slice(9),
+      ...PROLOGUE_SCRIPT.farming,
+      ...PROLOGUE_SCRIPT.house,
+      ...PROLOGUE_SCRIPT.fishing,
+      ...PROLOGUE_SCRIPT.cooking,
+    ],
+    () => {
+      const captain = npcs.find((npc) => npc.id === "captain");
+      if (captain) {
+        captain.mesh.position.set(
+          PROLOGUE_CAPTAIN_X,
+          LAYOUT.port.elevation,
+          PROLOGUE_CAPTAIN_Z,
+        );
+        captain.mesh.rotation.y = Math.PI;
+        const scheduleTarget = getScheduleTarget(
+          captain.schedule,
+          gameState.currentPhase,
+        );
+        captain.lastTargetKey = scheduleTarget.x + "," + scheduleTarget.z;
+        captain.path = [];
+        captain.pathIndex = 0;
+      }
+      if (!hasCompletedStoryEvent("main.prologue.arrival")) {
+        inventory.seeds += 9;
+        inventory.fish += 3;
+        inventory.harvested += 6;
+        gameState.rodLevel = Math.max(1, gameState.rodLevel);
+      }
+      beginStage("done");
+      completeStoryEvent("main.prologue.arrival");
+      gameState.cutsceneActive = false;
+      gameState.elapsed = dayLength * FREE_TIME_PHASE;
+      gameState.currentPhase = FREE_TIME_PHASE;
+    },
+  );
+}
+
+function startVillageToFarmGuide() {
+  startGuidedWalk(
+    [
+      LAYOUT.oldVillage.prologueGuide.arrival,
+      LAYOUT.oldVillage.prologueGuide.corner,
+      LAYOUT.oldVillage.prologueGuide.exit,
+    ],
+    () =>
+      transitionPrologueMap(
+        "livingArea",
+        LAYOUT.livingArea.prologueArrival.player,
+        LAYOUT.livingArea.prologueArrival.mayor,
+        finishPrologueTour,
+      ),
+  );
+}
+
+function showVillagePlazaDialogue() {
+  showDialogSequence(PROLOGUE_SCRIPT.tour.slice(5, 8), startVillageToFarmGuide);
+}
+
+function startPortToVillageGuide() {
+  startGuidedWalk(
+    [
+      LAYOUT.port.prologueGuide.start,
+      LAYOUT.port.prologueGuide.exit,
+    ],
+    () =>
+      transitionPrologueMap(
+        "oldVillage",
+        LAYOUT.oldVillage.prologueGuide.arrival,
+        LAYOUT.oldVillage.prologueGuide.arrival,
+        showVillagePlazaDialogue,
+      ),
+  );
+}
+
 function startWelcomeDialogue() {
   const mayor = npcs.find((n) => n.id === "mayor");
   const captain = npcs.find((n) => n.id === "captain");
-  const dockRamp = prologueRefs.gangplank!.position;
   npcGroup.visible = true;
   if (captain) {
     // 船長留在跳板邊——演出設定是他正在把纜繩繫上，這一段沒有真的做
@@ -389,42 +553,7 @@ function startWelcomeDialogue() {
     // 掉她原本的行程表座標)，演出結束後她會照正常排程走，不用另外復原。
     placePrologueMayor();
   }
-  showDialogSequence(
-    [
-      ...PROLOGUE_SCRIPT.tour,
-      ...PROLOGUE_SCRIPT.farming,
-      ...PROLOGUE_SCRIPT.house,
-      ...PROLOGUE_SCRIPT.fishing,
-      ...PROLOGUE_SCRIPT.cooking,
-    ],
-    () => {
-      const captain = npcs.find((npc) => npc.id === "captain");
-      if (captain) {
-        captain.mesh.position.set(
-          PROLOGUE_CAPTAIN_X,
-          LAYOUT.port.elevation,
-          PROLOGUE_CAPTAIN_Z,
-        );
-        captain.mesh.rotation.y = Math.PI;
-        const scheduleTarget = getScheduleTarget(captain.schedule, gameState.currentPhase);
-        captain.lastTargetKey = scheduleTarget.x + "," + scheduleTarget.z;
-        captain.path = [];
-        captain.pathIndex = 0;
-      }
-      if (!hasCompletedStoryEvent("main.prologue.arrival")) {
-        // 作物種類尚未拆欄位：三根蘿蔔與三朵蘑菇暫存為六份通用採收品。
-        inventory.seeds += 9;
-        inventory.fish += 3;
-        inventory.harvested += 6;
-        gameState.rodLevel = Math.max(1, gameState.rodLevel);
-      }
-      beginStage("done");
-      completeStoryEvent("main.prologue.arrival");
-      gameState.cutsceneActive = false;
-      gameState.elapsed = dayLength * FREE_TIME_PHASE;
-      gameState.currentPhase = FREE_TIME_PHASE;
-    },
-  );
+  showDialogSequence(PROLOGUE_SCRIPT.tour.slice(0, 4), startPortToVillageGuide);
 }
 
 function startShipDialogue() {
@@ -453,8 +582,13 @@ function startShipDialogue() {
 }
 
 export function startPrologueScene(
-  opts: { force?: boolean; alreadyFaded?: boolean } = {},
+  opts: {
+    force?: boolean;
+    alreadyFaded?: boolean;
+    loadMap?: PrologueMapLoader;
+  } = {},
 ) {
+  if (opts.loadMap) prologueMapLoader = opts.loadMap;
   if (!opts.force && stage !== "inactive" && stage !== "done") return;
   if (!prologueRefs.ferry || !prologueRefs.gangplank) {
     console.warn(
@@ -547,6 +681,118 @@ export function updatePrologueCutscene(dt: number) {
   const ferry = prologueRefs.ferry;
   const gangplank = prologueRefs.gangplank;
   if (!ferry || !gangplank) return;
+
+  if (stage === "guidedWalking") {
+    const mayor = npcs.find((npc) => npc.id === "mayor");
+    if (!mayor) {
+      const onComplete = guideOnComplete;
+      guideOnComplete = null;
+      onComplete?.();
+      return;
+    }
+
+    const target = guideWaypoints[guideWaypointIndex];
+    let mayorMoving = false;
+    if (target) {
+      const dx = target.x - mayor.mesh.position.x;
+      const dz = target.z - mayor.mesh.position.z;
+      const distance = Math.hypot(dx, dz);
+      const stepDistance = WALK_SPEED * dt;
+      if (distance <= Math.max(stepDistance, 0.03)) {
+        mayor.mesh.position.x = target.x;
+        mayor.mesh.position.z = target.z;
+        guideWaypointIndex++;
+      } else {
+        const nx = dx / distance;
+        const nz = dz / distance;
+        mayor.mesh.position.x += nx * stepDistance;
+        mayor.mesh.position.z += nz * stepDistance;
+        mayor.mesh.rotation.y = Math.atan2(-nx, -nz);
+        mayorMoving = true;
+      }
+      const lastTrailPoint = guideTrail[guideTrail.length - 1];
+      if (
+        !lastTrailPoint ||
+        Math.hypot(
+          mayor.mesh.position.x - lastTrailPoint.x,
+          mayor.mesh.position.z - lastTrailPoint.z,
+        ) >= 0.12
+      )
+        guideTrail.push(mayor.mesh.position.clone());
+    }
+
+    const leaderDistance = Math.hypot(
+      mayor.mesh.position.x - gameState.player.position.x,
+      mayor.mesh.position.z - gameState.player.position.z,
+    );
+    let playerMoving = false;
+    while (guideTrail.length) {
+      const reached = guideTrail[0];
+      if (
+        Math.hypot(
+          reached.x - gameState.player.position.x,
+          reached.z - gameState.player.position.z,
+        ) > 0.1
+      )
+        break;
+      guideTrail.shift();
+    }
+    if (guideTrail.length && leaderDistance > GUIDE_FOLLOW_DISTANCE) {
+      const playerTarget = guideTrail[0];
+      const dx = playerTarget.x - gameState.player.position.x;
+      const dz = playerTarget.z - gameState.player.position.z;
+      const distance = Math.hypot(dx, dz);
+      if (distance > 0) {
+        const stepDistance = Math.min(distance, GUIDE_FOLLOW_SPEED * dt);
+        const nx = dx / distance;
+        const nz = dz / distance;
+        gameState.player.position.x += nx * stepDistance;
+        gameState.player.position.z += nz * stepDistance;
+        faceDirection(nx, nz);
+        playerMoving = true;
+      }
+    }
+
+    const mayorGround = guideGroundY(
+      gameState.currentMapName,
+      mayor.mesh.position.x,
+      mayor.mesh.position.z,
+    );
+    animateWalk(mayor.mesh, mayorMoving, gameState.effectElapsed);
+    mayor.mesh.position.y += mayorGround;
+    gameState.player.position.y = guideGroundY(
+      gameState.currentMapName,
+      gameState.player.position.x,
+      gameState.player.position.z,
+    );
+    gameState.playerGridPos = {
+      x: Math.round(gameState.player.position.x),
+      z: Math.round(gameState.player.position.z),
+    };
+    gameState.isMoving = playerMoving;
+    syncLastPlayerY();
+
+    if (
+      guideWaypointIndex >= guideWaypoints.length &&
+      Math.hypot(
+        mayor.mesh.position.x - gameState.player.position.x,
+        mayor.mesh.position.z - gameState.player.position.z,
+      ) <= GUIDE_FOLLOW_DISTANCE + 0.18
+    ) {
+      gameState.isMoving = false;
+      const onComplete = guideOnComplete;
+      guideOnComplete = null;
+      guideWaypoints = [];
+      guideTrail = [];
+      onComplete?.();
+    }
+    return;
+  }
+
+  if (stage === "mapTransition") {
+    gameState.isMoving = false;
+    return;
+  }
 
   if (stage === "atSea") {
     // 對話還開著，船跟人都定住不動，位置在 startPrologueScene() 已經

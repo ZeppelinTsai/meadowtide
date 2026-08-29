@@ -338,3 +338,44 @@ test("木匠港口見面事件使用 3x3 可走觸發區", () => {
         `木匠港口觸發格 (${x},${z}) 必須可走`,
       );
 });
+
+test("序章引路路線使用平移後座標且全程位於可走格", () => {
+  const portRoute = LAYOUT.port.prologueGuide;
+  assert.deepEqual(portRoute, {
+    start: { x: 4, z: 22 },
+    exit: { x: 0, z: 22 },
+  });
+  for (let x = portRoute.exit.x; x <= portRoute.start.x; x++)
+    assert.ok(
+      ![1, 2, 6, 9].includes(MAPS.port.tiles[portRoute.start.z][x]),
+      `港口序章路線 (${x},${portRoute.start.z}) 必須可走`,
+    );
+
+  const villageRoute = LAYOUT.oldVillage.prologueGuide;
+  assert.deepEqual(villageRoute, {
+    arrival: { x: 175, z: 23 },
+    corner: { x: 164, z: 23 },
+    exit: { x: 164, z: 0 },
+  });
+  for (let x = villageRoute.corner.x; x <= villageRoute.arrival.x; x++)
+    assert.ok(
+      ![1, 2, 6, 9].includes(MAPS.oldVillage.tiles[villageRoute.corner.z][x]),
+      `城鎮序章橫向路線 (${x},${villageRoute.corner.z}) 必須可走`,
+    );
+  for (let z = villageRoute.exit.z; z <= villageRoute.corner.z; z++)
+    assert.ok(
+      ![1, 2, 6, 9].includes(MAPS.oldVillage.tiles[z][villageRoute.corner.x]),
+      `城鎮序章直向路線 (${villageRoute.corner.x},${z}) 必須可走`,
+    );
+
+  const arrival = LAYOUT.livingArea.prologueArrival;
+  assert.deepEqual(arrival, {
+    player: { x: 21, z: 41 },
+    mayor: { x: 20, z: 41 },
+  });
+  for (const point of [arrival.player, arrival.mayor])
+    assert.ok(
+      ![1, 2, 6, 9].includes(MAPS.livingArea.tiles[point.z][point.x]),
+      `生活區序章落點 (${point.x},${point.z}) 必須可走`,
+    );
+});

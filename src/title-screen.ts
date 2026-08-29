@@ -259,7 +259,7 @@ export function initTitleScreen() {
     loadMap("port", undefined, () => {
       // 玩家與港口參照都建立完成後才開序章；回傳 false 要求 loadMap
       // 不自行 fadeIn，淡入時機交給序章的一秒專屬轉場。
-      startPrologueScene({ alreadyFaded: true });
+      startPrologueScene({ alreadyFaded: true, loadMap });
       return false;
     });
   }

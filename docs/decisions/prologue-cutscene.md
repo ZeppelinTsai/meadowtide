@@ -144,8 +144,28 @@ function bowWorldPoint(localPoint: THREE.Vector3): THREE.Vector3 {
 - `F8` 熱鍵（`input-save.ts`）呼叫 `previewPrologue()`
   （`startPrologueScene({force:true})`），只能在已經站在港口地圖時
   使用，不用清存檔就能重播，方便邊看畫面邊調參數。
-- 演出用鏡頭縮放釘死在 `PROLOGUE_ZOOM = 5`，開場直接設
-  `gameState.zoom` 並呼叫 `updateCameraFrustum()`。
+- 船上與下船段使用 `PROLOGUE_ZOOM = 5`；村長開始跨圖引路後改用
+  `PROLOGUE_GUIDE_ZOOM = 12`，抵達生活區後恢復 5。兩者都由
+  `lockPrologueZoom()` 寫入 `gameState.zoom` 並呼叫
+  `updateCameraFrustum()`。
+
+## 村長跨圖引路
+
+港口介紹結束後，`prologue.ts` 進入 `guidedWalking`：村長沿路徑前進，
+主角跟隨村長逐幀留下的軌跡並維持約 0.7 格距離，因此轉彎時不會直接斜切。主角會先在同一幀清掉所有已抵達的舊軌跡點，再用村長速度的 1.25 倍追趕，避免取樣佇列累積後越走越遠。
+目前測試路線為：
+
+- `port`：`(4,22) → (0,22)`，完成後用既有 `loadMap()` 進入舊城鎮。
+- `oldVillage`：`(175,23) → (164,23) → (164,0)`，完成後轉入生活區。
+
+原始路徑不可寫死在 `prologue.ts`；唯一資料源是 `LAYOUT.port.prologueGuide`、
+`LAYOUT.oldVillage.prologueGuide` 與 `LAYOUT.livingArea.prologueArrival`。
+舊城鎮路徑用西擴張前的座標宣告，會由既有 `shiftCoordinatesDeep()` 隨整張
+地圖平移成上述世界座標。跨圖能力由 `title-screen.ts` 在啟動序章時注入
+既有 `loadMap`，避免 `prologue.ts` 反向 import `build-map.ts` 形成循環依賴。
+
+序章期間 `game-loop.ts` 必須在所有地圖暫停 mayor/captain 的日常排程，
+不能只在港口暫停，否則引路 NPC 到舊城鎮或生活區後會被排程覆寫位置。
 
 ## 已知不確定/未確認的地方
 
