@@ -754,6 +754,34 @@ const endPinch = () => {
 renderer.domElement.addEventListener("touchend", endPinch);
 renderer.domElement.addEventListener("touchcancel", endPinch);
 
+// A dialogue line uses the same primary-action semantics as E, but a world
+// pointer handler cannot receive clicks reliably when the dialogue UI covers
+// the canvas. Listen at window level and consume only an actual mouse left
+// button while a non-choice dialogue sequence is active. Interactive controls
+// keep their own click behavior so selecting a choice never advances twice.
+addEventListener("pointerdown", (event) => {
+  if (
+    event.pointerType !== "mouse" ||
+    event.button !== 0 ||
+    !gameState.player ||
+    gameState.titlePresentationActive ||
+    isInventoryOpen() ||
+    activeChoice ||
+    !dialogQueue.length
+  )
+    return;
+  const target = event.target instanceof HTMLElement ? event.target : null;
+  if (
+    target?.closest(
+      'button, input, select, textarea, a, [role="button"], [contenteditable="true"]',
+    )
+  )
+    return;
+  event.preventDefault();
+  event.stopPropagation();
+  advanceDialogSequence();
+});
+
 addEventListener("keydown", (e) => {
   // The title transition can briefly have no usable world player. Primary aliases
   // must also stay with focused UI controls and never pass through an open menu.
