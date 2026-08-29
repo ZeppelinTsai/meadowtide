@@ -405,9 +405,6 @@
         font-size: 11px;
         pointer-events: none;
       }
-      #scrim {
-        display: none;
-      }
       .quick-choice {
         display: block;
       }
@@ -416,6 +413,51 @@
       }
       #app {
         grid-template-columns: 1fr;
+      }
+      .bar-group {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+      #topbar {
+        top: 14px;
+        left: 14px;
+        right: 14px;
+        transform: none;
+        width: auto;
+        max-width: none;
+        justify-content: space-between;
+        pointer-events: none;
+      }
+      #topbar .bar-group {
+        pointer-events: auto;
+      }
+      #topbar .top-mode {
+        min-width: 58px;
+        padding: 0 10px;
+        white-space: nowrap;
+      }
+      #topbar .top-mode span {
+        margin-right: 3px;
+      }
+      #topbar .top-mode.active {
+        background: #f7dfe5;
+        color: #8c4058;
+      }
+      #topbar .top-template {
+        color: #8c4058;
+      }
+      #actionbar {
+        left: 14px;
+        right: 14px;
+        transform: none;
+        width: auto;
+        max-width: none;
+        justify-content: space-between;
+        pointer-events: none;
+      }
+      #actionbar .bar-group {
+        pointer-events: auto;
       }
       .quick-settings-panel {
         display: none;
@@ -436,14 +478,8 @@
         animation: quickSettingsIn 0.16s ease-out;
       }
       @keyframes quickSettingsIn {
-        from {
-          opacity: 0;
-          transform: translateY(8px) scale(0.98);
-        }
-        to {
-          opacity: 1;
-          transform: translateY(0) scale(1);
-        }
+        from { opacity: 0; transform: translateY(8px) scale(0.98); }
+        to { opacity: 1; transform: translateY(0) scale(1); }
       }
       .quick-settings-head {
         display: flex;
@@ -584,14 +620,6 @@
         #app.panel-closed aside {
           transform: translateX(-105%);
         }
-        #app:not(.panel-closed) #scrim {
-          display: block;
-          position: fixed;
-          inset: 0;
-          z-index: 4;
-          background: #2e292733;
-          backdrop-filter: blur(2px);
-        }
         .brand {
           margin-bottom: 22px;
         }
@@ -604,7 +632,7 @@
         }
         #topbar {
           top: max(8px, env(safe-area-inset-top));
-          left: 68px;
+          left: var(--mobile-gutter);
           right: var(--mobile-right);
           width: auto;
           max-width: none;
@@ -620,6 +648,9 @@
           min-width: 36px;
           padding-inline: 9px;
           white-space: nowrap;
+        }
+        #topbar .bar-group {
+          flex: 0 0 auto;
         }
         #topbar .primary {
           padding-inline: 13px;
@@ -768,8 +799,7 @@
             <button class="tool" id="rotateL">↶ 左轉</button
             ><button class="tool" id="rotateR">↷ 右轉</button
             ><button class="tool" id="duplicate">⧉ 複製</button
-            ><button class="tool" id="remove">
-              ⌫ <span id="removeText">刪除</span></button
+            ><button class="tool" id="remove">⌫ <span id="removeText">刪除</span></button
             ><button class="tool wide" id="clearPaint">清除所選表面顏料</button>
           </div>
         </section>
@@ -777,130 +807,74 @@
           點畫布放置材料；拖曳可移動。材料重疊時會依碰撞自動墊高。畫筆會依落筆當下的堆疊結果，畫在整幅作品最上層。
         </p>
       </aside>
-      <div id="scrim" aria-hidden="true"></div>
       <main id="stage">
         <canvas id="canvas" aria-label="花瓣畫作編輯畫布"></canvas>
 
-        <section
-          id="quickSettingsSize"
-          class="quick-settings-panel"
-          role="dialog"
-          aria-label="尺寸設定"
-        >
+        <section id="quickSettingsSize" class="quick-settings-panel" role="dialog" aria-label="尺寸設定">
           <div class="quick-settings-head">
             <strong>尺寸</strong>
-            <button class="quick-settings-close" aria-label="關閉尺寸設定">
-              ×
-            </button>
+            <button class="quick-settings-close" aria-label="關閉尺寸設定">×</button>
           </div>
           <div class="quick-setting">
-            <label for="quickSize"
-              >尺寸 <output id="quickSizeText">100%</output></label
-            >
+            <label for="quickSize">尺寸 <output id="quickSizeText">100%</output></label>
             <input id="quickSize" type="range" min="55" max="180" value="100" />
           </div>
         </section>
-        <section
-          id="quickSettingsColor"
-          class="quick-settings-panel"
-          role="dialog"
-          aria-label="顏色設定"
-        >
+        <section id="quickSettingsColor" class="quick-settings-panel" role="dialog" aria-label="顏色設定">
           <div class="quick-settings-head">
             <strong>顏色</strong>
-            <button class="quick-settings-close" aria-label="關閉顏色設定">
-              ×
-            </button>
+            <button class="quick-settings-close" aria-label="關閉顏色設定">×</button>
           </div>
           <div class="quick-setting">
-            <label for="quickColor"
-              >顏色 <output id="quickColorText">#EF9FB5</output></label
-            >
+            <label for="quickColor">顏色 <output id="quickColorText">#EF9FB5</output></label>
             <input id="quickColor" type="color" value="#ef9fb5" />
           </div>
           <div class="quick-setting">
             <button id="quickNatural" type="button">使用自然色</button>
           </div>
         </section>
-        <section
-          id="quickSettingsTemplate"
-          class="quick-settings-panel"
-          role="dialog"
-          aria-label="範本選擇"
-        >
+        <section id="quickSettingsTemplate" class="quick-settings-panel" role="dialog" aria-label="範本選擇">
           <div class="quick-settings-head">
             <strong>範本</strong>
-            <button class="quick-settings-close" aria-label="關閉範本選擇">
-              ×
-            </button>
+            <button class="quick-settings-close" aria-label="關閉範本選擇">×</button>
           </div>
           <div class="quick-setting quick-templates">
             <label>選擇小範本</label>
             <div class="template-grid">
-              <button class="template-choice" data-template="branch">
-                枝上櫻花
-              </button>
-              <button class="template-choice" data-template="cluster">
-                櫻花花簇
-              </button>
-              <button class="template-choice" data-template="breeze">
-                春日留白
-              </button>
+              <button class="template-choice" data-template="branch">枝上櫻花</button>
+              <button class="template-choice" data-template="cluster">櫻花花簇</button>
+              <button class="template-choice" data-template="breeze">春日留白</button>
             </div>
           </div>
         </section>
         <div id="inputHint" aria-live="polite">鍵鼠模式</div>
-
-        <div id="radial" role="menu" aria-label="材料選單">
-          <div class="radial-back"></div>
-          <button class="radial-item active" data-mode="petal">
-            <span>🌸</span>櫻花</button
-          ><button class="radial-item" data-mode="twig">
-            <span>⌇</span>樹枝</button
-          ><button class="radial-item" data-mode="brush">
-            <span>🖌️</span>畫筆</button
-          ><button class="radial-item" data-mode="select">
-            <span>🎯</span>調整</button
-          ><button class="radial-item" data-action="close">
-            <span>×</span>關閉</button
-          ><button class="radial-center" data-action="close">材料</button>
+        <div id="topbar" aria-label="主選單">
+          <div class="bar-group topbar-materials" aria-label="材料與選取模式">
+            <button class="top-mode active" data-mode="petal"><span>🌸</span>櫻花</button>
+            <button class="top-mode" data-mode="twig"><span>⌇</span>樹枝</button>
+            <button class="top-mode" data-mode="brush"><span>🖌️</span>畫筆</button>
+            <button class="top-mode" data-mode="select"><span>🎯</span>選取</button>
+            <button class="top-mode top-template" data-quick="template" aria-label="開啟範本選擇">範本</button>
+          </div>
+          <div class="bar-group topbar-files" aria-label="檔案操作">
+            <button id="load">載入</button>
+            <button id="saveProject">存檔</button>
+          </div>
         </div>
         <div id="actionbar" aria-label="情境操作列">
-          <button data-act="mode">
-            <span class="key">Q</span><span id="modeName">櫻花</span>
-          </button>
-          <button id="undo"><span class="key">Ctrl+Z</span>復原</button>
-          <button id="redo"><span class="key">Ctrl+Y</span>重做</button>
-          <button id="new">清空</button>
-          <button id="load">載入</button>
-          <button id="saveProject">存檔</button>
-          <button data-act="rotateL"><span class="key">LT</span>左轉</button>
-          <button data-act="rotateR"><span class="key">RT</span>右轉</button>
-          <button data-act="duplicate"><span class="key">Y</span>複製</button>
-          <button data-act="remove">
-            <span class="key">X</span><span id="removeActionText">刪除</span>
-          </button>
-          <button
-            class="quick-choice"
-            data-quick="size"
-            aria-label="開啟尺寸選擇"
-          >
-            尺寸
-          </button>
-          <button
-            class="quick-choice"
-            data-quick="color"
-            aria-label="開啟顏色選擇"
-          >
-            顏色
-          </button>
-          <button
-            class="quick-choice"
-            data-quick="template"
-            aria-label="開啟範本選擇"
-          >
-            範本
-          </button>
+          <div class="bar-group actionbar-left">
+            <button id="undo"><span class="key">Ctrl+Z</span>復原</button>
+            <button id="redo"><span class="key">Ctrl+Y</span>重做</button>
+            <button id="new">清空</button>
+          </div>
+          <div class="bar-group actionbar-right">
+            <button data-act="rotateL"><span class="key">LT</span>左轉</button>
+            <button data-act="rotateR"><span class="key">RT</span>右轉</button>
+            <button data-act="duplicate"><span class="key">Y</span>複製</button>
+            <button data-act="remove"><span class="key">X</span><span id="removeActionText">刪除</span></button>
+            <button class="quick-choice" data-quick="size" aria-label="開啟尺寸選擇">尺寸</button>
+            <button class="quick-choice" data-quick="color" aria-label="開啟顏色選擇">顏色</button>
+          </div>
         </div>
         <div id="status" aria-live="polite"></div>
         <div id="layerBadge">厚度碰撞：開啟 · 最上層繪畫：開啟</div>
@@ -1220,85 +1194,26 @@
           strokes = [];
           selected = null;
           if (name === "branch") {
-            addTemplateObject(
-              "twig",
-              cx,
-              cy + p.h * 0.06,
-              1.05,
-              "#76513b",
-              -0.06,
-            );
-            [
-              [-0.28, -0.05, -0.22],
-              [-0.12, -0.18, 0.12],
-              [0.08, -0.09, -0.16],
-              [0.25, -0.22, 0.16],
-              [0.36, -0.02, -0.1],
-            ].forEach(([dx, dy, a]) =>
-              addTemplateObject(
-                "petal",
-                cx + p.w * dx,
-                cy + p.h * dy,
-                0.62,
-                "#ef9fb5",
-                a,
-              ),
+            addTemplateObject("twig", cx, cy + p.h * 0.06, 1.05, "#76513b", -0.06);
+            [[-0.28, -0.05, -0.22], [-0.12, -0.18, 0.12], [0.08, -0.09, -0.16], [0.25, -0.22, 0.16], [0.36, -0.02, -0.1]].forEach(([dx, dy, a]) =>
+              addTemplateObject("petal", cx + p.w * dx, cy + p.h * dy, 0.62, "#ef9fb5", a),
             );
           } else if (name === "cluster") {
-            [
-              [0, 0, 0.86],
-              [-0.16, -0.06, 0.62],
-              [0.16, -0.06, 0.62],
-              [-0.1, 0.15, 0.58],
-              [0.1, 0.15, 0.58],
-              [0, -0.22, 0.56],
-            ].forEach(([dx, dy, s]) =>
-              addTemplateObject(
-                "petal",
-                cx + p.w * dx,
-                cy + p.h * dy,
-                s,
-                "#ef9fb5",
-                0,
-              ),
+            [[0, 0, 0.86], [-0.16, -0.06, 0.62], [0.16, -0.06, 0.62], [-0.1, 0.15, 0.58], [0.1, 0.15, 0.58], [0, -0.22, 0.56]].forEach(([dx, dy, s]) =>
+              addTemplateObject("petal", cx + p.w * dx, cy + p.h * dy, s, "#ef9fb5", 0),
             );
           } else {
-            addTemplateObject(
-              "twig",
-              p.x + p.w * 0.38,
-              p.y + p.h * 0.68,
-              1.05,
-              "#76513b",
-              -0.18,
-            );
-            [
-              [0.2, 0.52, 0.58],
-              [0.38, 0.38, 0.68],
-              [0.56, 0.27, 0.54],
-            ].forEach(([dx, dy, s]) =>
-              addTemplateObject(
-                "petal",
-                p.x + p.w * dx,
-                p.y + p.h * dy,
-                s,
-                "#f2b1c2",
-                0.08,
-              ),
+            addTemplateObject("twig", p.x + p.w * 0.38, p.y + p.h * 0.68, 1.05, "#76513b", -0.18);
+            [[0.2, 0.52, 0.58], [0.38, 0.38, 0.68], [0.56, 0.27, 0.54]].forEach(([dx, dy, s]) =>
+              addTemplateObject("petal", p.x + p.w * dx, p.y + p.h * dy, s, "#f2b1c2", 0.08),
             );
           }
           settle();
           snap();
           draw();
           closeQuickSettings();
-          show(
-            "已套用「" +
-              { branch: "枝上櫻花", cluster: "櫻花花簇", breeze: "春日留白" }[
-                name
-              ] +
-              "」範本",
-          );
+          show("已套用「" + ({ branch: "枝上櫻花", cluster: "櫻花花簇", breeze: "春日留白" }[name]) + "」範本");
         }
-
         function point(e) {
           const r = canvas.getBoundingClientRect();
           return { x: e.clientX - r.left, y: e.clientY - r.top };
@@ -1321,7 +1236,7 @@
         canvas.addEventListener("pointerdown", (e) => {
           const p = point(e);
           canvas.setPointerCapture(e.pointerId);
-          if (mode === "brush") {
+            if (mode === "brush") {
             painting = true;
             lastPaint = null;
             addPaint(p.x, p.y, true);
@@ -1415,16 +1330,9 @@
           if (m !== "brush" && m !== "select")
             settings.color = m === "twig" ? "#76513b" : "#ef9fb5";
           $("#modeName").textContent =
-            m === "petal"
-              ? "櫻花"
-              : m === "twig"
-                ? "樹枝"
-                : m === "brush"
-                  ? "畫筆"
-                  : "調整";
+            m === "petal" ? "櫻花" : m === "twig" ? "樹枝" : m === "brush" ? "畫筆" : "調整";
           $("#removeText").textContent = m === "brush" ? "上一筆" : "刪除";
-          $("#removeActionText").textContent =
-            m === "brush" ? "上一筆" : "刪除";
+          $("#removeActionText").textContent = m === "brush" ? "上一筆" : "刪除";
           sync();
           show(
             m === "brush"
@@ -1597,29 +1505,13 @@
           r.readAsText(f);
           e.target.value = "";
         };
-        const radial = $("#radial"),
-          quickSettings = {
+        const quickSettings = {
             size: $("#quickSettingsSize"),
             color: $("#quickSettingsColor"),
             template: $("#quickSettingsTemplate"),
           };
-        function openRadial(x = W / 2, y = H / 2) {
-          const half = 120;
-          x = Math.max(half, Math.min(W - half, x));
-          y = Math.max(half, Math.min(H - half, y));
-          radial.style.left = x + "px";
-          radial.style.top = y + "px";
-          radial.classList.add("open");
-          radial.querySelector(".active")?.focus();
-        }
-        function closeRadial() {
-          radial.classList.remove("open");
-          canvas.focus?.();
-        }
         function openQuickSettings(kind) {
-          Object.values(quickSettings).forEach((panel) =>
-            panel.classList.remove("open"),
-          );
+          Object.values(quickSettings).forEach((panel) => panel.classList.remove("open"));
           const panel = quickSettings[kind];
           if (!panel) return;
           panel.classList.add("open");
@@ -1629,36 +1521,22 @@
           else panel.querySelector("[data-template]")?.focus();
         }
         function closeQuickSettings() {
-          Object.values(quickSettings).forEach((panel) =>
-            panel.classList.remove("open"),
-          );
+          Object.values(quickSettings).forEach((panel) => panel.classList.remove("open"));
         }
-        document
-          .querySelectorAll("[data-quick]")
-          .forEach(
-            (b) => (b.onclick = () => openQuickSettings(b.dataset.quick)),
-          );
-        document
-          .querySelectorAll("[data-template]")
-          .forEach(
-            (b) => (b.onclick = () => applyTemplate(b.dataset.template)),
-          );
-        document
-          .querySelectorAll(".quick-settings-close")
-          .forEach((b) => (b.onclick = closeQuickSettings));
+        document.querySelectorAll("[data-quick]").forEach((b) =>
+          (b.onclick = () => openQuickSettings(b.dataset.quick)),
+        );
+        document.querySelectorAll("[data-template]").forEach((b) =>
+          (b.onclick = () => applyTemplate(b.dataset.template)),
+        );
+        document.querySelectorAll(".quick-settings-close").forEach((b) =>
+          (b.onclick = closeQuickSettings),
+        );
         function cycleMode(n = 1) {
           const ms = ["petal", "twig", "brush", "select"],
             i = ms.indexOf(mode);
           setMode(ms[(i + n + ms.length) % ms.length]);
         }
-        radial
-          .querySelectorAll("[data-action=close]")
-          .forEach((b) => (b.onclick = closeRadial));
-        canvas.addEventListener("contextmenu", (e) => {
-          e.preventDefault();
-          const p = point(e);
-          openRadial(p.x, p.y);
-        });
         window.addEventListener(
           "pointerdown",
           (e) => {
@@ -1673,7 +1551,6 @@
           (b) =>
             (b.onclick = () => {
               const a = b.dataset.act;
-              if (a === "mode") openRadial(W / 2, H / 2);
               if (a === "rotateL") rotate(-15);
               if (a === "rotateR") rotate(15);
               if (a === "duplicate") $("#duplicate").click();
@@ -1712,12 +1589,6 @@
             e.preventDefault();
             e.shiftKey ? $("#redo").click() : $("#undo").click();
             return;
-          }
-          if (k === "q") {
-            e.preventDefault();
-            radial.classList.contains("open")
-              ? closeRadial()
-              : openRadial(W / 2, H / 2);
           }
           if (k === "1") setMode("petal");
           if (k === "2") setMode("twig");
@@ -1758,20 +1629,14 @@
             if (!g) continue;
             $("#inputHint").textContent = "手把模式";
             const old = prevPads[g.index] || [];
-            if (pressed(g, 4))
-              radial.classList.contains("open")
-                ? closeRadial()
-                : openRadial(W / 2, H / 2);
             if (pressed(g, 5)) cycleMode(1);
             if (pressed(g, 12)) selectStep(-1);
             if (pressed(g, 13)) selectStep(1);
             if (pressed(g, 1)) {
-              closeRadial();
               selected = null;
               draw();
             }
-            if (pressed(g, 2) && (selected || mode === "brush"))
-              $("#remove").click();
+            if (pressed(g, 2) && (selected || mode === "brush")) $("#remove").click();
             if (pressed(g, 3) && selected) $("#duplicate").click();
             if (pressed(g, 6)) rotate(-15);
             if (pressed(g, 7)) rotate(15);
