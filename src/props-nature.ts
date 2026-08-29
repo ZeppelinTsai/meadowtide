@@ -1108,13 +1108,15 @@ export function makeWesternMountainTerrain(rows) {
 
   // 第一人稱會從高台高度看見山坡東緣下方；補一片只涵蓋實際山腳的側牆，
   // 將坡面接到世界底部。範圍由 LAYOUT 控制，避免再次散落寫死座標。
-  const fillMinZ = LAYOUT.mountainBand.footFillMinZ;
-  const fillMaxZ = LAYOUT.mountainBand.footFillMaxZ;
+  const fillMinZ = northZ;
+  const fillMaxZ = southZ;
   const footFillTopY = PLATEAU_Y + 0.12;
   const footFillBottomY = LAYOUT.mountainBand.footFillBottomY;
   const footFillHeight = footFillTopY - footFillBottomY;
+  const footFillDepth = fillMaxZ - fillMinZ;
+  const footFillWidth = eastX - westX + 0.2;
   const footFill = new THREE.Mesh(
-    new THREE.PlaneGeometry(fillMaxZ - fillMinZ, footFillHeight),
+    new THREE.BoxGeometry(footFillWidth, footFillHeight, footFillDepth),
     new THREE.MeshStandardMaterial({
       color: low,
       roughness: 1,
@@ -1122,12 +1124,12 @@ export function makeWesternMountainTerrain(rows) {
       flatShading: true,
     }),
   );
-  footFill.rotation.y = Math.PI / 2;
   footFill.position.set(
-    eastX - 0.04,
+    (westX + eastX) / 2,
     footFillBottomY + footFillHeight / 2,
     (fillMinZ + fillMaxZ) / 2,
   );
+  footFill.castShadow = true;
   footFill.receiveShadow = true;
   group.add(footFill);
 

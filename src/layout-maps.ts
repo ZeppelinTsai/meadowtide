@@ -128,9 +128,7 @@ export const LAYOUT = {
     slopeDegrees: 30,
     slopeEastX: -0.25,
     slopeWestX: -34,
-    // 第一人稱可看見高台側面；用具名範圍封住山坡東緣下方，避免露出天空。
-    footFillMinZ: -4,
-    footFillMaxZ: 42,
+    // 第一人稱可看見高台側面；填充 Z 範圍直接沿用山坡本體的 northZ/southZ。
     footFillBottomY: -12,
   },
   mountainGateway: {

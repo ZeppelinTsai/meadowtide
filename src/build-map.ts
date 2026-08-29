@@ -1,5 +1,4 @@
 import * as THREE from "three";
-import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { hash2 } from "./utils";
 import {
   gameState,
@@ -122,7 +121,6 @@ import {
 // 過，不會再繞回循環。
 import { showChoice } from "./dialogue";
 import {
-  HUMANOID_WORLD_HEIGHT,
   makeGoddess,
   makeHeroPlayer,
   makeMountainGuardian,
@@ -2858,48 +2856,6 @@ export function buildMap(mapName) {
     // 人形預設面朝本地 -Z；旋轉 180 度後面向地圖下方（+Z）。
     goddess.rotation.y = Math.PI;
     plateauGroup.add(goddess);
-
-    // 使用者提供的 GLB 先放在程式生成女神的右側並排比較。模型來源的單位、
-    // 原點不固定，因此載入後以包圍盒正規化成專案統一人形高度，再將腳底貼地；
-    // 載入失敗只警告，不阻斷舊城鎮場景與原本的程式生成女神。
-    new GLTFLoader().load(
-      "./assets/models/megami.glb",
-      (gltf) => {
-        const model = gltf.scene;
-        model.name = "megami-glb-preview";
-        // GLB 的原始正面與專案程式生成人形相反；相較上一版再轉 180°，
-        // 讓她面向地圖下方（+Z）。2π 保留「從上一版再轉半圈」的語意。
-        model.rotation.y = Math.PI * 2;
-        model.traverse((object) => {
-          if (object instanceof THREE.Mesh) {
-            object.castShadow = true;
-            object.receiveShadow = true;
-          }
-        });
-
-        const initialBounds = new THREE.Box3().setFromObject(model);
-        const initialHeight = initialBounds.max.y - initialBounds.min.y;
-        if (!Number.isFinite(initialHeight) || initialHeight <= 0) {
-          console.warn("[megami.glb] 模型包圍盒無有效高度，略過顯示");
-          return;
-        }
-        model.scale.setScalar(HUMANOID_WORLD_HEIGHT / initialHeight);
-        model.updateMatrixWorld(true);
-
-        const scaledBounds = new THREE.Box3().setFromObject(model);
-        const targetX = goddessPosition.x + 1.3;
-        const targetZ = goddessPosition.z;
-        const ground = oldVillageGroundY(targetX, targetZ);
-        model.position.set(
-          targetX - (scaledBounds.min.x + scaledBounds.max.x) / 2,
-          ground - scaledBounds.min.y,
-          targetZ - (scaledBounds.min.z + scaledBounds.max.z) / 2,
-        );
-        plateauGroup.add(model);
-      },
-      undefined,
-      (error) => console.warn("[megami.glb] 模型載入失敗", error),
-    );
 
     // 廣場(LAYOUT.oldVillage.plaza：x=22~32,z=4~25)裡放兩盞路燈、兩張
     // 長椅，位置刻意離廣場邊界(x=22/33、跟港口門的垂直通道)有一段
