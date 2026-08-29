@@ -1,0 +1,1429 @@
+<!doctype html>
+<html lang="zh-TW">
+  <head>
+    <meta charset="UTF-8" />
+    <title>2D 卡通雪人 DIY (地面與座標修復版)</title>
+    <style>
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+        user-select: none;
+      }
+      body {
+        display: flex;
+        height: 100vh;
+        font-family:
+          -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        background: #222;
+        color: #fff;
+        overflow: hidden;
+      }
+
+      #sidebar {
+        width: 220px;
+        background: #1a1c23;
+        border-right: 2px solid #2e3240;
+        padding: 15px;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        z-index: 10;
+        overflow-y: auto;
+      }
+      #sidebar h3 {
+        font-size: 13px;
+        color: #8a99ad;
+        text-transform: uppercase;
+        margin-bottom: 2px;
+      }
+      .item-btn {
+        padding: 10px 12px;
+        background: #2a2e3d;
+        border: 1px solid #3d4357;
+        border-radius: 8px;
+        cursor: pointer;
+        text-align: center;
+        font-size: 13px;
+        color: #e0e6ed;
+        font-weight: bold;
+        transition: all 0.2s;
+      }
+      .item-btn:hover {
+        background: #0088ff;
+        border-color: #0088ff;
+        color: #fff;
+        transform: translateY(-2px);
+      }
+
+      .brush-panel {
+        margin-top: 12px;
+        padding-top: 12px;
+        border-top: 1px solid #2e3240;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+      }
+      .brush-panel h3 {
+        margin-bottom: 4px;
+      }
+      .brush-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 12px;
+        color: #c0c8d4;
+      }
+      .brush-row label {
+        min-width: 48px;
+        flex-shrink: 0;
+      }
+      .brush-row input[type="color"] {
+        width: 36px;
+        height: 28px;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        background: none;
+        padding: 0;
+      }
+      .brush-row input[type="range"] {
+        flex: 1;
+        accent-color: #0088ff;
+      }
+      .brush-row .val {
+        min-width: 28px;
+        text-align: right;
+        font-variant-numeric: tabular-nums;
+        color: #8a99ad;
+      }
+      .tool-btn.active,
+      .item-btn.active {
+        background: #0088ff;
+        border-color: #0088ff;
+        color: #fff;
+        box-shadow: 0 0 0 2px rgba(0, 136, 255, 0.4);
+      }
+      #editor-canvas.brush-cursor {
+        cursor: crosshair;
+      }
+
+      #editor-container {
+        flex: 1;
+        position: relative;
+        background: #7ec0ee;
+        overflow: hidden;
+      }
+      #editor-canvas {
+        width: 100%;
+        height: 100%;
+      }
+
+      #preview-window {
+        position: absolute;
+        top: 15px;
+        right: 15px;
+        width: 280px;
+        height: 280px;
+        background: #000;
+        border: 3px solid #ffcc00;
+        border-radius: 12px;
+        overflow: hidden;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+        z-index: 20;
+      }
+      #preview-header {
+        background: #ffcc00;
+        padding: 4px 10px;
+        font-size: 12px;
+        font-weight: bold;
+        color: #000;
+        text-align: center;
+      }
+      #preview-canvas {
+        width: 100%;
+        height: calc(100% - 24px);
+        cursor: grab;
+      }
+      #preview-canvas:active {
+        cursor: grabbing;
+      }
+
+      #toolbar {
+        position: absolute;
+        bottom: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: rgba(26, 28, 35, 0.9);
+        backdrop-filter: blur(8px);
+        padding: 8px 16px;
+        border-radius: 30px;
+        border: 1px solid #3d4357;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+        z-index: 20;
+      }
+      .tool-btn {
+        width: 38px;
+        height: 38px;
+        background: #2a2e3d;
+        border: 1px solid #3d4357;
+        border-radius: 50%;
+        color: #fff;
+        font-size: 16px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: all 0.2s;
+      }
+      .tool-btn:hover:not(:disabled) {
+        background: #0088ff;
+        border-color: #0088ff;
+        transform: translateY(-2px);
+      }
+      .tool-btn:active:not(:disabled) {
+        transform: scale(0.92);
+      }
+      .tool-btn:disabled {
+        opacity: 0.35;
+        cursor: not-allowed;
+      }
+      .tool-btn.danger:hover:not(:disabled) {
+        background: #d9383a;
+        border-color: #d9383a;
+      }
+      .tool-btn.success:hover:not(:disabled) {
+        background: #28a745;
+        border-color: #28a745;
+      }
+      .tool-btn.warning:hover:not(:disabled) {
+        background: #ff9800;
+        border-color: #ff9800;
+      }
+      .divider {
+        width: 1px;
+        height: 24px;
+        background: #3d4357;
+        margin: 0 2px;
+      }
+
+      #template-menu {
+        position: absolute;
+        bottom: 75px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: #1a1c23;
+        border: 1px solid #3d4357;
+        border-radius: 12px;
+        padding: 10px;
+        display: none;
+        flex-direction: column;
+        gap: 6px;
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+        z-index: 30;
+        width: 180px;
+      }
+      #template-menu button {
+        padding: 8px 12px;
+        background: #2a2e3d;
+        border: 1px solid #3d4357;
+        border-radius: 6px;
+        color: #fff;
+        font-size: 13px;
+        font-weight: bold;
+        cursor: pointer;
+        text-align: left;
+        transition: background 0.2s;
+      }
+      #template-menu button:hover {
+        background: #0088ff;
+        border-color: #0088ff;
+      }
+    </style>
+
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+          "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+        }
+      }
+    </script>
+  </head>
+  <body>
+    <div id="sidebar">
+      <h3>卡通雪人元件</h3>
+      <div class="item-btn" draggable="true" data-type="snowball-large">
+        ⚪ 大雪球 (底座)
+      </div>
+      <div class="item-btn" draggable="true" data-type="snowball-medium">
+        ⚪ 中雪球 (身體)
+      </div>
+      <div class="item-btn" draggable="true" data-type="snowball-small">
+        ⚪ 小雪球 (頭部)
+      </div>
+      <div class="item-btn" draggable="true" data-type="branch-straight">
+        🥢 樹枝手 (直)
+      </div>
+      <div class="item-btn" draggable="true" data-type="branch-bent">
+        🌿 樹枝手 (三叉)
+      </div>
+      <div class="item-btn" draggable="true" data-type="stone">
+        ⚫ 黑石頭 (眼嘴/多邊體)
+      </div>
+      <div class="item-btn" draggable="true" data-type="stone-white">
+        🔘 灰石頭 (鈕扣/多邊體)
+      </div>
+      <div class="item-btn" draggable="true" data-type="carrot">
+        🥕 胡蘿蔔 (鼻子/吸附)
+      </div>
+      <div class="item-btn" id="sidebar-brush-btn">🖌️ 畫筆 (雪球上色)</div>
+
+      <div class="brush-panel">
+        <h3>畫筆工具 (雪球)</h3>
+        <div class="brush-row">
+          <label>顏色</label>
+          <input type="color" id="brush-color" value="#ff6b6b" />
+        </div>
+        <div class="brush-row">
+          <label>大小</label>
+          <input type="range" id="brush-size" min="1" max="40" value="8" />
+          <span class="val" id="brush-size-val">8</span>
+        </div>
+        <div class="brush-row">
+          <label>水量</label>
+          <input type="range" id="brush-water" min="5" max="100" value="55" />
+          <span class="val" id="brush-water-val">55%</span>
+        </div>
+        <div class="item-btn" id="btn-clear-paint" style="margin-top: 4px">
+          🧹 清除選取雪球塗色
+        </div>
+      </div>
+    </div>
+
+    <div id="editor-container">
+      <canvas id="editor-canvas"></canvas>
+    </div>
+
+    <div id="preview-window">
+      <div id="preview-header">🎥 3D 自由視角 (按 F12 看 Log)</div>
+      <div id="preview-canvas"></div>
+    </div>
+
+    <div id="template-menu">
+      <button data-template="classic2">⛄ 經典雙球雪人</button>
+      <button data-template="classic3">☃️ 三球雪人 (帶手臂)</button>
+      <button data-template="cool">😎 完整造型雪人</button>
+    </div>
+
+    <div id="toolbar">
+      <button id="tool-rot-left" class="tool-btn" title="左旋轉 15°">↺</button>
+      <button id="tool-rot-right" class="tool-btn" title="右旋轉 15°">↻</button>
+      <button id="tool-scale-up" class="tool-btn" title="放大">➕</button>
+      <button id="tool-scale-down" class="tool-btn" title="縮小">➖</button>
+      <button id="tool-delete" class="tool-btn danger" title="刪除選取元件">
+        🗑️
+      </button>
+      <button id="tool-brush" class="tool-btn" title="畫筆模式 (雪球上色)">
+        🖌️
+      </button>
+
+      <div class="divider"></div>
+
+      <button id="tool-undo" class="tool-btn" title="還原 (Undo)" disabled>
+        ↶
+      </button>
+      <button id="tool-redo" class="tool-btn" title="重做 (Redo)" disabled>
+        ↷
+      </button>
+
+      <div class="divider"></div>
+
+      <button id="btn-template" class="tool-btn warning" title="載入範本雪人">
+        ⛄
+      </button>
+      <button id="btn-save" class="tool-btn success" title="儲存 JSON 設定檔">
+        💾
+      </button>
+      <button id="btn-load" class="tool-btn" title="讀取 JSON 設定檔">
+        📂
+      </button>
+      <button id="btn-reset" class="tool-btn danger" title="重置畫布">
+        🔄
+      </button>
+      <input type="file" id="file-input" accept=".json" style="display: none" />
+    </div>
+
+    <script type="module">
+      import * as THREE from "three";
+      import { OutlineEffect } from "three/addons/effects/OutlineEffect.js";
+      import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+
+      function createSunlitToonGradient() {
+        const canvas = document.createElement("canvas");
+        canvas.width = 4;
+        canvas.height = 1;
+        const ctx = canvas.getContext("2d");
+        ctx.fillStyle = "#d0e4f7";
+        ctx.fillRect(0, 0, 1, 1);
+        ctx.fillStyle = "#f2f8ff";
+        ctx.fillRect(1, 0, 1, 1);
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(2, 0, 2, 1);
+        const texture = new THREE.CanvasTexture(canvas);
+        texture.minFilter = THREE.NearestFilter;
+        texture.magFilter = THREE.NearestFilter;
+        return texture;
+      }
+      const gradientMap = createSunlitToonGradient();
+
+      const scene = new THREE.Scene();
+
+      // 天空盒
+      const skyGeo = new THREE.SphereGeometry(40, 32, 15);
+      const skyMat = new THREE.MeshBasicMaterial({
+        color: 0x7ec0ee,
+        side: THREE.BackSide,
+      });
+      scene.add(new THREE.Mesh(skyGeo, skyMat));
+
+      // 地面：水平厚平台
+      // Z 深度不可太大，否則 +Z 面會被相機 near plane 裁掉而變黑條
+      // 頂面 y=-3.2 貼齊大雪球底部；Y 向下延伸讓 2D 正視有灰色地面
+      const groundGeo = new THREE.BoxGeometry(60, 8, 6);
+      const groundMat = new THREE.MeshBasicMaterial({
+        color: 0xe8eef4,
+      });
+      const ground = new THREE.Mesh(groundGeo, groundMat);
+      ground.userData.ignoreOutline = true;
+      // 中心 y=-7.2 → 頂面 = -7.2 + 4 = -3.2；z 置中，正面約在 z=3
+      ground.position.set(0, -7.2, 0);
+      scene.add(ground);
+
+      const ambientLight = new THREE.AmbientLight(0xddeeff, 0.85);
+      scene.add(ambientLight);
+
+      const sunLight = new THREE.DirectionalLight(0xfffaed, 1.25);
+      sunLight.position.set(6, 10, 8);
+      scene.add(sunLight);
+
+      const woodMat = new THREE.MeshToonMaterial({
+        color: 0x6e4726,
+        gradientMap,
+      });
+      const stoneMat = new THREE.MeshToonMaterial({
+        color: 0x222225,
+        gradientMap,
+      });
+      const stoneWhiteMat = new THREE.MeshToonMaterial({
+        color: 0xd0d7de,
+        gradientMap,
+      });
+      const carrotMat = new THREE.MeshToonMaterial({
+        color: 0xff5500,
+        gradientMap,
+      });
+
+      // ===== 畫筆狀態 =====
+      let brushMode = false;
+      let brushColor = "#ff6b6b";
+      let brushSize = 8;
+      let brushWater = 0.55;
+      let isPainting = false;
+      let lastPaintUV = null;
+      let lastPaintMesh = null;
+      const PAINT_RES = 512;
+
+      function createSnowballTexture() {
+        const canvas = document.createElement("canvas");
+        canvas.width = PAINT_RES;
+        canvas.height = PAINT_RES;
+        const ctx = canvas.getContext("2d");
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(0, 0, PAINT_RES, PAINT_RES);
+        const texture = new THREE.CanvasTexture(canvas);
+        texture.colorSpace = THREE.SRGBColorSpace;
+        texture.needsUpdate = true;
+        const mat = new THREE.MeshToonMaterial({
+          map: texture,
+          gradientMap,
+        });
+        return { mat, canvas, ctx, texture };
+      }
+
+      function stampPaint(mesh, u, v, color, size, alpha) {
+        if (!mesh.userData.paintCtx) return;
+        const ctx = mesh.userData.paintCtx;
+        const x = u * PAINT_RES;
+        const y = (1 - v) * PAINT_RES;
+        const r = Math.max(1.2, size * 0.6);
+
+        ctx.save();
+        ctx.fillStyle = color;
+        ctx.globalAlpha = alpha;
+        ctx.beginPath();
+        ctx.arc(x, y, r, 0, Math.PI * 2);
+        ctx.fill();
+        if (alpha > 0.15) {
+          ctx.globalAlpha = alpha * 0.25;
+          ctx.beginPath();
+          ctx.arc(x, y, r * 1.45, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        ctx.restore();
+      }
+
+      function paintOnSnowball(mesh, uv, color, size, alpha) {
+        if (!mesh.userData.paintCtx) return;
+
+        // 與上一個點之間插值，避免筆觸斷斷續續
+        if (lastPaintMesh === mesh && lastPaintUV && isPainting) {
+          const du = uv.x - lastPaintUV.x;
+          const dv = uv.y - lastPaintUV.y;
+          // UV 距離換算到像素，決定插值步數
+          const distPx = Math.hypot(du * PAINT_RES, dv * PAINT_RES);
+          const step = Math.max(1.5, size * 0.35);
+          const steps = Math.max(1, Math.ceil(distPx / step));
+          for (let i = 1; i <= steps; i++) {
+            const t = i / steps;
+            stampPaint(
+              mesh,
+              lastPaintUV.x + du * t,
+              lastPaintUV.y + dv * t,
+              color,
+              size,
+              alpha,
+            );
+          }
+        } else {
+          stampPaint(mesh, uv.x, uv.y, color, size, alpha);
+        }
+
+        lastPaintUV = { x: uv.x, y: uv.y };
+        lastPaintMesh = mesh;
+        mesh.userData.paintTexture.needsUpdate = true;
+      }
+
+      function clearPaintOnMesh(mesh) {
+        if (!mesh.userData.paintCtx) return;
+        const ctx = mesh.userData.paintCtx;
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(0, 0, PAINT_RES, PAINT_RES);
+        mesh.userData.paintTexture.needsUpdate = true;
+      }
+
+      function getPaintDataURL(mesh) {
+        if (!mesh.userData.paintCanvas) return null;
+        return mesh.userData.paintCanvas.toDataURL("image/png");
+      }
+
+      function applyPaintDataURL(mesh, dataURL) {
+        if (!mesh.userData.paintCtx || !dataURL) return;
+        const img = new Image();
+        img.onload = () => {
+          const ctx = mesh.userData.paintCtx;
+          ctx.clearRect(0, 0, PAINT_RES, PAINT_RES);
+          ctx.drawImage(img, 0, 0);
+          mesh.userData.paintTexture.needsUpdate = true;
+        };
+        img.src = dataURL;
+      }
+
+      const editorContainer = document.getElementById("editor-container");
+      const editorCanvas = document.getElementById("editor-canvas");
+
+      const aspect = editorContainer.clientWidth / editorContainer.clientHeight;
+      const viewSize = 9;
+      const orthoCamera = new THREE.OrthographicCamera(
+        (-viewSize * aspect) / 2,
+        (viewSize * aspect) / 2,
+        viewSize / 2,
+        -viewSize / 2,
+        0.1,
+        100,
+      );
+      orthoCamera.position.set(0, 0, 15);
+      orthoCamera.lookAt(0, 0, 0);
+
+      const editorRenderer = new THREE.WebGLRenderer({
+        canvas: editorCanvas,
+        antialias: true,
+        preserveDrawingBuffer: true,
+      });
+      editorRenderer.setSize(
+        editorContainer.clientWidth,
+        editorContainer.clientHeight,
+      );
+      const editorOutlineEffect = new OutlineEffect(editorRenderer, {
+        defaultThickness: 0.003,
+        defaultColor: [0, 0, 0],
+      });
+
+      const previewContainer = document.getElementById("preview-canvas");
+      const previewCamera = new THREE.PerspectiveCamera(
+        42,
+        previewContainer.clientWidth / previewContainer.clientHeight,
+        0.1,
+        100,
+      );
+      // 正面略俯視，對準雪人臉部（與編輯器朝向一致：+Z 為正面）
+      previewCamera.position.set(0, 0.2, 8);
+
+      const previewRenderer = new THREE.WebGLRenderer({ antialias: true });
+      previewRenderer.setSize(
+        previewContainer.clientWidth,
+        previewContainer.clientHeight,
+      );
+      previewContainer.appendChild(previewRenderer.domElement);
+      const previewOutlineEffect = new OutlineEffect(previewRenderer, {
+        defaultThickness: 0.003,
+        defaultColor: [0, 0, 0],
+      });
+
+      const controls = new OrbitControls(
+        previewCamera,
+        previewRenderer.domElement,
+      );
+      controls.target.set(0, -0.5, 0);
+      controls.enableDamping = true;
+      controls.dampingFactor = 0.05;
+
+      let interactiveObjects = [];
+      let snowballs = [];
+
+      function createPart(type) {
+        const group = new THREE.Group();
+        let mesh;
+
+        switch (type) {
+          case "snowball-large":
+          case "snowball-medium":
+          case "snowball-small": {
+            const radius =
+              type === "snowball-large"
+                ? 1.2
+                : type === "snowball-medium"
+                  ? 0.8
+                  : 0.5;
+            const { mat, canvas, ctx, texture } = createSnowballTexture();
+            mesh = new THREE.Mesh(
+              new THREE.SphereGeometry(radius, 32, 32),
+              mat,
+            );
+            mesh.userData.paintCanvas = canvas;
+            mesh.userData.paintCtx = ctx;
+            mesh.userData.paintTexture = texture;
+            mesh.userData.isSnowball = true;
+            break;
+          }
+          case "branch-straight":
+            mesh = new THREE.Mesh(
+              new THREE.CylinderGeometry(0.04, 0.06, 1.4, 12),
+              woodMat,
+            );
+            break;
+          case "branch-bent": {
+            // 三叉樹枝：主幹 + 左右對稱小枝，左右手旋轉後較協調
+            mesh = new THREE.Group();
+            const main = new THREE.Mesh(
+              new THREE.CylinderGeometry(0.035, 0.055, 1.35, 12),
+              woodMat,
+            );
+            const subL = new THREE.Mesh(
+              new THREE.CylinderGeometry(0.02, 0.035, 0.55, 10),
+              woodMat,
+            );
+            subL.position.set(-0.18, 0.28, 0);
+            subL.rotation.z = Math.PI / 3.2;
+            const subR = new THREE.Mesh(
+              new THREE.CylinderGeometry(0.02, 0.035, 0.55, 10),
+              woodMat,
+            );
+            subR.position.set(0.18, 0.28, 0);
+            subR.rotation.z = -Math.PI / 3.2;
+            mesh.add(main, subL, subR);
+            break;
+          }
+          case "stone":
+            mesh = new THREE.Mesh(
+              new THREE.DodecahedronGeometry(0.12, 0),
+              stoneMat,
+            );
+            mesh.scale.set(1, 0.85, 0.85);
+            break;
+          case "stone-white":
+            mesh = new THREE.Mesh(
+              new THREE.DodecahedronGeometry(0.12, 0),
+              stoneWhiteMat,
+            );
+            mesh.scale.set(1, 0.85, 0.85);
+            break;
+          case "carrot":
+            mesh = new THREE.Mesh(
+              new THREE.ConeGeometry(0.12, 0.7, 16),
+              carrotMat,
+            );
+            mesh.rotation.x = Math.PI / 2;
+            break;
+        }
+
+        if (mesh) group.add(mesh);
+        group.position.set(0, 0, 0);
+        group.userData = { type };
+
+        if (type.startsWith("snowball")) {
+          snowballs.push(mesh);
+        }
+        return group;
+      }
+
+      const snapRaycaster = new THREE.Raycaster();
+      function applySurfaceSnapping(obj) {
+        const type = obj.userData.type;
+        if (type !== "stone" && type !== "stone-white" && type !== "carrot") {
+          obj.position.z = 0;
+          return;
+        }
+        const rayOrigin = new THREE.Vector3(obj.position.x, obj.position.y, 10);
+        snapRaycaster.set(rayOrigin, new THREE.Vector3(0, 0, -1));
+
+        const intersects = snapRaycaster.intersectObjects(snowballs, false);
+        if (intersects.length > 0) {
+          obj.position.z = intersects[0].point.z - 0.04;
+        } else {
+          obj.position.z = 0.1;
+        }
+      }
+
+      let selectedObject = null;
+      const gizmoGroup = new THREE.Group();
+      gizmoGroup.position.z = 0.2;
+      scene.add(gizmoGroup);
+
+      const boxGeo = new THREE.BufferGeometry();
+      const boxMat = new THREE.LineBasicMaterial({
+        color: 0x0088ff,
+        linewidth: 2,
+      });
+      const boxLine = new THREE.LineLoop(boxGeo, boxMat);
+
+      const handleGeo = new THREE.BoxGeometry(0.15, 0.15, 0);
+      const handleMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+      const rotHandleMat = new THREE.MeshBasicMaterial({ color: 0x00ff88 });
+
+      const handles = {
+        tl: new THREE.Mesh(handleGeo, handleMat),
+        tr: new THREE.Mesh(handleGeo, handleMat),
+        bl: new THREE.Mesh(handleGeo, handleMat),
+        br: new THREE.Mesh(handleGeo, handleMat),
+        rot: new THREE.Mesh(new THREE.CircleGeometry(0.09, 16), rotHandleMat),
+      };
+
+      gizmoGroup.add(boxLine);
+      Object.values(handles).forEach((h) => gizmoGroup.add(h));
+      gizmoGroup.visible = false;
+
+      function updateGizmo() {
+        if (!selectedObject) {
+          gizmoGroup.visible = false;
+          return;
+        }
+        gizmoGroup.visible = true;
+        gizmoGroup.position.x = selectedObject.position.x;
+        gizmoGroup.position.y = selectedObject.position.y;
+        gizmoGroup.rotation.z = selectedObject.rotation.z;
+
+        const box = new THREE.Box3().setFromObject(selectedObject);
+        const size = new THREE.Vector3();
+        box.getSize(size);
+
+        const w = size.x / 2 + 0.08;
+        const h = size.y / 2 + 0.08;
+
+        const points = [
+          new THREE.Vector3(-w, h, 0),
+          new THREE.Vector3(w, h, 0),
+          new THREE.Vector3(w, -h, 0),
+          new THREE.Vector3(-w, -h, 0),
+        ];
+        boxGeo.setFromPoints(points);
+
+        handles.tl.position.set(-w, h, 0);
+        handles.tr.position.set(w, h, 0);
+        handles.bl.position.set(-w, -h, 0);
+        handles.br.position.set(w, -h, 0);
+        handles.rot.position.set(0, h + 0.35, 0);
+      }
+
+      let historyStack = [];
+      let historyStep = -1;
+      let isInternalStateChange = false;
+
+      function getCanvasState() {
+        return interactiveObjects.map((obj) => {
+          const state = {
+            type: obj.userData.type,
+            position: {
+              x: obj.position.x,
+              y: obj.position.y,
+              z: obj.position.z,
+            },
+            rotation: {
+              x: obj.rotation.x,
+              y: obj.rotation.y,
+              z: obj.rotation.z,
+            },
+            scale: { x: obj.scale.x, y: obj.scale.y, z: obj.scale.z },
+          };
+          // 雪球塗色資料
+          if (obj.userData.type.startsWith("snowball") && obj.children[0]) {
+            const paint = getPaintDataURL(obj.children[0]);
+            if (paint) state.paint = paint;
+          }
+          return state;
+        });
+      }
+
+      function saveHistory() {
+        if (isInternalStateChange) return;
+
+        const currentState = JSON.stringify(getCanvasState());
+        if (historyStep >= 0 && historyStack[historyStep] === currentState)
+          return;
+
+        historyStack = historyStack.slice(0, historyStep + 1);
+        historyStack.push(currentState);
+        historyStep++;
+
+        updateUndoRedoUI();
+      }
+
+      function restoreCanvasState(jsonString) {
+        isInternalStateChange = true;
+        const config = JSON.parse(jsonString);
+
+        interactiveObjects.forEach((obj) => scene.remove(obj));
+        interactiveObjects = [];
+        snowballs = [];
+        selectedObject = null;
+
+        const snowballData = config.filter((item) =>
+          item.type.startsWith("snowball"),
+        );
+        const otherData = config.filter(
+          (item) => !item.type.startsWith("snowball"),
+        );
+
+        [...snowballData, ...otherData].forEach((item) => {
+          const part = spawnPartAt(
+            item.type,
+            item.position.x,
+            item.position.y,
+            false,
+          );
+          part.position.z = item.position?.z ?? 0;
+          const r = item.rotation || { x: 0, y: 0, z: 0 };
+          const s = item.scale || { x: 1, y: 1, z: 1 };
+          part.rotation.set(r.x || 0, r.y || 0, r.z || 0);
+          part.scale.set(s.x || 1, s.y || 1, s.z || 1);
+          if (item.paint && part.children[0]) {
+            applyPaintDataURL(part.children[0], item.paint);
+          }
+        });
+
+        selectedObject = null;
+        updateGizmo();
+        isInternalStateChange = false;
+      }
+
+      function updateUndoRedoUI() {
+        document.getElementById("tool-undo").disabled = historyStep <= 0;
+        document.getElementById("tool-redo").disabled =
+          historyStep >= historyStack.length - 1;
+      }
+
+      document.getElementById("tool-undo").addEventListener("click", () => {
+        if (historyStep > 0) {
+          historyStep--;
+          restoreCanvasState(historyStack[historyStep]);
+          updateUndoRedoUI();
+        }
+      });
+
+      document.getElementById("tool-redo").addEventListener("click", () => {
+        if (historyStep < historyStack.length - 1) {
+          historyStep++;
+          restoreCanvasState(historyStack[historyStep]);
+          updateUndoRedoUI();
+        }
+      });
+
+      const raycaster = new THREE.Raycaster();
+      const mouse = new THREE.Vector2();
+
+      function spawnPartAt(type, posX = 0, posY = 0, triggerHistory = true) {
+        const newPart = createPart(type);
+        newPart.position.set(posX, posY, 0);
+
+        scene.add(newPart);
+        interactiveObjects.push(newPart);
+        selectedObject = newPart;
+
+        applySurfaceSnapping(newPart);
+        updateGizmo();
+
+        if (triggerHistory) saveHistory();
+        return newPart;
+      }
+
+      document.querySelectorAll(".item-btn[data-type]").forEach((btn) => {
+        btn.addEventListener("dragstart", (e) => {
+          e.dataTransfer.setData("text/plain", e.target.dataset.type);
+        });
+
+        btn.addEventListener("click", (e) => {
+          const type = e.target.dataset.type;
+          if (!type) return;
+
+          // 點選其他元件時自動關閉畫筆模式
+          if (brushMode) setBrushMode(false);
+
+          const jitter = (Math.random() - 0.5) * 0.3;
+          if (type.startsWith("snowball")) {
+            // 雪球仍在中央附近生成
+            spawnPartAt(type, jitter, jitter - 0.5);
+          } else {
+            // 其他元件改到左上方，避免被雪球擋住
+            spawnPartAt(type, -3.2 + jitter, 2.4 + jitter);
+          }
+        });
+      });
+
+      editorContainer.addEventListener("dragover", (e) => e.preventDefault());
+      editorContainer.addEventListener("drop", (e) => {
+        e.preventDefault();
+        const type = e.dataTransfer.getData("text/plain");
+        if (!type) return;
+
+        const rect = editorCanvas.getBoundingClientRect();
+        mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+        mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+
+        raycaster.setFromCamera(mouse, orthoCamera);
+        const worldPos = new THREE.Vector3();
+        raycaster.ray.intersectPlane(
+          new THREE.Plane(new THREE.Vector3(0, 0, 1), 0),
+          worldPos,
+        );
+
+        spawnPartAt(type, worldPos.x, worldPos.y);
+      });
+
+      let isDragging = false;
+      let mode = null;
+      let dragStartMouse = new THREE.Vector2();
+      let initialPos = new THREE.Vector3();
+      let initialScale = new THREE.Vector3();
+      let initialRotZ = 0;
+
+      function doPaintAtPointer(e) {
+        const rect = editorCanvas.getBoundingClientRect();
+        mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+        mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+        raycaster.setFromCamera(mouse, orthoCamera);
+
+        const intersects = raycaster.intersectObjects(snowballs, false);
+        if (intersects.length > 0) {
+          const hit = intersects[0];
+          if (hit.uv) {
+            paintOnSnowball(
+              hit.object,
+              hit.uv,
+              brushColor,
+              brushSize,
+              brushWater,
+            );
+          }
+        }
+      }
+
+      editorCanvas.addEventListener("pointerdown", (e) => {
+        const rect = editorCanvas.getBoundingClientRect();
+        mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+        mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+
+        raycaster.setFromCamera(mouse, orthoCamera);
+
+        // 畫筆模式：只在雪球上塗色
+        if (brushMode) {
+          isPainting = true;
+          doPaintAtPointer(e);
+          return;
+        }
+
+        if (selectedObject && gizmoGroup.visible) {
+          const gizmoIntersects = raycaster.intersectObjects(
+            Object.values(handles),
+          );
+          if (gizmoIntersects.length > 0) {
+            const hit = gizmoIntersects[0].object;
+            isDragging = true;
+            dragStartMouse.set(e.clientX, e.clientY);
+            initialScale.copy(selectedObject.scale);
+            initialRotZ = selectedObject.rotation.z;
+            mode = hit === handles.rot ? "rotate" : "scale";
+            return;
+          }
+        }
+
+        const intersects = raycaster.intersectObjects(interactiveObjects, true);
+        if (intersects.length > 0) {
+          let obj = intersects[0].object;
+          while (obj.parent && obj.parent !== scene) obj = obj.parent;
+
+          selectedObject = obj;
+          isDragging = true;
+          mode = "move";
+          dragStartMouse.set(e.clientX, e.clientY);
+          initialPos.copy(selectedObject.position);
+          updateGizmo();
+        } else {
+          selectedObject = null;
+          updateGizmo();
+        }
+      });
+
+      window.addEventListener("pointermove", (e) => {
+        if (brushMode && isPainting) {
+          doPaintAtPointer(e);
+          return;
+        }
+
+        if (!isDragging || !selectedObject) return;
+
+        const deltaX = (e.clientX - dragStartMouse.x) * 0.015;
+        const deltaY = -(e.clientY - dragStartMouse.y) * 0.015;
+
+        if (mode === "move") {
+          selectedObject.position.x = initialPos.x + deltaX;
+          selectedObject.position.y = initialPos.y + deltaY;
+          applySurfaceSnapping(selectedObject);
+        } else if (mode === "scale") {
+          const factor = 1 + deltaX;
+          const newScale = Math.max(0.1, initialScale.x * factor);
+          selectedObject.scale.set(newScale, newScale, newScale);
+        } else if (mode === "rotate") {
+          selectedObject.rotation.x = 0;
+          selectedObject.rotation.y = 0;
+          selectedObject.rotation.z = initialRotZ - deltaX * 2;
+        }
+
+        updateGizmo();
+      });
+
+      window.addEventListener("pointerup", () => {
+        if (isPainting) {
+          isPainting = false;
+          lastPaintUV = null;
+          lastPaintMesh = null;
+          saveHistory();
+          return;
+        }
+        if (isDragging) {
+          isDragging = false;
+          saveHistory();
+        }
+      });
+
+      function deleteSelected() {
+        if (!selectedObject) return;
+        scene.remove(selectedObject);
+        const snowballIdx = snowballs.indexOf(selectedObject.children[0]);
+        if (snowballIdx > -1) snowballs.splice(snowballIdx, 1);
+        const idx = interactiveObjects.indexOf(selectedObject);
+        if (idx > -1) interactiveObjects.splice(idx, 1);
+
+        selectedObject = null;
+        updateGizmo();
+        saveHistory();
+      }
+
+      window.addEventListener("keydown", (e) => {
+        if ((e.key === "Delete" || e.key === "Backspace") && selectedObject) {
+          deleteSelected();
+        }
+        if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "z") {
+          if (e.shiftKey) {
+            document.getElementById("tool-redo").click();
+          } else {
+            document.getElementById("tool-undo").click();
+          }
+        }
+      });
+
+      const rad15 = (15 * Math.PI) / 180;
+      document.getElementById("tool-rot-left").addEventListener("click", () => {
+        if (selectedObject) {
+          selectedObject.rotation.z += rad15;
+          updateGizmo();
+          saveHistory();
+        }
+      });
+      document
+        .getElementById("tool-rot-right")
+        .addEventListener("click", () => {
+          if (selectedObject) {
+            selectedObject.rotation.z -= rad15;
+            updateGizmo();
+            saveHistory();
+          }
+        });
+      document.getElementById("tool-scale-up").addEventListener("click", () => {
+        if (selectedObject) {
+          selectedObject.scale.multiplyScalar(1.1);
+          updateGizmo();
+          saveHistory();
+        }
+      });
+      document
+        .getElementById("tool-scale-down")
+        .addEventListener("click", () => {
+          if (selectedObject) {
+            selectedObject.scale.multiplyScalar(0.9);
+            updateGizmo();
+            saveHistory();
+          }
+        });
+      document
+        .getElementById("tool-delete")
+        .addEventListener("click", deleteSelected);
+
+      // ===== 畫筆 UI 綁定（側邊欄元件 + 工具列 兩處皆可切換）=====
+      const brushBtn = document.getElementById("tool-brush");
+      const sidebarBrushBtn = document.getElementById("sidebar-brush-btn");
+
+      function setBrushMode(on) {
+        brushMode = !!on;
+        brushBtn.classList.toggle("active", brushMode);
+        sidebarBrushBtn.classList.toggle("active", brushMode);
+        sidebarBrushBtn.textContent = brushMode
+          ? "🖌️ 畫筆 (使用中)"
+          : "🖌️ 畫筆 (雪球上色)";
+        editorCanvas.classList.toggle("brush-cursor", brushMode);
+        if (brushMode) {
+          selectedObject = null;
+          updateGizmo();
+        }
+      }
+
+      function toggleBrushMode() {
+        setBrushMode(!brushMode);
+      }
+
+      brushBtn.addEventListener("click", toggleBrushMode);
+      sidebarBrushBtn.addEventListener("click", toggleBrushMode);
+
+      document.getElementById("brush-color").addEventListener("input", (e) => {
+        brushColor = e.target.value;
+      });
+      document.getElementById("brush-size").addEventListener("input", (e) => {
+        brushSize = parseInt(e.target.value, 10);
+        document.getElementById("brush-size-val").textContent = brushSize;
+      });
+      document.getElementById("brush-water").addEventListener("input", (e) => {
+        brushWater = parseInt(e.target.value, 10) / 100;
+        document.getElementById("brush-water-val").textContent =
+          e.target.value + "%";
+      });
+
+      document
+        .getElementById("btn-clear-paint")
+        .addEventListener("click", () => {
+          if (
+            selectedObject &&
+            selectedObject.userData.type &&
+            selectedObject.userData.type.startsWith("snowball") &&
+            selectedObject.children[0]
+          ) {
+            clearPaintOnMesh(selectedObject.children[0]);
+            saveHistory();
+          } else {
+            snowballs.forEach((m) => clearPaintOnMesh(m));
+            saveHistory();
+          }
+        });
+
+      function clearCanvas() {
+        interactiveObjects.forEach((obj) => scene.remove(obj));
+        interactiveObjects = [];
+        snowballs = [];
+        selectedObject = null;
+        updateGizmo();
+        saveHistory();
+      }
+
+      document
+        .getElementById("btn-reset")
+        .addEventListener("click", clearCanvas);
+
+      const templates = {
+        classic2: [
+          {
+            type: "snowball-large",
+            position: { x: 0, y: -2.0, z: 0 },
+            rotation: { x: 0, y: 0, z: 0 },
+            scale: { x: 1, y: 1, z: 1 },
+          },
+          {
+            type: "snowball-small",
+            position: { x: 0, y: -0.4, z: 0 },
+            rotation: { x: 0, y: 0, z: 0 },
+            scale: { x: 1.1, y: 1.1, z: 1.1 },
+          },
+          {
+            type: "carrot",
+            position: { x: 0, y: -0.42, z: 0.5 },
+            rotation: { x: 0, y: 0, z: 0 },
+            scale: { x: 1, y: 1, z: 1 },
+          },
+          {
+            type: "stone",
+            position: { x: -0.18, y: -0.25, z: 0.48 },
+            rotation: { x: 0, y: 0, z: 0 },
+            scale: { x: 0.85, y: 0.85, z: 0.85 },
+          },
+          {
+            type: "stone",
+            position: { x: 0.18, y: -0.25, z: 0.48 },
+            rotation: { x: 0, y: 0, z: 0 },
+            scale: { x: 0.85, y: 0.85, z: 0.85 },
+          },
+        ],
+        classic3: [
+          {
+            type: "snowball-large",
+            position: { x: 0, y: -2.0, z: 0 },
+            rotation: { x: 0, y: 0, z: 0 },
+            scale: { x: 1, y: 1, z: 1 },
+          },
+          {
+            type: "snowball-medium",
+            position: { x: 0, y: -0.4, z: 0 },
+            rotation: { x: 0, y: 0, z: 0 },
+            scale: { x: 1, y: 1, z: 1 },
+          },
+          {
+            type: "snowball-small",
+            position: { x: 0, y: 0.8, z: 0 },
+            rotation: { x: 0, y: 0, z: 0 },
+            scale: { x: 1, y: 1, z: 1 },
+          },
+          {
+            type: "branch-bent",
+            position: { x: -1.1, y: -0.3, z: 0 },
+            rotation: { x: 0, y: 0, z: 0.8 },
+            scale: { x: 1, y: 1, z: 1 },
+          },
+          {
+            type: "branch-bent",
+            position: { x: 1.1, y: -0.3, z: 0 },
+            rotation: { x: 0, y: 0, z: -0.8 },
+            scale: { x: 1, y: 1, z: 1 },
+          },
+          {
+            type: "carrot",
+            position: { x: 0, y: 0.78, z: 0.48 },
+            rotation: { x: 0, y: 0, z: 0 },
+            scale: { x: 1, y: 1, z: 1 },
+          },
+          {
+            type: "stone",
+            position: { x: -0.16, y: 0.92, z: 0.45 },
+            rotation: { x: 0, y: 0, z: 0 },
+            scale: { x: 0.75, y: 0.75, z: 0.75 },
+          },
+          {
+            type: "stone",
+            position: { x: 0.16, y: 0.92, z: 0.45 },
+            rotation: { x: 0, y: 0, z: 0 },
+            scale: { x: 0.75, y: 0.75, z: 0.75 },
+          },
+        ],
+        cool: [
+          {
+            type: "snowball-large",
+            position: { x: 0, y: -2.0, z: 0 },
+            rotation: { x: 0, y: 0, z: 0 },
+            scale: { x: 1, y: 1, z: 1 },
+          },
+          {
+            type: "snowball-medium",
+            position: { x: 0, y: -0.4, z: 0 },
+            rotation: { x: 0, y: 0, z: 0 },
+            scale: { x: 1, y: 1, z: 1 },
+          },
+          {
+            type: "snowball-small",
+            position: { x: 0, y: 0.8, z: 0 },
+            rotation: { x: 0, y: 0, z: 0 },
+            scale: { x: 1, y: 1, z: 1 },
+          },
+          {
+            type: "branch-bent",
+            position: { x: -0.9, y: -0.2, z: 0 },
+            rotation: { x: 0, y: 0, z: 0.6 },
+            scale: { x: 1, y: 1, z: 1 },
+          },
+          {
+            type: "branch-bent",
+            position: { x: 0.9, y: -0.2, z: 0 },
+            rotation: { x: 0, y: 0, z: -0.6 },
+            scale: { x: 1, y: 1, z: 1 },
+          },
+          {
+            type: "stone-white",
+            position: { x: 0, y: -0.1, z: 0.81 },
+            rotation: { x: 0, y: 0, z: 0 },
+            scale: { x: 0.9, y: 0.9, z: 0.9 },
+          },
+          {
+            type: "stone-white",
+            position: { x: 0, y: -0.4, z: 0.82 },
+            rotation: { x: 0, y: 0, z: 0 },
+            scale: { x: 0.9, y: 0.9, z: 0.9 },
+          },
+          {
+            type: "stone-white",
+            position: { x: 0, y: -0.7, z: 0.78 },
+            rotation: { x: 0, y: 0, z: 0 },
+            scale: { x: 0.9, y: 0.9, z: 0.9 },
+          },
+          {
+            type: "stone",
+            position: { x: -0.15, y: 0.92, z: 0.48 },
+            rotation: { x: 0, y: 0, z: 0 },
+            scale: { x: 0.7, y: 0.7, z: 0.7 },
+          },
+          {
+            type: "stone",
+            position: { x: 0.15, y: 0.92, z: 0.48 },
+            rotation: { x: 0, y: 0, z: 0 },
+            scale: { x: 0.7, y: 0.7, z: 0.7 },
+          },
+          // 微笑嘴巴（三顆小石頭）
+          {
+            type: "stone",
+            position: { x: -0.12, y: 0.68, z: 0.44 },
+            rotation: { x: 0, y: 0, z: 0 },
+            scale: { x: 0.45, y: 0.45, z: 0.45 },
+          },
+          {
+            type: "stone",
+            position: { x: 0, y: 0.64, z: 0.45 },
+            rotation: { x: 0, y: 0, z: 0 },
+            scale: { x: 0.45, y: 0.45, z: 0.45 },
+          },
+          {
+            type: "stone",
+            position: { x: 0.12, y: 0.68, z: 0.44 },
+            rotation: { x: 0, y: 0, z: 0 },
+            scale: { x: 0.45, y: 0.45, z: 0.45 },
+          },
+          {
+            type: "carrot",
+            position: { x: 0, y: 0.78, z: 0.52 },
+            rotation: { x: 0, y: 0, z: 0 },
+            scale: { x: 0.9, y: 0.9, z: 0.9 },
+          },
+        ],
+      };
+
+      const templateMenu = document.getElementById("template-menu");
+      document.getElementById("btn-template").addEventListener("click", (e) => {
+        e.stopPropagation();
+        templateMenu.style.display =
+          templateMenu.style.display === "flex" ? "none" : "flex";
+      });
+
+      function resetPreviewCamera() {
+        previewCamera.position.set(0, 0.2, 8);
+        controls.target.set(0, -0.5, 0);
+        controls.update();
+      }
+
+      document.querySelectorAll("#template-menu button").forEach((btn) => {
+        btn.addEventListener("click", (e) => {
+          const tmplKey = e.target.dataset.template;
+          if (templates[tmplKey]) {
+            restoreCanvasState(JSON.stringify(templates[tmplKey]));
+            saveHistory();
+            resetPreviewCamera();
+          }
+          templateMenu.style.display = "none";
+        });
+      });
+
+      window.addEventListener("click", () => {
+        templateMenu.style.display = "none";
+      });
+
+      document.getElementById("btn-save").addEventListener("click", () => {
+        const blob = new Blob([JSON.stringify(getCanvasState(), null, 2)], {
+          type: "application/json",
+        });
+        const link = document.createElement("link");
+        link.download = "snowman-config.json";
+        link.href = URL.createObjectURL(blob);
+        link.click();
+        URL.revokeObjectURL(link.href);
+      });
+
+      const fileInput = document.getElementById("file-input");
+      document.getElementById("btn-load").addEventListener("click", () => {
+        fileInput.value = "";
+        fileInput.click();
+      });
+
+      fileInput.addEventListener("change", (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = (evt) => {
+          try {
+            restoreCanvasState(evt.target.result);
+            saveHistory();
+          } catch (err) {
+            alert("載入失敗：JSON 設定檔格式不符合標準");
+          }
+        };
+        reader.readAsText(file);
+      });
+
+      saveHistory();
+
+      window.addEventListener("resize", () => {
+        const w = editorContainer.clientWidth;
+        const h = editorContainer.clientHeight;
+        const asp = w / h;
+        orthoCamera.left = (-viewSize * asp) / 2;
+        orthoCamera.right = (viewSize * asp) / 2;
+        orthoCamera.top = viewSize / 2;
+        orthoCamera.bottom = -viewSize / 2;
+        orthoCamera.updateProjectionMatrix();
+        editorRenderer.setSize(w, h);
+      });
+
+      function animate() {
+        requestAnimationFrame(animate);
+        controls.update();
+        editorOutlineEffect.render(scene, orthoCamera);
+        previewOutlineEffect.render(scene, previewCamera);
+      }
+      animate();
+    </script>
+  </body>
+</html>

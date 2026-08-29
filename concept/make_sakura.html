@@ -1,0 +1,1676 @@
+<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width,initial-scale=1,viewport-fit=cover"
+    />
+    <title>花瓣畫作產生器｜Meadowtide</title>
+    <style>
+      :root {
+        --ink: #44342f;
+        --muted: #806f67;
+        --panel: #fffaf3;
+        --line: #ead9cb;
+        --accent: #c45170;
+        --paper: #f8f0df;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+        overflow: hidden;
+        font-family: ui-rounded, "Noto Sans TC", system-ui, sans-serif;
+        color: var(--ink);
+        background: #dce8dc;
+        touch-action: none;
+        user-select: none;
+      }
+      button,
+      input {
+        font: inherit;
+      }
+      button {
+        color: inherit;
+      }
+      button:focus-visible {
+        outline: 3px solid #67a3a0;
+        outline-offset: 2px;
+      }
+      #app {
+        height: 100%;
+        display: grid;
+        grid-template-columns: 260px 1fr;
+        transition: grid-template-columns 0.2s ease;
+      }
+      #app.panel-closed {
+        grid-template-columns: 0 1fr;
+      }
+      #app.panel-closed aside {
+        transform: translateX(-100%);
+        pointer-events: none;
+      }
+      aside {
+        z-index: 5;
+        padding: 20px 18px;
+        background: rgba(255, 250, 243, 0.97);
+        border-right: 1px solid var(--line);
+        box-shadow: 8px 0 24px #6b5b4b18;
+        overflow: auto;
+        touch-action: pan-y;
+        transition: transform 0.2s ease;
+      }
+      .brand {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        margin-bottom: 18px;
+      }
+      .brand-mark {
+        width: 38px;
+        height: 38px;
+        border-radius: 13px;
+        background: #f4c4d0;
+        display: grid;
+        place-items: center;
+        font-size: 22px;
+      }
+      .brand h1 {
+        font-size: 17px;
+        margin: 0;
+      }
+      .brand p {
+        font-size: 11px;
+        color: var(--muted);
+        margin: 2px 0 0;
+      }
+      h2 {
+        font-size: 11px;
+        letter-spacing: 0.13em;
+        color: var(--muted);
+        margin: 18px 0 8px;
+      }
+      .materials {
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr;
+        gap: 7px;
+      }
+      .material,
+      .tool {
+        border: 1px solid var(--line);
+        background: #fff;
+        border-radius: 12px;
+        padding: 9px;
+        cursor: pointer;
+        transition: 0.15s;
+      }
+      .material:hover,
+      .tool:hover {
+        transform: translateY(-1px);
+        border-color: #d9a3b2;
+      }
+      .material.active,
+      .tool.active {
+        border-color: var(--accent);
+        background: #fff2f5;
+        box-shadow: 0 0 0 2px #f2c3d0;
+      }
+      .material span {
+        display: block;
+        font-size: 20px;
+      }
+      .material small {
+        font-size: 11px;
+        font-weight: 700;
+      }
+      .row {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+      }
+      .control {
+        padding: 10px 0;
+        border-bottom: 1px dashed var(--line);
+      }
+      .control label {
+        display: flex;
+        justify-content: space-between;
+        font-size: 12px;
+        margin-bottom: 7px;
+      }
+      .control output {
+        color: #8c4058;
+        font-weight: 700;
+      }
+      input[type="color"] {
+        width: 44px;
+        height: 34px;
+        border: 0;
+        padding: 2px;
+        background: #fff;
+        border-radius: 9px;
+      }
+      input[type="range"] {
+        width: 100%;
+        accent-color: var(--accent);
+      }
+      .tools {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+      }
+      .tool {
+        font-size: 12px;
+        font-weight: 700;
+      }
+      .tool.wide {
+        grid-column: 1/-1;
+      }
+      .hint {
+        font-size: 11px;
+        line-height: 1.55;
+        color: var(--muted);
+        margin-top: 14px;
+        padding: 10px;
+        background: #f5eee5;
+        border-radius: 10px;
+      }
+      main {
+        position: relative;
+        min-width: 0;
+        background: radial-gradient(circle at 50% 38%, #f7f3e9 0, #dce8dc 72%);
+      }
+      canvas {
+        display: block;
+        width: 100%;
+        height: 100%;
+        cursor: grab;
+      }
+      canvas.painting {
+        cursor: crosshair;
+      }
+      #topbar {
+        position: absolute;
+        top: 14px;
+        left: 50%;
+        transform: translateX(-50%);
+        display: flex;
+        gap: 7px;
+        padding: 7px;
+        background: #fffaf3e8;
+        border: 1px solid #fff;
+        border-radius: 16px;
+        box-shadow: 0 6px 20px #554b3e22;
+        backdrop-filter: blur(8px);
+        z-index: 3;
+      }
+      #topbar button {
+        height: 34px;
+        min-width: 38px;
+        border: 0;
+        border-radius: 10px;
+        background: transparent;
+        cursor: pointer;
+        font-weight: 800;
+      }
+      #topbar button:hover {
+        background: #f4e5e2;
+      }
+      #topbar .primary {
+        padding: 0 14px;
+        background: var(--accent);
+        color: white;
+      }
+      #status {
+        position: absolute;
+        left: 50%;
+        bottom: 82px;
+        transform: translateX(-50%);
+        padding: 8px 13px;
+        border-radius: 20px;
+        background: #493c38d9;
+        color: #fff;
+        font-size: 12px;
+        pointer-events: none;
+        opacity: 0;
+        transition: 0.2s;
+        z-index: 8;
+      }
+      #status.show {
+        opacity: 1;
+      }
+      #layerBadge {
+        position: absolute;
+        right: 16px;
+        bottom: 80px;
+        padding: 9px 12px;
+        border-radius: 12px;
+        background: #fffaf3df;
+        color: var(--muted);
+        font-size: 11px;
+        box-shadow: 0 4px 16px #554b3e1c;
+      }
+      #panelToggle,
+      #radialTrigger {
+        position: absolute;
+        z-index: 9;
+        width: 48px;
+        height: 48px;
+        border: 1px solid #fff;
+        background: #fffaf3e8;
+        border-radius: 15px;
+        box-shadow: 0 5px 18px #554b3e2a;
+        cursor: pointer;
+        font-size: 20px;
+      }
+      #panelToggle {
+        left: 14px;
+        top: 14px;
+      }
+      #radialTrigger {
+        left: 18px;
+        bottom: 18px;
+        background: #c45170;
+        color: #fff;
+      }
+      #actionbar {
+        position: absolute;
+        z-index: 7;
+        left: 50%;
+        bottom: 14px;
+        transform: translateX(-50%);
+        display: flex;
+        gap: 7px;
+        align-items: center;
+        padding: 7px;
+        border-radius: 18px;
+        background: #fffaf3ed;
+        border: 1px solid #fff;
+        box-shadow: 0 5px 20px #554b3e2c;
+        backdrop-filter: blur(9px);
+      }
+      #actionbar button {
+        height: 42px;
+        min-width: 72px;
+        border: 0;
+        border-radius: 12px;
+        background: transparent;
+        font-size: 12px;
+        font-weight: 800;
+        cursor: pointer;
+      }
+      #actionbar button:hover,
+      #actionbar button.active {
+        background: #f7dfe5;
+        color: #8c4058;
+      }
+      .key {
+        display: inline-grid;
+        place-items: center;
+        min-width: 18px;
+        height: 18px;
+        padding: 0 4px;
+        margin-right: 4px;
+        border-radius: 5px;
+        background: #493c38;
+        color: #fff;
+        font-size: 10px;
+      }
+      #radial {
+        position: absolute;
+        z-index: 20;
+        width: 228px;
+        height: 228px;
+        transform: translate(-50%, -50%) scale(0.8);
+        opacity: 0;
+        pointer-events: none;
+        transition: 0.14s ease;
+      }
+      #radial.open {
+        opacity: 1;
+        transform: translate(-50%, -50%) scale(1);
+        pointer-events: auto;
+      }
+      .radial-back {
+        position: absolute;
+        inset: 29px;
+        border-radius: 50%;
+        background: #fffaf3f2;
+        border: 1px solid #fff;
+        box-shadow: 0 12px 35px #493c3844;
+      }
+      .radial-item {
+        position: absolute;
+        width: 72px;
+        height: 72px;
+        border: 0;
+        border-radius: 50%;
+        background: #fff;
+        color: #493c38;
+        box-shadow: 0 4px 14px #493c3833;
+        cursor: pointer;
+        font-weight: 800;
+        font-size: 11px;
+      }
+      .radial-item span {
+        display: block;
+        font-size: 23px;
+      }
+      .radial-item[data-mode="petal"] {
+        left: 78px;
+        top: 0;
+      }
+      .radial-item[data-mode="twig"] {
+        right: 3px;
+        top: 78px;
+      }
+      .radial-item[data-mode="brush"] {
+        left: 78px;
+        bottom: 0;
+      }
+      .radial-item[data-action="close"] {
+        left: 3px;
+        top: 78px;
+      }
+      .radial-item:hover,
+      .radial-item.active {
+        background: #f4c4d0;
+      }
+      .radial-center {
+        position: absolute;
+        left: 82px;
+        top: 82px;
+        width: 64px;
+        height: 64px;
+        border: 0;
+        border-radius: 50%;
+        background: #8c4058;
+        color: #fff;
+        font-size: 12px;
+        font-weight: 800;
+      }
+      #inputHint {
+        position: absolute;
+        right: 16px;
+        top: 16px;
+        z-index: 5;
+        padding: 7px 10px;
+        border-radius: 10px;
+        background: #493c38cf;
+        color: #fff;
+        font-size: 11px;
+        pointer-events: none;
+      }
+      #scrim {
+        display: none;
+      }
+      .quick-choice {
+        display: block;
+      }
+      aside {
+        display: none;
+      }
+      #app {
+        grid-template-columns: 1fr;
+      }
+      .quick-settings-panel {
+        display: none;
+        position: absolute;
+        right: max(10px, env(safe-area-inset-right));
+        bottom: calc(70px + env(safe-area-inset-bottom));
+        z-index: 12;
+        width: min(292px, calc(100vw - 20px));
+        padding: 16px;
+        border: 1px solid #fff;
+        border-radius: 18px;
+        background: #fffaf3f5;
+        box-shadow: 0 12px 32px #493c3840;
+        backdrop-filter: blur(12px);
+      }
+      .quick-settings-panel.open {
+        display: block;
+        animation: quickSettingsIn 0.16s ease-out;
+      }
+      @keyframes quickSettingsIn {
+        from { opacity: 0; transform: translateY(8px) scale(0.98); }
+        to { opacity: 1; transform: translateY(0) scale(1); }
+      }
+      .quick-settings-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        margin-bottom: 8px;
+      }
+      .quick-settings-head strong {
+        font-size: 14px;
+      }
+      .quick-settings-close {
+        width: 30px;
+        height: 30px;
+        border: 0;
+        border-radius: 9px;
+        background: #f4e5e2;
+        cursor: pointer;
+        font-weight: 800;
+      }
+      .quick-setting {
+        padding: 10px 0;
+        border-top: 1px dashed var(--line);
+      }
+      .quick-setting label {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        margin-bottom: 8px;
+        font-size: 12px;
+        font-weight: 700;
+      }
+      .quick-setting output {
+        color: #8c4058;
+      }
+      #quickColor {
+        width: 48px;
+        height: 32px;
+        border: 0;
+        padding: 2px;
+        border-radius: 9px;
+        background: #fff;
+      }
+      #quickSize {
+        width: 100%;
+        accent-color: var(--accent);
+      }
+      #quickNatural {
+        width: 100%;
+        min-height: 36px;
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        background: #fff;
+        cursor: pointer;
+        font-size: 12px;
+        font-weight: 700;
+      }
+      .template-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 7px;
+      }
+      .template-choice {
+        min-height: 38px;
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        background: #fff;
+        color: var(--ink);
+        cursor: pointer;
+        font-size: 11px;
+        font-weight: 700;
+      }
+      .template-choice:hover {
+        border-color: #d9a3b2;
+        background: #fff2f5;
+      }
+      button:disabled {
+        opacity: 0.38;
+        cursor: not-allowed;
+      }
+      #topbar,
+      #actionbar {
+        max-width: calc(100% - 32px);
+        overflow-x: auto;
+        scrollbar-width: none;
+      }
+      #topbar::-webkit-scrollbar,
+      #actionbar::-webkit-scrollbar {
+        display: none;
+      }
+      @media (max-width: 900px) {
+        #app {
+          grid-template-columns: 236px 1fr;
+        }
+        aside {
+          padding-inline: 14px;
+        }
+        #topbar button {
+          min-width: 34px;
+        }
+        #actionbar button {
+          min-width: 66px;
+        }
+      }
+      @media (max-width: 760px) {
+        :root {
+          --mobile-gutter: max(10px, env(safe-area-inset-left));
+          --mobile-right: max(10px, env(safe-area-inset-right));
+          --mobile-bottom: max(10px, env(safe-area-inset-bottom));
+        }
+        #app,
+        #app.panel-closed {
+          position: relative;
+          display: block;
+          height: 100dvh;
+        }
+        main {
+          width: 100%;
+          height: 100%;
+        }
+        aside {
+          position: fixed;
+          inset: 0 auto 0 0;
+          width: min(88vw, 348px);
+          max-width: 100%;
+          padding: calc(68px + env(safe-area-inset-top)) 16px
+            calc(20px + env(safe-area-inset-bottom));
+          border-right: 1px solid var(--line);
+          box-shadow: 14px 0 35px #493c3830;
+          transform: translateX(-105%);
+          transition: transform 0.24s cubic-bezier(0.2, 0.75, 0.25, 1);
+        }
+        #app:not(.panel-closed) aside {
+          transform: translateX(0);
+          pointer-events: auto;
+        }
+        #app.panel-closed aside {
+          transform: translateX(-105%);
+        }
+        #app:not(.panel-closed) #scrim {
+          display: block;
+          position: fixed;
+          inset: 0;
+          z-index: 4;
+          background: #2e292733;
+          backdrop-filter: blur(2px);
+        }
+        .brand {
+          margin-bottom: 22px;
+        }
+        .brand p {
+          display: block;
+        }
+        .hint {
+          display: block;
+          margin-bottom: 4px;
+        }
+        #topbar {
+          top: max(8px, env(safe-area-inset-top));
+          left: 68px;
+          right: var(--mobile-right);
+          width: auto;
+          max-width: none;
+          transform: none;
+          justify-content: flex-start;
+          padding: 6px;
+          border-radius: 14px;
+          touch-action: pan-x;
+        }
+        #topbar button {
+          flex: 0 0 auto;
+          height: 36px;
+          min-width: 36px;
+          padding-inline: 9px;
+          white-space: nowrap;
+        }
+        #topbar .primary {
+          padding-inline: 13px;
+        }
+        #layerBadge,
+        #inputHint {
+          display: none;
+        }
+        #actionbar {
+          left: var(--mobile-gutter);
+          right: var(--mobile-right);
+          bottom: var(--mobile-bottom);
+          width: auto;
+          max-width: none;
+          transform: none;
+          justify-content: flex-start;
+          padding: 6px;
+          border-radius: 16px;
+          touch-action: pan-x;
+        }
+        #actionbar button {
+          flex: 0 0 auto;
+          min-width: 66px;
+          height: 46px;
+          padding: 0 10px;
+        }
+        .quick-choice {
+          display: block;
+          border-left: 1px solid var(--line) !important;
+          color: #8c4058;
+        }
+        .key {
+          display: none;
+        }
+
+        .quick-settings-panel {
+          right: var(--mobile-right);
+          bottom: calc(70px + var(--mobile-bottom));
+        }
+        #radial {
+          width: min(228px, 66vw);
+          height: min(228px, 66vw);
+        }
+        .radial-item[data-mode="select"] {
+          right: 3px;
+          bottom: 3px;
+        }
+        #status {
+          bottom: calc(76px + env(safe-area-inset-bottom));
+          max-width: calc(100% - 32px);
+          text-align: center;
+          white-space: normal;
+        }
+      }
+      @media (max-width: 520px) {
+        .materials {
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+        }
+        .material {
+          padding: 8px 5px;
+        }
+        .material span {
+          font-size: 18px;
+        }
+        .material small {
+          font-size: 10px;
+        }
+        .control {
+          padding-block: 12px;
+        }
+        #topbar button {
+          font-size: 11px;
+        }
+        #actionbar button {
+          min-width: 38px;
+          padding-inline: 3px;
+          font-size: 11px;
+        }
+        #actionbar .quick-choice {
+          min-width: 42px;
+        }
+      }
+      @media (max-height: 560px) and (max-width: 760px) {
+        aside {
+          padding-top: 58px;
+        }
+        .brand {
+          margin-bottom: 10px;
+        }
+        h2 {
+          margin-top: 12px;
+        }
+        .control {
+          padding-block: 7px;
+        }
+        #actionbar button {
+          height: 42px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div id="app">
+      <aside aria-label="花瓣畫作設定面板">
+        <section>
+          <h2>材料</h2>
+          <div class="materials">
+            <button class="material active" data-mode="petal">
+              <span>🌸</span><small>櫻花</small></button
+            ><button class="material" data-mode="twig">
+              <span>⌇</span><small>小樹枝</small></button
+            ><button class="material" data-mode="brush">
+              <span>🖌️</span><small>畫筆</small>
+            </button>
+          </div>
+        </section>
+        <section>
+          <h2>材料設定</h2>
+          <div class="control">
+            <label>染色 <output id="colorText">#EF9FB5</output></label>
+            <div class="row">
+              <input id="color" type="color" value="#ef9fb5" /><button
+                class="tool"
+                id="natural"
+              >
+                自然色
+              </button>
+            </div>
+          </div>
+          <div class="control">
+            <label>尺寸 <output id="sizeText">100%</output></label
+            ><input id="size" type="range" min="55" max="180" value="100" />
+          </div>
+          <div class="control">
+            <label>旋轉 <output id="angleText">0°</output></label
+            ><input id="angle" type="range" min="-180" max="180" value="0" />
+          </div>
+          <div class="control brush-only" hidden>
+            <label>筆刷粗細 <output id="brushText">12 px</output></label
+            ><input id="brushSize" type="range" min="2" max="48" value="12" />
+          </div>
+        </section>
+        <section>
+          <h2>編輯</h2>
+          <div class="tools">
+            <button class="tool" id="rotateL">↶ 左轉</button
+            ><button class="tool" id="rotateR">↷ 右轉</button
+            ><button class="tool" id="duplicate">⧉ 複製</button
+            ><button class="tool" id="remove">⌫ <span id="removeText">刪除</span></button
+            ><button class="tool wide" id="clearPaint">清除所選表面顏料</button>
+          </div>
+        </section>
+        <p class="hint">
+          點畫布放置材料；拖曳可移動。材料重疊時會依碰撞自動墊高。畫筆會依落筆當下的堆疊結果，畫在整幅作品最上層。
+        </p>
+      </aside>
+      <div id="scrim" aria-hidden="true"></div>
+      <main id="stage">
+        <canvas id="canvas" aria-label="花瓣畫作編輯畫布"></canvas>
+
+        <section id="quickSettingsSize" class="quick-settings-panel" role="dialog" aria-label="尺寸設定">
+          <div class="quick-settings-head">
+            <strong>尺寸</strong>
+            <button class="quick-settings-close" aria-label="關閉尺寸設定">×</button>
+          </div>
+          <div class="quick-setting">
+            <label for="quickSize">尺寸 <output id="quickSizeText">100%</output></label>
+            <input id="quickSize" type="range" min="55" max="180" value="100" />
+          </div>
+        </section>
+        <section id="quickSettingsColor" class="quick-settings-panel" role="dialog" aria-label="顏色設定">
+          <div class="quick-settings-head">
+            <strong>顏色</strong>
+            <button class="quick-settings-close" aria-label="關閉顏色設定">×</button>
+          </div>
+          <div class="quick-setting">
+            <label for="quickColor">顏色 <output id="quickColorText">#EF9FB5</output></label>
+            <input id="quickColor" type="color" value="#ef9fb5" />
+          </div>
+          <div class="quick-setting">
+            <button id="quickNatural" type="button">使用自然色</button>
+          </div>
+        </section>
+        <section id="quickSettingsTemplate" class="quick-settings-panel" role="dialog" aria-label="範本選擇">
+          <div class="quick-settings-head">
+            <strong>範本</strong>
+            <button class="quick-settings-close" aria-label="關閉範本選擇">×</button>
+          </div>
+          <div class="quick-setting quick-templates">
+            <label>選擇小範本</label>
+            <div class="template-grid">
+              <button class="template-choice" data-template="branch">枝上櫻花</button>
+              <button class="template-choice" data-template="cluster">櫻花花簇</button>
+              <button class="template-choice" data-template="breeze">春日留白</button>
+            </div>
+          </div>
+        </section>
+        <div id="inputHint" aria-live="polite">鍵鼠模式</div>
+
+        <div id="radial" role="menu" aria-label="材料選單">
+          <div class="radial-back"></div>
+          <button class="radial-item active" data-mode="petal">
+            <span>🌸</span>櫻花</button
+          ><button class="radial-item" data-mode="twig">
+            <span>⌇</span>樹枝</button
+          ><button class="radial-item" data-mode="brush">
+            <span>🖌️</span>畫筆</button
+          ><button class="radial-item" data-mode="select">
+            <span>🎯</span>調整</button
+          ><button class="radial-item" data-action="close">
+            <span>×</span>關閉</button
+          ><button class="radial-center" data-action="close">材料</button>
+        </div>
+        <div id="actionbar" aria-label="情境操作列">
+          <button data-act="mode"><span class="key">Q</span><span id="modeName">櫻花</span></button>
+          <button id="undo"><span class="key">Ctrl+Z</span>復原</button>
+          <button id="redo"><span class="key">Ctrl+Y</span>重做</button>
+          <button id="new">清空</button>
+          <button id="load">載入</button>
+          <button id="saveProject">存檔</button>
+          <button data-act="rotateL"><span class="key">LT</span>左轉</button>
+          <button data-act="rotateR"><span class="key">RT</span>右轉</button>
+          <button data-act="duplicate"><span class="key">Y</span>複製</button>
+          <button data-act="remove"><span class="key">X</span><span id="removeActionText">刪除</span></button>
+          <button class="quick-choice" data-quick="size" aria-label="開啟尺寸選擇">尺寸</button>
+          <button class="quick-choice" data-quick="color" aria-label="開啟顏色選擇">顏色</button>
+          <button class="quick-choice" data-quick="template" aria-label="開啟範本選擇">範本</button>
+        </div>
+        <div id="status" aria-live="polite"></div>
+        <div id="layerBadge">厚度碰撞：開啟 · 最上層繪畫：開啟</div>
+        <input id="loadInput" type="file" accept="application/json" hidden />
+      </main>
+    </div>
+    <script>
+      (() => {
+        "use strict";
+        const canvas = document.querySelector("#canvas"),
+          ctx = canvas.getContext("2d"),
+          stage = document.querySelector("#stage"),
+          $ = (s) => document.querySelector(s);
+        let dpr = 1,
+          W = 0,
+          H = 0,
+          mode = "petal",
+          items = [],
+          strokes = [],
+          selected = null,
+          drag = null,
+          painting = false,
+          lastPaint = null,
+          history = [],
+          future = [],
+          toastTimer;
+        const settings = { color: "#ef9fb5", size: 1, angle: 0, brush: 12 },
+          thickness = { petal: 4, twig: 8 };
+        const uid = () =>
+            Math.random().toString(36).slice(2) + Date.now().toString(36),
+          clone = (o) => JSON.parse(JSON.stringify(o));
+        function show(msg) {
+          const s = $("#status");
+          s.textContent = msg;
+          s.classList.add("show");
+          clearTimeout(toastTimer);
+          toastTimer = setTimeout(() => s.classList.remove("show"), 1400);
+        }
+        function resize() {
+          dpr = Math.min(2, devicePixelRatio || 1);
+          W = stage.clientWidth;
+          H = stage.clientHeight;
+          canvas.width = W * dpr;
+          canvas.height = H * dpr;
+          ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+          draw();
+        }
+        function snap() {
+          history.push(JSON.stringify({ items, strokes }));
+          if (history.length > 60) history.shift();
+          future = [];
+          buttons();
+        }
+        function restore(raw) {
+          const x = JSON.parse(raw);
+          items = x.items || [];
+          strokes = x.strokes || [];
+          selected = null;
+          settle();
+          draw();
+          buttons();
+        }
+        function buttons() {
+          $("#undo").disabled = history.length < 2;
+          $("#redo").disabled = !future.length;
+        }
+        function paper() {
+          const m = Math.min(70, W * 0.06);
+          return { x: m, y: m, w: W - m * 2, h: H - m * 2 };
+        }
+        function paperPath() {
+          const p = paper();
+          ctx.beginPath();
+          ctx.roundRect(p.x, p.y, p.w, p.h, 12);
+        }
+        function petalPath(c) {
+          c.beginPath();
+          for (let i = 0; i < 5; i++) {
+            const a = -Math.PI / 2 + (i * Math.PI * 2) / 5,
+              s = 0.54,
+              bx = Math.cos(a) * 7,
+              by = Math.sin(a) * 7,
+              l = a - s,
+              r = a + s;
+            c.moveTo(bx, by);
+            c.bezierCurveTo(
+              Math.cos(l) * 18,
+              Math.sin(l) * 18,
+              Math.cos(l) * 32,
+              Math.sin(l) * 32,
+              Math.cos(a - 0.13) * 34,
+              Math.sin(a - 0.13) * 34,
+            );
+            c.quadraticCurveTo(
+              Math.cos(a) * 25,
+              Math.sin(a) * 25,
+              Math.cos(a + 0.13) * 34,
+              Math.sin(a + 0.13) * 34,
+            );
+            c.bezierCurveTo(
+              Math.cos(r) * 32,
+              Math.sin(r) * 32,
+              Math.cos(r) * 18,
+              Math.sin(r) * 18,
+              bx,
+              by,
+            );
+          }
+          c.closePath();
+        }
+        function twigPath(c) {
+          c.beginPath();
+          c.moveTo(-54, -4);
+          c.quadraticCurveTo(-15, -8, 54, -3);
+          c.lineTo(54, 3);
+          c.quadraticCurveTo(-10, 8, -54, 4);
+          c.closePath();
+          c.moveTo(4, 1);
+          c.lineTo(22, -14);
+          c.lineTo(25, -12);
+          c.lineTo(13, 3);
+          c.closePath();
+        }
+        function local(o, x, y) {
+          const c = Math.cos(-o.angle),
+            s = Math.sin(-o.angle),
+            dx = x - o.x,
+            dy = y - o.y;
+          return {
+            x: (dx * c - dy * s) / o.scale,
+            y: (dx * s + dy * c) / o.scale,
+          };
+        }
+        function contains(o, x, y) {
+          const p = local(o, x, y);
+          ctx.save();
+          ctx.setTransform(1, 0, 0, 1, 0, 0);
+          o.type === "petal" ? petalPath(ctx) : twigPath(ctx);
+          const yes = ctx.isPointInPath(p.x, p.y);
+          ctx.restore();
+          return yes;
+        }
+        function dims(o) {
+          return o.type === "petal"
+            ? { w: 82 * o.scale, h: 78 * o.scale }
+            : { w: 112 * o.scale, h: 28 * o.scale };
+        }
+        function overlap(a, b) {
+          const A = dims(a),
+            B = dims(b),
+            dx = Math.abs(a.x - b.x),
+            dy = Math.abs(a.y - b.y);
+          if (dx > (A.w + B.w) * 0.44 || dy > (A.h + B.h) * 0.44) return false;
+          return (
+            contains(a, b.x, b.y) ||
+            contains(b, a.x, a.y) ||
+            contains(a, b.x + B.w * 0.25, b.y) ||
+            contains(b, a.x + A.w * 0.25, a.y)
+          );
+        }
+        function settle() {
+          for (let pass = 0; pass < items.length + 2; pass++) {
+            let changed = false;
+            for (let i = 0; i < items.length; i++) {
+              let z = 0;
+              for (let j = 0; j < i; j++)
+                if (overlap(items[i], items[j]))
+                  z = Math.max(z, items[j].z + thickness[items[j].type]);
+              if (items[i].z !== z) {
+                items[i].z = z;
+                changed = true;
+              }
+            }
+            if (!changed) break;
+          }
+        }
+        function topAt(x, y) {
+          return (
+            [...items]
+              .sort(
+                (a, b) =>
+                  b.z + thickness[b.type] - (a.z + thickness[a.type]) ||
+                  items.indexOf(b) - items.indexOf(a),
+              )
+              .find((o) => contains(o, x, y)) || null
+          );
+        }
+        function shade(hex, n) {
+          const v = parseInt(hex.slice(1), 16),
+            cl = (x) => Math.max(0, Math.min(255, x)),
+            r = cl((v >> 16) + n),
+            g = cl(((v >> 8) & 255) + n),
+            b = cl((v & 255) + n);
+          return (
+            "#" + [r, g, b].map((x) => x.toString(16).padStart(2, "0")).join("")
+          );
+        }
+        function tx(o, y, fn) {
+          ctx.save();
+          ctx.translate(o.x, o.y + y);
+          ctx.rotate(o.angle);
+          ctx.scale(o.scale, o.scale);
+          fn();
+          ctx.restore();
+        }
+        function drawTopStrokes() {
+          if (!strokes.length) return;
+          ctx.save();
+          paperPath();
+          ctx.clip();
+          for (const s of strokes) {
+            ctx.beginPath();
+            s.points.forEach((p, i) =>
+              i ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y),
+            );
+            ctx.strokeStyle = s.color;
+            ctx.lineWidth = s.size;
+            ctx.lineCap = "round";
+            ctx.lineJoin = "round";
+            ctx.globalAlpha = 0.88;
+            ctx.stroke();
+          }
+          ctx.restore();
+        }
+        function drawObject(o) {
+          const off = thickness[o.type] + o.z * 0.22;
+          tx(o, off, () => {
+            o.type === "petal" ? petalPath(ctx) : twigPath(ctx);
+            ctx.fillStyle = shade(o.color, -38);
+            ctx.fill();
+          });
+          tx(o, 0, () => {
+            o.type === "petal" ? petalPath(ctx) : twigPath(ctx);
+            ctx.fillStyle = o.color;
+            ctx.fill();
+            ctx.strokeStyle = shade(o.color, -24);
+            ctx.lineWidth = 1.2 / o.scale;
+            ctx.stroke();
+            if (o.type === "petal") {
+              ctx.beginPath();
+              for (let i = 0; i < 5; i++) {
+                const a = -Math.PI / 2 + (i * Math.PI * 2) / 5;
+                ctx.moveTo(Math.cos(a) * 5, Math.sin(a) * 5);
+                ctx.quadraticCurveTo(
+                  Math.cos(a + 0.08) * 17,
+                  Math.sin(a + 0.08) * 17,
+                  Math.cos(a) * 27,
+                  Math.sin(a) * 27,
+                );
+              }
+              ctx.strokeStyle = shade(o.color, 18);
+              ctx.lineWidth = 0.9;
+              ctx.stroke();
+              ctx.beginPath();
+              ctx.arc(0, 0, 5.5, 0, Math.PI * 2);
+              ctx.fillStyle = "#e8b44e";
+              ctx.fill();
+            }
+          });
+        }
+        function draw() {
+          ctx.clearRect(0, 0, W, H);
+          const p = paper();
+          ctx.save();
+          ctx.shadowColor = "#51493d2b";
+          ctx.shadowBlur = 26;
+          ctx.shadowOffsetY = 12;
+          paperPath();
+          ctx.fillStyle = "#fbf6e9";
+          ctx.fill();
+          ctx.restore();
+          ctx.save();
+          paperPath();
+          ctx.clip();
+          ctx.globalAlpha = 0.18;
+          for (let y = p.y + 4; y < p.y + p.h; y += 7) {
+            ctx.fillStyle = y % 14 ? "#d6cab2" : "#fff";
+            ctx.fillRect(p.x, y, p.w, 1);
+          }
+          ctx.restore();
+          items.forEach(drawObject);
+          drawTopStrokes();
+          if (selected)
+            tx(selected, -2, () => {
+              selected.type === "petal" ? petalPath(ctx) : twigPath(ctx);
+              ctx.strokeStyle = "#8c4058";
+              ctx.setLineDash([4 / selected.scale, 4 / selected.scale]);
+              ctx.lineWidth = 2 / selected.scale;
+              ctx.stroke();
+            });
+        }
+        function make(type, x, y) {
+          return {
+            id: uid(),
+            type,
+            x,
+            y,
+            angle: (settings.angle * Math.PI) / 180,
+            scale: settings.size,
+            color: settings.color,
+            z: 0,
+          };
+        }
+        function addTemplateObject(type, x, y, scale, color, angle = 0) {
+          const o = make(type, x, y);
+          o.scale = scale;
+          o.color = color;
+          o.angle = angle;
+          items.push(o);
+          return o;
+        }
+        function applyTemplate(name) {
+          const p = paper();
+          const cx = p.x + p.w / 2;
+          const cy = p.y + p.h / 2;
+          items = [];
+          strokes = [];
+          selected = null;
+          if (name === "branch") {
+            addTemplateObject("twig", cx, cy + p.h * 0.06, 1.05, "#76513b", -0.06);
+            [[-0.28, -0.05, -0.22], [-0.12, -0.18, 0.12], [0.08, -0.09, -0.16], [0.25, -0.22, 0.16], [0.36, -0.02, -0.1]].forEach(([dx, dy, a]) =>
+              addTemplateObject("petal", cx + p.w * dx, cy + p.h * dy, 0.62, "#ef9fb5", a),
+            );
+          } else if (name === "cluster") {
+            [[0, 0, 0.86], [-0.16, -0.06, 0.62], [0.16, -0.06, 0.62], [-0.1, 0.15, 0.58], [0.1, 0.15, 0.58], [0, -0.22, 0.56]].forEach(([dx, dy, s]) =>
+              addTemplateObject("petal", cx + p.w * dx, cy + p.h * dy, s, "#ef9fb5", 0),
+            );
+          } else {
+            addTemplateObject("twig", p.x + p.w * 0.38, p.y + p.h * 0.68, 1.05, "#76513b", -0.18);
+            [[0.2, 0.52, 0.58], [0.38, 0.38, 0.68], [0.56, 0.27, 0.54]].forEach(([dx, dy, s]) =>
+              addTemplateObject("petal", p.x + p.w * dx, p.y + p.h * dy, s, "#f2b1c2", 0.08),
+            );
+          }
+          settle();
+          snap();
+          draw();
+          closeQuickSettings();
+          show("已套用「" + ({ branch: "枝上櫻花", cluster: "櫻花花簇", breeze: "春日留白" }[name]) + "」範本");
+        }
+        function point(e) {
+          const r = canvas.getBoundingClientRect();
+          return { x: e.clientX - r.left, y: e.clientY - r.top };
+        }
+        function addPaint(x, y, start = false) {
+          const p = { x, y };
+          if (start || !lastPaint) {
+            const s = {
+              id: uid(),
+              surface: "top",
+              color: settings.color,
+              size: settings.brush,
+              points: [p],
+            };
+            strokes.push(s);
+            lastPaint = { stroke: s };
+          } else lastPaint.stroke.points.push(p);
+          draw();
+        }
+        canvas.addEventListener("pointerdown", (e) => {
+          const p = point(e);
+          canvas.setPointerCapture(e.pointerId);
+            if (mode === "brush") {
+            painting = true;
+            lastPaint = null;
+            addPaint(p.x, p.y, true);
+            return;
+          }
+          const hit = topAt(p.x, p.y);
+          if (mode === "select") {
+            if (hit) {
+              selected = hit;
+              settings.angle = Math.round((hit.angle * 180) / Math.PI);
+              settings.size = hit.scale;
+              settings.color = hit.color;
+              drag = { dx: p.x - hit.x, dy: p.y - hit.y, moved: false };
+              sync();
+              show("已選取材料，可拖曳或用設定調整");
+            } else {
+              selected = null;
+              drag = null;
+              draw();
+              show("請點選畫布上的材料");
+            }
+            return;
+          }
+          if (hit) {
+            selected = hit;
+            drag = { dx: p.x - hit.x, dy: p.y - hit.y, moved: false };
+            settings.angle = Math.round((hit.angle * 180) / Math.PI);
+            settings.size = hit.scale;
+            settings.color = hit.color;
+            sync();
+          } else {
+            const q = paper();
+            if (p.x > q.x && p.x < q.x + q.w && p.y > q.y && p.y < q.y + q.h) {
+              const o = make(mode, p.x, p.y);
+              items.push(o);
+              selected = o;
+              settle();
+              snap();
+              show(mode === "petal" ? "放下一朵櫻花" : "放下一根小樹枝");
+            }
+          }
+          draw();
+        });
+        canvas.addEventListener("pointermove", (e) => {
+          const p = point(e);
+          if (painting) {
+            addPaint(p.x, p.y);
+            return;
+          }
+          if (drag && selected) {
+            selected.x = p.x - drag.dx;
+            selected.y = p.y - drag.dy;
+            drag.moved = true;
+            settle();
+            draw();
+          }
+        });
+        function end() {
+          if (painting) {
+            painting = false;
+            lastPaint = null;
+            snap();
+          } else if (drag?.moved) snap();
+          drag = null;
+        }
+        canvas.addEventListener("pointerup", end);
+        canvas.addEventListener("pointercancel", end);
+        function sync() {
+          $("#color").value = settings.color;
+          $("#size").value = settings.size * 100;
+          $("#angle").value = settings.angle;
+          $("#brushSize").value = settings.brush;
+          $("#sizeText").value = Math.round(settings.size * 100) + "%";
+          $("#angleText").value = settings.angle + "°";
+          $("#brushText").value = settings.brush + " px";
+          $("#colorText").value = settings.color.toUpperCase();
+          $("#quickColor").value = settings.color;
+          $("#quickColorText").value = settings.color.toUpperCase();
+          $("#quickSize").value = settings.size * 100;
+          $("#quickSizeText").value = Math.round(settings.size * 100) + "%";
+        }
+        function setMode(m) {
+          mode = m;
+          document
+            .querySelectorAll("[data-mode]")
+            .forEach((b) => b.classList.toggle("active", b.dataset.mode === m));
+          document
+            .querySelectorAll(".brush-only")
+            .forEach((x) => (x.hidden = m !== "brush"));
+          canvas.classList.toggle("painting", m === "brush");
+          if (m !== "brush" && m !== "select")
+            settings.color = m === "twig" ? "#76513b" : "#ef9fb5";
+          $("#modeName").textContent =
+            m === "petal" ? "櫻花" : m === "twig" ? "樹枝" : m === "brush" ? "畫筆" : "調整";
+          $("#removeText").textContent = m === "brush" ? "上一筆" : "刪除";
+          $("#removeActionText").textContent = m === "brush" ? "上一筆" : "刪除";
+          sync();
+          show(
+            m === "brush"
+              ? "畫筆已切到整幅作品最上層"
+              : m === "twig"
+                ? "小樹枝模式"
+                : m === "select"
+                  ? "調整模式：點選既有材料"
+                  : "櫻花花瓣模式",
+          );
+        }
+        document.querySelectorAll("[data-mode]").forEach(
+          (b) =>
+            (b.onclick = () => {
+              setMode(b.dataset.mode);
+              closeRadial();
+            }),
+        );
+        $("#color").oninput = (e) => {
+          settings.color = e.target.value;
+          if (selected && mode !== "brush") {
+            selected.color = settings.color;
+            draw();
+          }
+          sync();
+        };
+        $("#color").onchange = () => snap();
+        $("#size").oninput = (e) => {
+          settings.size = +e.target.value / 100;
+          if (selected && mode !== "brush") {
+            selected.scale = settings.size;
+            settle();
+            draw();
+          }
+          sync();
+        };
+        $("#size").onchange = () => snap();
+        $("#angle").oninput = (e) => {
+          settings.angle = +e.target.value;
+          if (selected && mode !== "brush") {
+            selected.angle = (settings.angle * Math.PI) / 180;
+            settle();
+            draw();
+          }
+          sync();
+        };
+        $("#angle").onchange = () => snap();
+        $("#brushSize").oninput = (e) => {
+          settings.brush = +e.target.value;
+          sync();
+        };
+        $("#quickColor").oninput = (e) => {
+          $("#color").value = e.target.value;
+          $("#color").dispatchEvent(new Event("input", { bubbles: true }));
+        };
+        $("#quickColor").onchange = () =>
+          $("#color").dispatchEvent(new Event("change", { bubbles: true }));
+        $("#quickSize").oninput = (e) => {
+          $("#size").value = e.target.value;
+          $("#size").dispatchEvent(new Event("input", { bubbles: true }));
+        };
+        $("#quickSize").onchange = () =>
+          $("#size").dispatchEvent(new Event("change", { bubbles: true }));
+        $("#quickNatural").onclick = () => $("#natural").click();
+        $("#natural").onclick = () => {
+          settings.color = mode === "twig" ? "#76513b" : "#ef9fb5";
+          if (selected && mode !== "brush") selected.color = settings.color;
+          sync();
+          snap();
+          draw();
+        };
+        function rotate(n) {
+          if (!selected) return show("先選一個材料");
+          selected.angle += (n * Math.PI) / 180;
+          settings.angle = Math.round((selected.angle * 180) / Math.PI);
+          settle();
+          snap();
+          sync();
+          draw();
+        }
+        $("#rotateL").onclick = () => rotate(-15);
+        $("#rotateR").onclick = () => rotate(15);
+        $("#duplicate").onclick = () => {
+          if (!selected) return show("先選一個材料");
+          const n = clone(selected);
+          n.id = uid();
+          n.x += 18;
+          n.y += 18;
+          items.push(n);
+          selected = n;
+          settle();
+          snap();
+          draw();
+        };
+        $("#remove").onclick = () => {
+          if (mode === "brush") {
+            if (!strokes.length) return show("目前沒有可刪除的筆畫");
+            strokes.pop();
+            snap();
+            draw();
+            return show("已刪除上一筆筆畫");
+          }
+          if (!selected) return show("先選一個材料");
+          items = items.filter((x) => x !== selected);
+          selected = null;
+          settle();
+          snap();
+          draw();
+        };
+        $("#clearPaint").onclick = () => {
+          strokes = [];
+          snap();
+          draw();
+          show("已清除最上層全部顏料");
+        };
+        $("#new").onclick = () => {
+          if (
+            (items.length || strokes.length) &&
+            !confirm("確定清空整幅畫作？")
+          )
+            return;
+          items = [];
+          strokes = [];
+          selected = null;
+          snap();
+          draw();
+        };
+        $("#undo").onclick = () => {
+          if (history.length < 2) return;
+          future.push(history.pop());
+          restore(history[history.length - 1]);
+        };
+        $("#redo").onclick = () => {
+          if (!future.length) return;
+          const x = future.pop();
+          history.push(x);
+          restore(x);
+        };
+        $("#saveProject").onclick = () => {
+          const blob = new Blob(
+              [JSON.stringify({ version: 1, items, strokes }, null, 2)],
+              { type: "application/json" },
+            ),
+            a = document.createElement("a");
+          a.href = URL.createObjectURL(blob);
+          a.download = "花瓣畫作.json";
+          a.click();
+          URL.revokeObjectURL(a.href);
+          show("專案已下載");
+        };
+        $("#load").onclick = () => $("#loadInput").click();
+        $("#loadInput").onchange = (e) => {
+          const f = e.target.files[0];
+          if (!f) return;
+          const r = new FileReader();
+          r.onload = () => {
+            try {
+              const x = JSON.parse(r.result);
+              items = x.items || [];
+              strokes = x.strokes || [];
+              selected = null;
+              settle();
+              snap();
+              draw();
+              show("專案已載入");
+            } catch {
+              show("這不是有效的花瓣畫作存檔");
+            }
+          };
+          r.readAsText(f);
+          e.target.value = "";
+        };
+        const radial = $("#radial"),
+          quickSettings = {
+            size: $("#quickSettingsSize"),
+            color: $("#quickSettingsColor"),
+            template: $("#quickSettingsTemplate"),
+          };
+        function openRadial(x = W / 2, y = H / 2) {
+          const half = 120;
+          x = Math.max(half, Math.min(W - half, x));
+          y = Math.max(half, Math.min(H - half, y));
+          radial.style.left = x + "px";
+          radial.style.top = y + "px";
+          radial.classList.add("open");
+          radial.querySelector(".active")?.focus();
+        }
+        function closeRadial() {
+          radial.classList.remove("open");
+          canvas.focus?.();
+        }
+        function openQuickSettings(kind) {
+          Object.values(quickSettings).forEach((panel) => panel.classList.remove("open"));
+          const panel = quickSettings[kind];
+          if (!panel) return;
+          panel.classList.add("open");
+          sync();
+          if (kind === "color") $("#quickColor").focus();
+          else if (kind === "size") $("#quickSize").focus();
+          else panel.querySelector("[data-template]")?.focus();
+        }
+        function closeQuickSettings() {
+          Object.values(quickSettings).forEach((panel) => panel.classList.remove("open"));
+        }
+        document.querySelectorAll("[data-quick]").forEach((b) =>
+          (b.onclick = () => openQuickSettings(b.dataset.quick)),
+        );
+        document.querySelectorAll("[data-template]").forEach((b) =>
+          (b.onclick = () => applyTemplate(b.dataset.template)),
+        );
+        document.querySelectorAll(".quick-settings-close").forEach((b) =>
+          (b.onclick = closeQuickSettings),
+        );
+        function cycleMode(n = 1) {
+          const ms = ["petal", "twig", "brush", "select"],
+            i = ms.indexOf(mode);
+          setMode(ms[(i + n + ms.length) % ms.length]);
+        }
+        radial
+          .querySelectorAll("[data-action=close]")
+          .forEach((b) => (b.onclick = closeRadial));
+        canvas.addEventListener("contextmenu", (e) => {
+          e.preventDefault();
+          const p = point(e);
+          openRadial(p.x, p.y);
+        });
+        window.addEventListener(
+          "pointerdown",
+          (e) => {
+            if (e.pointerType === "touch")
+              $("#inputHint").textContent = "觸控模式";
+            else if (e.pointerType === "mouse")
+              $("#inputHint").textContent = "鍵鼠模式";
+          },
+          { passive: true },
+        );
+        document.querySelectorAll("#actionbar [data-act]").forEach(
+          (b) =>
+            (b.onclick = () => {
+              const a = b.dataset.act;
+              if (a === "mode") openRadial(W / 2, H / 2);
+              if (a === "rotateL") rotate(-15);
+              if (a === "rotateR") rotate(15);
+              if (a === "duplicate") $("#duplicate").click();
+              if (a === "remove") $("#remove").click();
+            }),
+        );
+        function nudge(dx, dy) {
+          if (!selected) return;
+          selected.x += dx;
+          selected.y += dy;
+          settle();
+          draw();
+        }
+        function selectStep(n) {
+          if (!items.length) {
+            selected = null;
+            draw();
+            return;
+          }
+          let i = selected ? items.indexOf(selected) : -1;
+          i = (i + n + items.length) % items.length;
+          selected = items[i];
+          settings.angle = Math.round((selected.angle * 180) / Math.PI);
+          settings.size = selected.scale;
+          settings.color = selected.color;
+          sync();
+          draw();
+          show("已選取" + (selected.type === "petal" ? "櫻花" : "樹枝"));
+        }
+        window.addEventListener("keydown", (e) => {
+          const tag = e.target.tagName;
+          if (tag === "INPUT") return;
+          $("#inputHint").textContent = "鍵盤模式";
+          const k = e.key.toLowerCase();
+          if ((e.ctrlKey || e.metaKey) && k === "z") {
+            e.preventDefault();
+            e.shiftKey ? $("#redo").click() : $("#undo").click();
+            return;
+          }
+          if (k === "q") {
+            e.preventDefault();
+            radial.classList.contains("open")
+              ? closeRadial()
+              : openRadial(W / 2, H / 2);
+          }
+          if (k === "1") setMode("petal");
+          if (k === "2") setMode("twig");
+          if (k === "3") setMode("brush");
+          if (k === "[") rotate(-15);
+          if (k === "]") rotate(15);
+          if (k === "tab" && items.length) {
+            e.preventDefault();
+            selectStep(e.shiftKey ? -1 : 1);
+          }
+          if ((e.key === "Delete" || e.key === "Backspace") && selected)
+            $("#remove").click();
+          const step = e.shiftKey ? 1 : 5;
+          if (k === "a" || e.key === "ArrowLeft") {
+            e.preventDefault();
+            nudge(-step, 0);
+          }
+          if (k === "d" || e.key === "ArrowRight") {
+            e.preventDefault();
+            nudge(step, 0);
+          }
+          if (k === "w" || e.key === "ArrowUp") {
+            e.preventDefault();
+            nudge(0, -step);
+          }
+          if (k === "s" || e.key === "ArrowDown") {
+            e.preventDefault();
+            nudge(0, step);
+          }
+        });
+        let prevPads = {};
+        function pressed(g, i) {
+          return !!g.buttons[i]?.pressed && !prevPads[g.index]?.[i];
+        }
+        function gameLoop() {
+          const pads = navigator.getGamepads?.() || [];
+          for (const g of pads) {
+            if (!g) continue;
+            $("#inputHint").textContent = "手把模式";
+            const old = prevPads[g.index] || [];
+            if (pressed(g, 4))
+              radial.classList.contains("open")
+                ? closeRadial()
+                : openRadial(W / 2, H / 2);
+            if (pressed(g, 5)) cycleMode(1);
+            if (pressed(g, 12)) selectStep(-1);
+            if (pressed(g, 13)) selectStep(1);
+            if (pressed(g, 1)) {
+              closeRadial();
+              selected = null;
+              draw();
+            }
+            if (pressed(g, 2) && (selected || mode === "brush")) $("#remove").click();
+            if (pressed(g, 3) && selected) $("#duplicate").click();
+            if (pressed(g, 6)) rotate(-15);
+            if (pressed(g, 7)) rotate(15);
+            if (pressed(g, 0) && !selected && mode !== "brush") {
+              const p = paper(),
+                o = make(mode, p.x + p.w / 2, p.y + p.h / 2);
+              items.push(o);
+              selected = o;
+              settle();
+              snap();
+              draw();
+            }
+            const ax = Math.abs(g.axes[0] || 0) > 0.22 ? g.axes[0] : 0,
+              ay = Math.abs(g.axes[1] || 0) > 0.22 ? g.axes[1] : 0;
+            if (selected && (ax || ay)) {
+              selected.x += ax * 3;
+              selected.y += ay * 3;
+              settle();
+              draw();
+            }
+            prevPads[g.index] = g.buttons.map((b) => b.pressed);
+          }
+          requestAnimationFrame(gameLoop);
+        }
+        window.addEventListener("gamepadconnected", () => {
+          $("#inputHint").textContent = "手把模式";
+          show("手把已連接");
+        });
+        window.addEventListener("resize", resize);
+        sync();
+        resize();
+        snap();
+        requestAnimationFrame(gameLoop);
+      })();
+    </script>
+  </body>
+</html>

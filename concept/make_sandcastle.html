@@ -1,0 +1,1208 @@
+<!doctype html>
+<html lang="zh-TW">
+  <head>
+    <meta charset="UTF-8" />
+    <title>2D 卡通沙堡 DIY (3D 頂點繪色強效版)</title>
+    <style>
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+        user-select: none;
+      }
+      body {
+        display: flex;
+        height: 100vh;
+        font-family:
+          -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        background: #111;
+        color: #fff;
+        overflow: hidden;
+      }
+
+      #sidebar {
+        width: 220px;
+        background: #1c1a17;
+        border-right: 2px solid #3a342b;
+        padding: 15px;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        z-index: 10;
+        overflow-y: auto;
+      }
+      #sidebar h3 {
+        font-size: 13px;
+        color: #d4b886;
+        text-transform: uppercase;
+        margin-bottom: 2px;
+      }
+      .item-btn {
+        padding: 10px 12px;
+        background: #2d2922;
+        border: 1px solid #4a4133;
+        border-radius: 8px;
+        cursor: pointer;
+        text-align: center;
+        font-size: 13px;
+        color: #f0e6d2;
+        font-weight: bold;
+        transition: all 0.2s;
+      }
+      .item-btn:hover {
+        background: #d99b26;
+        border-color: #d99b26;
+        color: #fff;
+        transform: translateY(-2px);
+      }
+
+      .brush-panel {
+        margin-top: 12px;
+        padding-top: 12px;
+        border-top: 1px solid #3a342b;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+      }
+      .brush-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 12px;
+        color: #d4c8b4;
+      }
+      .brush-row label {
+        min-width: 48px;
+        flex-shrink: 0;
+      }
+      .brush-row input[type="color"] {
+        width: 36px;
+        height: 28px;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        background: none;
+        padding: 0;
+      }
+      .brush-row input[type="range"] {
+        flex: 1;
+        accent-color: #d99b26;
+      }
+      .brush-row .val {
+        min-width: 28px;
+        text-align: right;
+        font-variant-numeric: tabular-nums;
+        color: #a89880;
+      }
+      .tool-btn.active,
+      .item-btn.active {
+        background: #d99b26;
+        border-color: #d99b26;
+        color: #fff;
+        box-shadow: 0 0 0 2px rgba(217, 155, 38, 0.4);
+      }
+
+      #editor-container {
+        flex: 1;
+        position: relative;
+        background: #4aa5e8;
+        overflow: hidden;
+      }
+      #editor-canvas {
+        width: 100%;
+        height: 100%;
+        touch-action: none; /* 防止滑動塗鴉時被瀏覽器中斷 */
+      }
+      #editor-canvas.brush-cursor {
+        cursor: crosshair;
+      }
+
+      #preview-window {
+        position: absolute;
+        top: 15px;
+        right: 15px;
+        width: 260px;
+        height: 260px;
+        background: #000;
+        border: 3px solid #f3a83b;
+        border-radius: 12px;
+        overflow: hidden;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+        z-index: 20;
+      }
+      #preview-header {
+        background: #f3a83b;
+        padding: 4px 10px;
+        font-size: 12px;
+        font-weight: bold;
+        color: #000;
+        text-align: center;
+      }
+      #preview-canvas {
+        width: 100%;
+        height: calc(100% - 24px);
+        cursor: grab;
+      }
+
+      #toolbar {
+        position: absolute;
+        bottom: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: rgba(28, 26, 23, 0.92);
+        backdrop-filter: blur(8px);
+        padding: 8px 16px;
+        border-radius: 30px;
+        border: 1px solid #4a4133;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+        z-index: 20;
+      }
+      .tool-btn {
+        width: 38px;
+        height: 38px;
+        background: #2d2922;
+        border: 1px solid #4a4133;
+        border-radius: 50%;
+        color: #fff;
+        font-size: 16px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: all 0.2s;
+      }
+      .tool-btn:hover:not(:disabled) {
+        background: #d99b26;
+        border-color: #d99b26;
+        transform: translateY(-2px);
+      }
+      .tool-btn.disabled,
+      .tool-btn:disabled {
+        opacity: 0.35;
+        cursor: not-allowed;
+      }
+      .tool-btn.danger:hover:not(:disabled) {
+        background: #d9383a;
+        border-color: #d9383a;
+      }
+      .tool-btn.success:hover:not(:disabled) {
+        background: #28a745;
+        border-color: #28a745;
+      }
+      .tool-btn.warning:hover:not(:disabled) {
+        background: #ff9800;
+        border-color: #ff9800;
+      }
+      .divider {
+        width: 1px;
+        height: 24px;
+        background: #4a4133;
+        margin: 0 2px;
+      }
+
+      #template-menu {
+        position: absolute;
+        bottom: 75px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: #1c1a17;
+        border: 1px solid #4a4133;
+        border-radius: 12px;
+        padding: 10px;
+        display: none;
+        flex-direction: column;
+        gap: 6px;
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+        z-index: 30;
+        width: 180px;
+      }
+      #template-menu button {
+        padding: 8px 12px;
+        background: #2d2922;
+        border: 1px solid #4a4133;
+        border-radius: 6px;
+        color: #fff;
+        font-size: 13px;
+        font-weight: bold;
+        cursor: pointer;
+        text-align: left;
+      }
+      #template-menu button:hover {
+        background: #d99b26;
+      }
+    </style>
+
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+          "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+        }
+      }
+    </script>
+  </head>
+  <body>
+    <div id="sidebar">
+      <h3>卡通沙堡元件</h3>
+      <div class="item-btn" draggable="true" data-type="castle-base">
+        🏰 主城塔 (底座)
+      </div>
+      <div class="item-btn" draggable="true" data-type="castle-tower">
+        🏯 圓頂塔 (中層)
+      </div>
+      <div class="item-btn" draggable="true" data-type="castle-wall">
+        🧱 城牆磚塊 (連結)
+      </div>
+      <div class="item-btn" draggable="true" data-type="flag-red">
+        🚩 景點小紅旗
+      </div>
+      <div class="item-btn" draggable="true" data-type="shovel">
+        ♠️ 塑膠沙鏟
+      </div>
+      <div class="item-btn" draggable="true" data-type="shell">🐚 裝飾貝殼</div>
+      <div class="item-btn" draggable="true" data-type="starfish">
+        ⭐ 海星裝飾
+      </div>
+      <div class="item-btn" id="sidebar-brush-btn">🖌️ 沙繪筆 (強效亮彩)</div>
+
+      <div class="brush-panel">
+        <h3>畫筆工具 (鮮明繪色)</h3>
+        <div class="brush-row">
+          <label>顏料</label>
+          <input type="color" id="brush-color" value="#4a2e18" />
+        </div>
+        <div class="brush-row">
+          <label>大小</label>
+          <input type="range" id="brush-size" min="5" max="60" value="25" />
+          <span class="val" id="brush-size-val">25</span>
+        </div>
+        <div class="brush-row">
+          <label>濃淡</label>
+          <input type="range" id="brush-water" min="20" max="100" value="80" />
+          <span class="val" id="brush-water-val">80%</span>
+        </div>
+        <div class="item-btn" id="btn-clear-paint" style="margin-top: 4px">
+          清除所有筆跡
+        </div>
+      </div>
+    </div>
+
+    <div id="editor-container">
+      <canvas id="editor-canvas"></canvas>
+    </div>
+
+    <div id="preview-window">
+      <div id="preview-header">🎥 3D 海灘自由視角</div>
+      <div id="preview-canvas"></div>
+    </div>
+
+    <div id="template-menu">
+      <button data-template="classic">🏰 經典單塔沙堡</button>
+      <button data-template="fortress">🏯 雙塔連城牆</button>
+      <button data-template="full">🏝️ 豪華海灘王國</button>
+    </div>
+
+    <div id="toolbar">
+      <button id="tool-rot-left" class="tool-btn" title="左旋轉 15°">↺</button>
+      <button id="tool-rot-right" class="tool-btn" title="右旋轉 15°">↻</button>
+      <button id="tool-scale-up" class="tool-btn" title="放大">➕</button>
+      <button id="tool-scale-down" class="tool-btn" title="縮小">➖</button>
+      <button id="tool-delete" class="tool-btn danger" title="刪除選取元件">
+        🗑️
+      </button>
+      <button id="tool-brush" class="tool-btn" title="畫筆模式">🖌️</button>
+
+      <div class="divider"></div>
+
+      <button id="tool-undo" class="tool-btn" title="還原" disabled>↶</button>
+      <button id="tool-redo" class="tool-btn" title="重做" disabled>↷</button>
+
+      <div class="divider"></div>
+
+      <button id="btn-template" class="tool-btn warning" title="載入範本沙堡">
+        🏰
+      </button>
+      <button id="btn-save" class="tool-btn success" title="儲存 JSON 設定檔">
+        💾
+      </button>
+      <button id="btn-load" class="tool-btn" title="讀取 JSON 設定檔">
+        📂
+      </button>
+      <button id="btn-reset" class="tool-btn danger" title="重置沙灘畫布">
+        🔄
+      </button>
+      <input type="file" id="file-input" accept=".json" style="display: none" />
+    </div>
+
+    <script type="module">
+      import * as THREE from "three";
+      import { OutlineEffect } from "three/addons/effects/OutlineEffect.js";
+      import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+
+      function createSunlitToonGradient() {
+        const canvas = document.createElement("canvas");
+        canvas.width = 4;
+        canvas.height = 1;
+        const ctx = canvas.getContext("2d");
+        ctx.fillStyle = "#b88c52";
+        ctx.fillRect(0, 0, 1, 1);
+        ctx.fillStyle = "#e6c587";
+        ctx.fillRect(1, 0, 1, 1);
+        ctx.fillStyle = "#fff1d0";
+        ctx.fillRect(2, 0, 2, 1);
+        const texture = new THREE.CanvasTexture(canvas);
+        texture.minFilter = THREE.NearestFilter;
+        texture.magFilter = THREE.NearestFilter;
+        return texture;
+      }
+      const gradientMap = createSunlitToonGradient();
+      const BASE_SAND_COLOR = new THREE.Color(0xe6c587);
+
+      const scene = new THREE.Scene();
+
+      // 天空盒與沙灘
+      const skyGeo = new THREE.SphereGeometry(40, 32, 15);
+      const skyMat = new THREE.MeshBasicMaterial({
+        color: 0x5bb4f7,
+        side: THREE.BackSide,
+      });
+      scene.add(new THREE.Mesh(skyGeo, skyMat));
+
+      const groundGeo = new THREE.BoxGeometry(60, 8, 6);
+      const groundMat = new THREE.MeshBasicMaterial({ color: 0xe3be7d });
+      const ground = new THREE.Mesh(groundGeo, groundMat);
+      ground.position.set(0, -6.8, 0);
+      scene.add(ground);
+
+      // 光照
+      const ambientLight = new THREE.AmbientLight(0xffffff, 1.1);
+      scene.add(ambientLight);
+      const sunLight = new THREE.DirectionalLight(0xfffae6, 1.2);
+      sunLight.position.set(6, 12, 8);
+      scene.add(sunLight);
+
+      // 材質定義
+      const flagMat = new THREE.MeshToonMaterial({
+        color: 0xee3344,
+        gradientMap,
+        side: THREE.DoubleSide,
+      });
+      const woodMat = new THREE.MeshToonMaterial({
+        color: 0x8a5229,
+        gradientMap,
+      });
+      const plasticRedMat = new THREE.MeshToonMaterial({
+        color: 0xff4433,
+        gradientMap,
+      });
+      const shellMat = new THREE.MeshToonMaterial({
+        color: 0xffebd7,
+        gradientMap,
+      });
+      const starfishMat = new THREE.MeshToonMaterial({
+        color: 0xff7733,
+        gradientMap,
+      });
+
+      function createStarShape(outerRadius, innerRadius, points) {
+        const shape = new THREE.Shape();
+        for (let i = 0; i < points * 2; i++) {
+          const r = i % 2 === 0 ? outerRadius : innerRadius;
+          const a = (i / (points * 2)) * Math.PI * 2 - Math.PI / 2;
+          const x = Math.cos(a) * r;
+          const y = Math.sin(a) * r;
+          if (i === 0) shape.moveTo(x, y);
+          else shape.lineTo(x, y);
+        }
+        shape.closePath();
+        return shape;
+      }
+
+      // ===== 3D Vertex Color 核心模組 (強效清晰版) =====
+      function makeSandMesh(geometry) {
+        const colors = [];
+        const count = geometry.attributes.position.count;
+        for (let i = 0; i < count; i++) {
+          colors.push(BASE_SAND_COLOR.r, BASE_SAND_COLOR.g, BASE_SAND_COLOR.b);
+        }
+        geometry.setAttribute(
+          "color",
+          new THREE.Float32BufferAttribute(colors, 3),
+        );
+
+        // 改用 MeshStandardMaterial + roughness 確保顏料顏色鮮明且不受光照壓縮
+        const mat = new THREE.MeshStandardMaterial({
+          vertexColors: true,
+          roughness: 0.85,
+          metalness: 0.05,
+        });
+
+        const mesh = new THREE.Mesh(geometry, mat);
+        mesh.userData.isSandPart = true;
+        return mesh;
+      }
+
+      function paintOnVertex(hitPoint, colorHex, brushSizeVal, waterAlpha) {
+        const brushRadius = brushSizeVal * 0.022; // 調校筆刷感應範圍
+        const targetColor = new THREE.Color(colorHex);
+        const tempWorldPos = new THREE.Vector3();
+
+        sandCastles.forEach((mesh) => {
+          const geo = mesh.geometry;
+          const posAttr = geo.attributes.position;
+          const colorAttr = geo.attributes.color;
+          let updated = false;
+
+          for (let i = 0; i < posAttr.count; i++) {
+            tempWorldPos.fromBufferAttribute(posAttr, i);
+            mesh.localToWorld(tempWorldPos);
+
+            const dist = tempWorldPos.distanceTo(hitPoint);
+            if (dist < brushRadius) {
+              // 強效指數衰減 (讓筆刷中央極度鮮明、邊緣微平滑)
+              const ratio = 1 - dist / brushRadius;
+              const factor = Math.pow(ratio, 1.2) * waterAlpha;
+
+              const r = colorAttr.getX(i);
+              const g = colorAttr.getY(i);
+              const b = colorAttr.getZ(i);
+
+              colorAttr.setXYZ(
+                i,
+                r + (targetColor.r - r) * factor,
+                g + (targetColor.g - g) * factor,
+                b + (targetColor.b - b) * factor,
+              );
+              updated = true;
+            }
+          }
+          if (updated) colorAttr.needsUpdate = true;
+        });
+      }
+
+      function clearAllVertexColors() {
+        sandCastles.forEach((mesh) => {
+          const geo = mesh.geometry;
+          const colorAttr = geo.attributes.color;
+          for (let i = 0; i < colorAttr.count; i++) {
+            colorAttr.setXYZ(
+              i,
+              BASE_SAND_COLOR.r,
+              BASE_SAND_COLOR.g,
+              BASE_SAND_COLOR.b,
+            );
+          }
+          colorAttr.needsUpdate = true;
+        });
+      }
+
+      // 畫筆狀態
+      let brushMode = false;
+      let brushColor = "#4a2e18"; // 預設深咖色
+      let brushSize = 25;
+      let brushWater = 0.8;
+      let isPainting = false;
+
+      // 畫面設定
+      const editorContainer = document.getElementById("editor-container");
+      const editorCanvas = document.getElementById("editor-canvas");
+
+      const aspect = editorContainer.clientWidth / editorContainer.clientHeight;
+      const viewSize = 9;
+      const orthoCamera = new THREE.OrthographicCamera(
+        (-viewSize * aspect) / 2,
+        (viewSize * aspect) / 2,
+        viewSize / 2,
+        -viewSize / 2,
+        0.1,
+        100,
+      );
+      orthoCamera.position.set(0, 0, 15);
+
+      const editorRenderer = new THREE.WebGLRenderer({
+        canvas: editorCanvas,
+        antialias: true,
+        preserveDrawingBuffer: true,
+      });
+      editorRenderer.setSize(
+        editorContainer.clientWidth,
+        editorContainer.clientHeight,
+      );
+      const editorOutlineEffect = new OutlineEffect(editorRenderer, {
+        defaultThickness: 0.003,
+        defaultColor: [0, 0, 0],
+      });
+
+      const previewContainer = document.getElementById("preview-canvas");
+      const previewCamera = new THREE.PerspectiveCamera(
+        42,
+        previewContainer.clientWidth / previewContainer.clientHeight,
+        0.1,
+        100,
+      );
+      previewCamera.position.set(0, -0.5, 7.5);
+
+      const previewRenderer = new THREE.WebGLRenderer({ antialias: true });
+      previewRenderer.setSize(
+        previewContainer.clientWidth,
+        previewContainer.clientHeight,
+      );
+      previewContainer.appendChild(previewRenderer.domElement);
+      const previewOutlineEffect = new OutlineEffect(previewRenderer, {
+        defaultThickness: 0.003,
+        defaultColor: [0, 0, 0],
+      });
+
+      const controls = new OrbitControls(
+        previewCamera,
+        previewRenderer.domElement,
+      );
+      controls.target.set(0, -1.2, 0);
+      controls.enableDamping = true;
+
+      let interactiveObjects = [];
+      let sandCastles = [];
+
+      function createPart(type) {
+        const group = new THREE.Group();
+        let mesh;
+
+        switch (type) {
+          case "castle-base":
+            mesh = makeSandMesh(
+              new THREE.CylinderGeometry(1.0, 1.3, 1.6, 64, 32),
+            );
+            break;
+          case "castle-tower":
+            mesh = makeSandMesh(
+              new THREE.CylinderGeometry(0.6, 0.85, 1.2, 64, 32),
+            );
+            break;
+          case "castle-wall":
+            mesh = makeSandMesh(
+              new THREE.BoxGeometry(1.6, 0.8, 0.8, 32, 20, 20),
+            );
+            break;
+          case "flag-red": {
+            mesh = new THREE.Group();
+            const pole = new THREE.Mesh(
+              new THREE.CylinderGeometry(0.02, 0.02, 1.2, 8),
+              woodMat,
+            );
+            const shape = new THREE.Shape();
+            shape.moveTo(0, 0.5);
+            shape.lineTo(0.45, 0.35);
+            shape.lineTo(0, 0.2);
+            shape.closePath();
+            const flag = new THREE.Mesh(
+              new THREE.ShapeGeometry(shape),
+              flagMat,
+            );
+            mesh.add(pole, flag);
+            break;
+          }
+          case "shovel": {
+            mesh = new THREE.Group();
+            const handle = new THREE.Mesh(
+              new THREE.CylinderGeometry(0.03, 0.03, 1.1, 8),
+              woodMat,
+            );
+            const head = new THREE.Mesh(
+              new THREE.BoxGeometry(0.3, 0.35, 0.05),
+              plasticRedMat,
+            );
+            head.position.set(0, -0.4, 0);
+            mesh.add(handle, head);
+            mesh.rotation.z = -Math.PI / 6;
+            break;
+          }
+          case "shell":
+            mesh = new THREE.Mesh(
+              new THREE.ConeGeometry(0.25, 0.1, 16),
+              shellMat,
+            );
+            mesh.rotation.x = Math.PI / 2;
+            break;
+          case "starfish": {
+            const starShape = createStarShape(0.22, 0.1, 5);
+            const starGeo = new THREE.ExtrudeGeometry(starShape, {
+              depth: 0.05,
+              bevelEnabled: true,
+              bevelSegments: 2,
+              steps: 1,
+              bevelSize: 0.02,
+              bevelThickness: 0.02,
+            });
+            starGeo.center();
+            mesh = new THREE.Mesh(starGeo, starfishMat);
+            break;
+          }
+        }
+
+        if (mesh) group.add(mesh);
+        group.position.set(0, 0, 0);
+        group.userData = { type };
+
+        if (type.startsWith("castle")) {
+          sandCastles.push(mesh);
+        }
+        return group;
+      }
+
+      // 自動服貼
+      const snapRaycaster = new THREE.Raycaster();
+      function applySurfaceSnapping(obj) {
+        const type = obj.userData.type;
+        if (type.startsWith("castle")) {
+          obj.position.z = 0;
+          return;
+        }
+
+        const rayOrigin = new THREE.Vector3(obj.position.x, obj.position.y, 10);
+        snapRaycaster.set(rayOrigin, new THREE.Vector3(0, 0, -1));
+
+        const intersects = snapRaycaster.intersectObjects(sandCastles, false);
+        if (intersects.length > 0) {
+          const hit = intersects[0];
+          obj.position.copy(hit.point);
+          obj.position.addScaledVector(hit.face.normal, 0.04);
+
+          if (type === "shell" || type === "starfish") {
+            const defaultUp = new THREE.Vector3(0, 0, 1);
+            const quaternion = new THREE.Quaternion();
+            quaternion.setFromUnitVectors(defaultUp, hit.face.normal);
+            obj.quaternion.copy(quaternion);
+          }
+        } else {
+          obj.position.z = 0.1;
+          obj.rotation.set(0, 0, obj.rotation.z);
+        }
+      }
+
+      // Gizmo 控制器
+      let selectedObject = null;
+      const gizmoGroup = new THREE.Group();
+      gizmoGroup.position.z = 0.2;
+      scene.add(gizmoGroup);
+
+      const boxGeo = new THREE.BufferGeometry();
+      const boxMat = new THREE.LineBasicMaterial({
+        color: 0xd99b26,
+        linewidth: 2,
+      });
+      const boxLine = new THREE.LineLoop(boxGeo, boxMat);
+
+      const handleGeo = new THREE.BoxGeometry(0.15, 0.15, 0);
+      const handleMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+      const rotHandleMat = new THREE.MeshBasicMaterial({ color: 0x28a745 });
+
+      const handles = {
+        tl: new THREE.Mesh(handleGeo, handleMat),
+        tr: new THREE.Mesh(handleGeo, handleMat),
+        bl: new THREE.Mesh(handleGeo, handleMat),
+        br: new THREE.Mesh(handleGeo, handleMat),
+        rot: new THREE.Mesh(new THREE.CircleGeometry(0.09, 16), rotHandleMat),
+      };
+
+      gizmoGroup.add(boxLine);
+      Object.values(handles).forEach((h) => gizmoGroup.add(h));
+      gizmoGroup.visible = false;
+
+      function updateGizmo() {
+        if (!selectedObject || brushMode) {
+          gizmoGroup.visible = false;
+          return;
+        }
+        gizmoGroup.visible = true;
+        gizmoGroup.position.x = selectedObject.position.x;
+        gizmoGroup.position.y = selectedObject.position.y;
+        gizmoGroup.rotation.z = selectedObject.rotation.z;
+
+        const box = new THREE.Box3().setFromObject(selectedObject);
+        const size = new THREE.Vector3();
+        box.getSize(size);
+
+        const w = size.x / 2 + 0.08;
+        const h = size.y / 2 + 0.08;
+
+        boxGeo.setFromPoints([
+          new THREE.Vector3(-w, h, 0),
+          new THREE.Vector3(w, h, 0),
+          new THREE.Vector3(w, -h, 0),
+          new THREE.Vector3(-w, -h, 0),
+        ]);
+
+        handles.tl.position.set(-w, h, 0);
+        handles.tr.position.set(w, h, 0);
+        handles.bl.position.set(-w, -h, 0);
+        handles.br.position.set(w, -h, 0);
+        handles.rot.position.set(0, h + 0.35, 0);
+      }
+
+      // 歷史系統
+      let historyStack = [];
+      let historyStep = -1;
+
+      function getCanvasState() {
+        return interactiveObjects.map((obj) => {
+          const state = {
+            type: obj.userData.type,
+            position: {
+              x: obj.position.x,
+              y: obj.position.y,
+              z: obj.position.z,
+            },
+            rotation: {
+              x: obj.rotation.x,
+              y: obj.rotation.y,
+              z: obj.rotation.z,
+            },
+            scale: { x: obj.scale.x, y: obj.scale.y, z: obj.scale.z },
+          };
+
+          if (obj.userData.type.startsWith("castle") && obj.children[0]) {
+            const colorArr = Array.from(
+              obj.children[0].geometry.attributes.color.array,
+            );
+            state.vertexColors = colorArr;
+          }
+          return state;
+        });
+      }
+
+      function saveHistory() {
+        const currentState = JSON.stringify(getCanvasState());
+        if (historyStep >= 0 && historyStack[historyStep] === currentState)
+          return;
+
+        historyStack = historyStack.slice(0, historyStep + 1);
+        historyStack.push(currentState);
+        historyStep++;
+        updateUndoRedoUI();
+      }
+
+      function restoreCanvasState(jsonString) {
+        const config = JSON.parse(jsonString);
+
+        interactiveObjects.forEach((obj) => scene.remove(obj));
+        interactiveObjects = [];
+        sandCastles = [];
+        selectedObject = null;
+
+        config.forEach((item) => {
+          const part = spawnPartAt(
+            item.type,
+            item.position.x,
+            item.position.y,
+            false,
+          );
+          part.position.z = item.position?.z ?? 0;
+          part.rotation.set(item.rotation.x, item.rotation.y, item.rotation.z);
+          part.scale.set(item.scale.x, item.scale.y, item.scale.z);
+
+          if (item.vertexColors && part.children[0]) {
+            const colorAttr = part.children[0].geometry.attributes.color;
+            colorAttr.array.set(item.vertexColors);
+            colorAttr.needsUpdate = true;
+          }
+        });
+
+        updateGizmo();
+      }
+
+      function updateUndoRedoUI() {
+        document.getElementById("tool-undo").disabled = historyStep <= 0;
+        document.getElementById("tool-redo").disabled =
+          historyStep >= historyStack.length - 1;
+      }
+
+      function spawnPartAt(type, posX = 0, posY = -2.0, triggerHistory = true) {
+        const newPart = createPart(type);
+        newPart.position.set(posX, posY, 0);
+
+        scene.add(newPart);
+        interactiveObjects.push(newPart);
+        selectedObject = newPart;
+
+        applySurfaceSnapping(newPart);
+        updateGizmo();
+
+        if (triggerHistory) saveHistory();
+        return newPart;
+      }
+
+      // ===== 事件監聽 (修復連續劃筆不中斷) =====
+      const raycaster = new THREE.Raycaster();
+      const mouse = new THREE.Vector2();
+
+      function doPaintAtPointer(clientX, clientY) {
+        const rect = editorCanvas.getBoundingClientRect();
+        mouse.x = ((clientX - rect.left) / rect.width) * 2 - 1;
+        mouse.y = -((clientY - rect.top) / rect.height) * 2 + 1;
+
+        raycaster.setFromCamera(mouse, orthoCamera);
+        const intersects = raycaster.intersectObjects(sandCastles, false);
+
+        if (intersects.length > 0) {
+          paintOnVertex(
+            intersects[0].point,
+            brushColor,
+            brushSize,
+            brushWater * 0.35,
+          );
+        }
+      }
+
+      function setBrushMode(active) {
+        brushMode = active;
+        const btn = document.getElementById("tool-brush");
+        const sidebarBtn = document.getElementById("sidebar-brush-btn");
+
+        if (brushMode) {
+          btn.classList.add("active");
+          sidebarBtn.classList.add("active");
+          editorCanvas.classList.add("brush-cursor");
+          selectedObject = null;
+          updateGizmo();
+        } else {
+          btn.classList.remove("active");
+          sidebarBtn.classList.remove("active");
+          editorCanvas.classList.remove("brush-cursor");
+        }
+      }
+
+      document
+        .getElementById("tool-brush")
+        .addEventListener("click", () => setBrushMode(!brushMode));
+      document
+        .getElementById("sidebar-brush-btn")
+        .addEventListener("click", () => setBrushMode(!brushMode));
+
+      document
+        .getElementById("brush-color")
+        .addEventListener("input", (e) => (brushColor = e.target.value));
+      document.getElementById("brush-size").addEventListener("input", (e) => {
+        brushSize = parseFloat(e.target.value);
+        document.getElementById("brush-size-val").innerText = brushSize;
+      });
+      document.getElementById("brush-water").addEventListener("input", (e) => {
+        brushWater = parseFloat(e.target.value) / 100;
+        document.getElementById("brush-water-val").innerText =
+          e.target.value + "%";
+      });
+      document
+        .getElementById("btn-clear-paint")
+        .addEventListener("click", () => {
+          clearAllVertexColors();
+          saveHistory();
+        });
+
+      // 拖曳生成
+      document.querySelectorAll(".item-btn[data-type]").forEach((btn) => {
+        btn.addEventListener("dragstart", (e) =>
+          e.dataTransfer.setData("text/plain", e.target.dataset.type),
+        );
+        btn.addEventListener("click", (e) => {
+          const type = e.target.dataset.type;
+          if (!type) return;
+          if (brushMode) setBrushMode(false);
+          const jitter = (Math.random() - 0.5) * 0.3;
+          spawnPartAt(type, jitter, -2.0 + jitter);
+        });
+      });
+
+      editorContainer.addEventListener("dragover", (e) => e.preventDefault());
+      editorContainer.addEventListener("drop", (e) => {
+        e.preventDefault();
+        const type = e.dataTransfer.getData("text/plain");
+        if (!type) return;
+
+        const rect = editorCanvas.getBoundingClientRect();
+        mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+        mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+
+        raycaster.setFromCamera(mouse, orthoCamera);
+        const worldPos = new THREE.Vector3();
+        raycaster.ray.intersectPlane(
+          new THREE.Plane(new THREE.Vector3(0, 0, 1), 0),
+          worldPos,
+        );
+
+        spawnPartAt(type, worldPos.x, worldPos.y);
+      });
+
+      // Pointer 連續繪畫 & Gizmo 拖曳
+      let isDragging = false;
+      let dragMode = null;
+      let dragStartMouse = new THREE.Vector2();
+      let initialPos = new THREE.Vector3();
+      let initialScale = new THREE.Vector3();
+      let initialRotZ = 0;
+
+      editorCanvas.addEventListener("pointerdown", (e) => {
+        editorCanvas.setPointerCapture(e.pointerId);
+
+        if (brushMode) {
+          isPainting = true;
+          doPaintAtPointer(e.clientX, e.clientY);
+          return;
+        }
+
+        const rect = editorCanvas.getBoundingClientRect();
+        mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+        mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+        raycaster.setFromCamera(mouse, orthoCamera);
+
+        if (selectedObject && gizmoGroup.visible) {
+          const gizmoHits = raycaster.intersectObjects(Object.values(handles));
+          if (gizmoHits.length > 0) {
+            isDragging = true;
+            dragStartMouse.set(e.clientX, e.clientY);
+            const hitName = Object.keys(handles).find(
+              (k) => handles[k] === gizmoHits[0].object,
+            );
+
+            if (hitName === "rot") {
+              dragMode = "rotate";
+              initialRotZ = selectedObject.rotation.z;
+            } else {
+              dragMode = "scale";
+              initialScale.copy(selectedObject.scale);
+            }
+            return;
+          }
+        }
+
+        const hits = raycaster.intersectObjects(interactiveObjects, true);
+        if (hits.length > 0) {
+          let root = hits[0].object;
+          while (root.parent && root.parent !== scene) root = root.parent;
+
+          selectedObject = root;
+          isDragging = true;
+          dragMode = "translate";
+          dragStartMouse.set(e.clientX, e.clientY);
+          initialPos.copy(selectedObject.position);
+          updateGizmo();
+        } else {
+          selectedObject = null;
+          updateGizmo();
+        }
+      });
+
+      editorCanvas.addEventListener("pointermove", (e) => {
+        if (brushMode && isPainting) {
+          doPaintAtPointer(e.clientX, e.clientY);
+          return;
+        }
+
+        if (!isDragging || !selectedObject) return;
+
+        const dx = (e.clientX - dragStartMouse.x) * 0.015;
+        const dy = -(e.clientY - dragStartMouse.y) * 0.015;
+
+        if (dragMode === "translate") {
+          selectedObject.position.set(
+            initialPos.x + dx,
+            initialPos.y + dy,
+            selectedObject.position.z,
+          );
+          applySurfaceSnapping(selectedObject);
+          interactiveObjects.forEach((obj) => {
+            if (!obj.userData.type.startsWith("castle"))
+              applySurfaceSnapping(obj);
+          });
+        } else if (dragMode === "scale") {
+          const factor = 1 + dx;
+          selectedObject.scale.set(
+            Math.max(0.2, initialScale.x * factor),
+            Math.max(0.2, initialScale.y * factor),
+            Math.max(0.2, initialScale.z * factor),
+          );
+        } else if (dragMode === "rotate") {
+          selectedObject.rotation.z = initialRotZ - dx * 2;
+        }
+
+        updateGizmo();
+      });
+
+      editorCanvas.addEventListener("pointerup", (e) => {
+        try {
+          editorCanvas.releasePointerCapture(e.pointerId);
+        } catch (err) {}
+
+        if (isPainting) {
+          isPainting = false;
+          saveHistory();
+        }
+        if (isDragging) {
+          isDragging = false;
+          dragMode = null;
+          saveHistory();
+        }
+      });
+
+      // 工具列與快捷設定
+      document.getElementById("tool-rot-left").addEventListener("click", () => {
+        if (!selectedObject) return;
+        selectedObject.rotation.z += Math.PI / 12;
+        updateGizmo();
+        saveHistory();
+      });
+      document
+        .getElementById("tool-rot-right")
+        .addEventListener("click", () => {
+          if (!selectedObject) return;
+          selectedObject.rotation.z -= Math.PI / 12;
+          updateGizmo();
+          saveHistory();
+        });
+      document.getElementById("tool-scale-up").addEventListener("click", () => {
+        if (!selectedObject) return;
+        selectedObject.scale.multiplyScalar(1.1);
+        updateGizmo();
+        saveHistory();
+      });
+      document
+        .getElementById("tool-scale-down")
+        .addEventListener("click", () => {
+          if (!selectedObject) return;
+          selectedObject.scale.multiplyScalar(0.9);
+          updateGizmo();
+          saveHistory();
+        });
+      document.getElementById("tool-delete").addEventListener("click", () => {
+        if (!selectedObject) return;
+        scene.remove(selectedObject);
+        interactiveObjects = interactiveObjects.filter(
+          (o) => o !== selectedObject,
+        );
+        sandCastles = sandCastles.filter(
+          (m) => m !== selectedObject.children[0],
+        );
+        selectedObject = null;
+        updateGizmo();
+        saveHistory();
+      });
+
+      document.getElementById("tool-undo").addEventListener("click", () => {
+        if (historyStep > 0) {
+          historyStep--;
+          restoreCanvasState(historyStack[historyStep]);
+          updateUndoRedoUI();
+        }
+      });
+      document.getElementById("tool-redo").addEventListener("click", () => {
+        if (historyStep < historyStack.length - 1) {
+          historyStep++;
+          restoreCanvasState(historyStack[historyStep]);
+          updateUndoRedoUI();
+        }
+      });
+
+      // JSON 存取
+      document.getElementById("btn-save").addEventListener("click", () => {
+        const dataStr =
+          "data:text/json;charset=utf-8," +
+          encodeURIComponent(JSON.stringify(getCanvasState()));
+        const a = document.createElement("a");
+        a.setAttribute("href", dataStr);
+        a.setAttribute("download", "sand_castle_3d.json");
+        a.click();
+      });
+
+      const fileInput = document.getElementById("file-input");
+      document
+        .getElementById("btn-load")
+        .addEventListener("click", () => fileInput.click());
+      fileInput.addEventListener("change", (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          restoreCanvasState(event.target.result);
+          saveHistory();
+        };
+        reader.readAsText(file);
+      });
+
+      document.getElementById("btn-reset").addEventListener("click", () => {
+        interactiveObjects.forEach((obj) => scene.remove(obj));
+        interactiveObjects = [];
+        sandCastles = [];
+        selectedObject = null;
+        updateGizmo();
+        saveHistory();
+      });
+
+      // 範本城堡
+      const templateMenu = document.getElementById("template-menu");
+      document.getElementById("btn-template").addEventListener("click", () => {
+        templateMenu.style.display =
+          templateMenu.style.display === "flex" ? "none" : "flex";
+      });
+
+      document.querySelectorAll("#template-menu button").forEach((btn) => {
+        btn.addEventListener("click", (e) => {
+          const type = e.target.dataset.template;
+          templateMenu.style.display = "none";
+          document.getElementById("btn-reset").click();
+
+          if (type === "classic") {
+            spawnPartAt("castle-base", 0, -2.2);
+            spawnPartAt("castle-tower", 0, -0.8);
+            spawnPartAt("flag-red", 0, 0.2);
+          } else if (type === "fortress") {
+            spawnPartAt("castle-base", -1.5, -2.2);
+            spawnPartAt("castle-base", 1.5, -2.2);
+            spawnPartAt("castle-wall", 0, -2.5);
+            spawnPartAt("flag-red", -1.5, -0.8);
+            spawnPartAt("flag-red", 1.5, -0.8);
+          } else if (type === "full") {
+            spawnPartAt("castle-base", -1.8, -2.2);
+            spawnPartAt("castle-base", 1.8, -2.2);
+            spawnPartAt("castle-wall", 0, -2.5);
+            spawnPartAt("castle-tower", 0, -1.3);
+            spawnPartAt("starfish", -0.5, -2.0);
+            spawnPartAt("shell", 0.5, -2.0);
+            spawnPartAt("shovel", 2.2, -2.8);
+            spawnPartAt("flag-red", 0, -0.2);
+          }
+        });
+      });
+
+      // RENDER LOOP
+      function animate() {
+        requestAnimationFrame(animate);
+        controls.update();
+        editorOutlineEffect.render(scene, orthoCamera);
+        previewOutlineEffect.render(scene, previewCamera);
+      }
+      animate();
+
+      window.addEventListener("resize", () => {
+        const w = editorContainer.clientWidth;
+        const h = editorContainer.clientHeight;
+        const newAspect = w / h;
+
+        orthoCamera.left = (-viewSize * newAspect) / 2;
+        orthoCamera.right = (viewSize * newAspect) / 2;
+        orthoCamera.top = viewSize / 2;
+        orthoCamera.bottom = -viewSize / 2;
+        orthoCamera.updateProjectionMatrix();
+        editorRenderer.setSize(w, h);
+
+        const pw = previewContainer.clientWidth;
+        const ph = previewContainer.clientHeight;
+        previewCamera.aspect = pw / ph;
+        previewCamera.updateProjectionMatrix();
+        previewRenderer.setSize(pw, ph);
+      });
+
+      saveHistory();
+    </script>
+  </body>
+</html>
