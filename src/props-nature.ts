@@ -1106,6 +1106,31 @@ export function makeWesternMountainTerrain(rows) {
   slope.castShadow = true;
   group.add(slope);
 
+  // 第一人稱會從高台高度看見山坡東緣下方；補一片只涵蓋實際山腳的側牆，
+  // 將坡面接到世界底部。範圍由 LAYOUT 控制，避免再次散落寫死座標。
+  const fillMinZ = LAYOUT.mountainBand.footFillMinZ;
+  const fillMaxZ = LAYOUT.mountainBand.footFillMaxZ;
+  const footFillTopY = PLATEAU_Y + 0.12;
+  const footFillBottomY = LAYOUT.mountainBand.footFillBottomY;
+  const footFillHeight = footFillTopY - footFillBottomY;
+  const footFill = new THREE.Mesh(
+    new THREE.PlaneGeometry(fillMaxZ - fillMinZ, footFillHeight),
+    new THREE.MeshStandardMaterial({
+      color: low,
+      roughness: 1,
+      side: THREE.DoubleSide,
+      flatShading: true,
+    }),
+  );
+  footFill.rotation.y = Math.PI / 2;
+  footFill.position.set(
+    eastX - 0.04,
+    footFillBottomY + footFillHeight / 2,
+    (fillMinZ + fillMaxZ) / 2,
+  );
+  footFill.receiveShadow = true;
+  group.add(footFill);
+
   // 山壁背板——擋在起伏山坡後面的一片實心背景牆，防止稜線在某些角度
   // /z 值剛好出現低點時，鏡頭直接看穿到後面的星空(破圖)。跟這個專案
   // 其他「地板/水面蓋住星空」的做法同一套：transparent+opacity:1+

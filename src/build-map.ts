@@ -3928,6 +3928,14 @@ export function isBlocked(mapName, x, z) {
   )
     return true;
   if (mapName === "livingArea" && isPointInsideFeeder(x, z)) return true;
+  if (mapName === "mountain") {
+    const shrine = LAYOUT.mountain.summitShrine;
+    if (
+      Math.abs(x - shrine.x) <= shrine.collisionHalfWidth &&
+      Math.abs(z - shrine.z) <= shrine.collisionHalfDepth
+    )
+      return true;
+  }
   if (mapName === "livingArea" && z < 0) {
     const onNorthPlateau =
       x >= 0 && x < LAYOUT.coast.rampX && z >= northCliffEdgeZ(x) + 0.62;

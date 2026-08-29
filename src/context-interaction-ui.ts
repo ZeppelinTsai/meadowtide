@@ -4,7 +4,7 @@ import { actionsForAnimal, getCarriedAnimalId } from "./animal-interactions";
 import { gameState, cropState, inventory, WOOD_NODES, STONE_NODES } from "./game-state";
 import { animals, npcs } from "./npc-runtime";
 import { renderer, camera, scene } from "./scene-sky";
-import { getGameplayCamera } from "./first-person-camera";
+import { getGameplayCamera, isFirstPersonModeActive } from "./first-person-camera";
 import { isCameraAdjustModeActive } from "./cutscene-camera";
 import { isInventoryOpen } from "./inventory-ui";
 import { activeChoice, dialogQueue } from "./dialogue";
@@ -80,10 +80,11 @@ function targetFromRay(){
 function showHighlight(target:WorldTarget){if(highlight){scene.remove(highlight);highlight.geometry.dispose(); (highlight.material as THREE.Material).dispose();}highlight=new THREE.BoxHelper(target.object,0xffd45a);scene.add(highlight);highlightTimer=performance.now()+850;}
 function approach(target:WorldTarget,action:ContextAction){const p=target.getPosition();if(!p)return false;selectedTarget=target;showHighlight(target);const dx=p.x-gameState.player.position.x,dz=p.z-gameState.player.position.z;if(Math.hypot(dx,dz)<=target.radius+0.2){gameState.player.rotation.y=Math.atan2(-dx,-dz);action.execute();selectedTarget=null;return true;}return requestPlayerNavigation(p,{id:target.id,radius:target.radius,getPosition:target.getPosition,isValid:()=>target.isValid()&&target.actions.some(a=>a.id===action.id),execute:()=>{if(target.isValid()){action.execute();selectedTarget=null;}}});}
 export function executeContextInteraction(slot:InteractionSlot){currentTarget=chooseTarget();const action=currentTarget?.actions.find(a=>a.slot===slot);if(!currentTarget||!action)return false;return approach(currentTarget,action);}
-export function runLegacyPrimaryInteraction(){bypassLegacy=true;window.dispatchEvent(new KeyboardEvent("keydown",{key:"e"}));window.dispatchEvent(new KeyboardEvent("keyup",{key:"e"}));}
+function dispatchPrimaryInteraction(){window.dispatchEvent(new KeyboardEvent("keydown",{key:"e"}));window.dispatchEvent(new KeyboardEvent("keyup",{key:"e"}));}
+export function runLegacyPrimaryInteraction(){bypassLegacy=true;dispatchPrimaryInteraction();}
 export function consumeLegacyPrimaryBypass(){const value=bypassLegacy;bypassLegacy=false;return value;}
 export function refreshShortcutLabels(){const layout=getEffectiveControllerLayout(),info=document.querySelector<HTMLElement>("#quickInfoMenuBtn small"),map=document.querySelector<HTMLElement>("#quickMapMenuBtn small");if(info)info.textContent=layout==="nintendo"?"Q / -":"Q / View";if(map)map.textContent="M / L3";if(root)root.dataset.signature="";}
-function handleWorldClick(clientX:number,clientY:number){if(blocked())return;updateRay(clientX,clientY);const target=targetFromRay();if(target){selectedTarget=target;pointedId=target.id;approach(target,target.actions[0]);return;}groundPlane.constant=-gameState.player.position.y;const hit=new THREE.Vector3();if(raycaster.ray.intersectPlane(groundPlane,hit)){selectedTarget=null;requestPlayerNavigation({x:hit.x,z:hit.z});}}
+function handleWorldClick(clientX:number,clientY:number){if(blocked())return;if(isFirstPersonModeActive()){dispatchPrimaryInteraction();return;}updateRay(clientX,clientY);const target=targetFromRay();if(target){selectedTarget=target;pointedId=target.id;approach(target,target.actions[0]);return;}groundPlane.constant=-gameState.player.position.y;const hit=new THREE.Vector3();if(raycaster.ray.intersectPlane(groundPlane,hit)){selectedTarget=null;requestPlayerNavigation({x:hit.x,z:hit.z});}}
 function frame(){if(highlight&&performance.now()>highlightTimer){scene.remove(highlight);highlight.geometry.dispose(); (highlight.material as THREE.Material).dispose();highlight=null;}if(destinationMarker.visible&&performance.now()>markerTimer)destinationMarker.visible=false;render();requestAnimationFrame(frame);}
 export function initContextInteraction(){
   ensureRoot();refreshShortcutLabels();onInputPresentationChanged(refreshShortcutLabels);addEventListener("controller-layout-changed",refreshShortcutLabels);addEventListener("keydown",markKeyboardMouseInput);addEventListener("pointerdown",markKeyboardMouseInput);

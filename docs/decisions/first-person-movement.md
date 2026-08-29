@@ -11,6 +11,8 @@ locks. First-person mode must not implement a second movement pipeline.
 - `A/D` or left-stick left/right strafes relative to camera yaw.
 - Mouse movement while pointer-locked and the right stick turn left/right and
   look up/down.
+- First-person left click executes the same primary context interaction as default
+  keyboard `E`; it never starts point-and-click navigation.
 - `Tab`/R3 keeps the existing first-person toggle behavior.
 
 `src/first-person-movement.ts` is the pure coordinate transform from local FPS

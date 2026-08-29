@@ -46,6 +46,10 @@ click replaces the old destination. Dialogue, menus, cutscenes, fishing, and
 other paused states cancel it. Pointer release is treated as a click only below
 the drag threshold, so camera dragging does not trigger movement.
 
+First-person mode does not accept world-click navigation. A left click runs the same
+primary interaction path as keyboard `E` (including existing legacy fallback), while
+switching back to the standard camera restores point-and-click movement.
+
 ## Verification
 
 Run:

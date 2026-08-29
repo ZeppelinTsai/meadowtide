@@ -66,6 +66,13 @@ export const BARN_DOOR = {
   z: LAYOUT.barn.z + LAYOUT.barn.d,
 };
 export function hasPastureGrassAt(x, z) {
+  if (
+    x < PASTURE.minX ||
+    x > PASTURE.maxX ||
+    z < PASTURE.minZ ||
+    z > PASTURE.maxZ
+  )
+    return false;
   if (isInsideLakeShape(x, z, -0.2)) return false;
   if (
     x >= LAYOUT.barn.x &&

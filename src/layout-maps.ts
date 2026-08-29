@@ -128,6 +128,10 @@ export const LAYOUT = {
     slopeDegrees: 30,
     slopeEastX: -0.25,
     slopeWestX: -34,
+    // 第一人稱可看見高台側面；用具名範圍封住山坡東緣下方，避免露出天空。
+    footFillMinZ: -4,
+    footFillMaxZ: 42,
+    footFillBottomY: -12,
   },
   mountainGateway: {
     startX: 3,
@@ -596,6 +600,8 @@ export const LAYOUT = {
       x: 25.5,
       z: 8.5,
       guardianOffsetX: -1.7,
+      collisionHalfWidth: 0.75,
+      collisionHalfDepth: 0.55,
     },
     // 2026-08-25 二次調整：x 從 32.65 改成 33.5，貼齊 waist 平台邊界
     // (centerX+halfWidth=33.5，跟 build-map.ts addPlatform() 算的

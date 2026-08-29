@@ -39,4 +39,6 @@
   資料推導；移動魚池時不可另留寫死的樹座標。
 - 生活區西側背景山坡的基準角度由 `LAYOUT.mountainBand.slopeDegrees` 控制，
   目前為 30°；`makeWesternMountainTerrain()` 必須從這個角度計算線性抬升，
-  不可另寫非線性高牆公式。修改後執行 `npm run build`。
+  不可另寫非線性高牆公式。第一人稱可見的山腳側面填充範圍由同一物件的
+  `footFillMinZ`／`footFillMaxZ` 控制，向下延伸底界由 `footFillBottomY` 控制，
+  避免低角度看見側牆底邊。修改後執行 `npm run build`。
