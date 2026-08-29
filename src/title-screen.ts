@@ -1,12 +1,14 @@
 import * as THREE from "three";
 import { buildMap, fadeIn, loadMap } from "./build-map";
 import {
+  getSaveSlotSummaries,
   getTitlePreviewTime,
   loadGame,
   migrateLegacyDefaultSave,
   setActiveSaveSlot,
 } from "./input-save";
 import { renderSaveSlotButtons } from "./save-slot-ui";
+import { saveSlotForDigitCode } from "./save-slot-config";
 import { initializeMusic, setTitleMusicPeriod } from "./music";
 import { hasSaveData, startPrologueScene } from "./prologue";
 import { mountSystemSettings } from "./system-settings-ui";
@@ -303,7 +305,25 @@ export function initTitleScreen() {
     quitMessage.hidden = false;
   }
 
-  document.addEventListener("keydown", enterMenu);
+  function handleTitleKeyDown(event: KeyboardEvent) {
+    if (!titleActive) return;
+    if (step === "splash") {
+      enterMenu();
+      return;
+    }
+    if (step !== "menu" && step !== "loadSlots") return;
+    if (event.shiftKey || event.ctrlKey || event.altKey || event.metaKey) return;
+    const slot = saveSlotForDigitCode(event.code);
+    if (slot === null) return;
+    const summary = getSaveSlotSummaries().find(
+      (candidate) => !candidate.isAutosave && candidate.slot === slot,
+    );
+    if (!summary?.exists) return;
+    event.preventDefault();
+    loadFromSlot(summary.saveName, summary.sourceSlot);
+  }
+
+  document.addEventListener("keydown", handleTitleKeyDown);
   document.addEventListener("pointerdown", enterMenu);
   newGameButton.addEventListener("click", openProfileName);
   playerNameInput.addEventListener("input", () => {

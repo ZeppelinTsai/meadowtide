@@ -63,7 +63,10 @@ slot 給 `migrateLegacyDefaultSave()` 讀一次搬家用，新程式碼不應該
 `save-slot-ui.ts` 的 `renderSaveSlotButtons()` 是開始畫面與遊戲中暫停
 選單唯一的讀取清單渲染來源。順序固定為最上方 autosave，接著 slot1～slot10；
 使用同一套單欄、可捲動 UI 與摘要格式，不得在兩個畫面各自建立另一套
-slot markup 或 CSS。
+slot markup 或 CSS。清單必須顯示高對比且穩定佔位的垂直捲軸；標題、暫停、
+資訊或地圖選單開啟時，滑鼠滾輪由 UI 接管，不得穿透觸發世界鏡頭 zoom。
+標題主選單與讀檔清單可直接用 `1`～`9`／`0` 讀取第 1～10 格，必須共用
+`saveSlotForDigitCode()` 與 `loadFromSlot()`；空白格不執行，自動存檔仍由清單選取。
 
 `prologue.ts` 的存檔存在判斷也包含 autosave。即使玩家沒有建立手動存檔，
 只要 06:00 autosave 存在，標題畫面仍會顯示「繼續遊戲」。

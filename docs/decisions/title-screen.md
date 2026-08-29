@@ -109,6 +109,13 @@
 
 標題的 `#titleSystem` 與 `#titleLoadSlots` 在所有螢幕尺寸都是 `position: fixed; inset: 0` 的全畫面 modal，必須提升到 header 上方並完整覆蓋 Logo 區，不受兩列 grid 的第二列高度限制。標題與返回鍵固定，中央 `#titleSystemSettings`／`.saveSlotList` 使用 `min-height: 0` 與內部垂直捲動；一般畫面用彈性安全內距，小於 520px 或矮於 560px 時改用 12px 內距。所有文字仍不得低於 18px。修改後執行 `npm run build`。
 
+## 標題快速讀檔與滾輪
+
+在 `menu` 或 `loadSlots` 步驟按數字列 `1`～`9`／`0`，直接載入第 1～10 格；
+只接受無 Shift／Ctrl／Alt／Meta 的按鍵，空白格不動作。`splash` 的第一個數字鍵
+只負責進入主選單，不可同一次按鍵直接讀檔。標題展示期間所有滾輪輸入都不可
+縮放背景 3D 鏡頭；讀檔清單使用自己的可見垂直捲軸。
+
 ## Title scene ambient motion
 
 The living-area preview stays as a live Three.js scene rather than a still image. Pasture grass continues updating while gameplay is paused by using real visual time (`frameDt` and `effectElapsed`), with a fixed low-amplitude breeze. Gameplay grass retains its existing weather-driven timing and strength.

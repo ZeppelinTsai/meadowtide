@@ -560,6 +560,7 @@ addEventListener("keydown", (event) => {
   if (slotNum === null) return;
   if (
     !gameState.player ||
+    gameState.titlePresentationActive ||
     gameState.cutsceneActive ||
     isInventoryOpen() ||
     dialogQueue.length ||
@@ -704,6 +705,17 @@ function setCameraZoom(zoom) {
 // (pinchStartZoom*pinchStartDistance/distance，本來就是比例縮放)一直
 // 以來的做法，滾輪這裡只是補齊同一套邏輯。
 addEventListener("wheel", (e) => {
+  // Menus own wheel input; never zoom the hidden world behind a scrollable UI.
+  if (
+    gameState.titlePresentationActive ||
+    isInventoryOpen() ||
+    document.querySelector('[data-game-menu="open"]') ||
+    (e.target instanceof Element &&
+      e.target.closest(
+        "#titleScreen, #pauseMenu, #inventoryOverlay, #mapOverlay",
+      ))
+  )
+    return;
   setCameraZoom(gameState.zoom * Math.exp(e.deltaY * 0.001));
 });
 
