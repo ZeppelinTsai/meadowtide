@@ -17,7 +17,7 @@
     "test:map-tools": "tsx --test src/region-paint.test.ts src/map-shift.test.ts src/map-transitions.test.ts src/shore-foam.test.ts",
     "test:weather": "tsx --test src/weather-schedule.test.ts",
     "test:affection": "tsx --test src/affection.test.ts",
-    "test:save-slots": "tsx --test src/save-slot-config.test.ts",
+    "test:save-slots": "tsx --test src/save-slot-config.test.ts src/player-mesh-lifecycle.test.ts",
     "test:story": "tsx --test src/story/story-system.test.ts",
     "story-audit": "tsx scripts/story-audit.ts",
     "test:context-interaction": "tsx --test src/context-interaction.test.ts src/navigation.test.ts",

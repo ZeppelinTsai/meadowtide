@@ -127,6 +127,10 @@ import {
   makeHeroPlayer,
   makeMountainGuardian,
 } from "./humanoid";
+import {
+  markRuntimePlayerMesh,
+  removeStalePlayerMeshes,
+} from "./player-mesh-lifecycle";
 import { isPointBlockedByScaledBuilding } from "./building-scale";
 import {
   makeTree,
@@ -3883,9 +3887,14 @@ export function buildMap(mapName) {
 
 export function syncPlayerAppearance() {
   const appearance = gameState.playerAppearance;
-  if (gameState.player?.userData?.playerAppearance === appearance) return;
+  removeStalePlayerMeshes(scene, gameState.player || null);
+  if (gameState.player?.userData?.playerAppearance === appearance) {
+    markRuntimePlayerMesh(gameState.player);
+    if (gameState.player.parent !== scene) scene.add(gameState.player);
+    return;
+  }
   const previous = gameState.player;
-  const replacement = makeHeroPlayer(appearance);
+  const replacement = markRuntimePlayerMesh(makeHeroPlayer(appearance));
   if (previous) {
     replacement.position.copy(previous.position);
     replacement.rotation.copy(previous.rotation);

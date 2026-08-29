@@ -79,6 +79,10 @@ slot markup 或 CSS。清單必須顯示高對比且穩定佔位的垂直捲軸�
   保持加入選擇功能前的既有外觀。
 - 讀取另一格、即使仍在同一張地圖，也必須呼叫 `syncPlayerAppearance()`
   替換 Mesh；只在 `loadMap()` 建場景時判定會讓同地圖讀檔沿用錯誤外型。
+- `src/player-mesh-lifecycle.ts` 是主角 Mesh 清場的單一入口。讀檔／換圖時
+  `syncPlayerAppearance()` 必須保留目前 `gameState.player`，並移除 scene 中其餘
+  玩家標記 Mesh；標題展示臨時主角離場時也必須從 scene 移除，不能只改指標。
+  修改後執行 `npm run test:save-slots` 與 `npm run build`。
 
 ## 尚未做的事
 

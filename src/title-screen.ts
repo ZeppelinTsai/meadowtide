@@ -160,6 +160,7 @@ export function initTitleScreen() {
     gameState.player = makeMaleHeroPlayer();
     scene.add(gameState.player);
   }
+  const titlePresentationPlayer = gameState.player;
   gameState.player.visible = false;
   setPresentationCamera(titlePreset.camera);
   requestAnimationFrame(() =>
@@ -226,6 +227,8 @@ export function initTitleScreen() {
     gameState.titlePresentationActive = false;
     setTitleMusicPeriod(null);
     setPresentationCamera(null);
+    if (titlePresentationPlayer !== previous.player)
+      titlePresentationPlayer.parent?.remove(titlePresentationPlayer);
     gameState.player = previous.player;
     gameState.currentMapName = previous.currentMapName;
     gameState.currentDay = previous.currentDay;
