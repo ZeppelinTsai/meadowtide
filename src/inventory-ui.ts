@@ -190,6 +190,24 @@ function setActiveTab(index: number, focus = false) {
   renderInventory();
 }
 
+function moveContentFocus(direction: -1 | 1) {
+  const cards = Array.from(
+    grid.querySelectorAll<HTMLButtonElement>("button:not(:disabled)"),
+  );
+  if (!cards.length) return false;
+  const currentIndex = cards.indexOf(
+    document.activeElement as HTMLButtonElement,
+  );
+  const nextIndex =
+    currentIndex < 0
+      ? direction > 0
+        ? 0
+        : cards.length - 1
+      : Math.max(0, Math.min(cards.length - 1, currentIndex + direction));
+  cards[nextIndex].focus();
+  return true;
+}
+
 function closeItemContentMenu() {
   contextItemId = null;
   contentMenu.hidden = true;
@@ -396,7 +414,16 @@ addEventListener("keydown", (event) => {
     return;
   }
   if (!open || event.repeat) return;
-  if (event.key === "[") {
+  if (event.key === "ArrowLeft" || event.key === "ArrowRight") {
+    const direction = event.key === "ArrowRight" ? 1 : -1;
+    const focused = document.activeElement;
+    if (focused instanceof HTMLElement && tabList.contains(focused)) {
+      event.preventDefault();
+      setActiveTab(activeTabIndex + direction, true);
+    } else if (contentMenu.hidden && moveContentFocus(direction)) {
+      event.preventDefault();
+    }
+  } else if (event.key === "[") {
     event.preventDefault();
     setActiveTab(activeTabIndex - 1, true);
   } else if (event.key === "]") {
