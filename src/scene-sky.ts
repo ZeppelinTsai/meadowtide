@@ -286,7 +286,10 @@ import {
         const config = SEASON_STAR_CONFIGS[seasonIndex];
         const group = new THREE.Group();
         const positions = [];
-        for (let i = 0; i < config.count; i++) {
+        // 原本所有星點集中在前方平面；改成 360° 上半球後，單一 65° 視野
+        // 約只看得到六分之一，因此補償總點數以維持原本的夜空密度。
+        const sphereStarCount = config.count * 6;
+        for (let i = 0; i < sphereStarCount; i++) {
           const nx = (hash2(i * 7.17 + seasonIndex * 19, 3.4) - 0.5) * 1.4;
           const ny = hash2(i * 2.91, seasonIndex * 11 + 5.2);
           const p = starSkyPoint(nx, ny, seasonIndex);
