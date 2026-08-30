@@ -1882,8 +1882,7 @@ canvas {
 /* 右下快捷背包：十字鍵與滑鼠共用同一組方向動作。 */
 #quickItemHud {
   position: fixed;
-  left: max(18px, env(safe-area-inset-left));
-  bottom: calc(max(18px, env(safe-area-inset-bottom)) + var(--quick-item-context-offset, 0px));
+  right: max(18px, env(safe-area-inset-right));
   z-index: 12;
   display: grid;
   grid-template-columns: 42px 76px 42px;
@@ -1964,8 +1963,7 @@ canvas {
 }
 @media (max-width: 620px) {
   #quickItemHud {
-    left: 10px;
-    bottom: calc(10px + var(--quick-item-context-offset, 0px));
+    right: 10px;
     transform: scale(0.9);
     transform-origin: right bottom;
   }
