@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { HELD_ARM_ROTATION } from "./held-item-pose";
 
 // 人形角色從鞋底到最高髮梢的統一世界高度；以村長專用模型為基準。
 export const HUMANOID_WORLD_HEIGHT = 1;
@@ -1612,62 +1613,49 @@ export function addDefaultHumanoidSmile(
         player.userData.playerAppearance = appearance;
         return player;
       }
+      function applyHeldItemPose(p: any) {
+        p.armL.rotation.x = HELD_ARM_ROTATION.x;
+        p.armR.rotation.x = HELD_ARM_ROTATION.x;
+        p.armL.rotation.z = HELD_ARM_ROTATION.leftZ;
+        p.armR.rotation.z = HELD_ARM_ROTATION.rightZ;
+      }
       export function animateWalk(humanoid: any, moving, t) {
         const p = humanoid.parts;
-                if (humanoid.userData?.holdingItem) {
-          p.armL.rotation.x = -0.72; p.armR.rotation.x = -0.72;
-          p.armL.rotation.z = 0.16; p.armR.rotation.z = -0.16;
-        } else if (moving) {
+        if (moving) {
           const swing = Math.sin(t * 10) * 0.5;
-          p.legL.rotation.x = swing;
-          p.legR.rotation.x = -swing;
-          p.armL.rotation.x = -swing;
-          p.armR.rotation.x = swing;
+          p.legL.rotation.x = swing; p.legR.rotation.x = -swing;
+          if (humanoid.userData?.holdingItem) applyHeldItemPose(p);
+          else { p.armL.rotation.x = -swing; p.armR.rotation.x = swing; p.armL.rotation.z = 0; p.armR.rotation.z = 0; }
           humanoid.position.y = Math.abs(Math.sin(t * 10)) * 0.03;
         } else {
-          p.legL.rotation.x *= 0.8;
-          p.legR.rotation.x *= 0.8;
-          p.armL.rotation.x *= 0.8;
-          p.armR.rotation.x *= 0.8;
+          p.legL.rotation.x *= 0.8; p.legR.rotation.x *= 0.8;
+          if (humanoid.userData?.holdingItem) applyHeldItemPose(p);
+          else { p.armL.rotation.x *= 0.8; p.armR.rotation.x *= 0.8; p.armL.rotation.z *= 0.8; p.armR.rotation.z *= 0.8; }
           humanoid.position.y = Math.sin(t * 2) * 0.01;
         }
       }
       export function animateRun(humanoid: any, moving, t) {
         const p = humanoid.parts;
-                if (humanoid.userData?.holdingItem) {
-          p.armL.rotation.x = -0.72; p.armR.rotation.x = -0.72;
-          p.armL.rotation.z = 0.16; p.armR.rotation.z = -0.16;
-        } else if (moving) {
+        if (moving) {
           const stride = Math.sin(t * 15) * 0.88;
-          p.legL.rotation.x = stride;
-          p.legR.rotation.x = -stride;
-          p.armL.rotation.x = -stride * 0.82;
-          p.armR.rotation.x = stride * 0.82;
+          p.legL.rotation.x = stride; p.legR.rotation.x = -stride;
+          if (humanoid.userData?.holdingItem) applyHeldItemPose(p);
+          else { p.armL.rotation.x = -stride * 0.82; p.armR.rotation.x = stride * 0.82; p.armL.rotation.z = 0; p.armR.rotation.z = 0; }
           humanoid.rotation.x += (-0.1 - humanoid.rotation.x) * 0.22;
           humanoid.position.y = Math.abs(Math.sin(t * 15)) * 0.055;
         } else {
-          p.legL.rotation.x *= 0.75;
-          p.legR.rotation.x *= 0.75;
-          p.armL.rotation.x *= 0.75;
-          p.armR.rotation.x *= 0.75;
-          humanoid.rotation.x *= 0.78;
-          humanoid.position.y = Math.sin(t * 2) * 0.01;
+          p.legL.rotation.x *= 0.75; p.legR.rotation.x *= 0.75;
+          if (humanoid.userData?.holdingItem) applyHeldItemPose(p);
+          else { p.armL.rotation.x *= 0.75; p.armR.rotation.x *= 0.75; p.armL.rotation.z *= 0.75; p.armR.rotation.z *= 0.75; }
+          humanoid.rotation.x *= 0.78; humanoid.position.y = Math.sin(t * 2) * 0.01;
         }
       }
       export function animateSit(humanoid: any) {
         const p = humanoid.parts;
-                if (humanoid.userData?.holdingItem) {
-          p.armL.rotation.x = -0.72; p.armR.rotation.x = -0.72;
-          p.armL.rotation.z = 0.16; p.armR.rotation.z = -0.16;
-        }
-p.legL.rotation.x += (1.28 - p.legL.rotation.x) * 0.28;
-        p.legR.rotation.x += (1.28 - p.legR.rotation.x) * 0.28;
-        p.armL.rotation.x *= 0.75;
-        p.armR.rotation.x *= 0.75;
-        p.armL.rotation.z += (-0.12 - p.armL.rotation.z) * 0.2;
-        p.armR.rotation.z += (0.12 - p.armR.rotation.z) * 0.2;
-        humanoid.rotation.x *= 0.78;
-        humanoid.position.y = -0.03;
+        p.legL.rotation.x += (1.28 - p.legL.rotation.x) * 0.28; p.legR.rotation.x += (1.28 - p.legR.rotation.x) * 0.28;
+        if (humanoid.userData?.holdingItem) applyHeldItemPose(p);
+        else { p.armL.rotation.x *= 0.75; p.armR.rotation.x *= 0.75; p.armL.rotation.z += (-0.12 - p.armL.rotation.z) * 0.2; p.armR.rotation.z += (0.12 - p.armR.rotation.z) * 0.2; }
+        humanoid.rotation.x *= 0.78; humanoid.position.y = -0.03;
       }
       export const FACING_ANGLE = {
         up: 0,

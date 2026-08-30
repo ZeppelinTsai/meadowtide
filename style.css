@@ -1634,7 +1634,8 @@ canvas {
   bottom: max(18px, env(safe-area-inset-bottom));
   z-index: 45;
   display: none;
-  flex-wrap: wrap;
+  flex-direction: column;
+  align-items: flex-start;
   gap: 10px;
   max-width: min(720px, calc(100vw - 36px));
   pointer-events: auto;
@@ -1686,6 +1687,3 @@ canvas {
 .inventory-content-menu h3 { margin:0 0 10px; font-size:26px; color:#f5dfb0; }
 .inventory-content-menu button { min-width:min(360px,80%); padding:12px 22px; border:2px solid rgba(226,198,139,.65); border-radius:9px; background:rgba(52,68,76,.9); color:#fff5df; font:inherit; font-size:20px; cursor:pointer; }
 .inventory-content-menu button:hover, .inventory-content-menu button:focus-visible { background:#a77b43; outline:3px solid #f4d68e; outline-offset:2px; }
-
-#heldItemHint { position:fixed; left:24px; bottom:24px; z-index:20; padding:10px 16px; border:2px solid rgba(226,198,139,.75); border-radius:8px; background:rgba(16,24,31,.88); color:#fff5df; font-size:18px; pointer-events:none; }
-#heldItemHint[hidden] { display:none; }

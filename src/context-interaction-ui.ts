@@ -15,6 +15,8 @@ import { isNearFishingWater } from "./fishing-water";
 import { showUiToast } from "./ui-toast";
 import { farmGroup } from "./farm-visuals";
 import { FARMLAND_TILES, POUCH_POS } from "./layout-maps";
+import { cycleHeldItem, inventoryItem, itemAmount, stowHeldItem } from "./inventory-system";
+import { cropTypeForSeedItem } from "./item-catalog";
 
 type WorldTarget = {
   id: string; object: THREE.Object3D; radius: number; actions: ContextAction[];
@@ -41,7 +43,8 @@ function targetForFarm(x:number,z:number,object:THREE.Object3D=farmGroup):WorldT
   if(!FARMLAND_TILES.some(([fx,fz])=>fx===x&&fz===z))return null;
   const crop=cropState[`${x},${z}`];
   if(crop?.stage>=2)return{id:`crop:${x},${z}`,object,radius:0.8,actions:[legacyAction("harvest","\u6536\u6210")],getPosition:()=>({x,z}),isValid:()=>Boolean(cropState[`${x},${z}`]?.stage>=2)};
-  if(!crop&&(inventory.seeds+inventory.potatoSeeds+inventory.tomatoSeeds)>0)return{id:`soil:${x},${z}`,object,radius:0.8,actions:[legacyAction("plant","\u64ad\u7a2e")],getPosition:()=>({x,z}),isValid:()=>!cropState[`${x},${z}`]&&(inventory.seeds+inventory.potatoSeeds+inventory.tomatoSeeds)>0};
+  const heldSeedId=inventory.heldItemId, heldCropType=cropTypeForSeedItem(heldSeedId);
+  if(!crop&&heldSeedId&&heldCropType&&itemAmount(heldSeedId)>0)return{id:`soil:${x},${z}`,object,radius:0.8,actions:[legacyAction("plant","\u64ad\u7a2e")],getPosition:()=>({x,z}),isValid:()=>!cropState[`${x},${z}`]&&inventory.heldItemId===heldSeedId&&itemAmount(heldSeedId)>0};
   return null;
 }
 function allTargets(){
@@ -72,7 +75,16 @@ function chooseTarget(){
   const chosen=chooseInteractionTarget(candidates,currentTarget?.id||null);return chosen?targets.find(t=>t.id===chosen.id)||null:null;
 }
 function ensureRoot(){if(root)return root;root=document.createElement("div");root.id="contextInteractionHud";root.setAttribute("aria-live","polite");root.setAttribute("aria-label","\u60c5\u5883\u4e92\u52d5");document.body.append(root);return root;}
-function render(){const box=ensureRoot();currentTarget=chooseTarget();currentActions=currentTarget?.actions||[];box.classList.toggle("visible",currentActions.length>0);const layout=getEffectiveControllerLayout(),device=getLastInputDevice(),sig=currentTarget?.id+"|"+currentActions.map(a=>a.id+promptFor(a.slot,device,layout)).join("|");if(box.dataset.signature===sig)return;box.dataset.signature=sig;box.replaceChildren();currentActions.forEach(action=>{const button=document.createElement("button");button.type="button";button.className="contextInteractionAction";const key=document.createElement("kbd"),label=document.createElement("span");key.textContent=promptFor(action.slot,device,layout);label.textContent=action.label;button.append(key,label);button.addEventListener("click",event=>{event.stopPropagation();markKeyboardMouseInput(event);executeContextInteraction(action.slot);});box.append(button);});}
+function render(){
+  const box=ensureRoot(); currentTarget=chooseTarget(); currentActions=currentTarget?.actions||[];
+  const heldId=inventory.heldItemId, held=heldId?inventoryItem(heldId):undefined;
+  const layout=getEffectiveControllerLayout(), device=getLastInputDevice();
+  const sig=(currentTarget?.id||"")+"|"+currentActions.map(a=>a.id+promptFor(a.slot,device,layout)).join("|")+`|held:${heldId||""}:${heldId?itemAmount(heldId):0}:${device}:${layout}`;
+  box.classList.toggle("visible",currentActions.length>0||Boolean(held)); if(box.dataset.signature===sig)return; box.dataset.signature=sig; box.replaceChildren();
+  const appendPrompt=(key:string,label:string,onClick?:()=>void)=>{const button=document.createElement("button");button.type="button";button.className="contextInteractionAction";const kbd=document.createElement("kbd"),text=document.createElement("span");kbd.textContent=key;text.textContent=label;button.append(kbd,text);if(onClick)button.addEventListener("click",event=>{event.stopPropagation();onClick();});else button.disabled=true;box.append(button);};
+  currentActions.forEach(action=>{appendPrompt(promptFor(action.slot,device,layout),action.label,()=>{markKeyboardMouseInput(new Event("pointerdown"));executeContextInteraction(action.slot);});});
+  if(held){appendPrompt(device==="gamepad"?"LB/RB":"滾輪","切換物品",()=>cycleHeldItem(1));appendPrompt("右鍵","收回",stowHeldItem);}
+}
 function updateRay(clientX:number,clientY:number){const rect=renderer.domElement.getBoundingClientRect();pointer.x=((clientX-rect.left)/rect.width)*2-1;pointer.y=-((clientY-rect.top)/rect.height)*2+1;raycaster.setFromCamera(pointer,getGameplayCamera(camera));}
 function targetFromRay(){
   const targets=allTargets(),objects=targets.map(t=>t.object),hit=objects.length?raycaster.intersectObjects(objects,true)[0]:null;

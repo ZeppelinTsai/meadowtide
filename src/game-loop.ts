@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { HELD_ARM_ROTATION } from "./held-item-pose";
 import {
   gameState,
   TIME_CONFIG,
@@ -530,6 +531,11 @@ export function animate(now) {
     gameState.player.parts.armR.rotation.z = 0;
     gameState.player.parts.armL.rotation.x = 1.05;
     gameState.player.parts.armL.rotation.z = 0.45;
+  } else if (gameState.player.userData?.holdingItem) {
+    gameState.player.parts.armL.rotation.x = HELD_ARM_ROTATION.x;
+    gameState.player.parts.armR.rotation.x = HELD_ARM_ROTATION.x;
+    gameState.player.parts.armL.rotation.z = HELD_ARM_ROTATION.leftZ;
+    gameState.player.parts.armR.rotation.z = HELD_ARM_ROTATION.rightZ;
   } else {
     gameState.player.parts.armL.rotation.z = 0; // 沒在釣魚時把左手歸零，不然會卡在往內擺的角度
   }

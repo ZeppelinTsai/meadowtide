@@ -7,22 +7,17 @@ import {
 } from "./item-catalog";
 import { makeCropMesh, makeFishProp, makeSeedPouch } from "./props";
 import { showUiToast } from "./ui-toast";
+import {
+  HELD_ARM_ROTATION,
+  HELD_ITEM_DISPLAY_DEPTH,
+  HELD_ITEM_DISPLAY_HEIGHT,
+  HELD_ITEM_DISPLAY_WIDTH,
+  HELD_ITEM_POSITION,
+} from "./held-item-pose";
 
 let visualOwner: THREE.Object3D | null = null;
 let heldVisual: THREE.Object3D | null = null;
 let renderedItemId: string | null = null;
-const heldHint = document.createElement("div");
-heldHint.id = "heldItemHint";
-document.body.appendChild(heldHint);
-function updateHeldHint() {
-  const item = inventory.heldItemId
-    ? inventoryItem(inventory.heldItemId)
-    : undefined;
-  heldHint.hidden = !item;
-  if (item)
-    heldHint.textContent = `手持：${item.label} ×${itemAmount(item.id)}　[ , ／ . ] 切換　右鍵收回`;
-}
-
 export function allInventoryItems(): ItemDefinition[] {
   const dishes = Object.keys(inventory.dishes).map((recipeId) => ({
     id: `dish-${recipeId}` as InventoryItemId,
@@ -73,7 +68,7 @@ export function takeOutItem(itemId: string): boolean {
   const item = inventoryItem(itemId);
   if (!item || itemAmount(itemId) <= 0) return false;
   inventory.heldItemId = item.id;
-  updateHeldHint();
+
   renderedItemId = null;
   showUiToast("背包", `拿出了${item.label}。`);
   return true;
@@ -105,12 +100,20 @@ export function cycleHeldItem(direction: -1 | 1): boolean {
   const next =
     (Math.max(0, current) + direction + available.length) % available.length;
   inventory.heldItemId = available[next].id;
-  updateHeldHint();
+
   renderedItemId = null;
   showUiToast(
     "背包",
     `${available[next].label} ×${itemAmount(available[next].id)}`,
   );
+  return true;
+}
+
+export function stowHeldItem(): boolean {
+  if (!inventory.heldItemId) return false;
+  inventory.heldItemId = null;
+  renderedItemId = null;
+  showUiToast("背包", "物品已收回背包。");
   return true;
 }
 
@@ -127,7 +130,7 @@ function makeHeldVisual(itemId: string): THREE.Object3D {
   if (itemId === "fish") {
     const fish = makeFishProp(1.4);
     fish.scale.setScalar(0.45);
-    fish.rotation.y = Math.PI / 2;
+    fish.rotation.x = Math.PI / 2;
     return fish;
   }
   const group = new THREE.Group();
@@ -157,10 +160,7 @@ addEventListener("keydown", (event) => {
 addEventListener("contextmenu", (event) => {
   if (!inventory.heldItemId) return;
   event.preventDefault();
-  inventory.heldItemId = null;
-  renderedItemId = null;
-  updateHeldHint();
-  showUiToast("背包", "物品已收回背包。");
+  stowHeldItem();
 });
 
 addEventListener(
@@ -185,15 +185,15 @@ export function syncHeldItemVisual() {
   const player = gameState.player as THREE.Object3D | null;
   const itemId = inventory.heldItemId;
   if (itemId && itemAmount(itemId) <= 0) inventory.heldItemId = null;
-  updateHeldHint();
+
   const effectiveId = inventory.heldItemId;
   if (player) player.userData.holdingItem = Boolean(effectiveId);
   const parts = (player as any)?.parts;
   if (effectiveId && parts?.armL && parts?.armR) {
-    parts.armL.rotation.x = -0.72;
-    parts.armL.rotation.z = 0.16;
-    parts.armR.rotation.x = -0.72;
-    parts.armR.rotation.z = -0.16;
+    parts.armL.rotation.x = HELD_ARM_ROTATION.x;
+    parts.armL.rotation.z = HELD_ARM_ROTATION.leftZ;
+    parts.armR.rotation.x = HELD_ARM_ROTATION.x;
+    parts.armR.rotation.z = HELD_ARM_ROTATION.rightZ;
   }
   if (player === visualOwner && effectiveId === renderedItemId) return;
   if (heldVisual?.parent) heldVisual.parent.remove(heldVisual);
@@ -203,7 +203,19 @@ export function syncHeldItemVisual() {
   if (!player || !effectiveId) return;
   heldVisual = makeHeldVisual(effectiveId);
   heldVisual.name = "heldInventoryItem";
-  heldVisual.position.set(0, 0.31, -0.42);
-  heldVisual.scale.multiplyScalar(0.72);
+  const bounds = new THREE.Box3().setFromObject(heldVisual);
+  const size = bounds.getSize(new THREE.Vector3());
+  const center = bounds.getCenter(new THREE.Vector3());
+  const scale = Math.min(
+    HELD_ITEM_DISPLAY_WIDTH / Math.max(size.x, 0.01),
+    HELD_ITEM_DISPLAY_HEIGHT / Math.max(size.y, 0.01),
+    HELD_ITEM_DISPLAY_DEPTH / Math.max(size.z, 0.01),
+  );
+  heldVisual.scale.setScalar(scale);
+  heldVisual.position.set(
+    HELD_ITEM_POSITION.x - center.x * scale,
+    HELD_ITEM_POSITION.y - center.y * scale,
+    HELD_ITEM_POSITION.z - center.z * scale,
+  );
   player.add(heldVisual);
 }

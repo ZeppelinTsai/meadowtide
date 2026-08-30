@@ -10,6 +10,7 @@ import { isNearFishingWater } from "./fishing-water";
 import { syncFarmVisuals } from "./farm-visuals";
 import { createWeatherSchedule } from "./weather-schedule";
 import { getScaledBuildingBounds } from "./building-scale";
+import { cropTypeForSeedItem } from "./item-catalog";
 export { MAX_EXTREME_WEATHER_PER_SEASON } from "./weather-schedule";
 
 // ==============================================================
@@ -435,21 +436,17 @@ export function nearAnyNpc() {
 export function plantSeed(x: number, z: number) {
   const key = `${x},${z}`;
   if (cropState[key]) return;
-  const seedCounts = {
-    radishSeeds: inventory.seeds,
-    potatoSeeds: inventory.potatoSeeds,
-    tomatoSeeds: inventory.tomatoSeeds,
-  };
-  const heldSeed = inventory.heldItemId as keyof typeof seedCounts | null;
-  const selectedSeed = heldSeed && seedCounts[heldSeed] > 0
-    ? heldSeed
-    : (Object.keys(seedCounts) as Array<keyof typeof seedCounts>).find((id) => seedCounts[id] > 0);
-  if (!selectedSeed) return;
-  const cropType = selectedSeed === "potatoSeeds" ? "potato" : selectedSeed === "tomatoSeeds" ? "tomato" : "radish";
+  const heldSeedId = inventory.heldItemId;
+  const cropType = cropTypeForSeedItem(heldSeedId);
+  if (!heldSeedId || !cropType) return;
+  const seedCount = heldSeedId === "potatoSeeds" ? inventory.potatoSeeds : heldSeedId === "tomatoSeeds" ? inventory.tomatoSeeds : inventory.seeds;
+  if (seedCount <= 0) return;
   cropState[key] = { stage: 0, plantedDay: gameState.currentDay, cropType };
-  if (selectedSeed === "potatoSeeds") inventory.potatoSeeds--;
-  else if (selectedSeed === "tomatoSeeds") inventory.tomatoSeeds--;
+  if (heldSeedId === "potatoSeeds") inventory.potatoSeeds--;
+  else if (heldSeedId === "tomatoSeeds") inventory.tomatoSeeds--;
   else inventory.seeds--;
+  const remaining = heldSeedId === "potatoSeeds" ? inventory.potatoSeeds : heldSeedId === "tomatoSeeds" ? inventory.tomatoSeeds : inventory.seeds;
+  if (remaining <= 0) inventory.heldItemId = null;
   nearAnyNpc();
   syncFarmVisuals();
 }
