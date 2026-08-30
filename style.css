@@ -1893,6 +1893,7 @@ canvas {
     "left current right"
     ". down .";
   align-items: center;
+  justify-items: center;
   gap: 6px;
   pointer-events: auto;
 }

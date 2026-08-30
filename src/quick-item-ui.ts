@@ -183,7 +183,7 @@ function render() {
       : itemId?.startsWith("pearl-")
         ? "珠"
         : SYMBOLS[itemId || ""] || "物";
-    countElement.textContent = itemId ? "×" + itemAmount(itemId) : "";
+    countElement.textContent = itemId ? String(itemAmount(itemId)) : "";
     currentButton.setAttribute(
       "aria-label",
       inventory.heldItemId === itemId
