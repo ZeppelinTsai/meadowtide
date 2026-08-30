@@ -133,7 +133,12 @@ function takeOrStowCurrent() {
 }
 
 function handleDirection(direction: QuickDirection) {
-  if (!gameState.player || gameState.cutsceneActive) return;
+  if (
+    !gameState.player ||
+    gameState.cutsceneActive ||
+    gameState.fishingState !== "idle"
+  )
+    return;
   if (!inventory.heldItemId) {
     const itemId = selectedItemId();
     if (itemId) takeOutItem(itemId);
