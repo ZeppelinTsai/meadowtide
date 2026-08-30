@@ -37,7 +37,6 @@ const heldItemTargetObject=new THREE.Object3D();
 let markerTimer=0, highlight:THREE.BoxHelper|null=null, highlightTimer=0;
 
 function blocked(allowActiveFishing=false){return !gameState.player || gameState.titlePresentationActive || gameState.cutsceneActive || isCameraAdjustModeActive() || isInventoryOpen() || dialogQueue.length>0 || Boolean(activeChoice) || (!allowActiveFishing&&gameState.fishingState!=="idle");}
-export function isContextInteractionSuppressed(){return blocked();}
 function contains(root:THREE.Object3D,obj:THREE.Object3D){let current:THREE.Object3D|null=obj;while(current){if(current===root)return true;current=current.parent;}return false;}
 function legacyAction(id:string,label:string):ContextAction{return{id,label,slot:"primary",execute:runLegacyPrimaryInteraction};}
 function targetForAnimal(id:string):WorldTarget|null{const animal=animals.find(a=>a.id===id);if(!animal||!animal.mesh.visible)return null;const carried=getCarriedAnimalId()===id;return{id:"animal:"+id,object:animal.mesh,radius:carried?0.1:1.35,actions:actionsForAnimal(id),getPosition:()=>{if(!animal.mesh.visible)return null;if(carried&&gameState.player)return{x:gameState.player.position.x,z:gameState.player.position.z};return{x:animal.mesh.position.x,z:animal.mesh.position.z};},isValid:()=>animal.mesh.visible&&actionsForAnimal(id).length>0};}

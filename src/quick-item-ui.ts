@@ -1,5 +1,4 @@
 import { gameState, inventory } from "./game-state";
-import { isContextInteractionSuppressed } from "./context-interaction-ui";
 import {
   allInventoryItems,
   inventoryItem,
@@ -162,12 +161,14 @@ function render() {
   const itemId = selectedItemId();
   const item = itemId ? inventoryItem(itemId) : null;
   const titlePresentation = document.body.classList.contains("title-presentation");
-  const contextSuppressed = isContextInteractionSuppressed();
+  const hudSuppressed =
+    document.body.classList.contains("cutscene-presentation") ||
+    Boolean(document.querySelector('[data-game-menu="open"], .game-menu.open'));
   const signature = [
     Boolean(gameState.player),
     gameState.cutsceneActive,
     titlePresentation,
-    contextSuppressed,
+    hudSuppressed,
     itemId,
     itemId ? itemAmount(itemId) : 0,
     inventory.heldItemId,
@@ -175,7 +176,7 @@ function render() {
   ].join("|");
   if (signature !== lastSignature) {
     lastSignature = signature;
-    root.hidden = titlePresentation || contextSuppressed || !item;
+    root.hidden = titlePresentation || hudSuppressed || !gameState.player || !item;
     root.classList.toggle("holding", Boolean(inventory.heldItemId));
     symbolElement.textContent = itemId?.startsWith("dish-")
       ? "食"
