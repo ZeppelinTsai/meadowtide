@@ -1882,11 +1882,11 @@ canvas {
 /* 右下快捷背包：十字鍵與滑鼠共用同一組方向動作。 */
 #quickItemHud {
   position: fixed;
-  right: 22px;
-  bottom: 22px;
+  left: max(18px, env(safe-area-inset-left));
+  bottom: calc(max(18px, env(safe-area-inset-bottom)) + var(--quick-item-context-offset, 0px));
   z-index: 12;
   display: grid;
-  grid-template-columns: 46px minmax(150px, 210px) 46px;
+  grid-template-columns: 42px 76px 42px;
   grid-template-rows: 42px 76px 42px;
   grid-template-areas:
     ". up ."
@@ -1928,12 +1928,14 @@ canvas {
 .quick-item-right { grid-area: right; }
 .quick-item-down { grid-area: down; }
 .quick-item-current {
+  position: relative;
   grid-area: current;
   display: grid;
-  grid-template-columns: 52px minmax(0, 1fr) auto;
+  width: 76px;
+  height: 76px;
   align-items: center;
-  min-height: 76px;
-  padding: 10px 12px;
+  justify-items: center;
+  padding: 8px;
   border-radius: 14px;
   text-align: left;
 }
@@ -1947,14 +1949,10 @@ canvas {
   border-radius: 12px;
   font-weight: 800;
 }
-.quick-item-name {
-  overflow: hidden;
-  font-size: 18px;
-  font-weight: 700;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
 .quick-item-count {
+  position: absolute;
+  right: 6px;
+  bottom: 4px;
   color: #f2d08c;
   font-size: 18px;
 }
@@ -1966,8 +1964,8 @@ canvas {
 }
 @media (max-width: 620px) {
   #quickItemHud {
-    right: 10px;
-    bottom: 10px;
+    left: 10px;
+    bottom: calc(10px + var(--quick-item-context-offset, 0px));
     transform: scale(0.9);
     transform-origin: right bottom;
   }

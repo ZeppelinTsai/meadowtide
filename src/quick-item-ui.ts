@@ -56,7 +56,6 @@ root.innerHTML = `
   <button type="button" class="quick-item-arrow quick-item-left" data-direction="left" aria-label="上一個物品">◀</button>
   <button type="button" class="quick-item-current" aria-label="拿出目前物品">
     <span class="quick-item-symbol" aria-hidden="true"></span>
-    <span class="quick-item-name"></span>
     <span class="quick-item-count"></span>
   </button>
   <button type="button" class="quick-item-arrow quick-item-right" data-direction="right" aria-label="下一個物品">▶</button>
@@ -66,7 +65,6 @@ document.body.appendChild(root);
 
 const currentButton = root.querySelector<HTMLButtonElement>(".quick-item-current")!;
 const symbolElement = root.querySelector<HTMLElement>(".quick-item-symbol")!;
-const nameElement = root.querySelector<HTMLElement>(".quick-item-name")!;
 const countElement = root.querySelector<HTMLElement>(".quick-item-count")!;
 
 function rows() {
@@ -162,9 +160,16 @@ function render() {
   if (inventory.heldItemId) syncSelectionToHeldItem();
   const itemId = selectedItemId();
   const item = itemId ? inventoryItem(itemId) : null;
+  const titlePresentation = document.body.classList.contains("title-presentation");
+  const contextHud = document.getElementById("contextInteractionHud");
+  const contextHeight = contextHud?.classList.contains("visible")
+    ? contextHud.getBoundingClientRect().height + 10
+    : 0;
+  root.style.setProperty("--quick-item-context-offset", contextHeight + "px");
   const signature = [
     Boolean(gameState.player),
     gameState.cutsceneActive,
+    titlePresentation,
     itemId,
     itemId ? itemAmount(itemId) : 0,
     inventory.heldItemId,
@@ -172,14 +177,14 @@ function render() {
   ].join("|");
   if (signature !== lastSignature) {
     lastSignature = signature;
-    root.hidden = !gameState.player || gameState.cutsceneActive || !item;
+    root.hidden =
+      titlePresentation || !gameState.player || gameState.cutsceneActive || !item;
     root.classList.toggle("holding", Boolean(inventory.heldItemId));
     symbolElement.textContent = itemId?.startsWith("dish-")
       ? "食"
       : itemId?.startsWith("pearl-")
         ? "珠"
         : SYMBOLS[itemId || ""] || "物";
-    nameElement.textContent = item?.label ?? "";
     countElement.textContent = itemId ? "×" + itemAmount(itemId) : "";
     currentButton.setAttribute(
       "aria-label",
