@@ -625,15 +625,15 @@ export function isOysterRackReady(index = 0) {
 // 動物投餵機——放養式簡化模型，規格來源 task.md：
 // - 最多存放 FEEDER_CAPACITY 單位，每單位不論動物數量都能餵一天。
 // - 安全天氣時動物早上自己出去吃草（見 game-loop.ts 的
-//   animalsShouldBeHome，沿用同一顆 isUnsafeAnimalWeather()）；早上 8 點
+//   animalsShouldBeHome，沿用同一顆 isUnsafeAnimalWeather()）；上午 10 點
 //   結算「今天吃到了嗎」：安全天氣就從還沒被吃過(或已經過了
 //   FEEDER_REGRAZE_DAYS 天)的牧草格裡隨機挑一格標記「今天吃掉」，這一步
 //   完全不動投餵機存量；天氣不好則整天不結算放牧，settlePastureGrazing()
 //   直接回傳 false。
-// - 傍晚 18 點結算：今天如果沒吃到放牧的草，才消耗一單位投餵機餵食
+// - 下午 17 點結算：今天如果沒吃到放牧的草，才消耗一單位投餵機餵食
 //   （出外吃草那天不消耗投餵機，兩種結算互斥、不疊加）。
 // - 牧草格以「座標 -> 被收割／吃掉的遊戲日」為唯一資料源；視覺高度、
-//   玩家收割與 08:00 放牧都讀同一份資料。當天短草、成長中顯示中草，
+//   玩家收割與 10:00 放牧都讀同一份資料。當天短草、成長中顯示中草，
 //   第三天恢復成熟，不再另跑 32 秒即時重生。
 // ==============================================================
 // 放在牧場邊、穀倉門口(BARN_DOOR)西側，跟穀倉保持距離，不擋動物早晚
@@ -718,7 +718,7 @@ export function settlePastureGrazing(day = gameState.currentDay) {
   return true;
 }
 
-// 18:00 只有當天沒吃到外草時才消耗一單位；動物數量不影響消耗量。
+// 17:00 只有當天沒吃到外草時才消耗一單位；動物數量不影響消耗量。
 export function settleFeederConsumption() {
   if (gameState.feederUnits <= 0) return false;
   gameState.feederUnits -= 1;

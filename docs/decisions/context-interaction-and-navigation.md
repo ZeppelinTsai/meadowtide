@@ -87,3 +87,7 @@ connectivity, and stopping within interaction radius.
 ## Carried chicken input priority
 
 While carrying a chicken, its interaction position is the player world position. Keyboard R, the controller secondary-action button, and mouse right-click all drop it; the lower-left capsules show the active inputs. Carried animals and held inventory items are mutually exclusive: taking an item out is blocked until the animal is dropped, and legacy saves containing both states keep the animal while clearing heldItemId.
+
+## Animal pasture schedule
+
+In safe weather, animals are outside from 08:00 to 17:00. Pasture grazing is settled at 10:00. At 17:00 animals start returning to the barn; if grazing did not feed them that day, feeder consumption is settled at the same time. Unsafe weather keeps them indoors all day, and the existing 20:00 force-home fallback remains active.

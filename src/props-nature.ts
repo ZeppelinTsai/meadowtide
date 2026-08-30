@@ -469,7 +469,7 @@ export function tryEatPastureGrass(animal) {
     0.55,
   );
   if (!grass) return false;
-  // 真正消耗哪一格牧草由每日 08:00 結算統一決定；這裡只播放動物低頭
+  // 真正消耗哪一格牧草由每日 10:00 結算統一決定；這裡只播放動物低頭
   // 吃草的行為，不再另外改一套 32 秒即時生長資料。
   return true;
 }

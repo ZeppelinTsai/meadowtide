@@ -984,27 +984,27 @@ export function animate(now) {
   updateMeteors(frameDt);
   updateWeatherEffects(frameDt, nightFactor);
 
-  // --- 動物固定作息：06:00 出門，18:00 開始回穀倉；惡劣天氣全天留在小屋。 ---
+  // --- 動物固定作息：08:00 出門，17:00 開始回穀倉；惡劣天氣全天留在小屋。 ---
   // 不使用 nightFactor 判斷，因為它是光線漸變值，不等於準確鐘點。
   const gameHour = phase * TIME_CONFIG.gameHoursPerDay;
   const animalsShouldBeHome =
-    gameHour < 6 || gameHour >= 18 || isUnsafeAnimalWeather();
+    gameHour < 8 || gameHour >= 17 || isUnsafeAnimalWeather();
   // 20:00 備援：地形複雜導致直線走不到門口時，強制送回穀倉，避免整夜卡在戶外。
   const forceAnimalsHome = gameHour >= 20 || isUnsafeAnimalWeather();
 
-  // --- 動物投餵機／放牧結算：早上 8 點結算放牧，傍晚 18 點結算投餵機。---
+  // --- 動物投餵機／放牧結算：10:00 結算放牧，17:00 結算投餵機。---
   // 用 SettledDay 記錄「這天結算過了嗎」，避免同一天內每一幀都重算；
   // 跟 beginNewDay() 那套「跨日事件」不同層級，這裡是同一天內的鐘點事件，
   // 快轉跳過整天時可能漏掉中間天數的結算，跟 animalsShouldBeHome 一樣
   // 只認目前這一刻的 gameHour，是同一種簡化(見 AGENTS.md 對這塊的說明)。
   if (
-    gameHour >= 8 &&
+    gameHour >= 10 &&
     gameState.pastureGrazeSettledDay !== gameState.currentDay
   ) {
     gameState.pastureGrazeSettledDay = gameState.currentDay;
     gameState.pastureGrazedToday = settlePastureGrazing(gameState.currentDay);
   }
-  if (gameHour >= 18 && gameState.feederSettledDay !== gameState.currentDay) {
+  if (gameHour >= 17 && gameState.feederSettledDay !== gameState.currentDay) {
     gameState.feederSettledDay = gameState.currentDay;
     const fed =
       gameState.pastureGrazedToday || settleFeederConsumption();
@@ -1086,7 +1086,7 @@ export function animate(now) {
 
     if (animalsShouldBeHome) {
       if (a.state === "out") {
-        // 18:00 後不管原本是否正在休息，都立即往穀倉移動。
+        // 17:00 後不管原本是否正在休息，都立即往穀倉移動。
         a.wanderState = "walking";
         const dx = BARN_DOOR.x - a.mesh.position.x,
           dz = BARN_DOOR.z - a.mesh.position.z;
