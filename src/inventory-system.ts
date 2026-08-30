@@ -207,7 +207,13 @@ export function syncHeldItemVisual() {
     parts.armR.rotation.x = HELD_ARM_ROTATION.x;
     parts.armR.rotation.z = HELD_ARM_ROTATION.rightZ;
   }
-  if (player === visualOwner && effectiveId === renderedItemId) return;
+  const visualPresenceMatchesState = Boolean(heldVisual) === Boolean(effectiveId);
+  if (
+    player === visualOwner &&
+    effectiveId === renderedItemId &&
+    visualPresenceMatchesState
+  )
+    return;
   if (heldVisual?.parent) heldVisual.parent.remove(heldVisual);
   heldVisual = null;
   visualOwner = player;
