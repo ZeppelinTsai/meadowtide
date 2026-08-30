@@ -182,5 +182,5 @@ export const prologueRefs: {
         autumnColor?: number;
       }> = [];
       export const pastureGrassBlades = []; // 牧場裡會被風吹動的草叢，每叢存自己的葉片群組
-      export const GRASS_STAGE_HEIGHTS = [0.2, 0.46, 0.82]; // 短、中、長；長草約到動物胸高
+      export const GRASS_STAGE_HEIGHTS = [0, 0.46, 0.82]; // 無、中、長；收割當天完全消失，長草約到動物胸高
 

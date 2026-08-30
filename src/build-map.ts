@@ -667,12 +667,14 @@ export function buildMap(mapName) {
     // animate() 依「今天採過了嗎」調亮暗——每次重建地圖都要重設一次，
     // 不然切地圖再切回來會抓到已經丟棄的舊材質物件。
     gameState.oysterGlowMats.length = 0;
-    getActiveOysterRackLayouts().forEach(({ visual }) => {
-      const oysterRack = makeOysterRack(visual.x, visual.z);
-      oysterRack.group.position.y = groundY(visual.x, visual.z);
-      gameState.mapGroup.add(oysterRack.group);
-      gameState.oysterGlowMats.push(oysterRack.glowMat);
-    });
+    if (!gameState.titlePresentationActive) {
+      getActiveOysterRackLayouts().forEach(({ visual }) => {
+        const oysterRack = makeOysterRack(visual.x, visual.z);
+        oysterRack.group.position.y = groundY(visual.x, visual.z);
+        gameState.mapGroup.add(oysterRack.group);
+        gameState.oysterGlowMats.push(oysterRack.glowMat);
+      });
+    }
 
     // 女神祠堂步道——墊高浮出海面的沙洲，不是逐格貼平的沙灘(那段已在
     // 上面的 tile===8 迴圈裡跳過)，這裡一次蓋掉整段。

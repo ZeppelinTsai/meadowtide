@@ -20,7 +20,7 @@ import { resetNpcNameRevealState } from "./npc-name-reveal";
 import { resetAnimalInteractionState } from "./animal-interactions";
 import { scene } from "./scene-sky";
 import { hideLoadingScreen } from "./loading-screen";
-import { animals } from "./npc-runtime";
+import { animalGroup, animals } from "./npc-runtime";
 import {
   setPresentationCamera,
   type PresentationCameraState,
@@ -155,8 +155,9 @@ export function initTitleScreen() {
   gameState.currentWeather = previewTime.currentWeather as any;
   gameState.elapsed = previewTime.elapsed;
   buildMap("livingArea");
-  // 標題只展示自然環境；動物仍留在 runtime 資料中，但不加入展示 scene。
-  animals.forEach((animal) => animal.mesh.parent?.remove(animal.mesh));
+  // 標題只展示自然環境。只能暫時隱藏整個群組，不能把模型從群組移除；
+  // 否則讀取舊存檔後，06:00 作息只會切 visible，無法讓已脫離場景樹的動物出現。
+  animalGroup.visible = false;
   if (!gameState.player) {
     // 主迴圈在沒有玩家時會直接跳過；使用完整主角模型作為不顯示、不存檔的展示驅動器。
     gameState.player = makeMaleHeroPlayer();
@@ -238,6 +239,11 @@ export function initTitleScreen() {
     gameState.currentPhase = previous.currentPhase;
     gameState.currentWeather = previous.currentWeather;
     gameState.elapsed = previous.elapsed;
+    // 防範舊版標題流程或熱更新已經把動物模型拆離群組；正式 loadMap()
+    // 隨後會依目標地圖決定 animalGroup.visible。
+    animals.forEach((animal) => {
+      if (animal.mesh.parent !== animalGroup) animalGroup.add(animal.mesh);
+    });
     titleScreen.classList.add("titleScreen--hidden");
     window.setTimeout(() => {
       titleScreen.style.display = "none";

@@ -119,3 +119,7 @@
 ## Title scene ambient motion
 
 The living-area preview stays as a live Three.js scene rather than a still image. Pasture grass continues updating while gameplay is paused by using real visual time (`frameDt` and `effectElapsed`), with a fixed low-amplitude breeze. Gameplay grass retains its existing weather-driven timing and strength.
+
+## 展示場景內容邊界
+
+標題畫面沿用 livingArea 建圖，但 titlePresentationActive 為 true 時不得建立牡蠣架等正式玩法採集點。動物只能隱藏 animalGroup，不得把個別模型從群組移除；否則離開標題或讀取舊存檔後，06:00 作息只改 visible 也無法讓模型回到場景。正式 loadMap 會在旗標關閉後重新建圖。
