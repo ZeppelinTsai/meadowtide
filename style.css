@@ -603,6 +603,7 @@ canvas {
   box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.22);
 }
 .inventory-icon {
+  position: relative;
   display: grid;
   width: 54px;
   height: 54px;
@@ -653,10 +654,24 @@ canvas {
 }
 .inventory-item-count {
   position: absolute;
-  right: 12px;
-  bottom: 10px;
-  color: #ffe0a0;
+  right: -7px;
+  bottom: -6px;
+  z-index: 3;
+  min-width: 22px;
+  padding: 1px 6px;
+  box-sizing: border-box;
+  color: #543723;
+  background: rgba(250, 231, 190, 0.9);
+  border: 1px solid rgba(105, 71, 42, 0.88);
+  border-radius: 999px;
+  box-shadow:
+    0 0 0 2px rgba(255, 247, 224, 0.6),
+    0 2px 5px rgba(35, 23, 15, 0.42);
   font-size: 18px;
+  font-weight: 800;
+  line-height: 1.2;
+  text-align: center;
+  text-shadow: 0 1px rgba(255, 250, 235, 0.8);
   font-variant-numeric: tabular-nums;
 }
 .inventory-footer {
@@ -797,7 +812,7 @@ canvas {
   margin: 0;
 }
 .inventory-icon-model {
-  overflow: hidden;
+  overflow: visible;
   background: radial-gradient(
     circle,
     rgba(141, 157, 139, 0.2),
@@ -809,15 +824,8 @@ canvas {
   width: 100%;
   height: 100%;
   object-fit: contain;
+  border-radius: inherit;
   transform: scale(1.08);
-}
-.inventory-item-count {
-  position: static;
-  grid-column: 2;
-  grid-row: 1;
-  justify-self: start;
-  align-self: center;
-  font-size: 19px;
 }
 .inventory-item-label {
   grid-column: 1 / -1;
@@ -1957,10 +1965,25 @@ canvas {
 }
 .quick-item-count {
   position: absolute;
-  right: 6px;
-  bottom: 4px;
-  color: #f2d08c;
+  right: 2px;
+  bottom: 2px;
+  z-index: 3;
+  min-width: 24px;
+  padding: 1px 6px;
+  box-sizing: border-box;
+  color: #543723;
+  background: rgba(250, 231, 190, 0.9);
+  border: 1px solid rgba(105, 71, 42, 0.88);
+  border-radius: 999px;
+  box-shadow:
+    0 0 0 2px rgba(255, 247, 224, 0.6),
+    0 2px 5px rgba(35, 23, 15, 0.42);
   font-size: 18px;
+  font-weight: 800;
+  line-height: 1.2;
+  text-align: center;
+  text-shadow: 0 1px rgba(255, 250, 235, 0.8);
+  font-variant-numeric: tabular-nums;
 }
 #quickItemHud.holding .quick-item-current {
   border-color: #ffe09a;

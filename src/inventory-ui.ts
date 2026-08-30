@@ -416,11 +416,12 @@ export function renderInventory(focusFirstCard = false) {
 
     const count = document.createElement("div");
     count.className = "inventory-item-count";
-    count.textContent = "×" + item.amount;
+    count.textContent = String(item.amount);
     const label = document.createElement("div");
     label.className = "inventory-item-label";
     label.textContent = translateText(item.label);
-    slot.append(icon, count, label);
+    icon.append(count);
+    slot.append(icon, label);
     slot.addEventListener("focus", () =>
       selectInfoCard(slot, item.label, entryDescription(item)),
     );
