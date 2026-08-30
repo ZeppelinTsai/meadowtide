@@ -1,34 +1,34 @@
 import * as THREE from "three";
-import { dayLength, gameState, inventory } from "./game-state";
+import { dayLength, gameState, inventory } from "../../game-state";
 import {
   LAYOUT,
   isOnMountainStair,
   mountainGroundY,
   oldVillageGroundY,
   portGroundY,
-} from "./layout-maps";
-import { showDialogSequence } from "./dialogue";
-import { npcs, npcGroup } from "./npc-runtime";
-import { prologueRefs } from "./scene-registries";
-import { groundY, updateCameraFrustum } from "./scene-sky";
+} from "../../layout-maps";
+import { showDialogSequence } from "../../dialogue";
+import { npcs, npcGroup } from "../../npc-runtime";
+import { prologueRefs } from "../../scene-registries";
+import { groundY, updateCameraFrustum } from "../../scene-sky";
 import {
   isCameraShotsPlaying,
   isCameraAdjustModeActive,
   playCameraShots,
   stopCameraShots,
-} from "./cutscene-camera";
-import { animateWalk } from "./humanoid";
-import { getScheduleTarget } from "./npc-defs";
-import { SAVE_SLOT_COUNT } from "./save-slot-config";
+} from "../../cutscene-camera";
+import { animateWalk } from "../../humanoid";
+import { getScheduleTarget } from "../../npc-defs";
+import { SAVE_SLOT_COUNT } from "../../save-slot-config";
 import {
   completeStoryEvent,
   hasCompletedStoryEvent,
-} from "./story/story-state";
-import { setPresentationCamera } from "./first-person-camera";
+} from "../story-state";
+import { setPresentationCamera } from "../../first-person-camera";
 import {
   PROLOGUE_OPENING_CAMERA_SHOTS,
   PROLOGUE_SCRIPT,
-} from "./story/chapters/prologue-script";
+} from "./prologue-script";
 
 // ==============================================================
 // 序幕：開場第一天演出——主角乘（makePortScene() 裡本來就停在港口的

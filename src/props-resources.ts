@@ -273,7 +273,38 @@ export function makeAnimalFeeder(config) {
   return group;
 }
 
-export function makeCropMesh(stage) {
+function makeRadishCropMesh(stage: number) {
+  const g = new THREE.Group();
+  const leafMat = new THREE.MeshStandardMaterial({ color: 0x63a94f, flatShading: true });
+  if (stage === 0) {
+    for (const side of [-1, 1]) {
+      const leaf = new THREE.Mesh(new THREE.SphereGeometry(0.045, 6, 4), leafMat);
+      leaf.scale.set(1.45, 0.35, 0.7);
+      leaf.position.set(side * 0.035, 0.055, 0);
+      leaf.rotation.z = side * 0.45;
+      g.add(leaf);
+    }
+    return g;
+  }
+  if (stage === 2) {
+    const root = new THREE.Mesh(new THREE.SphereGeometry(0.105, 8, 6), new THREE.MeshStandardMaterial({ color: 0xf1eee2, flatShading: true }));
+    root.scale.set(0.82, 1.1, 0.82);
+    root.position.y = 0.07;
+    g.add(root);
+  }
+  const leaves = stage === 1 ? 2 : 4;
+  for (let i = 0; i < leaves; i++) {
+    const leaf = new THREE.Mesh(new THREE.SphereGeometry(0.075, 6, 4), leafMat);
+    const angle = (i / leaves) * Math.PI * 2;
+    leaf.scale.set(0.55, stage === 1 ? 0.9 : 1.35, 0.45);
+    leaf.position.set(Math.cos(angle) * 0.055, stage === 1 ? 0.13 : 0.22, Math.sin(angle) * 0.055);
+    leaf.rotation.z = Math.cos(angle) * 0.42;
+    leaf.rotation.x = Math.sin(angle) * 0.42;
+    g.add(leaf);
+  }
+  return g;
+}
+export function makeCropMesh(stage, cropType: "radish" | "potato" | "tomato" = "radish") {
   if (stage === 0) {
     const m = new THREE.Mesh(
       new THREE.ConeGeometry(0.04, 0.1, 5),
@@ -519,7 +550,7 @@ export function makeAnimal(type, seed = 0) {
   return g;
 }
 
-export function makeSeedPouch() {
+export function makeSeedPouch(labelColor = 0xe9d6a5) {
   const g = new THREE.Group();
   const bag = new THREE.Mesh(
     new THREE.SphereGeometry(0.14, 8, 6),
@@ -531,6 +562,12 @@ export function makeSeedPouch() {
   bag.scale.set(1, 0.8, 1);
   bag.position.y = 0.14;
   g.add(bag);
+  const label = new THREE.Mesh(
+    new THREE.BoxGeometry(0.12, 0.075, 0.012),
+    new THREE.MeshStandardMaterial({ color: labelColor, flatShading: true }),
+  );
+  label.position.set(0, 0.15, -0.128);
+  g.add(label);
   return g;
 }
 

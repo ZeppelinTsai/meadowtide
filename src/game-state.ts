@@ -174,6 +174,10 @@ export const gameState = {
 
 export const inventory = {
   seeds: 1,
+  // seeds 是既有存檔的蘿蔔種子欄位；新增種類獨立保存，舊檔讀取時保留預設值。
+  potatoSeeds: 1,
+  tomatoSeeds: 1,
+  heldItemId: null as string | null,
   harvested: 0,
   fish: 0,
   // 2026-08-26 釣魚 QTE：各魚階累積捕獲數——inventory.fish 這個舊欄位
@@ -204,8 +208,14 @@ export const inventory = {
   // 的表，不是單一數字。哪個 id 對應哪道菜看下面的 RECIPES。
   dishes: {} as Record<string, number>,
 };
-export const cropState: Record<string, { stage: number; plantedDay: number }> =
-  {};
+export const cropState: Record<
+  string,
+  {
+    stage: number;
+    plantedDay: number;
+    cropType?: import("./item-catalog").CropType;
+  }
+> = {};
 
 export const TIME_CONFIG = Object.freeze({
   realSecondsPerGameHour: 30,
@@ -424,9 +434,22 @@ export function nearAnyNpc() {
 }
 export function plantSeed(x: number, z: number) {
   const key = `${x},${z}`;
-  if (cropState[key] || inventory.seeds <= 0) return;
-  cropState[key] = { stage: 0, plantedDay: gameState.currentDay };
-  inventory.seeds--;
+  if (cropState[key]) return;
+  const seedCounts = {
+    radishSeeds: inventory.seeds,
+    potatoSeeds: inventory.potatoSeeds,
+    tomatoSeeds: inventory.tomatoSeeds,
+  };
+  const heldSeed = inventory.heldItemId as keyof typeof seedCounts | null;
+  const selectedSeed = heldSeed && seedCounts[heldSeed] > 0
+    ? heldSeed
+    : (Object.keys(seedCounts) as Array<keyof typeof seedCounts>).find((id) => seedCounts[id] > 0);
+  if (!selectedSeed) return;
+  const cropType = selectedSeed === "potatoSeeds" ? "potato" : selectedSeed === "tomatoSeeds" ? "tomato" : "radish";
+  cropState[key] = { stage: 0, plantedDay: gameState.currentDay, cropType };
+  if (selectedSeed === "potatoSeeds") inventory.potatoSeeds--;
+  else if (selectedSeed === "tomatoSeeds") inventory.tomatoSeeds--;
+  else inventory.seeds--;
   nearAnyNpc();
   syncFarmVisuals();
 }

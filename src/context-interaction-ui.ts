@@ -41,7 +41,7 @@ function targetForFarm(x:number,z:number,object:THREE.Object3D=farmGroup):WorldT
   if(!FARMLAND_TILES.some(([fx,fz])=>fx===x&&fz===z))return null;
   const crop=cropState[`${x},${z}`];
   if(crop?.stage>=2)return{id:`crop:${x},${z}`,object,radius:0.8,actions:[legacyAction("harvest","\u6536\u6210")],getPosition:()=>({x,z}),isValid:()=>Boolean(cropState[`${x},${z}`]?.stage>=2)};
-  if(!crop&&inventory.seeds>0)return{id:`soil:${x},${z}`,object,radius:0.8,actions:[legacyAction("plant","\u64ad\u7a2e")],getPosition:()=>({x,z}),isValid:()=>!cropState[`${x},${z}`]&&inventory.seeds>0};
+  if(!crop&&(inventory.seeds+inventory.potatoSeeds+inventory.tomatoSeeds)>0)return{id:`soil:${x},${z}`,object,radius:0.8,actions:[legacyAction("plant","\u64ad\u7a2e")],getPosition:()=>({x,z}),isValid:()=>!cropState[`${x},${z}`]&&(inventory.seeds+inventory.potatoSeeds+inventory.tomatoSeeds)>0};
   return null;
 }
 function allTargets(){

@@ -12,6 +12,7 @@ import {
 import { setTimePauseSource } from "./time-pause";
 import { getDisplayedStars, getRelationship } from "./affection";
 import { getLocale, translateText } from "./i18n";
+import { eatItem, itemAmount, inventoryItem, takeOutItem } from "./inventory-system";
 
 type InventoryTab = "bag" | "materials" | "cooking" | "relationships";
 type InventoryEntry = {
@@ -38,9 +39,17 @@ const tabList = document.getElementById("inventoryTabs") as HTMLDivElement;
 const tabButtons = Array.from(
   tabList.querySelectorAll<HTMLButtonElement>('[role="tab"]'),
 );
+const panel = document.getElementById("inventoryPanel") as HTMLElement;
+const contentMenu = document.createElement("div");
+contentMenu.id = "inventoryContentMenu";
+contentMenu.className = "inventory-content-menu";
+contentMenu.hidden = true;
+contentMenu.setAttribute("role", "menu");
+panel.appendChild(contentMenu);
 
 let open = false;
 let activeTabIndex = 0;
+let contextItemId: string | null = null;
 const modelIconCache = new Map<string, string>();
 
 function oreModel(kind: string) {
@@ -52,7 +61,9 @@ function oreModel(kind: string) {
 
 function inventoryEntries(): InventoryEntry[] {
   const entries: InventoryEntry[] = [
-    { id: "seeds", tab: "bag", label: "種子", amount: inventory.seeds, tone: "green", symbol: "種", model: makeSeedPouch },
+    { id: "radishSeeds", tab: "bag", label: "蘿蔔種子", amount: inventory.seeds, tone: "green", symbol: "蘿", model: () => makeSeedPouch() },
+    { id: "potatoSeeds", tab: "bag", label: "馬鈴薯種子", amount: inventory.potatoSeeds, tone: "gold", symbol: "薯", model: () => makeSeedPouch() },
+    { id: "tomatoSeeds", tab: "bag", label: "番茄種子", amount: inventory.tomatoSeeds, tone: "red", symbol: "番", model: () => makeSeedPouch() },
     { id: "harvested", tab: "bag", label: "農作物", amount: inventory.harvested, tone: "gold", symbol: "穗", model: () => makeCropMesh(2) },
     { id: "fish", tab: "bag", label: "魚", amount: inventory.fish, tone: "blue", symbol: "魚", model: () => makeFishProp(2.4) },
     { id: "oysters", tab: "bag", label: "牡蠣", amount: inventory.oysters, tone: "pearl", symbol: "貝" },
@@ -131,6 +142,35 @@ function setActiveTab(index: number, focus = false) {
   renderInventory();
 }
 
+function closeItemContentMenu() {
+  contextItemId = null;
+  contentMenu.hidden = true;
+  contentMenu.innerHTML = "";
+}
+
+function makeActionButton(label: string, action: () => void) {
+  const button = document.createElement("button");
+  button.type = "button";
+  button.textContent = translateText(label);
+  button.addEventListener("click", action);
+  return button;
+}
+
+function openItemContentMenu(itemId: string) {
+  const item = inventoryItem(itemId);
+  if (!item || itemAmount(itemId) <= 0) return;
+  contextItemId = itemId;
+  contentMenu.innerHTML = "";
+  contentMenu.hidden = false;
+  const heading = document.createElement("h3");
+  heading.textContent = translateText(item.label);
+  contentMenu.appendChild(heading);
+  const take = makeActionButton("拿出", () => { if (takeOutItem(itemId)) setInventoryOpen(false); });
+  contentMenu.appendChild(take);
+  if (item.edible) contentMenu.appendChild(makeActionButton("食用", () => { eatItem(itemId); closeItemContentMenu(); renderInventory(); }));
+  contentMenu.appendChild(makeActionButton("取消", closeItemContentMenu));
+}
+
 export function renderInventory() {
   grid.innerHTML = "";
   const activeId = TABS[activeTabIndex].id;
@@ -149,9 +189,11 @@ export function renderInventory() {
   }
 
   visibleEntries.forEach((item) => {
-    const slot = document.createElement("div");
+    const slot = document.createElement("button");
+    slot.type = "button";
     slot.className = "inventory-slot inventory-slot-" + item.tone;
     slot.dataset.itemId = item.id;
+    slot.setAttribute("aria-label", `${translateText(item.label)} ×${item.amount}`);
 
     const icon = document.createElement("div");
     icon.className = "inventory-icon";
@@ -176,6 +218,7 @@ export function renderInventory() {
     label.textContent = translateText(item.label);
 
     slot.append(icon, count, label);
+    slot.addEventListener("click", () => openItemContentMenu(item.id));
     grid.appendChild(slot);
   });
 }

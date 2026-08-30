@@ -24,6 +24,7 @@ import { isGameplayPaused } from "./time-pause";
 import { cancelPlayerNavigation, getAutoMoveDirection } from "./player-navigation";
 import { isAnimalCarried, updateCarriedAnimalPose } from "./animal-interactions";
 import { isInventoryOpen } from "./inventory-ui";
+import { syncHeldItemVisual } from "./inventory-system";
 import { translateText } from "./i18n";
 import { rollFishTier, COUNTER_DIRECTION } from "./fishing";
 import { pollGamepad } from "./gamepad-input";
@@ -330,6 +331,7 @@ export function animate(now) {
   // 搖桿輸入：轉成合成鍵盤事件餵給下面的 `keys` map 跟 input-save.ts 的
   // E 鍵/QTE 監聽，跟玩家實際按鍵盤是同一條路徑(見 gamepad-input.ts)。
   pollGamepad();
+  syncHeldItemVisual();
 
   // --- 自由移動：方向鍵給的是速度向量，不是格子跳，可以八方向、可以貼牆滑 ---
   // 序幕演出(cutsceneActive)期間整段跳過：船/跳板/下船走位都是

@@ -19,14 +19,14 @@ export const farmGroup = new THREE.Group();
           farmGroup.add(makeSoil(x, z));
           const c = cropState[`${x},${z}`];
           if (c) {
-            const mesh = makeCropMesh(c.stage);
+            const mesh = makeCropMesh(c.stage, c.cropType ?? "radish");
             mesh.position.x += x;
             mesh.position.z += z;
             farmGroup.add(mesh);
           }
         });
         if (gameState.currentDay > gameState.pouchCollectedDay) {
-          const pouch = makeSeedPouch();
+          const pouch = makeSeedPouch(0xe9d6a5);
           pouch.position.set(POUCH_POS.x, 0, POUCH_POS.z);
           farmGroup.add(pouch);
         }
