@@ -184,7 +184,9 @@ export function updateCarriedAnimalPose() {
     HELD_ITEM_POSITION.y,
     HELD_ITEM_POSITION.z,
   );
-  animal.mesh.rotation.set(0, -Math.PI / 2, 0);
+  // 動物頭朝本地 +X；轉 +90° 後頭朝玩家本地 -Z（畫面前方），
+  // 因此雞背對主角，不會再抱成面對面的方向。
+  animal.mesh.rotation.set(0, Math.PI / 2, 0);
   gameState.player.userData.carryingAnimal = true;
 }
 
