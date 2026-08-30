@@ -637,6 +637,7 @@ document.addEventListener("visibilitychange", () => {
 });
 
 addEventListener("keydown", (event) => {
+  if (gameState.cutsceneActive) return;
   if (event.key.toLowerCase() === "r" && !event.repeat && !consumeLegacySecondaryBypass() && executeContextInteraction("secondary")) { event.preventDefault(); return; }
   if (
     event.key.toLowerCase() !== "r" ||
@@ -683,6 +684,7 @@ addEventListener("keydown", (event) => {
 // preventDefault 是因為 Tab 預設會把瀏覽器焦點移出畫布，會讓後續鍵盤
 // 輸入吃不到。
 addEventListener("keydown", (event) => {
+  if (gameState.cutsceneActive) return;
   if (event.key.toLowerCase() === "f" && !event.repeat && !event.ctrlKey && !event.metaKey && executeContextInteraction("tertiary")) event.preventDefault();
 });
 
@@ -862,6 +864,10 @@ addEventListener("keydown", (e) => {
     advanceDialogSequence();
     return;
   }
+
+  // 過場只保留對話推進；世界互動（包含釣魚、播種、採集與 NPC 閒聊）全部鎖定。
+  // 教學若需要玩家自由操作，應先結束 cutsceneActive 再進入玩法等待階段。
+  if (gameState.cutsceneActive) return;
 
   if (gameState.isSitting) {
     gameState.isSitting = false;

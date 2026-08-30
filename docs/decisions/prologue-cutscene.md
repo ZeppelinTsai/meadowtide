@@ -129,6 +129,10 @@ function bowWorldPoint(localPoint: THREE.Vector3): THREE.Vector3 {
   在演出途中被意外觸發。**這是通用擋法，之後任何新演出只要設定
   `cutsceneActive = true`，這類地圖事件都會自動被擋掉**，不用每個
   新演出各自排除受影響的事件。
+- **世界互動**：cutsceneActive 期間 E/R/F、滑鼠情境互動、釣魚、播種、採集與
+  NPC 閒聊全部封鎖；對話推進仍可使用 E。教學需要玩家實際操作時，應先結束
+  cutsceneActive 進入自由活動／玩法等待階段，不可讓完整過場鎖定和自由操作
+  同時成立。
 - **NPC 顯示**：`startPrologueScene()` 開場把 captain/mayor/carpenter
   三個 NPC 的 `.mesh.visible` 都設 `false`（carpenter 是後來才補上的
   防守性修法——`carpenterQuest.stage === "escorting"` 時

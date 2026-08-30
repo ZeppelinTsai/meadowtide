@@ -377,6 +377,16 @@ fillValue: 9)` 追加外海；東擴不得平移既有座標，完成後必須�
 - 辅助程序必须维持可在 Node 环境直接 import 的边界，不得为了检查数据而启动
   renderer、读取 `document` 或依赖浏览器全局。
 
+### 響應式 PNG / WebP 資產匯出
+
+- 原始 UI 圖片維持 PNG，衍生的 WebP 不可手工修改。通用工具是
+  scripts/export-responsive-images.py；預設讀取 public/assets/map/world-map.png，
+  輸出 480/960/1440px 的 world-map-<寬度>.webp，且永不放大超過來源寬度。
+- 地圖素材更新後執行 npm run assets:webp。其他 UI 圖片可傳入 --input、
+  --output-dir、--name、--widths 與 --quality 重用同一工具。
+- 輸出必須列出每個檔案的實際寬高；來源不存在、不是 PNG、尺寸或品質非法時
+  以非零退出碼失敗。完成後仍須執行 npm run build，確認 HTML 引用有效。
+
 ## 已知還沒做 / 刻意簡化的部分
 
 - **F2 俯視規劃模式**（格線、半透明分區、方向鍵搬動整塊區域、即時檢查

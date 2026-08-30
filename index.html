@@ -138,21 +138,31 @@
       <section id="mapPanel" role="dialog" aria-modal="true" aria-label="地圖">
         <header class="map-menu-header">
           <h2>地圖</h2>
-          <button id="mapClose" type="button">M／Select　關閉</button>
+          <button id="mapClose" type="button" aria-label="關閉地圖">
+            <kbd>M</kbd><span aria-hidden="true">／</span><kbd>L3</kbd><span>關閉</span>
+          </button>
         </header>
         <section class="world-map" aria-label="海風牧歌地圖">
-          <div class="world-map-location world-map-location-mountain">
-            <span aria-hidden="true">●</span><strong>山區</strong>
-          </div>
-          <div class="world-map-location world-map-location-old-village">
-            <span aria-hidden="true">●</span><strong>城鎮</strong>
-          </div>
-          <div class="world-map-location world-map-location-living-area">
-            <span aria-hidden="true">●</span><strong>牧場</strong>
-          </div>
-          <div class="world-map-location world-map-location-port">
-            <span aria-hidden="true">●</span><strong>港口</strong>
-          </div>
+          <picture class="world-map-art" aria-hidden="true">
+            <source
+              type="image/webp"
+              srcset="/assets/map/world-map-480.webp 480w, /assets/map/world-map-960.webp 960w, /assets/map/world-map-1440.webp 1440w"
+              sizes="(max-width: 620px) 90vw, 850px"
+            />
+            <img src="/assets/map/world-map.png" alt="" />
+          </picture>
+          <button type="button" data-map-destination="mountain" class="world-map-location world-map-location-mountain">
+            <span aria-hidden="true"></span><strong>山區</strong>
+          </button>
+          <button type="button" data-map-destination="oldVillage" class="world-map-location world-map-location-old-village">
+            <span aria-hidden="true"></span><strong>城鎮</strong>
+          </button>
+          <button type="button" data-map-destination="livingArea" class="world-map-location world-map-location-living-area">
+            <span aria-hidden="true"></span><strong>牧場</strong>
+          </button>
+          <button type="button" data-map-destination="port" class="world-map-location world-map-location-port">
+            <span aria-hidden="true"></span><strong>港口</strong>
+          </button>
         </section>
       </section>
     </div>
