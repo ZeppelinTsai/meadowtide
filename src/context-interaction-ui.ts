@@ -1,6 +1,6 @@
 import * as THREE from "three";
 import { chooseInteractionTarget, promptFor, type ContextAction, type InteractionCandidate, type InteractionSlot } from "./context-interaction";
-import { actionsForAnimal, getCarriedAnimalId } from "./animal-interactions";
+import { actionsForAnimal, dropCarriedAnimal, getCarriedAnimalId } from "./animal-interactions";
 import { gameState, cropState, hasTool, inventory, pastureGrassStageAt, WOOD_NODES, STONE_NODES } from "./game-state";
 import { animals, npcs } from "./npc-runtime";
 import { renderer, camera, scene } from "./scene-sky";
@@ -36,7 +36,7 @@ let markerTimer=0, highlight:THREE.BoxHelper|null=null, highlightTimer=0;
 function blocked(allowActiveFishing=false){return !gameState.player || gameState.titlePresentationActive || gameState.cutsceneActive || isCameraAdjustModeActive() || isInventoryOpen() || dialogQueue.length>0 || Boolean(activeChoice) || (!allowActiveFishing&&gameState.fishingState!=="idle");}
 function contains(root:THREE.Object3D,obj:THREE.Object3D){let current:THREE.Object3D|null=obj;while(current){if(current===root)return true;current=current.parent;}return false;}
 function legacyAction(id:string,label:string):ContextAction{return{id,label,slot:"primary",execute:runLegacyPrimaryInteraction};}
-function targetForAnimal(id:string):WorldTarget|null{const animal=animals.find(a=>a.id===id);if(!animal||!animal.mesh.visible)return null;return{id:"animal:"+id,object:animal.mesh,radius:1.35,actions:actionsForAnimal(id),getPosition:()=>animal.mesh.visible?{x:animal.mesh.position.x,z:animal.mesh.position.z}:null,isValid:()=>animal.mesh.visible&&actionsForAnimal(id).length>0};}
+function targetForAnimal(id:string):WorldTarget|null{const animal=animals.find(a=>a.id===id);if(!animal||!animal.mesh.visible)return null;const carried=getCarriedAnimalId()===id;return{id:"animal:"+id,object:animal.mesh,radius:carried?0.1:1.35,actions:actionsForAnimal(id),getPosition:()=>{if(!animal.mesh.visible)return null;if(carried&&gameState.player)return{x:gameState.player.position.x,z:gameState.player.position.z};return{x:animal.mesh.position.x,z:animal.mesh.position.z};},isValid:()=>animal.mesh.visible&&actionsForAnimal(id).length>0};}
 function targetForNpc(id:string):WorldTarget|null{const npc=npcs.find(n=>n.id===id);if(!npc||!npc.mesh.visible||npc.map!==gameState.currentMapName)return null;return{id:"npc:"+id,object:npc.mesh,radius:1.25,actions:[legacyAction("talk","\u5c0d\u8a71")],getPosition:()=>npc.mesh.visible?{x:npc.mesh.position.x,z:npc.mesh.position.z}:null,isValid:()=>npc.mesh.visible&&npc.map===gameState.currentMapName};}
 function targetForGather(nodeId:string):WorldTarget|null{if(!hasTool("dualAxe"))return null;const entry=gatherNodeMeshes.find(e=>e.nodeId===nodeId&&e.map===gameState.currentMapName);const node=[...WOOD_NODES,...STONE_NODES].find(n=>n.id===nodeId);if(!entry||!node||node.collected)return null;return{id:"gather:"+nodeId,object:entry.group,radius:1.2,actions:[legacyAction(node.kind,node.kind==="wood"?"\u780d\u6a39":"\u63a1\u77f3")],getPosition:()=>node.collected?null:{x:node.x,z:node.z},isValid:()=>hasTool("dualAxe")&&!node.collected&&entry.group.visible};}
 function targetForOre(nodeId:string):WorldTarget|null{if(!hasTool("dualAxe"))return null;const entry=oreNodeMeshes.find(e=>e.nodeId===nodeId);const nodes=gameState.currentMapName==="mountainCave"?MOUNTAIN_ORE_NODES:gameState.currentMapName==="stalactiteCave"?ORE_NODES:[];const node=nodes.find(n=>n.id===nodeId);if(!entry||!node||node.collected)return null;return{id:"ore:"+nodeId,object:entry.group,radius:1.2,actions:[legacyAction("ore","敲礦")],getPosition:()=>node.collected?null:{x:node.x,z:node.z},isValid:()=>hasTool("dualAxe")&&!node.collected&&entry.group.visible};}
@@ -91,6 +91,7 @@ function render(){
   box.classList.toggle("visible",currentActions.length>0||Boolean(held)); if(box.dataset.signature===sig)return; box.dataset.signature=sig; box.replaceChildren();
   const appendPrompt=(key:string,label:string,onClick?:()=>void)=>{const button=document.createElement("button");button.type="button";button.className="contextInteractionAction";const kbd=document.createElement("kbd"),text=document.createElement("span");kbd.textContent=key;text.textContent=label;button.append(kbd,text);if(onClick)button.addEventListener("click",event=>{event.stopPropagation();onClick();});else button.disabled=true;box.append(button);};
   currentActions.forEach(action=>{appendPrompt(promptFor(action.slot,device,layout),action.label,()=>{markKeyboardMouseInput(new Event("pointerdown"));executeContextInteraction(action.slot);});});
+  if(getCarriedAnimalId()&&device!=="gamepad")appendPrompt("右鍵","放下",dropCarriedAnimal);
   if(held){appendPrompt(device==="gamepad"?"LB/RB":"滾輪","切換物品",()=>cycleHeldItem(1));appendPrompt("右鍵","收回",stowHeldItem);}
 }
 function updateRay(clientX:number,clientY:number){const rect=renderer.domElement.getBoundingClientRect();pointer.x=((clientX-rect.left)/rect.width)*2-1;pointer.y=-((clientY-rect.top)/rect.height)*2+1;raycaster.setFromCamera(pointer,getGameplayCamera(camera));}
@@ -131,5 +132,6 @@ export function initContextInteraction(){
   renderer.domElement.addEventListener("pointercancel",event=>{activePointers.delete(event.pointerId);down=null;});renderer.domElement.addEventListener("pointerleave",()=>{pointedId=null;});
   onNavigationDestinationChanged(destination=>{if(!destination){destinationMarker.visible=false;return;}destinationMarker.position.set(destination.x,gameState.player?.position.y+0.04||0.04,destination.z);destinationMarker.visible=true;markerTimer=performance.now()+1400;});
   addEventListener("keydown",event=>{if(["w","a","s","d","arrowup","arrowdown","arrowleft","arrowright"].includes(event.key.toLowerCase())){selectedTarget=null;cancelPlayerNavigation();}});
+  addEventListener("contextmenu",event=>{if(!getCarriedAnimalId()||blocked())return;event.preventDefault();event.stopImmediatePropagation();dropCarriedAnimal();});
   requestAnimationFrame(frame);
 }

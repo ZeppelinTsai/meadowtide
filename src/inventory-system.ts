@@ -81,6 +81,10 @@ function changeItemAmount(itemId: string, delta: number) {
 }
 
 export function takeOutItem(itemId: string): boolean {
+  if (gameState.player?.userData.carryingAnimal) {
+    showUiToast("背包", "請先放下抱著的動物。");
+    return false;
+  }
   const item = inventoryItem(itemId);
   if (!item || itemAmount(itemId) <= 0) return false;
   inventory.heldItemId = item.id;

@@ -197,7 +197,7 @@ export function actionsForAnimal(id: string): ContextAction[] {
     return [{
       id: "drop",
       label: "放下",
-      slot: "primary",
+      slot: "secondary",
       execute: dropCarriedAnimal,
     }];
   }
@@ -277,6 +277,7 @@ export function restoreAnimalInteractionState(data: unknown) {
     animals.some((animal) => animal.id === saved.carriedAnimalId)
       ? saved.carriedAnimalId
       : null;
+  if (carriedAnimalId) inventory.heldItemId = null;
   if (gameState.player) {
     gameState.player.userData.carryingAnimal = Boolean(carriedAnimalId);
   }

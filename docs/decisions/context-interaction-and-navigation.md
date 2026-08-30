@@ -83,3 +83,7 @@ npm run build
 The unit tests cover pointer priority, hysteresis, unavailable-action hiding,
 Nintendo/Xbox physical-button labels, nearest reachable fallback, wall
 connectivity, and stopping within interaction radius.
+
+## Carried chicken input priority
+
+While carrying a chicken, its interaction position is the player world position. Keyboard R, the controller secondary-action button, and mouse right-click all drop it; the lower-left capsules show the active inputs. Carried animals and held inventory items are mutually exclusive: taking an item out is blocked until the animal is dropped, and legacy saves containing both states keep the animal while clearing heldItemId.
