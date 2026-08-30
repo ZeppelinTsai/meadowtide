@@ -169,6 +169,7 @@ function openItemContentMenu(itemId: string) {
   contentMenu.appendChild(take);
   if (item.edible) contentMenu.appendChild(makeActionButton("食用", () => { eatItem(itemId); closeItemContentMenu(); renderInventory(); }));
   contentMenu.appendChild(makeActionButton("取消", closeItemContentMenu));
+  (contentMenu.querySelector("button") as HTMLButtonElement | null)?.focus();
 }
 
 export function renderInventory() {
