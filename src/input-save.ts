@@ -17,7 +17,8 @@ import {
   harvestCrop,
   pickupSeeds,
   CAST_ANIM_DURATION,
-  OYSTER_RACK_TILES,
+  isOysterRackInteractionTile,
+  setOysterRackSlots,
   oysterRackState,
   harvestOysterRack,
   FEEDER_VISUAL,
@@ -281,7 +282,7 @@ export function getSaveSlotSummaries(): SaveSlotSummary[] {
 export function saveGame(slot = "default") {
   npcs.forEach((npc) => getRelationship(npc.id));
   const data = {
-    version: 11,
+    version: 12,
     savedAt: Date.now(),
     playerProfile: {
       name: gameState.playerName,
@@ -312,6 +313,7 @@ export function saveGame(slot = "default") {
     npcNameRevealStages: exportNpcNameRevealState(),
     carpenterQuest: { ...carpenterQuest },
     oysterRackState: JSON.parse(JSON.stringify(oysterRackState)),
+    oysterRackSlots: gameState.oysterRackSlots,
     feederUnits: gameState.feederUnits,
     pastureGrazeSettledDay: gameState.pastureGrazeSettledDay,
     pastureGrazedToday: gameState.pastureGrazedToday,
@@ -397,6 +399,13 @@ export function loadGame(
     shears: typeof savedTools?.shears === "boolean" ? savedTools.shears : true,
     brush: typeof savedTools?.brush === "boolean" ? savedTools.brush : true,
   };
+  inventory.pearls = {
+    white: Math.max(0, Number(data.inventory?.pearls?.white) || 0),
+    pink: Math.max(0, Number(data.inventory?.pearls?.pink) || 0),
+    purple: Math.max(0, Number(data.inventory?.pearls?.purple) || 0),
+    black: Math.max(0, Number(data.inventory?.pearls?.black) || 0),
+    gold: Math.max(0, Number(data.inventory?.pearls?.gold) || 0),
+  };
   if (data.inventory?.animalProducts) Object.assign(inventory.animalProducts, data.inventory.animalProducts);
   restoreAnimalInteractionState(data.animalInteractions);
   gameState.feederUnits = Number.isFinite(data.feederUnits)
@@ -465,6 +474,7 @@ export function loadGame(
   }
   Object.keys(oysterRackState).forEach((key) => delete oysterRackState[key]);
   Object.assign(oysterRackState, data.oysterRackState || {});
+  setOysterRackSlots(data.oysterRackSlots);
   if (Array.isArray(data.woodNodes) && Array.isArray(data.stoneNodes)) {
     gameState.gatherSpawnSlot = Number(data.gatherSpawnSlot);
     WOOD_NODES.splice(0, WOOD_NODES.length, ...data.woodNodes);
@@ -960,9 +970,7 @@ addEventListener("keydown", (e) => {
   // 牡蠣完全採不到。
   if (gameState.currentMapName === "livingArea") {
     const { x: oysterX, z: oysterZ } = gameState.playerGridPos;
-    const onOysterRack = OYSTER_RACK_TILES.some(
-      ([ox, oz]) => ox === oysterX && oz === oysterZ,
-    );
+    const onOysterRack = isOysterRackInteractionTile(oysterX, oysterZ);
     if (onOysterRack) {
       harvestOysterRack(oysterX, oysterZ);
       return;

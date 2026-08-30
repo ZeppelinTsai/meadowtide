@@ -191,6 +191,38 @@ export function makeOysterRack(x, z) {
   return { group, glowMat: glowShellMat };
 }
 
+export function makePearlProp(rarity: import("./pearl-system").PearlRarity) {
+  const colors: Record<import("./pearl-system").PearlRarity, number> = {
+    white: 0xf4f1df,
+    pink: 0xf2a9ba,
+    purple: 0x9267b2,
+    black: 0x24242c,
+    gold: 0xe5bd48,
+  };
+  const group = new THREE.Group();
+  const pearl = new THREE.Mesh(
+    new THREE.SphereGeometry(0.18, 16, 12),
+    new THREE.MeshStandardMaterial({
+      color: colors[rarity],
+      roughness: 0.18,
+      metalness: rarity === "gold" ? 0.45 : 0.12,
+      emissive: new THREE.Color(colors[rarity]),
+      emissiveIntensity: rarity === "black" ? 0.08 : 0.16,
+    }),
+  );
+  pearl.castShadow = true;
+  const highlight = new THREE.Mesh(
+    new THREE.SphereGeometry(0.045, 8, 6),
+    new THREE.MeshBasicMaterial({
+      color: 0xffffff,
+      transparent: true,
+      opacity: rarity === "black" ? 0.5 : 0.78,
+    }),
+  );
+  highlight.position.set(-0.07, 0.08, 0.13);
+  group.add(pearl, highlight);
+  return group;
+}
 // 休息區野餐組——桌子＋兩張長椅，樹蔭直接借用 makeTree
 
 export function makeAnimalFeeder(config) {

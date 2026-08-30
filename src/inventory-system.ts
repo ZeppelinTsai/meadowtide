@@ -5,7 +5,13 @@ import {
   type InventoryItemId,
   type ItemDefinition,
 } from "./item-catalog";
-import { makeCropMesh, makeFishProp, makeOysterProp, makeSeedPouch } from "./props";
+import {
+  makeCropMesh,
+  makeFishProp,
+  makeOysterProp,
+  makePearlProp,
+  makeSeedPouch,
+} from "./props";
 import { showUiToast } from "./ui-toast";
 import {
   HELD_ARM_ROTATION,
@@ -42,6 +48,8 @@ export function itemAmount(itemId: string): number {
   if (itemId === "harvested") return inventory.harvested;
   if (itemId === "fish") return inventory.fish;
   if (itemId === "oysters") return inventory.oysters;
+  if (itemId.startsWith("pearl-"))
+    return inventory.pearls[itemId.slice(6) as import("./pearl-system").PearlRarity] ?? 0;
   if (itemId.startsWith("dish-")) return inventory.dishes[itemId.slice(5)] ?? 0;
   return 0;
 }
@@ -59,6 +67,10 @@ function changeItemAmount(itemId: string, delta: number) {
     inventory.fish = Math.max(0, inventory.fish + delta);
   else if (itemId === "oysters")
     inventory.oysters = Math.max(0, inventory.oysters + delta);
+  else if (itemId.startsWith("pearl-")) {
+    const rarity = itemId.slice(6) as import("./pearl-system").PearlRarity;
+    inventory.pearls[rarity] = Math.max(0, (inventory.pearls[rarity] ?? 0) + delta);
+  }
   else if (itemId.startsWith("dish-")) {
     const recipeId = itemId.slice(5);
     inventory.dishes[recipeId] = Math.max(
@@ -138,6 +150,8 @@ export function makeInventoryItemVisual(itemId: string): THREE.Object3D {
     return fish;
   }
   if (itemId === "oysters") return makeOysterProp();
+  if (itemId.startsWith("pearl-"))
+    return makePearlProp(itemId.slice(6) as import("./pearl-system").PearlRarity);
   return new THREE.Mesh(
     new THREE.BoxGeometry(0.12, 0.12, 0.12),
     new THREE.MeshStandardMaterial({ color: 0xead4a8, flatShading: true }),

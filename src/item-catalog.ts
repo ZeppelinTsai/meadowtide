@@ -7,6 +7,11 @@ export type InventoryItemId =
   | "harvested"
   | "fish"
   | "oysters"
+  | "pearl-white"
+  | "pearl-pink"
+  | "pearl-purple"
+  | "pearl-black"
+  | "pearl-gold"
   | `dish-${string}`;
 
 export interface ItemDefinition {
@@ -27,6 +32,11 @@ export const BASIC_ITEMS: readonly ItemDefinition[] = [
   { id: "harvested", label: "農作物", edible: true },
   { id: "fish", label: "魚", edible: true },
   { id: "oysters", label: "牡蠣", edible: true },
+  { id: "pearl-white", label: "白珍珠", edible: false },
+  { id: "pearl-pink", label: "粉珍珠", edible: false },
+  { id: "pearl-purple", label: "紫珍珠", edible: false },
+  { id: "pearl-black", label: "黑珍珠", edible: false },
+  { id: "pearl-gold", label: "金珍珠", edible: false },
 ];
 
 export function cropTypeForSeedItem(itemId: string | null | undefined): CropType | null {

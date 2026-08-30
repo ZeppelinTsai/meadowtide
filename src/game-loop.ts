@@ -760,13 +760,13 @@ export function animate(now) {
   // 牡蠣架的殼——還沒採的時候用 emissiveIntensity 做一個緩慢的呼吸式發光
   // (跟窗戶/桌燈那種靠 nightFactor 開關的 emissive 不同，這裡不分晝夜、
   // 純粹用 elapsed 算正弦波)，提醒玩家「這裡今天還能採」；採完(或還沒
-  // 建好/切到別的地圖時 gameState.oysterGlowMat 是 null)就直接歸零，跟
+  // 建好/切到別的地圖時材質清單是空的就直接歸零，跟
   // 其他殼一樣暗下來，一眼能分辨今天巡過了沒。
-  if (gameState.oysterGlowMat) {
-    gameState.oysterGlowMat.emissiveIntensity = isOysterRackReady()
+  gameState.oysterGlowMats.forEach((material, index) => {
+    material.emissiveIntensity = isOysterRackReady(index)
       ? 0.45 + Math.sin(gameState.elapsed * 2.4) * 0.3
       : 0;
-  }
+  });
 
   // 採集點只在真正切換地圖時刷新；留在原地跨過 06:00／18:00 時，畫面與
   // 採集狀態都維持不變，避免木材／石頭在玩家眼前突然搬動或重生。

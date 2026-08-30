@@ -188,7 +188,7 @@ import {
 import { syncFarmVisuals } from "./farm-visuals";
 import { createTransitionEvents, type TransitionLink } from "./map-transitions";
 import {
-  OYSTER_RACK_VISUAL,
+  getActiveOysterRackLayouts,
   WOOD_NODES,
   STONE_NODES,
   FEEDER_VISUAL,
@@ -666,17 +666,13 @@ export function buildMap(mapName) {
     // {group, light, bulbMat} 同一招)，glowMat 存進 gameState 讓
     // animate() 依「今天採過了嗎」調亮暗——每次重建地圖都要重設一次，
     // 不然切地圖再切回來會抓到已經丟棄的舊材質物件。
-    gameState.oysterGlowMat = null;
-    const oysterRack = makeOysterRack(
-      OYSTER_RACK_VISUAL.x,
-      OYSTER_RACK_VISUAL.z,
-    );
-    oysterRack.group.position.y = groundY(
-      OYSTER_RACK_VISUAL.x,
-      OYSTER_RACK_VISUAL.z,
-    );
-    gameState.mapGroup.add(oysterRack.group);
-    gameState.oysterGlowMat = oysterRack.glowMat;
+    gameState.oysterGlowMats.length = 0;
+    getActiveOysterRackLayouts().forEach(({ visual }) => {
+      const oysterRack = makeOysterRack(visual.x, visual.z);
+      oysterRack.group.position.y = groundY(visual.x, visual.z);
+      gameState.mapGroup.add(oysterRack.group);
+      gameState.oysterGlowMats.push(oysterRack.glowMat);
+    });
 
     // 女神祠堂步道——墊高浮出海面的沙洲，不是逐格貼平的沙灘(那段已在
     // 上面的 tile===8 迴圈裡跳過)，這裡一次蓋掉整段。

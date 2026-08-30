@@ -11,6 +11,16 @@ import { syncFarmVisuals } from "./farm-visuals";
 import { createWeatherSchedule } from "./weather-schedule";
 import { getScaledBuildingBounds } from "./building-scale";
 import { cropTypeForSeedItem } from "./item-catalog";
+import {
+  allVillagersAtSixStars,
+  normalizeOysterRackSlots,
+  PEARL_DEFINITIONS,
+  rollPearl,
+  VILLAGER_IDS,
+  type PearlRarity,
+} from "./pearl-system";
+import { getRelationship } from "./affection";
+import { storyState } from "./story/story-state";
 import type { ToolId } from "./tool-catalog";
 export { TOOL_DEFINITIONS, type ToolId } from "./tool-catalog";
 export { MAX_EXTREME_WEATHER_PER_SEASON } from "./weather-schedule";
@@ -86,7 +96,8 @@ export const gameState = {
   // 牡蠣架上「還沒收成」那批殼用的共用材質——makeOysterRack() 建好之後把
   // 材質丟回這裡，animate() 每幀根據 isOysterRackReady() 幫它調
   // emissiveIntensity，達到「還能採就發光、採完就暗下來」的效果。
-  oysterGlowMat: null as THREE.MeshStandardMaterial | null,
+  oysterGlowMats: [] as THREE.MeshStandardMaterial[],
+  oysterRackSlots: 1,
   castAnimEnd: 0,
   catchAnim: null as {
     mesh: THREE.Object3D;
@@ -209,6 +220,13 @@ export const inventory = {
   wood: 10,
   stone: 5,
   oysters: 0,
+  pearls: {
+    white: 0,
+    pink: 0,
+    purple: 0,
+    black: 0,
+    gold: 0,
+  } as Record<PearlRarity, number>,
   animalProducts: { milk: 0, wool: 0, egg: 0 },
   // 鐘乳石洞窟礦石——跟木材/石頭是不同系統(見 mine.ts)，5 階對應
   // 銅/銀/金/星晶/神晶，數值型別跟其他資源一致方便 HUD 共用格式化邏輯。
@@ -497,7 +515,7 @@ export function growCropsForNewDay() {
 // 的 x/z(碰撞) vs visualX/visualZ(畫面) 是同一招。
 // 這次先只放牧場自家海灘這一個點，之後真的要做文蛤/蝦池等其他養殖
 // 項目時，往這個清單加新座標就好，不用另外設計系統。
-// 珍珠判定系統這輪還沒接（暫停中，等牡蠣架視覺/位置確認過再繼續）。
+// 每座架子各自記錄採收日；擴建數量同時提高所有已解鎖珍珠的掉落率。
 // ==============================================================
 // 這裡本來只列 (44,14) 一格，但玩家的碰撞箱半寬是 0.22(見
 // input-save.ts 的 collidesAt)，往浮筏方向一路走到底，四個角落裡
@@ -506,24 +524,56 @@ export function growCropsForNewDay() {
 // 也就是玩家自然走到底、感覺「已經站在浮筏旁邊」的那格，反而不算數，
 // 這才是「站不上去/採不到」的真正原因，不是判定寫錯。把最靠海這格
 // 也一起算進採集點，兩格都能觸發，不用逼玩家往回退一步才踩得中。
-export const OYSTER_RACK_TILES = [
-  [44, 14],
-  [45, 14],
-];
-export const OYSTER_RACK_VISUAL = { x: 46, z: 14 };
-export const OYSTER_HARVESTS_PER_DAY = 1; // 放養式養殖：一天巡一次就好，
-// 不是能重複伸手撈的採集點——跟農地/釣魚那種可以來回刷的機制刻意不同。
-export const OYSTER_YIELD_MIN = 3,
-  OYSTER_YIELD_MAX = 5; // 每次收成 3~5 個
+export const OYSTER_RACK_LAYOUTS = [
+  { visual: { x: 46, z: 14 }, interactionTiles: [[44, 14], [45, 14]] },
+  { visual: { x: 46, z: 16 }, interactionTiles: [[44, 16], [45, 16]] },
+  { visual: { x: 46, z: 18 }, interactionTiles: [[44, 18], [45, 18]] },
+] as const;
+export const OYSTER_RACK_VISUAL = OYSTER_RACK_LAYOUTS[0].visual;
+export const OYSTER_RACK_TILES = OYSTER_RACK_LAYOUTS[0].interactionTiles;
+export const OYSTER_HARVESTS_PER_DAY = 1;
+export const OYSTER_YIELD_MIN = 3;
+export const OYSTER_YIELD_MAX = 5;
 export const oysterRackState: Record<
   string,
   { harvestsToday: number; lastHarvestDay: number }
 > = {};
+
+export function setOysterRackSlots(value: number) {
+  gameState.oysterRackSlots = normalizeOysterRackSlots(value);
+}
+
+export function getActiveOysterRackLayouts() {
+  return OYSTER_RACK_LAYOUTS.slice(
+    0,
+    normalizeOysterRackSlots(gameState.oysterRackSlots),
+  );
+}
+
+function oysterRackLayoutAt(x: number, z: number) {
+  return getActiveOysterRackLayouts().find((layout) =>
+    layout.interactionTiles.some(([tileX, tileZ]) => tileX === x && tileZ === z),
+  );
+}
+
+export function isOysterRackInteractionTile(x: number, z: number) {
+  return Boolean(oysterRackLayoutAt(x, z));
+}
+
+function pearlUnlocks() {
+  const points = Object.fromEntries(
+    VILLAGER_IDS.map((npcId) => [npcId, getRelationship(npcId).points]),
+  );
+  return {
+    black: allVillagersAtSixStars(points),
+    gold: storyState.flags["main.completed"] === true,
+  };
+}
+
 export function harvestOysterRack(x: number, z: number) {
-  // 用浮筏本體的固定座標當這個養殖點的身分證，不要用玩家站的那格——
-  // OYSTER_RACK_TILES 現在有兩格都能觸發收成(44,14 跟 45,14)，兩格其實
-  // 是同一座浮筏，要共用同一份「今天採過了嗎」的狀態，不能各自獨立算。
-  const key = `${OYSTER_RACK_VISUAL.x},${OYSTER_RACK_VISUAL.z}`;
+  const layout = oysterRackLayoutAt(x, z);
+  if (!layout) return;
+  const key = layout.visual.x + "," + layout.visual.z;
   const rackState =
     oysterRackState[key] ||
     (oysterRackState[key] = { harvestsToday: 0, lastHarvestDay: -1 });
@@ -540,28 +590,31 @@ export function harvestOysterRack(x: number, z: number) {
     };
     return;
   }
+
   const yieldCount =
     OYSTER_YIELD_MIN +
     Math.floor(Math.random() * (OYSTER_YIELD_MAX - OYSTER_YIELD_MIN + 1));
   inventory.oysters += yieldCount;
   rackState.harvestsToday++;
-  // TODO(珍珠系統下一階段)：這裡之後要接珍珠判定——每次收成動作各自
-  // 判定粉/黑/金三個等級，機率獨立(20%/10%/5%)，解鎖條件另外處理。
-  // 現在先只累加生牡蠣數量，讓採集點本身可以先測試。
+
+  const pearl = rollPearl(gameState.oysterRackSlots, pearlUnlocks());
+  if (pearl) inventory.pearls[pearl] += 1;
+  const pearlLabel = pearl
+    ? PEARL_DEFINITIONS.find((entry) => entry.id === pearl)?.label
+    : null;
   gameState.harvestFeedback = {
     kind: "success",
     title: "潮間帶巡視",
-    text: `牡蠣 ×${yieldCount}`,
+    text: "牡蠣 ×" + yieldCount + (pearlLabel ? "・" + pearlLabel + " ×1" : ""),
     count: yieldCount,
     until: gameState.elapsed + 2.6,
   };
 }
 
-// 牡蠣架現在還採不採得到——給 game-loop.ts 的 animate() 用來決定殼要不要
-// 發光。跟 harvestOysterRack() 共用同一把 key，兩邊判斷永遠一致，不會
-// 出現「UI 顯示還在發光，實際按 E 卻說今天採過了」這種對不上的情況。
-export function isOysterRackReady() {
-  const key = `${OYSTER_RACK_VISUAL.x},${OYSTER_RACK_VISUAL.z}`;
+export function isOysterRackReady(index = 0) {
+  const layout = getActiveOysterRackLayouts()[index];
+  if (!layout) return false;
+  const key = layout.visual.x + "," + layout.visual.z;
   const rackState = oysterRackState[key];
   if (!rackState || rackState.lastHarvestDay !== gameState.currentDay)
     return true;

@@ -252,6 +252,12 @@ export function initTitleScreen() {
     resetStoryState();
     resetNpcNameRevealState();
     resetAnimalInteractionState();
+    gameState.oysterRackSlots = 1;
+    inventory.pearls.white = 0;
+    inventory.pearls.pink = 0;
+    inventory.pearls.purple = 0;
+    inventory.pearls.black = 0;
+    inventory.pearls.gold = 0;
     inventory.tools.wateringCan = true;
     inventory.tools.hoe = true;
     inventory.tools.dualAxe = true;

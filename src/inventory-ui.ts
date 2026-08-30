@@ -18,6 +18,7 @@ import {
 } from "./inventory-system";
 import { getNpcDisplayName } from "./npc-name-reveal";
 import { makeToolModel } from "./tool-models";
+import { PEARL_DEFINITIONS } from "./pearl-system";
 
 type InventoryTab = "bag" | "materials" | "cooking" | "tools" | "relationships";
 type InventoryEntry = {
@@ -80,6 +81,7 @@ let open = false;
 let activeTabIndex = 0;
 let contextItemId: string | null = null;
 const modelIconCache = new Map<string, string>();
+const INVENTORY_THUMBNAIL_LONG_EDGE = 1.05;
 
 function showEntryDescription(label?: string, description?: string) {
   descriptionFooter.textContent = label
@@ -123,6 +125,18 @@ function inventoryEntries(): InventoryEntry[] {
     { id: "starCrystal", tab: "materials", label: "星晶", amount: inventory.starCrystal, tone: "star", symbol: "星", model: oreModel("starCrystal") },
     { id: "godCrystal", tab: "materials", label: "神晶", amount: inventory.godCrystal, tone: "god", symbol: "神", model: oreModel("godCrystal") },
   ];
+  PEARL_DEFINITIONS.forEach((pearl) => {
+    entries.push({
+      id: "pearl-" + pearl.id,
+      tab: "bag",
+      label: pearl.label,
+      amount: inventory.pearls[pearl.id],
+      tone: "pearl",
+      symbol: "珠",
+      model: () => makeInventoryItemVisual("pearl-" + pearl.id),
+      description: pearl.label + "，從牡蠣架採收時低機率取得。",
+    });
+  });
   const recipeNames = new Map(RECIPES.map((recipe) => [recipe.id, recipe.name]));
   Object.entries(inventory.dishes).forEach(([id, amount]) => {
     entries.push({
@@ -161,9 +175,10 @@ function renderModelThumbnail(item: InventoryEntry) {
   const bounds = new THREE.Box3().setFromObject(model);
   const center = bounds.getCenter(new THREE.Vector3());
   const size = bounds.getSize(new THREE.Vector3());
-  const largest = Math.max(size.x, size.y, size.z, 0.01);
-  model.scale.setScalar(1.45 / largest);
-  model.position.sub(center.multiplyScalar(1.45 / largest));
+  const longestEdge = Math.max(size.x, size.y, size.z, 0.01);
+  const thumbnailScale = INVENTORY_THUMBNAIL_LONG_EDGE / longestEdge;
+  model.scale.setScalar(thumbnailScale);
+  model.position.sub(center.multiplyScalar(thumbnailScale));
   scene.add(model);
 
   const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 10);
