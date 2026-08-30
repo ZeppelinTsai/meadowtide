@@ -23,7 +23,11 @@ import {
 } from "./game-clock";
 import { isGameplayPaused } from "./time-pause";
 import { cancelPlayerNavigation, getAutoMoveDirection } from "./player-navigation";
-import { isAnimalCarried, updateCarriedAnimalPose } from "./animal-interactions";
+import {
+  isAnimalCarried,
+  recordAnimalFeedingDay,
+  updateCarriedAnimalPose,
+} from "./animal-interactions";
 import { isInventoryOpen } from "./inventory-ui";
 import { syncHeldItemVisual } from "./inventory-system";
 import { translateText } from "./i18n";
@@ -1002,7 +1006,9 @@ export function animate(now) {
   }
   if (gameHour >= 18 && gameState.feederSettledDay !== gameState.currentDay) {
     gameState.feederSettledDay = gameState.currentDay;
-    if (!gameState.pastureGrazedToday) settleFeederConsumption();
+    const fed =
+      gameState.pastureGrazedToday || settleFeederConsumption();
+    recordAnimalFeedingDay(gameState.currentDay, fed);
   }
 
   const animalRadius = (a) =>

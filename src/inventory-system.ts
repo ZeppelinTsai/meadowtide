@@ -185,7 +185,7 @@ export function syncHeldItemVisual() {
   if (itemId && itemAmount(itemId) <= 0) inventory.heldItemId = null;
 
   const effectiveId = inventory.heldItemId;
-  if (player) player.userData.holdingItem = Boolean(effectiveId);
+  if (player) player.userData.holdingItem = Boolean(effectiveId || player.userData.carryingAnimal);
   const parts = (player as any)?.parts;
   if (effectiveId && parts?.armL && parts?.armR) {
     parts.armL.rotation.x = HELD_ARM_ROTATION.x;

@@ -510,6 +510,8 @@ export function makeAnimal(type, seed = 0) {
     body.scale.set(1.3, 1, 1.1);
     body.position.y = 0.2;
     body.castShadow = true;
+    body.userData.fullWoolColor = wool.color.clone();
+    parts.woolBody = body;
     g.add(body);
     const head = new THREE.Mesh(new THREE.SphereGeometry(0.075, 8, 6), dark);
     head.position.set(0.19, 0.2, 0);

@@ -93,6 +93,5 @@ slot markup 或 CSS。清單必須顯示高對比且穩定佔位的垂直捲軸�
   跟 `pause-menu.ts` 都呼叫這份，不重寫)，見
   `docs/decisions/pause-menu.md`。
 
-## Save format v8
-
-Save data now includes animalInteractions: per-animal last-petted day, last-harvested day, and the carried animal ID. inventory.animalProducts stores milk, wool, and eggs. Missing fields from older saves restore to safe defaults.
+## Save format v11
+Save v11 includes animalInteractions: pet/brush/harvest stamps, feeding-credit day, production progress, and the carried animal ID. inventory.animalProducts stores milk, wool, and eggs. Legacy saves without milker/shears/brush flags receive all three tools; new games begin without them.

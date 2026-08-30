@@ -27,9 +27,22 @@ lower-left corner. Invalid actions are omitted rather than disabled.
 Existing interaction effects remain in their original systems. Generic actions
 arrive through the same legacy `E` handler by using a one-shot bypass flag; this
 prevents a second implementation of dialogue, crop, pickup, or tool behavior.
-Animals use `src/animal-interactions.ts` because pet, harvest, carry, and drop are
-new actions. Pet and harvest day stamps plus the carried animal ID are saved in
-save format v8.
+Animals use src/animal-interactions.ts. Cows and sheep expose pet, brush, and
+milk/shear in the primary/secondary/tertiary slots; brush, milker, and shears
+must exist in inventory.tools or the corresponding action is omitted. Chickens
+expose pet and carry; carrying reparents the chicken to the player and reuses
+the held-item hand pose and position.
+
+Milk requires one successful feeding day after each milking. Wool requires three
+successful feeding days after each shearing. A day counts only when animals ate
+pasture grass or the feeder successfully consumed a unit; an unfed day never
+advances production. Sheep switch between the full wool body and a visibly
+smaller, darker sheared body from the same production progress source.
+
+Save format v11 stores pet/brush/harvest stamps, last credited feeding day,
+production progress, and the carried animal ID. Missing new tool flags in legacy
+saves migrate to owned; a newly started game explicitly sets milker, shears, and
+brush to false and resets animal interaction state.
 
 ## Point-and-click pipeline
 

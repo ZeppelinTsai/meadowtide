@@ -173,16 +173,22 @@ export const gameState = {
   mountainMineFloor: 1,
 };
 
-export type ToolId = "dualAxe" | "sickle";
+export type ToolId = "dualAxe" | "sickle" | "milker" | "shears" | "brush";
 export const TOOL_DEFINITIONS: readonly { id: ToolId; label: string }[] = [
   { id: "dualAxe", label: "雙用斧" },
   { id: "sickle", label: "鐮刀" },
+  { id: "milker", label: "擠奶器" },
+  { id: "shears", label: "剪刀" },
+  { id: "brush", label: "刷子" },
 ];
 
 export const inventory = {
   tools: {
     dualAxe: true,
     sickle: true,
+    milker: false,
+    shears: false,
+    brush: false,
   } as Record<ToolId, boolean>,
   seeds: 1,
   // seeds 是既有存檔的蘿蔔種子欄位；新增種類獨立保存，舊檔讀取時保留預設值。

@@ -281,7 +281,7 @@ export function getSaveSlotSummaries(): SaveSlotSummary[] {
 export function saveGame(slot = "default") {
   npcs.forEach((npc) => getRelationship(npc.id));
   const data = {
-    version: 10,
+    version: 11,
     savedAt: Date.now(),
     playerProfile: {
       name: gameState.playerName,
@@ -390,6 +390,9 @@ export function loadGame(
   inventory.tools = {
     dualAxe: typeof savedTools?.dualAxe === "boolean" ? savedTools.dualAxe : true,
     sickle: typeof savedTools?.sickle === "boolean" ? savedTools.sickle : true,
+    milker: typeof savedTools?.milker === "boolean" ? savedTools.milker : true,
+    shears: typeof savedTools?.shears === "boolean" ? savedTools.shears : true,
+    brush: typeof savedTools?.brush === "boolean" ? savedTools.brush : true,
   };
   if (data.inventory?.animalProducts) Object.assign(inventory.animalProducts, data.inventory.animalProducts);
   restoreAnimalInteractionState(data.animalInteractions);

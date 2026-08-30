@@ -13,10 +13,11 @@ import { initializeMusic, setTitleMusicPeriod } from "./music";
 import { hasSaveData, startPrologueScene } from "./prologue";
 import { mountSystemSettings } from "./system-settings-ui";
 import { pollGamepad } from "./gamepad-input";
-import { gameState } from "./game-state";
+import { gameState, inventory } from "./game-state";
 import { makeFemaleHeroPlayer, makeMaleHeroPlayer } from "./humanoid";
 import { resetStoryState } from "./story/story-state";
 import { resetNpcNameRevealState } from "./npc-name-reveal";
+import { resetAnimalInteractionState } from "./animal-interactions";
 import { scene } from "./scene-sky";
 import { hideLoadingScreen } from "./loading-screen";
 import { animals } from "./npc-runtime";
@@ -250,6 +251,10 @@ export function initTitleScreen() {
     setActiveSaveSlot(1);
     resetStoryState();
     resetNpcNameRevealState();
+    resetAnimalInteractionState();
+    inventory.tools.milker = false;
+    inventory.tools.shears = false;
+    inventory.tools.brush = false;
     gameState.playerName = playerNameInput.value.trim().slice(0, 16);
     gameState.playerAppearance = appearance;
     // 標題畫面淡出前先在底下鋪全黑，避免 loadMap 尚未完成、序章尚未把
