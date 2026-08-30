@@ -224,6 +224,7 @@ body.cutscene-presentation #hud {
   align-items: flex-start;
   width: 90vw;
   min-height: 170px;
+  height: 30vh;
   box-sizing: border-box;
   z-index: 110;
   isolation: isolate;
@@ -1638,7 +1639,9 @@ canvas {
   max-width: min(720px, calc(100vw - 36px));
   pointer-events: auto;
 }
-#contextInteractionHud.visible { display: flex; }
+#contextInteractionHud.visible {
+  display: flex;
+}
 .contextInteractionAction {
   display: inline-flex;
   align-items: center;
@@ -1668,6 +1671,11 @@ canvas {
   font-weight: 700;
 }
 @media (max-width: 620px) {
-  #contextInteractionHud { right: 18px; }
-  .contextInteractionAction { flex: 1 1 auto; justify-content: center; }
+  #contextInteractionHud {
+    right: 18px;
+  }
+  .contextInteractionAction {
+    flex: 1 1 auto;
+    justify-content: center;
+  }
 }
