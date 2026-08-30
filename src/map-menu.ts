@@ -6,11 +6,13 @@ import { loadMap } from "./build-map";
 
 const overlay = document.getElementById("mapOverlay") as HTMLDivElement;
 const closeButton = document.getElementById("mapClose") as HTMLButtonElement;
-const quickButton = document.getElementById("quickMapMenuBtn") as HTMLButtonElement;
+const quickButton = document.getElementById(
+  "quickMapMenuBtn",
+) as HTMLButtonElement;
 let open = false;
 
 const MAP_DESTINATIONS = {
-  mountain: { x: 14, z: 53 },
+  mountain: { x: 15, z: 53 },
   livingArea: { x: 21, z: 20 },
   oldVillage: { x: 125, z: 10 },
   port: { x: 5, z: 14 },
@@ -35,8 +37,16 @@ function travelFromMap(mapId: keyof typeof MAP_DESTINATIONS) {
   });
 }
 function canOpenMap() {
-  const pauseOpen = document.getElementById("pauseMenu")?.classList.contains("open");
-  return gameState.player && !gameState.cutsceneActive && !dialogQueue.length && !activeChoice && !pauseOpen;
+  const pauseOpen = document
+    .getElementById("pauseMenu")
+    ?.classList.contains("open");
+  return (
+    gameState.player &&
+    !gameState.cutsceneActive &&
+    !dialogQueue.length &&
+    !activeChoice &&
+    !pauseOpen
+  );
 }
 
 export function toggleMapMenu() {
