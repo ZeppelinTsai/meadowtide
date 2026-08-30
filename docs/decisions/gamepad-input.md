@@ -73,3 +73,9 @@ KeyboardEvent(...))`），直接餵給 `input-save.ts` 既有的全域
 ## 2026-08-29 contextual world-action mapping
 
 World actions now use physical west/north/east buttons. Standard Gamepad indices are 2/3/1; prompts render Nintendo Y/X/A or Xbox X/Y/B. UI confirmation remains the physical south button (index 0). Information uses button 8 (Minus/View), map uses button 10 (L3), and Start remains pause. The system setting supports auto, Nintendo, and Xbox layouts. See context-interaction-and-navigation.md.
+
+## 連續鏡頭縮放
+
+- 自由遊玩時 LT／RT 改為按住連續縮放，不再要求反覆點按；資訊選單中仍維持小分頁切換。
+- 俯視模式的右搖桿上下同樣連續縮放，速度依搖桿偏移量與幀時間計算；第一人稱模式的右搖桿仍控制視角，不得觸發縮放。
+- 所有手把縮放統一合成 wheel 事件，沿用 setCameraZoom() 的比例縮放與選單守衛。

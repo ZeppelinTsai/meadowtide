@@ -136,18 +136,19 @@ export function pollGamepad() {
   if (!rightStickButton && prevRightStickButton) dispatchKey("keyup", "Tab");
   prevRightStickButton = rightStickButton;
   const uiNavigation = isUiNavigationActive();
-  const zoomOut = (pad.buttons[6]?.value ?? 0) > 0.55;
-  const zoomIn = (pad.buttons[7]?.value ?? 0) > 0.55;
-  if (zoomOut && !prevZoomOut) {
-    if (uiNavigation) dispatchKey("keydown", "PageUp");
-    else window.dispatchEvent(new WheelEvent("wheel", { deltaY: 100 }));
-  }
-  if (zoomIn && !prevZoomIn) {
-    if (uiNavigation) dispatchKey("keydown", "PageDown");
-    else window.dispatchEvent(new WheelEvent("wheel", { deltaY: -100 }));
-  }
+  const zoomOutValue = pad.buttons[6]?.value ?? 0;
+  const zoomInValue = pad.buttons[7]?.value ?? 0;
+  const zoomOut = zoomOutValue > 0.55;
+  const zoomIn = zoomInValue > 0.55;
+  if (zoomOut && !prevZoomOut && uiNavigation) dispatchKey("keydown", "PageUp");
+  if (zoomIn && !prevZoomIn && uiNavigation) dispatchKey("keydown", "PageDown");
   prevZoomOut = zoomOut;
   prevZoomIn = zoomIn;
+  if (!uiNavigation) {
+    const triggerZoom = zoomOutValue - zoomInValue;
+    if (Math.abs(triggerZoom) > 0.08)
+      window.dispatchEvent(new WheelEvent("wheel", { deltaY: triggerZoom * 6 }));
+  }
 
   // Start/Menu 鍵(標準映射 buttons[9])＝暫停選單(pause-menu.ts)，直接合成
   // Escape 鍵盤事件——跟上面 Tab 是同一招，暫停選單本來就是掛在鍵盤 Esc
