@@ -763,15 +763,23 @@ canvas {
     inset 0 0 20px rgba(0, 0, 0, 0.22),
     0 0 0 3px rgba(242, 208, 140, 0.2);
 }
+.inventory-tool-card {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-rows: 1fr;
+  column-gap: 14px;
+}
 .inventory-tool-card .inventory-icon {
-  grid-row: 1 / 3;
+  grid-column: 1;
+  grid-row: 1;
+  justify-self: center;
   width: 72px;
   height: 72px;
 }
 .inventory-tool-card .inventory-item-label {
   grid-column: 2;
-  grid-row: 1 / 3;
+  grid-row: 1;
   align-self: center;
+  justify-self: start;
   margin: 0;
   font-size: 20px;
 }

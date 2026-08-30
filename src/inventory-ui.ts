@@ -566,20 +566,34 @@ addEventListener("keydown", (event) => {
   if (!contentMenu.hidden) {
     if (event.key === "Escape") {
       event.preventDefault();
+      event.stopImmediatePropagation();
       closeItemContentMenu();
       return;
     }
-    if (event.key === "ArrowUp" || event.key === "ArrowDown") {
+    const isDirectional = [
+      "ArrowUp",
+      "ArrowDown",
+      "ArrowLeft",
+      "ArrowRight",
+    ].includes(event.key);
+    if (isDirectional || event.key === "Tab") {
       event.preventDefault();
+      event.stopImmediatePropagation();
       const buttons = Array.from(
         contentMenu.querySelectorAll<HTMLButtonElement>("button:not(:disabled)"),
       );
       if (!buttons.length) return;
       const current = buttons.indexOf(document.activeElement as HTMLButtonElement);
-      const direction = event.key === "ArrowDown" ? 1 : -1;
-      buttons[(Math.max(0, current) + direction + buttons.length) % buttons.length].focus();
+      const backwards =
+        event.key === "ArrowUp" ||
+        event.key === "ArrowLeft" ||
+        (event.key === "Tab" && event.shiftKey);
+      const direction = backwards ? -1 : 1;
+      const start = current < 0 ? (backwards ? 0 : -1) : current;
+      buttons[(start + direction + buttons.length) % buttons.length].focus();
       return;
     }
+    return;
   }
 
   const activeId = TABS[activeTabIndex].id;
@@ -609,6 +623,13 @@ addEventListener("keydown", (event) => {
     event.preventDefault();
     setActiveTab(activeTabIndex + 1, true);
   }
+});
+
+addEventListener("focusin", (event) => {
+  if (!open || contentMenu.hidden) return;
+  const target = event.target;
+  if (target instanceof Node && contentMenu.contains(target)) return;
+  (contentMenu.querySelector("button:not(:disabled)") as HTMLButtonElement | null)?.focus();
 });
 
 closeButton.addEventListener("click", () => setInventoryOpen(false));
