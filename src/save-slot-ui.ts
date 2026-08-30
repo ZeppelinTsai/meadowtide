@@ -22,9 +22,10 @@ function slotSummaryText(summary: SaveSlotSummary): string {
     summary.currentMapName ||
     "";
   const day = (summary.currentDay ?? 0) + 1;
-  if (getLocale() === "en") return `Day ${day} · ${season} · ${mapName}`;
-  if (getLocale() === "ja") return `${season}・${day}日目・${mapName}`;
-  return `第 ${day} 天・${season}季・${mapName}`;
+  const playerName = summary.playerName || translateText("牧場主");
+  if (getLocale() === "en") return `${playerName} · Day ${day} · ${season} · ${mapName}`;
+  if (getLocale() === "ja") return `${playerName}・${season}・${day}日目・${mapName}`;
+  return `${playerName}・第 ${day} 天・${season}季・${mapName}`;
 }
 
 // container 底下清空重建 autosave + 9 個手動 slot；空格 disabled，

@@ -16,6 +16,7 @@ import {
   makeInventoryItemVisual,
   takeOutItem,
 } from "./inventory-system";
+import { getNpcDisplayName } from "./npc-name-reveal";
 
 type InventoryTab = "bag" | "materials" | "cooking" | "tools" | "relationships";
 type InventoryEntry = {
@@ -256,16 +257,13 @@ function renderTools() {
 }
 
 function renderRelationships() {
-  const relationships = [
-    { id: "mayor", label: "村長" },
-    { id: "carpenter", label: "木匠" },
-  ];
-  relationships.forEach(({ id, label }) => {
+  const relationships = [{ id: "mayor" }, { id: "carpenter" }];
+  relationships.forEach(({ id }) => {
     const relationship = getRelationship(id);
     const card = document.createElement("article");
     card.className = "menu-info-card";
     const heading = document.createElement("h3");
-    heading.textContent = translateText(label);
+    heading.textContent = getNpcDisplayName(id);
     const value = document.createElement("strong");
     value.textContent = `${getDisplayedStars(id)} ★`;
     const caption = document.createElement("span");

@@ -121,6 +121,10 @@ import { weatherIconSvg } from "./weather-icons";
 import { SAVE_SLOT_COUNT, saveSlotForDigitCode } from "./save-slot-config";
 import { exportStoryState, restoreStoryState } from "./story/story-state";
 import {
+  exportNpcNameRevealState,
+  restoreNpcNameRevealState,
+} from "./npc-name-reveal";
+import {
   scene,
   renderer,
   clearMeteors,
@@ -184,6 +188,7 @@ export interface SaveSlotSummary {
   currentDay?: number;
   currentSeason?: number;
   currentMapName?: string;
+  playerName?: string;
 }
 
 export interface TitlePreviewTime {
@@ -257,6 +262,10 @@ export function getSaveSlotSummaries(): SaveSlotSummary[] {
         currentDay: Number(data.currentDay) || 0,
         currentSeason: Number(data.currentSeason) || 0,
         currentMapName: data.currentMapName || "livingArea",
+        playerName:
+          typeof data.playerProfile?.name === "string" && data.playerProfile.name.trim()
+            ? data.playerProfile.name.trim().slice(0, 16)
+            : "牧場主",
       });
     } catch (err) {
       summaries.push({
@@ -272,7 +281,7 @@ export function getSaveSlotSummaries(): SaveSlotSummary[] {
 export function saveGame(slot = "default") {
   npcs.forEach((npc) => getRelationship(npc.id));
   const data = {
-    version: 9,
+    version: 10,
     savedAt: Date.now(),
     playerProfile: {
       name: gameState.playerName,
@@ -300,6 +309,7 @@ export function saveGame(slot = "default") {
     npcMemory: npcs.map((npc) => ({ id: npc.id, memory: npc.memory })),
     relationships: exportRelationships(),
     story: exportStoryState(),
+    npcNameRevealStages: exportNpcNameRevealState(),
     carpenterQuest: { ...carpenterQuest },
     oysterRackState: JSON.parse(JSON.stringify(oysterRackState)),
     feederUnits: gameState.feederUnits,
@@ -325,6 +335,26 @@ export function saveGame(slot = "default") {
   return data;
 }
 
+function legacyKnownNpcIds(data: any): string[] {
+  const ids = new Set<string>();
+  const completedEvents = Array.isArray(data.story?.completedEvents)
+    ? data.story.completedEvents
+    : [];
+  if (
+    completedEvents.includes("main.prologue.arrival") ||
+    (Number(data.currentDay) || 0) > 0
+  ) {
+    ids.add("mayor");
+    ids.add("captain");
+  }
+  if (data.carpenterQuest?.stage && data.carpenterQuest.stage !== "not_started") {
+    ids.add("carpenter");
+  }
+  if (data.chefQuest?.stage && data.chefQuest.stage !== "not_started") {
+    ids.add("chef");
+  }
+  return [...ids];
+}
 export function loadGame(
   slot = "default",
   options: { initializeTargetMap?: boolean } = {},
@@ -334,6 +364,10 @@ export function loadGame(
   const data = JSON.parse(raw);
   // v6 以前没有 story 栏位；restore 会补齐默认值，不让旧存档失效。
   restoreStoryState(data.story);
+  restoreNpcNameRevealState(
+    data.npcNameRevealStages,
+    legacyKnownNpcIds(data),
+  );
   gameState.playerName = typeof data.playerProfile?.name === "string" && data.playerProfile.name.trim()
     ? data.playerProfile.name.trim().slice(0, 16)
     : "牧場主";

@@ -13,6 +13,7 @@ import type {
   StoryEvent,
   StoryStep,
 } from "./story-types";
+import { setNpcNameStage } from "../npc-name-reveal";
 
 export interface StoryRuntimeAdapter {
   showDialogue(step: Extract<StoryStep, { type: "dialogue" }>): Promise<void>;
@@ -32,6 +33,8 @@ async function runSteps(steps: StoryStep[], adapter: StoryRuntimeAdapter) {
       if (option.steps) await runSteps(option.steps, adapter);
     } else if (step.type === "setFlag") {
       setStoryFlag(step.key, step.value);
+    } else if (step.type === "setNpcNameStage") {
+      setNpcNameStage(step.npcId, step.stage);
     } else if (step.type === "grantItem") {
       if (!storyState.claimedRewards.includes(step.rewardId)) {
         // 外部獎勵動作成功後才登記領取；若 adapter 拋錯，事件重試時仍會補發。

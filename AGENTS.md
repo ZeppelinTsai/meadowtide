@@ -169,6 +169,7 @@
 - 開發環境雜項(`npm run test:map-tools` 曾經跑不動的 esbuild 平台問題、`tsc` incremental 加速、CRLF 換行符號漂移雜訊) → `docs/decisions/dev-environment-notes.md`
 - 人形角色 `humanoidScale()` 校正方法／新角色頭髮太高聳導致身體比例矮一截的教訓(廚師案例) → `docs/decisions/humanoid-scale-calibration.md`
 - 正式劇情永久 ID、registry、條件、runner、v7 存檔與稽核工具 → `docs/decisions/story-system.md`
+- NPC 名稱三階段揭露、共用顯示入口與 v10 存檔 → `docs/decisions/npc-name-reveal.md`
 - 智慧型情境互動、動物三動作、E/R/F 與 Nintendo/Xbox 映射、點擊尋路 → `docs/decisions/context-interaction-and-navigation.md`
 
 ## 正式劇情資料規則

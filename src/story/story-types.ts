@@ -50,6 +50,7 @@ export type StoryStep =
       options: StoryChoiceOption[];
     }
   | { type: "setFlag"; key: string; value: StoryFlagValue }
+  | { type: "setNpcNameStage"; npcId: string; stage: 1 | 2 }
   | { type: "wait"; milliseconds: number }
   | { type: "waitFor"; condition: StoryWaitCondition; pollMilliseconds?: number }
   | { type: "camera"; shots: StoryCameraShot[]; waitForCompletion?: boolean }

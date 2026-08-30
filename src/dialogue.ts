@@ -1,6 +1,11 @@
 import { npcs } from "./npc-runtime";
 import { gameState } from "./game-state";
 import { translateText } from "./i18n";
+import {
+  getNpcDisplayName,
+  isNpcIdentityId,
+  setNpcNameStage,
+} from "./npc-name-reveal";
 
 export const dialogEl = document.getElementById("dialog");
 export const dialogTextEl = document.getElementById("dialogText");
@@ -101,7 +106,10 @@ export function renderDialogLine(line) {
   setDialogPortrait(line.speaker || null);
   if (line.name || line.speaker) {
     const npc = npcs.find((n) => n.id === line.speaker);
-    dialogNameEl.textContent = translateText(line.name || (npc && npc.name) || line.speaker);
+    dialogNameEl.textContent =
+      line.speaker && isNpcIdentityId(line.speaker)
+        ? getNpcDisplayName(line.speaker)
+        : translateText(line.name || (npc && npc.name) || line.speaker);
     dialogNameEl.style.display = "block";
   } else {
     dialogNameEl.style.display = "none";
@@ -139,7 +147,14 @@ export function showDialogSequence(lines, onComplete = null) {
   dialogEl.style.display = "flex"; // flex 才吃得到 align-items:center 讓文字上下置中
 }
 export function advanceDialogSequence() {
+  const completedLine = dialogQueue[dialogIndex];
   dialogIndex++;
+  if (completedLine?.revealNameAfter) {
+    setNpcNameStage(
+      completedLine.revealNameAfter.npcId,
+      completedLine.revealNameAfter.stage,
+    );
+  }
   if (dialogIndex >= dialogQueue.length) {
     closeDialogUi();
     dialogQueue = [];

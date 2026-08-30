@@ -1,9 +1,20 @@
 import type { StoryCameraShot } from "../story-types";
-type DialogueLine = string | { text: string; speaker: string; name: string };
-const mayor = (text: string): DialogueLine => ({
+type DialogueLine =
+  | string
+  | {
+      text: string;
+      speaker: string;
+      name: string;
+      revealNameAfter?: { npcId: string; stage: 1 | 2 };
+    };
+const mayor = (
+  text: string,
+  revealNameAfter?: { npcId: string; stage: 1 | 2 },
+): DialogueLine => ({
   text,
   speaker: "mayor",
   name: "村長",
+  revealNameAfter,
 });
 const captain = (text: string): DialogueLine => ({
   text,
@@ -52,7 +63,10 @@ export const PROLOGUE_SCRIPT: Record<string, DialogueLine[]> = {
   ],
   tour: [
     mayor("「你就是新來的牧場主吧？歡迎來到這座島。一路上還順利嗎？」"),
-    mayor("「我是這裡的村長。島上的人現在不多，所以雜貨店也暫時由我照看。」"),
+    mayor(
+      "「我是梅貝爾，這座島的村長。島上的人現在不多，所以雜貨店也暫時由我照看。」",
+      { npcId: "mayor", stage: 1 },
+    ),
     mayor(
       "「這艘船每天上午十點靠岸，下午四點離港。原則上星期一停航——今天是為了接你，才特別跑了一趟。」",
     ),

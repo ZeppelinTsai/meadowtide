@@ -18,7 +18,7 @@
     "test:weather": "tsx --test src/weather-schedule.test.ts",
     "test:affection": "tsx --test src/affection.test.ts",
     "test:save-slots": "tsx --test src/save-slot-config.test.ts src/player-mesh-lifecycle.test.ts",
-    "test:story": "tsx --test src/story/story-system.test.ts",
+    "test:story": "tsx --test src/story/story-system.test.ts src/npc-name-reveal.test.ts",
     "story-audit": "tsx scripts/story-audit.ts",
     "test:context-interaction": "tsx --test src/context-interaction.test.ts src/navigation.test.ts",
     "test:first-person": "tsx --test src/first-person-movement.test.ts"

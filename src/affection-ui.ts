@@ -9,20 +9,17 @@ import {
 } from "./affection";
 import { showDialogSequence } from "./dialogue";
 import { gameState } from "./game-state";
-import { npcs } from "./npc-runtime";
+import { getNpcDisplayName } from "./npc-name-reveal";
 import { playSfx, RELATIONSHIP_EVENT_SFX } from "./sfx";
 import { showUiToast } from "./ui-toast";
 
-function npcName(npcId: string) {
-  return npcs.find((npc) => npc.id === npcId)?.name || npcId;
-}
 
 function showChangeFeedback(
   npcId: string,
   source: AffectionSource,
   result: ReturnType<typeof addAffection>,
 ) {
-  const name = npcName(npcId);
+  const name = getNpcDisplayName(npcId);
   if (result.newlyLocked) {
     playSfx(RELATIONSHIP_EVENT_SFX);
     showDialogSequence([
@@ -84,7 +81,7 @@ export function completeNpcPersonalEvent(
   if (result.completed) {
     showUiToast(
       "關係提升",
-      `你和${npcName(npcId)}變得更親近了。`,
+      `你和${getNpcDisplayName(npcId)}變得更親近了。`,
     );
   }
   return result;
