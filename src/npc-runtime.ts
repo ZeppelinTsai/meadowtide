@@ -127,7 +127,12 @@ export function randomPasturePoint(
     )
       return point;
   }
-  return { x: PASTURE.maxX, z: PASTURE.maxZ };
+  for (let z = Math.max(0, Math.ceil(PASTURE.minZ)); z <= PASTURE.maxZ; z++) {
+    for (let x = Math.ceil(PASTURE.minX); x <= PASTURE.maxX; x++) {
+      if (hasPastureGrassAt(x, z) && isSafe(x, z)) return { x, z };
+    }
+  }
+  return { x: BARN_DOOR.x, z: BARN_DOOR.z + 1 };
 }
 export const animalDefs = [
   { id: "cow1", type: "cow", speed: 0.32, restMin: 3, restMax: 7 },
@@ -162,5 +167,6 @@ export const animals = animalDefs.map((def, i) => {
     routeTotalDist: 0,
     routeCurve: 0,
     prevBend: 0,
+    stuckSeconds: 0,
   };
 });

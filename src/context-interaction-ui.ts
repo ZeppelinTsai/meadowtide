@@ -31,6 +31,7 @@ const activePointers = new Set<number>();
 const destinationMarker=new THREE.Mesh(new THREE.RingGeometry(0.14,0.22,24),new THREE.MeshBasicMaterial({color:0xffd45a,side:THREE.DoubleSide,transparent:true,opacity:0.9}));
 destinationMarker.rotation.x=-Math.PI/2; destinationMarker.visible=false; scene.add(destinationMarker);
 const pastureTargetObject=new THREE.Object3D();
+const fishingTargetObject=new THREE.Object3D();
 let markerTimer=0, highlight:THREE.BoxHelper|null=null, highlightTimer=0;
 
 function blocked(allowActiveFishing=false){return !gameState.player || gameState.titlePresentationActive || gameState.cutsceneActive || isCameraAdjustModeActive() || isInventoryOpen() || dialogQueue.length>0 || Boolean(activeChoice) || (!allowActiveFishing&&gameState.fishingState!=="idle");}
@@ -41,6 +42,7 @@ function targetForNpc(id:string):WorldTarget|null{const npc=npcs.find(n=>n.id===
 function targetForGather(nodeId:string):WorldTarget|null{if(!hasTool("dualAxe"))return null;const entry=gatherNodeMeshes.find(e=>e.nodeId===nodeId&&e.map===gameState.currentMapName);const node=[...WOOD_NODES,...STONE_NODES].find(n=>n.id===nodeId);if(!entry||!node||node.collected)return null;return{id:"gather:"+nodeId,object:entry.group,radius:1.2,actions:[legacyAction(node.kind,node.kind==="wood"?"\u780d\u6a39":"\u63a1\u77f3")],getPosition:()=>node.collected?null:{x:node.x,z:node.z},isValid:()=>hasTool("dualAxe")&&!node.collected&&entry.group.visible};}
 function targetForOre(nodeId:string):WorldTarget|null{if(!hasTool("dualAxe"))return null;const entry=oreNodeMeshes.find(e=>e.nodeId===nodeId);const nodes=gameState.currentMapName==="mountainCave"?MOUNTAIN_ORE_NODES:gameState.currentMapName==="stalactiteCave"?ORE_NODES:[];const node=nodes.find(n=>n.id===nodeId);if(!entry||!node||node.collected)return null;return{id:"ore:"+nodeId,object:entry.group,radius:1.2,actions:[legacyAction("ore","敲礦")],getPosition:()=>node.collected?null:{x:node.x,z:node.z},isValid:()=>hasTool("dualAxe")&&!node.collected&&entry.group.visible};}
 function targetForPasture():WorldTarget|null{if(gameState.currentMapName!=="livingArea"||!hasTool("sickle"))return null;const {x,z}=gameState.playerGridPos;if(pastureGrassStageAt(x,z)!==2)return null;const id=`pasture:${x},${z}`;return{id,object:pastureTargetObject,radius:0.35,actions:[{id:"cut-grass",label:"割草",slot:"secondary",execute:runLegacySecondaryInteraction}],getPosition:()=>gameState.playerGridPos.x===x&&gameState.playerGridPos.z===z?{x,z}:null,isValid:()=>hasTool("sickle")&&gameState.playerGridPos.x===x&&gameState.playerGridPos.z===z&&pastureGrassStageAt(x,z)===2};}
+function targetForFishing():WorldTarget|null{if(!gameState.player||!hasTool("fishingRod")||gameState.fishingState!=="idle"||!fishingWaterMeshes.length||!isNearFishingWater(gameState.currentMapName,gameState.player.position.x,gameState.player.position.z))return null;return{id:"fishing-nearby",object:fishingTargetObject,radius:0.1,actions:[legacyAction("fish","釣魚")],getPosition:()=>gameState.player?{x:gameState.player.position.x,z:gameState.player.position.z}:null,isValid:()=>Boolean(gameState.player)&&hasTool("fishingRod")&&gameState.fishingState==="idle"&&isNearFishingWater(gameState.currentMapName,gameState.player.position.x,gameState.player.position.z)};}
 function targetForFarm(x:number,z:number,object:THREE.Object3D=farmGroup):WorldTarget|null{
   if(gameState.currentMapName!=="livingArea")return null;
   if(x===POUCH_POS.x&&z===POUCH_POS.z&&gameState.currentDay>gameState.pouchCollectedDay)return{id:"pouch",object,radius:0.9,actions:[legacyAction("pickup","\u62fe\u53d6")],getPosition:()=>({x,z}),isValid:()=>gameState.currentDay>gameState.pouchCollectedDay};
@@ -64,6 +66,7 @@ function allTargets(){
   return list;
 }
 function refreshSelectedTarget(target: WorldTarget) {
+  if (target.id === "fishing-nearby") return targetForFishing();
   if (target.id.startsWith("animal:")) return targetForAnimal(target.id.slice(7));
   if (target.id.startsWith("npc:")) return targetForNpc(target.id.slice(4));
   if (target.id.startsWith("gather:")) return targetForGather(target.id.slice(7));
@@ -80,7 +83,7 @@ function chooseTarget(){
   const rotation=gameState.player.rotation.y,fx=-Math.sin(rotation),fz=-Math.cos(rotation);
   const targets=allTargets();
   const candidates:InteractionCandidate[]=targets.map(t=>{const p=t.getPosition()!;const dx=p.x-gameState.player.position.x,dz=p.z-gameState.player.position.z,d=Math.hypot(dx,dz);return{id:t.id,distance:d,facingScore:d?((dx*fx+dz*fz)/d):1,pointed:t.id===pointedId,actions:t.actions};}).filter(t=>t.distance<=INTERACTION_RADIUS);
-  const chosen=chooseInteractionTarget(candidates,currentTarget?.id||null);return chosen?targets.find(t=>t.id===chosen.id)||null:null;
+  const chosen=chooseInteractionTarget(candidates,currentTarget?.id||null);return chosen?targets.find(t=>t.id===chosen.id)||null:targetForFishing();
 }
 function ensureRoot(){if(root)return root;root=document.createElement("div");root.id="contextInteractionHud";root.setAttribute("aria-live","polite");root.setAttribute("aria-label","\u60c5\u5883\u4e92\u52d5");document.body.append(root);return root;}
 function render(){
@@ -114,7 +117,7 @@ function approachWater(water:THREE.Object3D,point:{x:number;z:number}){
   return requestPlayerNavigation(shore,{id:"fishing-water",radius:0.35,getPosition:()=>shore,isValid:()=>fishingWaterMeshes.includes(water)&&Boolean(water.parent),execute});
 }
 function showHighlight(target:WorldTarget){if(highlight){scene.remove(highlight);highlight.geometry.dispose(); (highlight.material as THREE.Material).dispose();}highlight=new THREE.BoxHelper(target.object,0xffd45a);scene.add(highlight);highlightTimer=performance.now()+850;}
-function approach(target:WorldTarget,action:ContextAction){const p=target.getPosition();if(!p)return false;selectedTarget=target;showHighlight(target);const dx=p.x-gameState.player.position.x,dz=p.z-gameState.player.position.z;if(Math.hypot(dx,dz)<=target.radius+0.2){gameState.player.rotation.y=Math.atan2(-dx,-dz);action.execute();selectedTarget=null;return true;}return requestPlayerNavigation(p,{id:target.id,radius:target.radius,getPosition:target.getPosition,isValid:()=>target.isValid()&&target.actions.some(a=>a.id===action.id),execute:()=>{if(target.isValid()){action.execute();selectedTarget=null;}}});}
+function approach(target:WorldTarget,action:ContextAction){const p=target.getPosition();if(!p)return false;selectedTarget=target;if(target.id!=="fishing-nearby")showHighlight(target);const dx=p.x-gameState.player.position.x,dz=p.z-gameState.player.position.z;if(Math.hypot(dx,dz)<=target.radius+0.2){gameState.player.rotation.y=Math.atan2(-dx,-dz);action.execute();selectedTarget=null;return true;}return requestPlayerNavigation(p,{id:target.id,radius:target.radius,getPosition:target.getPosition,isValid:()=>target.isValid()&&target.actions.some(a=>a.id===action.id),execute:()=>{if(target.isValid()){action.execute();selectedTarget=null;}}});}
 export function executeContextInteraction(slot:InteractionSlot){currentTarget=chooseTarget();const action=currentTarget?.actions.find(a=>a.slot===slot);if(!currentTarget||!action)return false;return approach(currentTarget,action);}
 function dispatchPrimaryInteraction(){window.dispatchEvent(new KeyboardEvent("keydown",{key:"e"}));window.dispatchEvent(new KeyboardEvent("keyup",{key:"e"}));}
 export function runLegacyPrimaryInteraction(){bypassLegacy=true;dispatchPrimaryInteraction();}

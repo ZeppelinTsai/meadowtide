@@ -91,3 +91,11 @@ While carrying a chicken, its interaction position is the player world position.
 ## Animal pasture schedule
 
 In safe weather, animals are outside from 08:00 to 17:00. Pasture grazing is settled at 10:00. At 17:00 animals start returning to the barn; if grazing did not feed them that day, feeder consumption is settled at the same time. Unsafe weather keeps them indoors all day, and the existing 20:00 force-home fallback remains active.
+
+## Nearby fishing fallback
+
+When the player has a fishing rod and is within the shared fishing-water radius, the context HUD offers the existing primary fishing action if no more specific NPC, crop, animal, or resource target wins selection. It calls the legacy fishing entry point rather than duplicating fishing rules.
+
+## Animal stuck recovery
+
+Animals track continuous walking time without movement. After two seconds, daytime animals move to a validated safe pasture point and choose a new target; animals stuck while returning home complete the barn transition. Random pasture fallback scans for a point that passes both pasture and collision checks instead of returning a possibly blocked fixed corner.

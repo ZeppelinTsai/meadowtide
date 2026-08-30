@@ -44,6 +44,7 @@ export function initPauseMenu() {
   const tutorialButton = byId<HTMLButtonElement>("pauseTutorialBtn");
   const quickPauseButton = byId<HTMLButtonElement>("quickPauseMenuBtn");
   const systemButton = byId<HTMLButtonElement>("pauseSystemBtn");
+  const titleButton = byId<HTMLButtonElement>("pauseTitleBtn");
   const quitButton = byId<HTMLButtonElement>("pauseQuitBtn");
   const quitMessage = byId<HTMLElement>("pauseQuitMessage");
   const loadSlotsList = byId<HTMLElement>("pauseLoadSlotsList");
@@ -187,6 +188,7 @@ export function initPauseMenu() {
   loadSlotsBackButton.addEventListener("click", () => setStep("menu"));
   systemButton.addEventListener("click", () => setStep("system"));
   systemBackButton.addEventListener("click", () => setStep("menu"));
+  titleButton.addEventListener("click", () => window.location.reload());
   // 結束遊戲跟標題畫面那顆按鈕行為一致：分頁沒辦法被網頁自己強制關掉
   // (除非分頁本身是用 window.open() 開的)，盡力嘗試、其餘交給
   // window.close() 失敗時分頁本來就還開著，玩家自己按返回就好，不用

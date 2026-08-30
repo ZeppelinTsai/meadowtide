@@ -1502,7 +1502,6 @@ canvas {
 #pauseMenu[data-step="system"] #pauseSystemPanel {
   display: flex;
 }
-#pauseMenuHeading,
 #pauseLoadSlotsHeading,
 #pauseSystemHeading {
   margin: 0 0 16px;

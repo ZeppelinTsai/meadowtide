@@ -64,6 +64,7 @@ import {
   npcs,
   animals,
   BARN_DOOR,
+  randomPasturePoint,
   outsideCols,
   outsideRows,
 } from "./npc-runtime";
@@ -1182,6 +1183,31 @@ export function animate(now) {
           }
         }
       }
+    }
+    if (moving) {
+      a.stuckSeconds = 0;
+    } else if (a.state === "out" && a.wanderState === "walking" && dt > 0) {
+      a.stuckSeconds = (a.stuckSeconds || 0) + dt;
+      if (a.stuckSeconds >= 2) {
+        a.stuckSeconds = 0;
+        if (animalsShouldBeHome) {
+          a.state = "in";
+          a.mesh.visible = false;
+          a.mesh.position.set(BARN_DOOR.x, 0, BARN_DOOR.z);
+          a.target = null;
+          a.routeTarget = null;
+        } else {
+          const rescue = randomPasturePoint((x, z) =>
+            isAnimalPositionSafe(a, x, z),
+          );
+          a.mesh.position.set(rescue.x, 0, rescue.z);
+          a.target = chooseSafeAnimalTarget(a);
+          a.routeTarget = null;
+          a.wanderState = "walking";
+        }
+      }
+    } else {
+      a.stuckSeconds = 0;
     }
     animateAnimalWalk(a, moving, gameState.elapsed);
   });
