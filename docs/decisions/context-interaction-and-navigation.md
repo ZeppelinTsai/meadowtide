@@ -105,3 +105,9 @@ Animals track continuous walking time without movement. After two seconds, dayti
 When the player holds an item near an available NPC, `give-gift` is the highest-priority context target and conversation moves to the secondary slot. Each NPC accepts one normal gift per game day; festival gifts use `setFestivalGiftMultiplier()` and do not consume that daily allowance. Gift preferences use five data tiers (`hated`, `disliked`, `normal`, `liked`, `loved`) mapped to the existing affection rewards and placeholder symbols ×／▽／○／△／♥. Unconfigured NPC-item pairs safely default to `normal`.
 
 If no gift target wins and the held item is edible, the context HUD exposes `eat-held-item`. Both actions consume the same held inventory source; gifting or eating the final copy clears the held state and visual.
+
+## 按住主要互動連續操作
+
+- 按住滑鼠左鍵、鍵盤 E 或映射到主要互動的手把按鍵時，每進入一個新格子重新檢查一次主要互動。
+- 目前只允許播種、砍材與採石連續執行；送禮、對話、食用、收成與釣魚仍維持單次觸發。
+- 連續操作只執行已在互動半徑內的目標，不會因按住按鍵而自動尋路，也不會站在原地清空周圍目標。
