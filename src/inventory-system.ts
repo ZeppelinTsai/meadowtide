@@ -9,15 +9,19 @@ import { makeCropMesh, makeFishProp, makeSeedPouch } from "./props";
 import { showUiToast } from "./ui-toast";
 import {
   HELD_ARM_ROTATION,
-  HELD_ITEM_DISPLAY_DEPTH,
-  HELD_ITEM_DISPLAY_HEIGHT,
-  HELD_ITEM_DISPLAY_WIDTH,
   HELD_ITEM_POSITION,
+  HELD_ITEM_WORLD_SIZE,
 } from "./held-item-pose";
 
 let visualOwner: THREE.Object3D | null = null;
 let heldVisual: THREE.Object3D | null = null;
 let renderedItemId: string | null = null;
+function makeHeldFishVisual() {
+  const fish = makeFishProp(1.4);
+  fish.scale.setScalar(0.45);
+  fish.rotation.z = Math.PI / 2;
+  return fish;
+}
 export function allInventoryItems(): ItemDefinition[] {
   const dishes = Object.keys(inventory.dishes).map((recipeId) => ({
     id: `dish-${recipeId}` as InventoryItemId,
@@ -206,12 +210,8 @@ export function syncHeldItemVisual() {
   const bounds = new THREE.Box3().setFromObject(heldVisual);
   const size = bounds.getSize(new THREE.Vector3());
   const center = bounds.getCenter(new THREE.Vector3());
-  const scale = Math.min(
-    HELD_ITEM_DISPLAY_WIDTH / Math.max(size.x, 0.01),
-    HELD_ITEM_DISPLAY_HEIGHT / Math.max(size.y, 0.01),
-    HELD_ITEM_DISPLAY_DEPTH / Math.max(size.z, 0.01),
-  );
-  heldVisual.scale.setScalar(scale);
+  const scale = HELD_ITEM_WORLD_SIZE / Math.max(size.x, 0.01);
+  heldVisual.scale.multiplyScalar(scale);
   heldVisual.position.set(
     HELD_ITEM_POSITION.x - center.x * scale,
     HELD_ITEM_POSITION.y - center.y * scale,
