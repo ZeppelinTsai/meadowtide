@@ -12,75 +12,300 @@
     { "id": "map:port", "type": "map", "label": "港口" },
     { "id": "map:mountain", "type": "map", "label": "山區" },
     { "id": "map:shrine", "type": "map", "label": "女神祠堂" },
-    { "id": "map:stalactiteCave", "type": "map", "label": "鐘乳石洞窟內部(2026-08-25 新增，簡易版)" },
+    {
+      "id": "map:stalactiteCave",
+      "type": "map",
+      "label": "鐘乳石洞窟內部(2026-08-25 新增，簡易版)"
+    },
 
-    { "id": "system:farming", "type": "system", "label": "農耕", "status": "部分完成——單一種籽/收成物，無季節限定作物分支" },
-    { "id": "system:fishing", "type": "system", "label": "釣魚", "status": "完成——casting/biting/catch 完整狀態機" },
-    { "id": "system:animalHusbandry", "type": "system", "label": "畜牧", "status": "完成——含投餵機(99單位/一單位一天/三天長回)" },
-    { "id": "system:gathering", "type": "system", "label": "採集(石木)", "status": "完成——砍樹取木材/敲石取石材，E 鍵互動" },
-    { "id": "system:oysterFarming", "type": "system", "label": "養殖牡蠣", "status": "完成——井字架模型、一天一次巡視、發光提示" },
-    { "id": "system:mining", "type": "system", "label": "採礦(鐘乳石洞/山洞)", "status": "未開始——只有裝飾性洞口+極簡內部房間(能走進去、有地方站)，沒有礦石/挖礦機制" },
-    { "id": "system:cooking", "type": "system", "label": "料理(泛用系統)", "status": "完成——RECIPES 表+cookMeal()，廚房爐台 E 鍵互動" },
+    {
+      "id": "system:farming",
+      "type": "system",
+      "label": "農耕",
+      "status": "部分完成——單一種籽/收成物，無季節限定作物分支"
+    },
+    {
+      "id": "system:fishing",
+      "type": "system",
+      "label": "釣魚",
+      "status": "完成——casting/biting/catch 完整狀態機"
+    },
+    {
+      "id": "system:animalHusbandry",
+      "type": "system",
+      "label": "畜牧",
+      "status": "完成——含投餵機(99單位/一單位一天/三天長回)"
+    },
+    {
+      "id": "system:gathering",
+      "type": "system",
+      "label": "採集(石木)",
+      "status": "完成——砍柴取木材/敲石取石材，E 鍵互動"
+    },
+    {
+      "id": "system:oysterFarming",
+      "type": "system",
+      "label": "養殖牡蠣",
+      "status": "完成——井字架模型、一天一次巡視、發光提示"
+    },
+    {
+      "id": "system:mining",
+      "type": "system",
+      "label": "採礦(鐘乳石洞/山洞)",
+      "status": "未開始——只有裝飾性洞口+極簡內部房間(能走進去、有地方站)，沒有礦石/挖礦機制"
+    },
+    {
+      "id": "system:cooking",
+      "type": "system",
+      "label": "料理(泛用系統)",
+      "status": "完成——RECIPES 表+cookMeal()，廚房爐台 E 鍵互動"
+    },
 
-    { "id": "npc:mayor", "type": "npc", "label": "村長", "status": "完整定義+行程表" },
-    { "id": "npc:carpenter", "type": "npc", "label": "木匠", "status": "完整定義+行程表+完整招募事件(村莊/碼頭/搬入)" },
-    { "id": "npc:chef", "type": "npc", "label": "廚師", "status": "只有共餐招募判定，npc-defs.ts 未登記完整定義+行程表" },
-    { "id": "npc:designOnly", "type": "npc", "label": "其餘10位角色(醫生/護士/民宿管理員/海洋學者/植物學者/藝術家/山神/海神/船長+珍珠系統)", "status": "只存在於 agent.txt 設定筆記，程式碼零對應" },
+    {
+      "id": "npc:mayor",
+      "type": "npc",
+      "label": "村長",
+      "status": "完整定義+行程表"
+    },
+    {
+      "id": "npc:carpenter",
+      "type": "npc",
+      "label": "木匠",
+      "status": "完整定義+行程表+完整招募事件(村莊/碼頭/搬入)"
+    },
+    {
+      "id": "npc:chef",
+      "type": "npc",
+      "label": "廚師",
+      "status": "只有共餐招募判定，npc-defs.ts 未登記完整定義+行程表"
+    },
+    {
+      "id": "npc:designOnly",
+      "type": "npc",
+      "label": "其餘10位角色(醫生/護士/民宿管理員/海洋學者/植物學者/藝術家/山神/海神/船長+珍珠系統)",
+      "status": "只存在於 agent.txt 設定筆記，程式碼零對應"
+    },
 
-    { "id": "file:src/game-state.ts", "type": "file", "label": "核心狀態+多數系統函式(plantSeed/harvestCrop/refillFeeder/harvestGatherNode/harvestOysterRack/cookMeal…)" },
-    { "id": "file:src/game-loop.ts", "type": "file", "label": "每幀更新迴圈(釣魚狀態機、投餵結算、gather node 刷新)" },
-    { "id": "file:src/input-save.ts", "type": "file", "label": "E 鍵互動總線(各系統的觸發判定都在這裡分派)" },
-    { "id": "file:src/layout-maps.ts", "type": "file", "label": "LAYOUT/MAPS 座標與地磚資料的單一真實來源" },
-    { "id": "file:src/build-map.ts", "type": "file", "label": "依 mapName 組出 3D 場景、events/WORLD_MAP_TRANSITIONS 傳送事件表" },
-    { "id": "file:src/map-transitions.ts", "type": "file", "label": "createTransitionEvents()——雙向傳送事件產生器" },
-    { "id": "file:src/map-shift.ts", "type": "file", "label": "整張地圖平移工具(shiftMapLayout/shiftRegisteredMap)，Codex 持續在擴充涵蓋的座標鍵" },
-    { "id": "file:src/props.ts", "type": "file", "label": "3D 模型/道具(含 makeOldVillageStalactiteCaveEntrance)" },
-    { "id": "file:src/npc-defs.ts", "type": "file", "label": "NPC 定義+行程表" },
-    { "id": "file:src/carpenter-quest.ts", "type": "file", "label": "木匠招募事件" },
-    { "id": "file:src/chef-quest.ts", "type": "file", "label": "廚師共餐招募判定" }
+    {
+      "id": "file:src/game-state.ts",
+      "type": "file",
+      "label": "核心狀態+多數系統函式(plantSeed/harvestCrop/refillFeeder/harvestGatherNode/harvestOysterRack/cookMeal…)"
+    },
+    {
+      "id": "file:src/game-loop.ts",
+      "type": "file",
+      "label": "每幀更新迴圈(釣魚狀態機、投餵結算、gather node 刷新)"
+    },
+    {
+      "id": "file:src/input-save.ts",
+      "type": "file",
+      "label": "E 鍵互動總線(各系統的觸發判定都在這裡分派)"
+    },
+    {
+      "id": "file:src/layout-maps.ts",
+      "type": "file",
+      "label": "LAYOUT/MAPS 座標與地磚資料的單一真實來源"
+    },
+    {
+      "id": "file:src/build-map.ts",
+      "type": "file",
+      "label": "依 mapName 組出 3D 場景、events/WORLD_MAP_TRANSITIONS 傳送事件表"
+    },
+    {
+      "id": "file:src/map-transitions.ts",
+      "type": "file",
+      "label": "createTransitionEvents()——雙向傳送事件產生器"
+    },
+    {
+      "id": "file:src/map-shift.ts",
+      "type": "file",
+      "label": "整張地圖平移工具(shiftMapLayout/shiftRegisteredMap)，Codex 持續在擴充涵蓋的座標鍵"
+    },
+    {
+      "id": "file:src/props.ts",
+      "type": "file",
+      "label": "3D 模型/道具(含 makeOldVillageStalactiteCaveEntrance)"
+    },
+    {
+      "id": "file:src/npc-defs.ts",
+      "type": "file",
+      "label": "NPC 定義+行程表"
+    },
+    {
+      "id": "file:src/carpenter-quest.ts",
+      "type": "file",
+      "label": "木匠招募事件"
+    },
+    {
+      "id": "file:src/chef-quest.ts",
+      "type": "file",
+      "label": "廚師共餐招募判定"
+    }
   ],
   "edges": [
     { "from": "map:livingArea", "to": "map:house", "type": "transitions_to" },
     { "from": "map:livingArea", "to": "map:shrine", "type": "transitions_to" },
-    { "from": "map:livingArea", "to": "map:oldVillage", "type": "transitions_to" },
+    {
+      "from": "map:livingArea",
+      "to": "map:oldVillage",
+      "type": "transitions_to"
+    },
     { "from": "map:livingArea", "to": "map:port", "type": "transitions_to" },
-    { "from": "map:livingArea", "to": "map:mountain", "type": "transitions_to" },
+    {
+      "from": "map:livingArea",
+      "to": "map:mountain",
+      "type": "transitions_to"
+    },
     { "from": "map:oldVillage", "to": "map:port", "type": "transitions_to" },
-    { "from": "map:oldVillage", "to": "map:mountain", "type": "transitions_to" },
-    { "from": "map:oldVillage", "to": "map:stalactiteCave", "type": "transitions_to", "label": "洞口3格寬，2026-08-25 新增" },
+    {
+      "from": "map:oldVillage",
+      "to": "map:mountain",
+      "type": "transitions_to"
+    },
+    {
+      "from": "map:oldVillage",
+      "to": "map:stalactiteCave",
+      "type": "transitions_to",
+      "label": "洞口3格寬，2026-08-25 新增"
+    },
 
     { "from": "system:farming", "to": "map:livingArea", "type": "occurs_in" },
     { "from": "system:fishing", "to": "map:livingArea", "type": "occurs_in" },
     { "from": "system:fishing", "to": "map:port", "type": "occurs_in" },
-    { "from": "system:animalHusbandry", "to": "map:livingArea", "type": "occurs_in" },
+    {
+      "from": "system:animalHusbandry",
+      "to": "map:livingArea",
+      "type": "occurs_in"
+    },
     { "from": "system:gathering", "to": "map:livingArea", "type": "occurs_in" },
     { "from": "system:gathering", "to": "map:mountain", "type": "occurs_in" },
-    { "from": "system:oysterFarming", "to": "map:livingArea", "type": "occurs_in" },
+    {
+      "from": "system:oysterFarming",
+      "to": "map:livingArea",
+      "type": "occurs_in"
+    },
     { "from": "system:mining", "to": "map:oldVillage", "type": "occurs_in" },
-    { "from": "system:mining", "to": "map:stalactiteCave", "type": "occurs_in" },
+    {
+      "from": "system:mining",
+      "to": "map:stalactiteCave",
+      "type": "occurs_in"
+    },
     { "from": "system:cooking", "to": "map:house", "type": "occurs_in" },
 
-    { "from": "system:farming", "to": "file:src/game-state.ts", "type": "implemented_in", "label": "plantSeed/harvestCrop/growCropsForNewDay" },
-    { "from": "system:fishing", "to": "file:src/game-loop.ts", "type": "implemented_in" },
-    { "from": "system:animalHusbandry", "to": "file:src/game-state.ts", "type": "implemented_in", "label": "isPointInsideFeeder/settleFeederConsumption/refillFeeder" },
-    { "from": "system:animalHusbandry", "to": "file:src/game-loop.ts", "type": "implemented_in", "label": "settleFeederConsumption 呼叫點" },
-    { "from": "system:gathering", "to": "file:src/game-state.ts", "type": "implemented_in", "label": "refreshGatherNodes/harvestGatherNode/GatherKind" },
-    { "from": "system:gathering", "to": "file:src/input-save.ts", "type": "implemented_in", "label": "E 鍵觸發" },
-    { "from": "system:oysterFarming", "to": "file:src/game-state.ts", "type": "implemented_in", "label": "harvestOysterRack/isOysterRackReady" },
-    { "from": "system:mining", "to": "file:src/props.ts", "type": "implemented_in", "label": "makeOldVillageStalactiteCaveEntrance——僅視覺，不含挖礦機制" },
-    { "from": "system:mining", "to": "file:src/build-map.ts", "type": "implemented_in", "label": "stalactiteCave 房間渲染分支+傳送事件" },
-    { "from": "system:mining", "to": "file:src/layout-maps.ts", "type": "implemented_in", "label": "LAYOUT.oldVillage.stalactiteCave + MAPS.stalactiteCave" },
-    { "from": "system:cooking", "to": "file:src/game-state.ts", "type": "implemented_in", "label": "RECIPES/cookMeal" },
-    { "from": "system:cooking", "to": "file:src/input-save.ts", "type": "implemented_in", "label": "爐台 E 鍵互動" },
+    {
+      "from": "system:farming",
+      "to": "file:src/game-state.ts",
+      "type": "implemented_in",
+      "label": "plantSeed/harvestCrop/growCropsForNewDay"
+    },
+    {
+      "from": "system:fishing",
+      "to": "file:src/game-loop.ts",
+      "type": "implemented_in"
+    },
+    {
+      "from": "system:animalHusbandry",
+      "to": "file:src/game-state.ts",
+      "type": "implemented_in",
+      "label": "isPointInsideFeeder/settleFeederConsumption/refillFeeder"
+    },
+    {
+      "from": "system:animalHusbandry",
+      "to": "file:src/game-loop.ts",
+      "type": "implemented_in",
+      "label": "settleFeederConsumption 呼叫點"
+    },
+    {
+      "from": "system:gathering",
+      "to": "file:src/game-state.ts",
+      "type": "implemented_in",
+      "label": "refreshGatherNodes/harvestGatherNode/GatherKind"
+    },
+    {
+      "from": "system:gathering",
+      "to": "file:src/input-save.ts",
+      "type": "implemented_in",
+      "label": "E 鍵觸發"
+    },
+    {
+      "from": "system:oysterFarming",
+      "to": "file:src/game-state.ts",
+      "type": "implemented_in",
+      "label": "harvestOysterRack/isOysterRackReady"
+    },
+    {
+      "from": "system:mining",
+      "to": "file:src/props.ts",
+      "type": "implemented_in",
+      "label": "makeOldVillageStalactiteCaveEntrance——僅視覺，不含挖礦機制"
+    },
+    {
+      "from": "system:mining",
+      "to": "file:src/build-map.ts",
+      "type": "implemented_in",
+      "label": "stalactiteCave 房間渲染分支+傳送事件"
+    },
+    {
+      "from": "system:mining",
+      "to": "file:src/layout-maps.ts",
+      "type": "implemented_in",
+      "label": "LAYOUT.oldVillage.stalactiteCave + MAPS.stalactiteCave"
+    },
+    {
+      "from": "system:cooking",
+      "to": "file:src/game-state.ts",
+      "type": "implemented_in",
+      "label": "RECIPES/cookMeal"
+    },
+    {
+      "from": "system:cooking",
+      "to": "file:src/input-save.ts",
+      "type": "implemented_in",
+      "label": "爐台 E 鍵互動"
+    },
 
-    { "from": "npc:mayor", "to": "file:src/npc-defs.ts", "type": "implemented_in" },
-    { "from": "npc:carpenter", "to": "file:src/npc-defs.ts", "type": "implemented_in" },
-    { "from": "npc:carpenter", "to": "file:src/carpenter-quest.ts", "type": "recruits_via" },
-    { "from": "npc:chef", "to": "file:src/chef-quest.ts", "type": "recruits_via" },
+    {
+      "from": "npc:mayor",
+      "to": "file:src/npc-defs.ts",
+      "type": "implemented_in"
+    },
+    {
+      "from": "npc:carpenter",
+      "to": "file:src/npc-defs.ts",
+      "type": "implemented_in"
+    },
+    {
+      "from": "npc:carpenter",
+      "to": "file:src/carpenter-quest.ts",
+      "type": "recruits_via"
+    },
+    {
+      "from": "npc:chef",
+      "to": "file:src/chef-quest.ts",
+      "type": "recruits_via"
+    },
 
-    { "from": "map:oldVillage", "to": "map:stalactiteCave", "type": "depends_on", "label": "傳送事件透過 file:src/map-transitions.ts 的 createTransitionEvents() 產生" },
-    { "from": "file:src/build-map.ts", "to": "file:src/layout-maps.ts", "type": "depends_on" },
-    { "from": "file:src/build-map.ts", "to": "file:src/map-transitions.ts", "type": "depends_on" },
-    { "from": "file:src/layout-maps.ts", "to": "file:src/map-shift.ts", "type": "depends_on", "label": "MAP_SHIFT_REGISTRY 呼叫 shiftMapLayout/shiftRegisteredMap" }
+    {
+      "from": "map:oldVillage",
+      "to": "map:stalactiteCave",
+      "type": "depends_on",
+      "label": "傳送事件透過 file:src/map-transitions.ts 的 createTransitionEvents() 產生"
+    },
+    {
+      "from": "file:src/build-map.ts",
+      "to": "file:src/layout-maps.ts",
+      "type": "depends_on"
+    },
+    {
+      "from": "file:src/build-map.ts",
+      "to": "file:src/map-transitions.ts",
+      "type": "depends_on"
+    },
+    {
+      "from": "file:src/layout-maps.ts",
+      "to": "file:src/map-shift.ts",
+      "type": "depends_on",
+      "label": "MAP_SHIFT_REGISTRY 呼叫 shiftMapLayout/shiftRegisteredMap"
+    }
   ]
 }

@@ -1,20 +1,23 @@
 import * as THREE from "three";
-import { gameState, inventory, RECIPES } from "./game-state";
+import { gameState, hasTool, inventory, RECIPES, TOOL_DEFINITIONS } from "./game-state";
 import { ORE_TIERS } from "./mine";
 import {
-  makeCropMesh,
-  makeFishProp,
   makeOreNode,
-  makeSeedPouch,
   makeStonePile,
   makeWoodPile,
 } from "./props";
 import { setTimePauseSource } from "./time-pause";
 import { getDisplayedStars, getRelationship } from "./affection";
 import { getLocale, translateText } from "./i18n";
-import { eatItem, itemAmount, inventoryItem, takeOutItem } from "./inventory-system";
+import {
+  eatItem,
+  itemAmount,
+  inventoryItem,
+  makeInventoryItemVisual,
+  takeOutItem,
+} from "./inventory-system";
 
-type InventoryTab = "bag" | "materials" | "cooking" | "relationships";
+type InventoryTab = "bag" | "materials" | "cooking" | "tools" | "relationships";
 type InventoryEntry = {
   id: string;
   tab: InventoryTab;
@@ -29,6 +32,7 @@ const TABS: { id: InventoryTab; label: string }[] = [
   { id: "bag", label: "物品" },
   { id: "materials", label: "素材" },
   { id: "cooking", label: "料理" },
+  { id: "tools", label: "工具" },
   { id: "relationships", label: "關係" },
 ];
 
@@ -61,12 +65,12 @@ function oreModel(kind: string) {
 
 function inventoryEntries(): InventoryEntry[] {
   const entries: InventoryEntry[] = [
-    { id: "radishSeeds", tab: "bag", label: "蘿蔔種子", amount: inventory.seeds, tone: "green", symbol: "蘿", model: () => makeSeedPouch() },
-    { id: "potatoSeeds", tab: "bag", label: "馬鈴薯種子", amount: inventory.potatoSeeds, tone: "gold", symbol: "薯", model: () => makeSeedPouch() },
-    { id: "tomatoSeeds", tab: "bag", label: "番茄種子", amount: inventory.tomatoSeeds, tone: "red", symbol: "番", model: () => makeSeedPouch() },
-    { id: "harvested", tab: "bag", label: "農作物", amount: inventory.harvested, tone: "gold", symbol: "穗", model: () => makeCropMesh(2) },
-    { id: "fish", tab: "bag", label: "魚", amount: inventory.fish, tone: "blue", symbol: "魚", model: () => makeFishProp(2.4) },
-    { id: "oysters", tab: "bag", label: "牡蠣", amount: inventory.oysters, tone: "pearl", symbol: "貝" },
+    { id: "radishSeeds", tab: "bag", label: "蘿蔔種子", amount: inventory.seeds, tone: "green", symbol: "蘿", model: () => makeInventoryItemVisual("radishSeeds") },
+    { id: "potatoSeeds", tab: "bag", label: "馬鈴薯種子", amount: inventory.potatoSeeds, tone: "gold", symbol: "薯", model: () => makeInventoryItemVisual("potatoSeeds") },
+    { id: "tomatoSeeds", tab: "bag", label: "番茄種子", amount: inventory.tomatoSeeds, tone: "red", symbol: "番", model: () => makeInventoryItemVisual("tomatoSeeds") },
+    { id: "harvested", tab: "bag", label: "農作物", amount: inventory.harvested, tone: "gold", symbol: "穗", model: () => makeInventoryItemVisual("harvested") },
+    { id: "fish", tab: "bag", label: "魚", amount: inventory.fish, tone: "blue", symbol: "魚", model: () => makeInventoryItemVisual("fish") },
+    { id: "oysters", tab: "bag", label: "牡蠣", amount: inventory.oysters, tone: "pearl", symbol: "貝", model: () => makeInventoryItemVisual("oysters") },
     { id: "wood", tab: "materials", label: "木材", amount: inventory.wood, tone: "wood", symbol: "木", model: () => makeWoodPile(0, 0) },
     { id: "stone", tab: "materials", label: "石材", amount: inventory.stone, tone: "stone", symbol: "石", model: () => makeStonePile(0, 0) },
     { id: "copper", tab: "materials", label: "銅礦", amount: inventory.copper, tone: "copper", symbol: "銅", model: oreModel("copper") },
@@ -175,7 +179,11 @@ function openItemContentMenu(itemId: string) {
 export function renderInventory() {
   grid.innerHTML = "";
   const activeId = TABS[activeTabIndex].id;
-  grid.classList.toggle("inventory-grid-info", activeId === "relationships");
+  grid.classList.toggle("inventory-grid-info", activeId === "relationships" || activeId === "tools");
+  if (activeId === "tools") {
+    renderTools();
+    return;
+  }
   if (activeId === "relationships") {
     renderRelationships();
     return;
@@ -222,6 +230,29 @@ export function renderInventory() {
     slot.addEventListener("click", () => openItemContentMenu(item.id));
     grid.appendChild(slot);
   });
+}
+
+function renderTools() {
+  const toolCard = document.createElement("article");
+  toolCard.className = "menu-info-card menu-tool-list";
+  const toolHeading = document.createElement("h3");
+  toolHeading.textContent = translateText("工具");
+  const toolList = document.createElement("ul");
+  const ownedTools = TOOL_DEFINITIONS.filter((tool) => hasTool(tool.id));
+  if (ownedTools.length) {
+    ownedTools.forEach((tool) => {
+      const item = document.createElement("li");
+      item.textContent = translateText(tool.label);
+      toolList.appendChild(item);
+    });
+  } else {
+    const empty = document.createElement("li");
+    empty.textContent = translateText("目前沒有工具");
+    empty.className = "menu-tool-empty";
+    toolList.appendChild(empty);
+  }
+  toolCard.append(toolHeading, toolList);
+  grid.appendChild(toolCard);
 }
 
 function renderRelationships() {

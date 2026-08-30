@@ -1,4 +1,4 @@
-import { executeContextInteraction, consumeLegacyPrimaryBypass } from "./context-interaction-ui";
+import { executeContextInteraction, consumeLegacyPrimaryBypass, consumeLegacySecondaryBypass } from "./context-interaction-ui";
 import { isPrimaryInteractionKey } from "./context-interaction";
 import { exportAnimalInteractionState, restoreAnimalInteractionState } from "./animal-interactions";
 import {
@@ -23,6 +23,7 @@ import {
   FEEDER_VISUAL,
   FEEDER_CAPACITY,
   harvestPastureGrass,
+  hasTool,
   pastureDepletedTiles,
   WOOD_NODES,
   STONE_NODES,
@@ -271,7 +272,7 @@ export function getSaveSlotSummaries(): SaveSlotSummary[] {
 export function saveGame(slot = "default") {
   npcs.forEach((npc) => getRelationship(npc.id));
   const data = {
-    version: 8,
+    version: 9,
     savedAt: Date.now(),
     playerProfile: {
       name: gameState.playerName,
@@ -350,7 +351,12 @@ export function loadGame(
   gameState.pouchCollectedDay = Number.isFinite(data.pouchCollectedDay)
     ? data.pouchCollectedDay
     : -1;
+  const savedTools = data.inventory?.tools;
   Object.assign(inventory, data.inventory || {});
+  inventory.tools = {
+    dualAxe: typeof savedTools?.dualAxe === "boolean" ? savedTools.dualAxe : true,
+    sickle: typeof savedTools?.sickle === "boolean" ? savedTools.sickle : true,
+  };
   if (data.inventory?.animalProducts) Object.assign(inventory.animalProducts, data.inventory.animalProducts);
   restoreAnimalInteractionState(data.animalInteractions);
   gameState.feederUnits = Number.isFinite(data.feederUnits)
@@ -597,7 +603,7 @@ document.addEventListener("visibilitychange", () => {
 });
 
 addEventListener("keydown", (event) => {
-  if (event.key.toLowerCase() === "r" && !event.repeat && executeContextInteraction("secondary")) { event.preventDefault(); return; }
+  if (event.key.toLowerCase() === "r" && !event.repeat && !consumeLegacySecondaryBypass() && executeContextInteraction("secondary")) { event.preventDefault(); return; }
   if (
     event.key.toLowerCase() !== "r" ||
     event.repeat ||
@@ -606,7 +612,8 @@ addEventListener("keydown", (event) => {
     isInventoryOpen() ||
     dialogQueue.length ||
     activeChoice ||
-    gameState.currentMapName !== "livingArea"
+    gameState.currentMapName !== "livingArea" ||
+    !hasTool("sickle")
   )
     return;
   event.preventDefault();
@@ -955,7 +962,7 @@ addEventListener("keydown", (e) => {
     const woodNode = WOOD_NODES.find(nearNode);
     const stoneNode = !woodNode && STONE_NODES.find(nearNode);
     const gatherNode = woodNode || stoneNode;
-    if (gatherNode) {
+    if (gatherNode && hasTool("dualAxe")) {
       const kind = woodNode ? "wood" : "stone";
       const granted = harvestGatherNode(kind, gatherNode.x, gatherNode.z);
       if (granted > 0) {
@@ -995,7 +1002,7 @@ addEventListener("keydown", (e) => {
     const oreNode = ORE_NODES.find(
       (n) => !n.collected && Math.abs(n.x - mx) + Math.abs(n.z - mz) <= 1,
     );
-    if (oreNode) {
+    if (oreNode && hasTool("dualAxe")) {
       const result = harvestOreNode(oreNode.x, oreNode.z);
       if (result.amount > 0 && result.tier) {
         playRandomSfx(MINE_ORE_SFX);
@@ -1035,7 +1042,7 @@ addEventListener("keydown", (e) => {
     const oreNode = MOUNTAIN_ORE_NODES.find(
       (n) => !n.collected && Math.abs(n.x - mx) + Math.abs(n.z - mz) <= 1,
     );
-    if (oreNode) {
+    if (oreNode && hasTool("dualAxe")) {
       const result = harvestMountainOreNode(oreNode.x, oreNode.z);
       if (result.amount > 0 && result.tier) {
         playRandomSfx(MINE_ORE_SFX);

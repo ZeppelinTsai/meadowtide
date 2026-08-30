@@ -889,6 +889,23 @@ canvas {
   color: rgba(232, 224, 205, 0.58);
   font-size: 18px;
 }
+.menu-tool-list {
+  display: block;
+}
+.menu-tool-list h3 {
+  margin-bottom: 12px;
+}
+.menu-tool-list ul {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding-left: 24px;
+  color: #ded8c9;
+  font-size: 18px;
+}
+.menu-tool-empty {
+  color: rgba(232, 224, 205, 0.58);
+}
 @media (max-width: 620px) {
   .inventory-menu-label {
     display: none;

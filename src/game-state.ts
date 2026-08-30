@@ -173,7 +173,17 @@ export const gameState = {
   mountainMineFloor: 1,
 };
 
+export type ToolId = "dualAxe" | "sickle";
+export const TOOL_DEFINITIONS: readonly { id: ToolId; label: string }[] = [
+  { id: "dualAxe", label: "雙用斧" },
+  { id: "sickle", label: "鐮刀" },
+];
+
 export const inventory = {
+  tools: {
+    dualAxe: true,
+    sickle: true,
+  } as Record<ToolId, boolean>,
   seeds: 1,
   // seeds 是既有存檔的蘿蔔種子欄位；新增種類獨立保存，舊檔讀取時保留預設值。
   potatoSeeds: 1,
@@ -209,6 +219,11 @@ export const inventory = {
   // 的表，不是單一數字。哪個 id 對應哪道菜看下面的 RECIPES。
   dishes: {} as Record<string, number>,
 };
+
+export function hasTool(toolId: ToolId) {
+  return inventory.tools[toolId] === true;
+}
+
 export const cropState: Record<
   string,
   {
@@ -618,13 +633,18 @@ function pastureCandidateTiles(day: number) {
 }
 
 export type PastureHarvestResult =
-  "harvested" | "not-grass" | "regrowing" | "feeder-full";
+  | "harvested"
+  | "not-grass"
+  | "regrowing"
+  | "feeder-full"
+  | "missing-tool";
 
 export function harvestPastureGrass(
   x: number,
   z: number,
   day = gameState.currentDay,
 ): PastureHarvestResult {
+  if (!hasTool("sickle")) return "missing-tool";
   if (!hasPastureGrassAt(x, z)) return "not-grass";
   if (gameState.feederUnits >= FEEDER_CAPACITY) return "feeder-full";
   if (pastureGrassStageAt(x, z, day) !== 2) return "regrowing";
@@ -769,6 +789,7 @@ export function refreshGatherNodes(force = false) {
 }
 
 export function harvestGatherNode(kind: GatherKind, x: number, z: number) {
+  if (!hasTool("dualAxe")) return 0;
   const label = kind === "wood" ? "木材" : "石頭";
   const node = (kind === "wood" ? WOOD_NODES : STONE_NODES).find(
     (candidate) =>

@@ -5,7 +5,7 @@ import {
   type InventoryItemId,
   type ItemDefinition,
 } from "./item-catalog";
-import { makeCropMesh, makeFishProp, makeSeedPouch } from "./props";
+import { makeCropMesh, makeFishProp, makeOysterProp, makeSeedPouch } from "./props";
 import { showUiToast } from "./ui-toast";
 import {
   HELD_ARM_ROTATION,
@@ -121,7 +121,7 @@ export function stowHeldItem(): boolean {
   return true;
 }
 
-function makeHeldVisual(itemId: string): THREE.Object3D {
+export function makeInventoryItemVisual(itemId: string): THREE.Object3D {
   if (itemId.endsWith("Seeds")) {
     const colors: Record<string, number> = {
       radishSeeds: 0xe9d6a5,
@@ -137,17 +137,11 @@ function makeHeldVisual(itemId: string): THREE.Object3D {
     fish.rotation.x = Math.PI / 2;
     return fish;
   }
-  const group = new THREE.Group();
-  const bowl = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.12, 0.08, 0.08, 8),
-    new THREE.MeshStandardMaterial({
-      color: itemId === "oysters" ? 0xd8d1bd : 0xead4a8,
-      flatShading: true,
-    }),
+  if (itemId === "oysters") return makeOysterProp();
+  return new THREE.Mesh(
+    new THREE.BoxGeometry(0.12, 0.12, 0.12),
+    new THREE.MeshStandardMaterial({ color: 0xead4a8, flatShading: true }),
   );
-  bowl.position.y = 0.04;
-  group.add(bowl);
-  return group;
 }
 
 addEventListener("keydown", (event) => {
@@ -205,7 +199,7 @@ export function syncHeldItemVisual() {
   visualOwner = player;
   renderedItemId = effectiveId;
   if (!player || !effectiveId) return;
-  heldVisual = makeHeldVisual(effectiveId);
+  heldVisual = makeInventoryItemVisual(effectiveId);
   heldVisual.name = "heldInventoryItem";
   const bounds = new THREE.Box3().setFromObject(heldVisual);
   const size = bounds.getSize(new THREE.Vector3());

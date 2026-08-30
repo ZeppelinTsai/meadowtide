@@ -594,6 +594,65 @@ export function makeBobber() {
   return g;
 }
 
+export function makeOysterProp() {
+  const group = new THREE.Group();
+  const shellMaterial = new THREE.MeshStandardMaterial({
+    color: 0x8f897d,
+    flatShading: true,
+    roughness: 0.96,
+  });
+  const innerShellMaterial = new THREE.MeshStandardMaterial({
+    color: 0xd8d1bd,
+    flatShading: true,
+    roughness: 0.82,
+  });
+  const meatMaterial = new THREE.MeshStandardMaterial({
+    color: 0xead9ad,
+    flatShading: true,
+    roughness: 0.72,
+  });
+
+  const lowerShell = new THREE.Mesh(
+    new THREE.IcosahedronGeometry(0.16, 1),
+    shellMaterial,
+  );
+  lowerShell.scale.set(1, 0.24, 0.72);
+  lowerShell.rotation.y = -0.12;
+  lowerShell.castShadow = true;
+
+  const innerShell = new THREE.Mesh(
+    new THREE.IcosahedronGeometry(0.135, 1),
+    innerShellMaterial,
+  );
+  innerShell.scale.set(1, 0.2, 0.69);
+  innerShell.position.y = 0.025;
+  innerShell.rotation.y = -0.12;
+  innerShell.castShadow = true;
+
+  const meat = new THREE.Mesh(
+    new THREE.IcosahedronGeometry(0.075, 1),
+    meatMaterial,
+  );
+  meat.scale.set(1.05, 0.34, 0.78);
+  meat.position.set(0.018, 0.06, -0.005);
+  meat.castShadow = true;
+
+  const mantle = new THREE.Mesh(
+    new THREE.TorusGeometry(0.043, 0.012, 5, 10),
+    new THREE.MeshStandardMaterial({
+      color: 0xc6a76d,
+      flatShading: true,
+      roughness: 0.78,
+    }),
+  );
+  mantle.rotation.x = Math.PI / 2;
+  mantle.position.set(0.018, 0.082, -0.005);
+  mantle.castShadow = true;
+
+  group.add(lowerShell, innerShell, meat, mantle);
+  return group;
+}
+
 export function makeFishProp(seed) {
   // 純粹的氛圍裝飾：壓扁的橢圓身體 + 三角尾鰭；色盤用 seed 決定，
   // 同一張地圖每次重整仍會得到一致、但彼此不同的魚色。

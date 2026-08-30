@@ -18,7 +18,7 @@
 // 呼叫端。
 // ==============================================================
 import { LAYOUT, MAPS } from "./layout-maps";
-import { gameState, inventory } from "./game-state";
+import { gameState, hasTool, inventory } from "./game-state";
 import { hash2 } from "./utils";
 
 export type OreKind =
@@ -195,6 +195,8 @@ export function regenerateMineFloor(floor: number) {
 }
 
 export function harvestOreNode(x: number, z: number) {
+  if (!hasTool("dualAxe"))
+    return { amount: 0, tier: null as OreTier | null };
   const node = ORE_NODES.find(
     (candidate) => candidate.x === x && candidate.z === z && !candidate.collected,
   );
@@ -348,6 +350,8 @@ export function regenerateMountainMineFloor(floor: number) {
 }
 
 export function harvestMountainOreNode(x: number, z: number) {
+  if (!hasTool("dualAxe"))
+    return { amount: 0, tier: null as OreTier | null };
   const node = MOUNTAIN_ORE_NODES.find(
     (candidate) => candidate.x === x && candidate.z === z && !candidate.collected,
   );

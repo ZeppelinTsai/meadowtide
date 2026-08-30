@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import { chooseInteractionTarget, promptFor, type ContextAction, type InteractionCandidate, type InteractionSlot } from "./context-interaction";
 import { actionsForAnimal, getCarriedAnimalId } from "./animal-interactions";
-import { gameState, cropState, inventory, WOOD_NODES, STONE_NODES } from "./game-state";
+import { gameState, cropState, hasTool, inventory, pastureGrassStageAt, WOOD_NODES, STONE_NODES } from "./game-state";
 import { animals, npcs } from "./npc-runtime";
 import { renderer, camera, scene } from "./scene-sky";
 import { getGameplayCamera, isFirstPersonModeActive } from "./first-person-camera";
@@ -10,7 +10,8 @@ import { isInventoryOpen } from "./inventory-ui";
 import { activeChoice, dialogQueue } from "./dialogue";
 import { getEffectiveControllerLayout, getLastInputDevice, markKeyboardMouseInput, onInputPresentationChanged } from "./input-device";
 import { requestPlayerNavigation, findReachablePlayerDestination, cancelPlayerNavigation, onNavigationDestinationChanged } from "./player-navigation";
-import { gatherNodeMeshes, fishingWaterMeshes } from "./scene-registries";
+import { gatherNodeMeshes, fishingWaterMeshes, oreNodeMeshes } from "./scene-registries";
+import { MOUNTAIN_ORE_NODES, ORE_NODES } from "./mine";
 import { isNearFishingWater } from "./fishing-water";
 import { showUiToast } from "./ui-toast";
 import { farmGroup } from "./farm-visuals";
@@ -25,10 +26,11 @@ type WorldTarget = {
 const INTERACTION_RADIUS=2.25, DRAG_THRESHOLD=9;
 const raycaster=new THREE.Raycaster(), pointer=new THREE.Vector2(), groundPlane=new THREE.Plane(new THREE.Vector3(0,1,0),0);
 let pointedId:string|null=null, selectedTarget:WorldTarget|null=null, currentTarget:WorldTarget|null=null, currentActions:ContextAction[]=[];
-let root:HTMLElement|null=null, bypassLegacy=false, down:{x:number;y:number;pointerId:number}|null=null;
+let root:HTMLElement|null=null, bypassLegacy=false, bypassLegacySecondary=false, down:{x:number;y:number;pointerId:number}|null=null;
 const activePointers = new Set<number>();
 const destinationMarker=new THREE.Mesh(new THREE.RingGeometry(0.14,0.22,24),new THREE.MeshBasicMaterial({color:0xffd45a,side:THREE.DoubleSide,transparent:true,opacity:0.9}));
 destinationMarker.rotation.x=-Math.PI/2; destinationMarker.visible=false; scene.add(destinationMarker);
+const pastureTargetObject=new THREE.Object3D();
 let markerTimer=0, highlight:THREE.BoxHelper|null=null, highlightTimer=0;
 
 function blocked(allowActiveFishing=false){return !gameState.player || gameState.titlePresentationActive || gameState.cutsceneActive || isCameraAdjustModeActive() || isInventoryOpen() || dialogQueue.length>0 || Boolean(activeChoice) || (!allowActiveFishing&&gameState.fishingState!=="idle");}
@@ -36,7 +38,9 @@ function contains(root:THREE.Object3D,obj:THREE.Object3D){let current:THREE.Obje
 function legacyAction(id:string,label:string):ContextAction{return{id,label,slot:"primary",execute:runLegacyPrimaryInteraction};}
 function targetForAnimal(id:string):WorldTarget|null{const animal=animals.find(a=>a.id===id);if(!animal||!animal.mesh.visible)return null;return{id:"animal:"+id,object:animal.mesh,radius:1.35,actions:actionsForAnimal(id),getPosition:()=>animal.mesh.visible?{x:animal.mesh.position.x,z:animal.mesh.position.z}:null,isValid:()=>animal.mesh.visible&&actionsForAnimal(id).length>0};}
 function targetForNpc(id:string):WorldTarget|null{const npc=npcs.find(n=>n.id===id);if(!npc||!npc.mesh.visible||npc.map!==gameState.currentMapName)return null;return{id:"npc:"+id,object:npc.mesh,radius:1.25,actions:[legacyAction("talk","\u5c0d\u8a71")],getPosition:()=>npc.mesh.visible?{x:npc.mesh.position.x,z:npc.mesh.position.z}:null,isValid:()=>npc.mesh.visible&&npc.map===gameState.currentMapName};}
-function targetForGather(nodeId:string):WorldTarget|null{const entry=gatherNodeMeshes.find(e=>e.nodeId===nodeId&&e.map===gameState.currentMapName);const node=[...WOOD_NODES,...STONE_NODES].find(n=>n.id===nodeId);if(!entry||!node||node.collected)return null;return{id:"gather:"+nodeId,object:entry.group,radius:1.2,actions:[legacyAction(node.kind,node.kind==="wood"?"\u780d\u6a39":"\u63a1\u77f3")],getPosition:()=>node.collected?null:{x:node.x,z:node.z},isValid:()=>!node.collected&&entry.group.visible};}
+function targetForGather(nodeId:string):WorldTarget|null{if(!hasTool("dualAxe"))return null;const entry=gatherNodeMeshes.find(e=>e.nodeId===nodeId&&e.map===gameState.currentMapName);const node=[...WOOD_NODES,...STONE_NODES].find(n=>n.id===nodeId);if(!entry||!node||node.collected)return null;return{id:"gather:"+nodeId,object:entry.group,radius:1.2,actions:[legacyAction(node.kind,node.kind==="wood"?"\u780d\u6a39":"\u63a1\u77f3")],getPosition:()=>node.collected?null:{x:node.x,z:node.z},isValid:()=>hasTool("dualAxe")&&!node.collected&&entry.group.visible};}
+function targetForOre(nodeId:string):WorldTarget|null{if(!hasTool("dualAxe"))return null;const entry=oreNodeMeshes.find(e=>e.nodeId===nodeId);const nodes=gameState.currentMapName==="mountainCave"?MOUNTAIN_ORE_NODES:gameState.currentMapName==="stalactiteCave"?ORE_NODES:[];const node=nodes.find(n=>n.id===nodeId);if(!entry||!node||node.collected)return null;return{id:"ore:"+nodeId,object:entry.group,radius:1.2,actions:[legacyAction("ore","敲礦")],getPosition:()=>node.collected?null:{x:node.x,z:node.z},isValid:()=>hasTool("dualAxe")&&!node.collected&&entry.group.visible};}
+function targetForPasture():WorldTarget|null{if(gameState.currentMapName!=="livingArea"||!hasTool("sickle"))return null;const {x,z}=gameState.playerGridPos;if(pastureGrassStageAt(x,z)!==2)return null;const id=`pasture:${x},${z}`;return{id,object:pastureTargetObject,radius:0.35,actions:[{id:"cut-grass",label:"割草",slot:"secondary",execute:runLegacySecondaryInteraction}],getPosition:()=>gameState.playerGridPos.x===x&&gameState.playerGridPos.z===z?{x,z}:null,isValid:()=>hasTool("sickle")&&gameState.playerGridPos.x===x&&gameState.playerGridPos.z===z&&pastureGrassStageAt(x,z)===2};}
 function targetForFarm(x:number,z:number,object:THREE.Object3D=farmGroup):WorldTarget|null{
   if(gameState.currentMapName!=="livingArea")return null;
   if(x===POUCH_POS.x&&z===POUCH_POS.z&&gameState.currentDay>gameState.pouchCollectedDay)return{id:"pouch",object,radius:0.9,actions:[legacyAction("pickup","\u62fe\u53d6")],getPosition:()=>({x,z}),isValid:()=>gameState.currentDay>gameState.pouchCollectedDay};
@@ -53,6 +57,8 @@ function allTargets(){
   if(gameState.currentMapName==="livingArea")animals.forEach(a=>{const t=targetForAnimal(a.id);if(t)list.push(t);});
   npcs.forEach(n=>{const t=targetForNpc(n.id);if(t)list.push(t);});
   gatherNodeMeshes.forEach(e=>{const t=targetForGather(e.nodeId);if(t)list.push(t);});
+  oreNodeMeshes.forEach(e=>{const t=targetForOre(e.nodeId);if(t)list.push(t);});
+  {const t=targetForPasture();if(t)list.push(t);}
   FARMLAND_TILES.forEach(([x,z])=>{const t=targetForFarm(x,z);if(t)list.push(t);});
   const pouch=targetForFarm(POUCH_POS.x,POUCH_POS.z);if(pouch)list.push(pouch);
   return list;
@@ -61,6 +67,8 @@ function refreshSelectedTarget(target: WorldTarget) {
   if (target.id.startsWith("animal:")) return targetForAnimal(target.id.slice(7));
   if (target.id.startsWith("npc:")) return targetForNpc(target.id.slice(4));
   if (target.id.startsWith("gather:")) return targetForGather(target.id.slice(7));
+  if (target.id.startsWith("ore:")) return targetForOre(target.id.slice(4));
+  if (target.id.startsWith("pasture:")) return targetForPasture();
   const position = target.getPosition();
   return position ? targetForFarm(Math.round(position.x), Math.round(position.z), target.object) : null;
 }
@@ -110,6 +118,8 @@ export function executeContextInteraction(slot:InteractionSlot){currentTarget=ch
 function dispatchPrimaryInteraction(){window.dispatchEvent(new KeyboardEvent("keydown",{key:"e"}));window.dispatchEvent(new KeyboardEvent("keyup",{key:"e"}));}
 export function runLegacyPrimaryInteraction(){bypassLegacy=true;dispatchPrimaryInteraction();}
 export function consumeLegacyPrimaryBypass(){const value=bypassLegacy;bypassLegacy=false;return value;}
+function runLegacySecondaryInteraction(){bypassLegacySecondary=true;window.dispatchEvent(new KeyboardEvent("keydown",{key:"r"}));window.dispatchEvent(new KeyboardEvent("keyup",{key:"r"}));}
+export function consumeLegacySecondaryBypass(){const value=bypassLegacySecondary;bypassLegacySecondary=false;return value;}
 export function refreshShortcutLabels(){const layout=getEffectiveControllerLayout(),info=document.querySelector<HTMLElement>("#quickInfoMenuBtn small"),map=document.querySelector<HTMLElement>("#quickMapMenuBtn small");if(info)info.textContent=layout==="nintendo"?"Q / -":"Q / View";if(map)map.textContent="M / L3";if(root)root.dataset.signature="";}
 function handleWorldClick(clientX:number,clientY:number){if(isFirstPersonModeActive()){if(!blocked(true))dispatchPrimaryInteraction();return;}if(blocked())return;updateRay(clientX,clientY);const target=targetFromRay();if(target){selectedTarget=target;pointedId=target.id;approach(target,target.actions[0]);return;}const waterHit=waterHitFromRay();if(waterHit){selectedTarget=null;approachWater(waterHit.water,waterHit.point);return;}groundPlane.constant=-gameState.player.position.y;const hit=new THREE.Vector3();if(raycaster.ray.intersectPlane(groundPlane,hit)){selectedTarget=null;requestPlayerNavigation({x:hit.x,z:hit.z});}}
 function frame(){if(highlight&&performance.now()>highlightTimer){scene.remove(highlight);highlight.geometry.dispose(); (highlight.material as THREE.Material).dispose();highlight=null;}if(destinationMarker.visible&&performance.now()>markerTimer)destinationMarker.visible=false;render();requestAnimationFrame(frame);}
