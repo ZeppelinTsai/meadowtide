@@ -193,10 +193,10 @@
   的變更；不得把工作樹中其他 agent 尚未提交的檔案或 hunk 一起帶進 commit。
   提交前用 `git diff --cached` 核對 staged diff，並在交付訊息寫明 commit。
 - **2026-08-26 跟 Zeppelin 確認的分工**：透過 device-bridge 連進來的
-  Claude session（也就是這份文件所在的這一套環境）本來就沒有 push 權限，
+  Claude session 本來就沒有 push 權限，
   之後一律**不執行 `git add`／`commit`／`push`**，只改檔案、跑
   `tsc --noEmit` 驗證、在交付訊息裡列出改了哪些檔案；實際 commit／push
-  交給另一邊有推送權限的 agent（目前是 Codex）處理。這條是在兩個 session
+  交給有推送權限的 agent 處理。Codex session 若實際具備 push 權限，且使用者明確要求提交／推送，則可以依照上一條先核對 `git diff --cached`，再執行 `git add`／`commit`／`push`；不要把這條 Claude session 的限制誤套用到 Codex。這條是在兩個 session
   同時共用這份工作目錄、其中一次 commit 意外把對方尚未存檔的修改一起收走
   之後定的，比上一條「各 commit 各的」更明確：不是「各自 commit」，是
   「乾脆只有一邊 commit」。
