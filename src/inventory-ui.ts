@@ -82,6 +82,33 @@ let activeTabIndex = 0;
 let contextItemId: string | null = null;
 const modelIconCache = new Map<string, string>();
 const INVENTORY_THUMBNAIL_LONG_EDGE = 1.05;
+let thumbnailRenderer: THREE.WebGLRenderer | null = null;
+
+function getThumbnailRenderer() {
+  if (thumbnailRenderer) return thumbnailRenderer;
+  thumbnailRenderer = new THREE.WebGLRenderer({
+    alpha: true,
+    antialias: true,
+    preserveDrawingBuffer: true,
+  });
+  thumbnailRenderer.setPixelRatio(1);
+  thumbnailRenderer.setSize(96, 96, false);
+  thumbnailRenderer.setClearColor(0x000000, 0);
+  return thumbnailRenderer;
+}
+
+function disposeThumbnailModel(model: THREE.Object3D) {
+  model.traverse((child) => {
+    const mesh = child as THREE.Mesh;
+    mesh.geometry?.dispose();
+    const materials = Array.isArray(mesh.material)
+      ? mesh.material
+      : mesh.material
+        ? [mesh.material]
+        : [];
+    materials.forEach((material) => material.dispose());
+  });
+}
 
 function showEntryDescription(label?: string, description?: string) {
   descriptionFooter.textContent = label
@@ -156,14 +183,7 @@ function renderModelThumbnail(item: InventoryEntry) {
   const cached = modelIconCache.get(item.id);
   if (cached) return cached;
 
-  const renderer = new THREE.WebGLRenderer({
-    alpha: true,
-    antialias: true,
-    preserveDrawingBuffer: true,
-  });
-  renderer.setPixelRatio(1);
-  renderer.setSize(96, 96, false);
-  renderer.setClearColor(0x000000, 0);
+  const renderer = getThumbnailRenderer();
 
   const scene = new THREE.Scene();
   scene.add(new THREE.HemisphereLight(0xfff3d2, 0x34414a, 1.45));
@@ -186,7 +206,8 @@ function renderModelThumbnail(item: InventoryEntry) {
   camera.lookAt(0, 0, 0);
   renderer.render(scene, camera);
   const dataUrl = renderer.domElement.toDataURL("image/png");
-  renderer.dispose();
+  scene.remove(model);
+  disposeThumbnailModel(model);
   modelIconCache.set(item.id, dataUrl);
   return dataUrl;
 }
