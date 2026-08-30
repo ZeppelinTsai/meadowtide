@@ -17,6 +17,7 @@ import {
   takeOutItem,
 } from "./inventory-system";
 import { getNpcDisplayName } from "./npc-name-reveal";
+import { makeToolModel } from "./tool-models";
 
 type InventoryTab = "bag" | "materials" | "cooking" | "tools" | "relationships";
 type InventoryEntry = {
@@ -27,8 +28,30 @@ type InventoryEntry = {
   tone: string;
   symbol: string;
   model?: () => THREE.Object3D;
+  description?: string;
 };
 
+const INVENTORY_DESCRIPTIONS: Record<string, string> = {
+  radishSeeds: "可種出蘿蔔的種子。",
+  potatoSeeds: "可種出馬鈴薯的種子。",
+  tomatoSeeds: "可種出番茄的種子。",
+  harvested: "從農地收成的作物。",
+  fish: "從湖泊或海邊釣起的魚。",
+  oysters: "從牡蠣架採收的新鮮牡蠣。",
+  wood: "建造與加工常用的木材。",
+  stone: "建造與加工常用的石材。",
+  copper: "洞窟中取得的銅礦。",
+  silver: "洞窟中取得的銀礦。",
+  gold: "洞窟中取得的金礦。",
+  starCrystal: "帶有星光的稀有晶礦。",
+  godCrystal: "蘊含特殊力量的珍貴晶礦。",
+};
+
+function entryDescription(item: InventoryEntry) {
+  if (item.description) return item.description;
+  if (item.id.startsWith("dish-")) return "已完成的料理，可作為食物或贈禮。";
+  return INVENTORY_DESCRIPTIONS[item.id] || "尚無詳細說明。";
+}
 const TABS: { id: InventoryTab; label: string }[] = [
   { id: "bag", label: "物品" },
   { id: "materials", label: "素材" },
@@ -45,6 +68,7 @@ const tabButtons = Array.from(
   tabList.querySelectorAll<HTMLButtonElement>('[role="tab"]'),
 );
 const panel = document.getElementById("inventoryPanel") as HTMLElement;
+const descriptionFooter = document.getElementById("inventoryDescription") as HTMLParagraphElement;
 const contentMenu = document.createElement("div");
 contentMenu.id = "inventoryContentMenu";
 contentMenu.className = "inventory-content-menu";
@@ -57,6 +81,25 @@ let activeTabIndex = 0;
 let contextItemId: string | null = null;
 const modelIconCache = new Map<string, string>();
 
+function showEntryDescription(label?: string, description?: string) {
+  descriptionFooter.textContent = label
+    ? translateText(label) + "｜" + translateText(description || "尚無詳細說明。")
+    : translateText("選擇項目以查看說明。");
+}
+
+function selectInfoCard(
+  card: HTMLElement,
+  label?: string,
+  description?: string,
+) {
+  grid.querySelectorAll<HTMLElement>(".selected").forEach((item) => {
+    item.classList.remove("selected");
+    item.removeAttribute("aria-current");
+  });
+  card.classList.add("selected");
+  card.setAttribute("aria-current", "true");
+  showEntryDescription(label, description);
+}
 function oreModel(kind: string) {
   const ore = ORE_TIERS.find((tier) => tier.kind === kind);
   return ore
@@ -179,6 +222,7 @@ function openItemContentMenu(itemId: string) {
 
 export function renderInventory() {
   grid.innerHTML = "";
+  showEntryDescription();
   const activeId = TABS[activeTabIndex].id;
   grid.classList.toggle("inventory-grid-info", activeId === "relationships" || activeId === "tools");
   if (activeId === "tools") {
@@ -228,39 +272,67 @@ export function renderInventory() {
     label.textContent = translateText(item.label);
 
     slot.append(icon, count, label);
-    slot.addEventListener("click", () => openItemContentMenu(item.id));
+    slot.addEventListener("focus", () => selectInfoCard(slot, item.label, entryDescription(item)));
+    slot.addEventListener("click", () => {
+      selectInfoCard(slot, item.label, entryDescription(item));
+      openItemContentMenu(item.id);
+    });
     grid.appendChild(slot);
   });
 }
 
 function renderTools() {
-  const toolCard = document.createElement("article");
-  toolCard.className = "menu-info-card menu-tool-list";
-  const toolHeading = document.createElement("h3");
-  toolHeading.textContent = translateText("工具");
-  const toolList = document.createElement("ul");
   const ownedTools = TOOL_DEFINITIONS.filter((tool) => hasTool(tool.id));
-  if (ownedTools.length) {
-    ownedTools.forEach((tool) => {
-      const item = document.createElement("li");
-      item.textContent = translateText(tool.label);
-      toolList.appendChild(item);
-    });
-  } else {
-    const empty = document.createElement("li");
+  if (!ownedTools.length) {
+    const empty = document.createElement("div");
+    empty.className = "inventory-empty";
     empty.textContent = translateText("目前沒有工具");
-    empty.className = "menu-tool-empty";
-    toolList.appendChild(empty);
+    grid.appendChild(empty);
+    return;
   }
-  toolCard.append(toolHeading, toolList);
-  grid.appendChild(toolCard);
+
+  ownedTools.forEach((tool) => {
+    const card = document.createElement("button");
+    card.type = "button";
+    card.className = "inventory-slot inventory-tool-card";
+    card.dataset.toolId = tool.id;
+    card.setAttribute("aria-label", translateText(tool.label));
+
+    const icon = document.createElement("div");
+    icon.className = "inventory-icon inventory-icon-model";
+    const modelImage = renderModelThumbnail({
+      id: "tool-" + tool.id,
+      tab: "tools",
+      label: tool.label,
+      amount: 1,
+      tone: "tool",
+      symbol: tool.label.slice(0, 1),
+      model: () => makeToolModel(tool.id),
+    });
+    if (modelImage) {
+      const image = document.createElement("img");
+      image.src = modelImage;
+      image.alt = "";
+      icon.appendChild(image);
+    }
+
+    const label = document.createElement("div");
+    label.className = "inventory-item-label";
+    label.textContent = translateText(tool.label);
+    card.append(icon, label);
+    const select = () => selectInfoCard(card, tool.label, tool.description);
+    card.addEventListener("focus", select);
+    card.addEventListener("click", select);
+    grid.appendChild(card);
+  });
 }
 
 function renderRelationships() {
   const relationships = [{ id: "mayor" }, { id: "carpenter" }];
   relationships.forEach(({ id }) => {
     const relationship = getRelationship(id);
-    const card = document.createElement("article");
+    const card = document.createElement("button");
+    card.type = "button";
     card.className = "menu-info-card";
     const heading = document.createElement("h3");
     heading.textContent = getNpcDisplayName(id);
@@ -274,6 +346,14 @@ function renderRelationships() {
         : `${relationship.points} ${pointLabel}・${relationship.currentLock} ${translateText("星鎖定")}`
       : `${relationship.points} ${pointLabel}`;
     card.append(heading, value, caption);
+    const describeRelationship = () =>
+      selectInfoCard(
+        card,
+        getNpcDisplayName(id),
+        "目前關係為 " + getDisplayedStars(id) + " 星，共 " + relationship.points + " 點。",
+      );
+    card.addEventListener("focus", describeRelationship);
+    card.addEventListener("click", describeRelationship);
     grid.appendChild(card);
   });
 }

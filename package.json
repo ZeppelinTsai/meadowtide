@@ -22,6 +22,7 @@
     "test:story": "tsx --test src/story/story-system.test.ts src/npc-name-reveal.test.ts",
     "story-audit": "tsx scripts/story-audit.ts",
     "test:context-interaction": "tsx --test src/context-interaction.test.ts src/navigation.test.ts src/animal-production.test.ts",
+    "test:tools": "tsx --test src/tool-models.test.ts",
     "test:first-person": "tsx --test src/first-person-movement.test.ts"
   },
   "dependencies": {

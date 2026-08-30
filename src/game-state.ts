@@ -11,6 +11,8 @@ import { syncFarmVisuals } from "./farm-visuals";
 import { createWeatherSchedule } from "./weather-schedule";
 import { getScaledBuildingBounds } from "./building-scale";
 import { cropTypeForSeedItem } from "./item-catalog";
+import type { ToolId } from "./tool-catalog";
+export { TOOL_DEFINITIONS, type ToolId } from "./tool-catalog";
 export { MAX_EXTREME_WEATHER_PER_SEASON } from "./weather-schedule";
 
 // ==============================================================
@@ -173,19 +175,13 @@ export const gameState = {
   mountainMineFloor: 1,
 };
 
-export type ToolId = "dualAxe" | "sickle" | "milker" | "shears" | "brush";
-export const TOOL_DEFINITIONS: readonly { id: ToolId; label: string }[] = [
-  { id: "dualAxe", label: "雙用斧" },
-  { id: "sickle", label: "鐮刀" },
-  { id: "milker", label: "擠奶器" },
-  { id: "shears", label: "剪刀" },
-  { id: "brush", label: "刷子" },
-];
-
 export const inventory = {
   tools: {
+    wateringCan: true,
+    hoe: true,
     dualAxe: true,
     sickle: true,
+    fishingRod: true,
     milker: false,
     shears: false,
     brush: false,

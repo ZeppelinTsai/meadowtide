@@ -37,8 +37,13 @@ NPC 印象不再重複顯示；物品數量由選單既有分頁呈現，NPC 印
 
 ## 工具持有狀態與採集權限
 
-「工具」是位於「關係」左邊的獨立分頁，顯示目前已入手的工具；暫時只用文字，
-不建立工具模型。工具定義與持有狀態以 `src/game-state.ts` 的 `TOOL_DEFINITIONS`、`inventory.tools`
+「工具」是位於「關係」左邊的獨立分頁，顯示目前已入手的工具。工具使用可選取
+卡片，卡片縮圖統一由 `src/tool-models.ts` 的 `makeToolModel()` 產生；模型不得在
+`inventory-ui.ts` 另寫一份。選中卡片後，說明顯示在資訊面板共用 footer 的
+`#inventoryDescription`，物品、素材、料理與關係卡也沿用同一說明出口。
+
+工具目錄以 `src/tool-catalog.ts` 的 `TOOL_DEFINITIONS` 為單一資料源；持有狀態則以
+`src/game-state.ts` 的 `inventory.tools`
 與 `hasTool()` 為單一資料源；工具可能因加工、劇情或其他系統暫時消失，不得
 再假設玩家永久持有。
 

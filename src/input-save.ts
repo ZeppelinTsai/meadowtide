@@ -388,8 +388,11 @@ export function loadGame(
   const savedTools = data.inventory?.tools;
   Object.assign(inventory, data.inventory || {});
   inventory.tools = {
+    wateringCan: typeof savedTools?.wateringCan === "boolean" ? savedTools.wateringCan : true,
+    hoe: typeof savedTools?.hoe === "boolean" ? savedTools.hoe : true,
     dualAxe: typeof savedTools?.dualAxe === "boolean" ? savedTools.dualAxe : true,
     sickle: typeof savedTools?.sickle === "boolean" ? savedTools.sickle : true,
+    fishingRod: typeof savedTools?.fishingRod === "boolean" ? savedTools.fishingRod : true,
     milker: typeof savedTools?.milker === "boolean" ? savedTools.milker : true,
     shears: typeof savedTools?.shears === "boolean" ? savedTools.shears : true,
     brush: typeof savedTools?.brush === "boolean" ? savedTools.brush : true,

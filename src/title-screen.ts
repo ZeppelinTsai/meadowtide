@@ -252,6 +252,11 @@ export function initTitleScreen() {
     resetStoryState();
     resetNpcNameRevealState();
     resetAnimalInteractionState();
+    inventory.tools.wateringCan = true;
+    inventory.tools.hoe = true;
+    inventory.tools.dualAxe = true;
+    inventory.tools.sickle = true;
+    inventory.tools.fishingRod = true;
     inventory.tools.milker = false;
     inventory.tools.shears = false;
     inventory.tools.brush = false;
