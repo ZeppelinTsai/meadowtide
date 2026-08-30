@@ -1,11 +1,5 @@
 import * as THREE from "three";
 import { gameState, hasTool, inventory, RECIPES, TOOL_DEFINITIONS } from "./game-state";
-import { ORE_TIERS } from "./mine";
-import {
-  makeOreNode,
-  makeStonePile,
-  makeWoodPile,
-} from "./props";
 import { setTimePauseSource } from "./time-pause";
 import { getDisplayedStars, getRelationship } from "./affection";
 import { getLocale, translateText } from "./i18n";
@@ -142,13 +136,6 @@ function selectInfoCard(
   if (card.dataset.itemId) contextItemId = card.dataset.itemId;
   showEntryDescription(label, description);
 }
-function oreModel(kind: string) {
-  const ore = ORE_TIERS.find((tier) => tier.kind === kind);
-  return ore
-    ? () => makeOreNode(0, 0, ore.color, ore.accentColor, 0.62)
-    : undefined;
-}
-
 function inventoryEntries(): InventoryEntry[] {
   const entries: InventoryEntry[] = [
     { id: "radishSeeds", tab: "bag", label: "蘿蔔種子", amount: inventory.seeds, tone: "green", symbol: "蘿", model: () => makeInventoryItemVisual("radishSeeds") },
@@ -157,13 +144,13 @@ function inventoryEntries(): InventoryEntry[] {
     { id: "harvested", tab: "bag", label: "農作物", amount: inventory.harvested, tone: "gold", symbol: "穗", model: () => makeInventoryItemVisual("harvested") },
     { id: "fish", tab: "bag", label: "魚", amount: inventory.fish, tone: "blue", symbol: "魚", model: () => makeInventoryItemVisual("fish") },
     { id: "oysters", tab: "bag", label: "牡蠣", amount: inventory.oysters, tone: "pearl", symbol: "貝", model: () => makeInventoryItemVisual("oysters") },
-    { id: "wood", tab: "bag", label: "木材", amount: inventory.wood, tone: "wood", symbol: "木", model: () => makeWoodPile(0, 0) },
-    { id: "stone", tab: "bag", label: "石材", amount: inventory.stone, tone: "stone", symbol: "石", model: () => makeStonePile(0, 0) },
-    { id: "copper", tab: "bag", label: "銅礦", amount: inventory.copper, tone: "copper", symbol: "銅", model: oreModel("copper") },
-    { id: "silver", tab: "bag", label: "銀礦", amount: inventory.silver, tone: "silver", symbol: "銀", model: oreModel("silver") },
-    { id: "gold", tab: "bag", label: "金礦", amount: inventory.gold, tone: "gold", symbol: "金", model: oreModel("gold") },
-    { id: "starCrystal", tab: "bag", label: "星晶", amount: inventory.starCrystal, tone: "star", symbol: "星", model: oreModel("starCrystal") },
-    { id: "godCrystal", tab: "bag", label: "神晶", amount: inventory.godCrystal, tone: "god", symbol: "神", model: oreModel("godCrystal") },
+    { id: "wood", tab: "bag", label: "木材", amount: inventory.wood, tone: "wood", symbol: "木", model: () => makeInventoryItemVisual("wood") },
+    { id: "stone", tab: "bag", label: "石材", amount: inventory.stone, tone: "stone", symbol: "石", model: () => makeInventoryItemVisual("stone") },
+    { id: "copper", tab: "bag", label: "銅礦", amount: inventory.copper, tone: "copper", symbol: "銅", model: () => makeInventoryItemVisual("copper") },
+    { id: "silver", tab: "bag", label: "銀礦", amount: inventory.silver, tone: "silver", symbol: "銀", model: () => makeInventoryItemVisual("silver") },
+    { id: "gold", tab: "bag", label: "金礦", amount: inventory.gold, tone: "gold", symbol: "金", model: () => makeInventoryItemVisual("gold") },
+    { id: "starCrystal", tab: "bag", label: "星晶", amount: inventory.starCrystal, tone: "star", symbol: "星", model: () => makeInventoryItemVisual("starCrystal") },
+    { id: "godCrystal", tab: "bag", label: "神晶", amount: inventory.godCrystal, tone: "god", symbol: "神", model: () => makeInventoryItemVisual("godCrystal") },
   ];
   PEARL_DEFINITIONS.forEach((pearl) => {
     entries.push({
@@ -231,6 +218,11 @@ function renderModelThumbnail(item: InventoryEntry) {
   disposeThumbnailModel(model);
   modelIconCache.set(item.id, dataUrl);
   return dataUrl;
+}
+
+export function inventoryItemThumbnail(itemId: string) {
+  const entry = inventoryEntries().find((item) => item.id === itemId);
+  return entry ? renderModelThumbnail(entry) : null;
 }
 
 function setActiveTab(index: number, focus = false) {

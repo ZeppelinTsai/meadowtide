@@ -1,4 +1,5 @@
 import { gameState, inventory } from "./game-state";
+import { inventoryItemThumbnail } from "./inventory-ui";
 import {
   allInventoryItems,
   inventoryItem,
@@ -178,11 +179,20 @@ function render() {
     lastSignature = signature;
     root.hidden = titlePresentation || hudSuppressed || !gameState.player || !item;
     root.classList.toggle("holding", Boolean(inventory.heldItemId));
-    symbolElement.textContent = itemId?.startsWith("dish-")
-      ? "食"
-      : itemId?.startsWith("pearl-")
-        ? "珠"
-        : SYMBOLS[itemId || ""] || "物";
+    symbolElement.replaceChildren();
+    const thumbnail = itemId ? inventoryItemThumbnail(itemId) : null;
+    if (thumbnail) {
+      const image = document.createElement("img");
+      image.src = thumbnail;
+      image.alt = "";
+      symbolElement.appendChild(image);
+    } else {
+      symbolElement.textContent = itemId?.startsWith("dish-")
+        ? "食"
+        : itemId?.startsWith("pearl-")
+          ? "珠"
+          : SYMBOLS[itemId || ""] || "物";
+    }
     countElement.textContent = itemId ? String(itemAmount(itemId)) : "";
     currentButton.setAttribute(
       "aria-label",

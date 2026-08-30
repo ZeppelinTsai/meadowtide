@@ -11,7 +11,11 @@ import {
   makeOysterProp,
   makePearlProp,
   makeSeedPouch,
+  makeStonePile,
+  makeWoodPile,
+  makeOreNode,
 } from "./props";
+import { ORE_TIERS } from "./mine";
 import { showUiToast } from "./ui-toast";
 import {
   HELD_ARM_ROTATION,
@@ -204,6 +208,10 @@ export function makeInventoryItemVisual(itemId: string): THREE.Object3D {
     return fish;
   }
   if (itemId === "oysters") return makeOysterProp();
+  if (itemId === "wood") return makeWoodPile(0, 0);
+  if (itemId === "stone") return makeStonePile(0, 0);
+  const ore = ORE_TIERS.find((tier) => tier.kind === itemId);
+  if (ore) return makeOreNode(0, 0, ore.color, ore.accentColor, 0.62);
   if (itemId.startsWith("pearl-"))
     return makePearlProp(itemId.slice(6) as import("./pearl-system").PearlRarity);
   return new THREE.Mesh(
