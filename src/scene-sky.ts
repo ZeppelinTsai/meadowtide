@@ -185,6 +185,10 @@ import {
       // 相機空間的天空層必須跟著真正用來 render 的相機；第一人稱使用另一顆
       // PerspectiveCamera，若仍掛在預設正交相機，星空方向與投影都會錯位。
       let activeSkyCamera: THREE.Camera = camera;
+      // 第一人稱使用世界朝向的天空錨點：只跟隨相機位置，不繼承鏡頭旋轉。
+      // 因此天體保持無限遠、沒有平移視差，但玩家轉頭時能真正環視天空。
+      export const firstPersonSkyAnchor = new THREE.Group();
+      scene.add(firstPersonSkyAnchor);
 
       // 架空北緯 8°海島的四季星空：四季合計涵蓋大部分南北天代表星群。
       export const SEASON_STAR_CONFIGS = [
@@ -851,7 +855,8 @@ import {
         ).project(activeSkyCamera);
         const terrainSkylineY = SUN_MASK_PROJECTED_POINT.y * gameState.zoom;
         const skyOnlyVisibility =
-          gameState.currentMapName === "livingArea"
+          gameState.currentMapName === "livingArea" &&
+            !(activeSkyCamera instanceof THREE.PerspectiveCamera)
             ? THREE.MathUtils.smoothstep(
                 moonSkyGroup.position.y - terrainSkylineY,
                 0.15,
@@ -968,7 +973,8 @@ import {
           ).project(activeSkyCamera);
           const terrainSkylineY = SUN_MASK_PROJECTED_POINT.y * gameState.zoom;
           const skyOnlyVisibility =
-            gameState.currentMapName === "livingArea"
+            gameState.currentMapName === "livingArea" &&
+            !(activeSkyCamera instanceof THREE.PerspectiveCamera)
               ? THREE.MathUtils.smoothstep(
                   sunSkyGroup.position.y - terrainSkylineY,
                   0.15,
@@ -1111,11 +1117,19 @@ import {
         nightFactor,
         viewCamera: THREE.Camera = camera,
       ) {
-        if (activeSkyCamera !== viewCamera) {
+        const skyParent =
+          viewCamera instanceof THREE.PerspectiveCamera
+            ? firstPersonSkyAnchor
+            : viewCamera;
+        if (activeSkyCamera !== viewCamera || sunSkyGroup.parent !== skyParent) {
           activeSkyCamera = viewCamera;
-          seasonalStarGroups.forEach((group) => activeSkyCamera.add(group));
-          activeSkyCamera.add(meteorLayer, sunSkyGroup, moonSkyGroup);
-          skyClouds.forEach((cloud) => activeSkyCamera.add(cloud));
+          seasonalStarGroups.forEach((group) => skyParent.add(group));
+          skyParent.add(meteorLayer, sunSkyGroup, moonSkyGroup);
+          skyClouds.forEach((cloud) => skyParent.add(cloud));
+        }
+        if (skyParent === firstPersonSkyAnchor) {
+          firstPersonSkyAnchor.position.copy(viewCamera.position);
+          firstPersonSkyAnchor.quaternion.identity();
         }
         const outside = isOutdoorMap();
         skyDome.visible = outside;

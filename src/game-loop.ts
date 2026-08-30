@@ -121,6 +121,8 @@ import {
   INTERIOR_BACKGROUND_COLOR,
   updateMeteors,
   updateSkyDome,
+  sunSkyGroup,
+  moonSkyGroup,
   updateCameraFrustum,
 } from "./scene-sky";
 import {
@@ -149,6 +151,11 @@ import {
 // 同一個理由(避免每幀配置新物件造成 GC 壓力)。
 const FISH_HUD_PROJECT_VEC = new THREE.Vector3();
 
+const CELESTIAL_WORLD_POSITION = new THREE.Vector3();
+const CELESTIAL_VIEW_DIRECTION = new THREE.Vector3();
+const CELESTIAL_MIRROR_DIRECTION = new THREE.Vector3();
+const WATER_TO_CAMERA_DIRECTION = new THREE.Vector3();
+
 function sampleStarlightReflection(
   worldX: number,
   worldZ: number,
@@ -166,7 +173,39 @@ function sampleStarlightReflection(
       blizzard: 0.02,
     }[gameState.currentWeather] ?? 0;
   const nightVisibility = THREE.MathUtils.smoothstep(nightFactor, 0.45, 0.92);
-  if (nightVisibility <= 0 || weatherVisibility <= 0) return 0;
+
+  // 既有水面直接加入天體鏡射，不再疊第二層透明平面。
+  const viewCamera = getGameplayCamera(camera);
+  const celestial = sunSkyGroup.visible
+    ? sunSkyGroup
+    : moonSkyGroup.visible
+      ? moonSkyGroup
+      : null;
+  let celestialReflection = 0;
+  if (celestial && weatherVisibility > 0) {
+    celestial.getWorldPosition(CELESTIAL_WORLD_POSITION);
+    CELESTIAL_VIEW_DIRECTION.copy(CELESTIAL_WORLD_POSITION)
+      .sub(viewCamera.position)
+      .normalize();
+    CELESTIAL_MIRROR_DIRECTION.set(
+      -CELESTIAL_VIEW_DIRECTION.x,
+      Math.abs(CELESTIAL_VIEW_DIRECTION.y),
+      -CELESTIAL_VIEW_DIRECTION.z,
+    ).normalize();
+    WATER_TO_CAMERA_DIRECTION.set(
+      viewCamera.position.x - worldX,
+      Math.max(0.08, viewCamera.position.y),
+      viewCamera.position.z - worldZ,
+    ).normalize();
+    celestialReflection =
+      Math.pow(
+        Math.max(0, CELESTIAL_MIRROR_DIRECTION.dot(WATER_TO_CAMERA_DIRECTION)),
+        18,
+      ) *
+      weatherVisibility *
+      0.72;
+  }
+  if (nightVisibility <= 0 || weatherVisibility <= 0) return celestialReflection;
 
   // Stable world-space star seeds, broken into short horizontal glints by the waves.
   const cellX = Math.floor(worldX * 1.35);
@@ -179,12 +218,14 @@ function sampleStarlightReflection(
     5,
   );
   const ripple = 0.55 + 0.45 * Math.sin(worldX * 4.2 - elapsed * 2.1);
-  return (
-    nightVisibility *
-    weatherVisibility *
-    star *
-    (0.28 + 0.72 * twinkle) *
-    ripple
+  return Math.min(
+    1,
+    celestialReflection +
+      nightVisibility *
+        weatherVisibility *
+        star *
+        (0.28 + 0.72 * twinkle) *
+        ripple,
   );
 }
 
@@ -988,6 +1029,7 @@ export function animate(now) {
   // 不該跟著卡住，繼續播才像「世界還活著」而不是整個遊戲暫停。
   updateMusic(nightFactor, frameDt);
   // 星空、日月、雲與天空球都要使用最後真正送進 renderer 的相機。
+  updateFirstPersonCamera(frameDt);
   updateSkyDome(nightFactor, getGameplayCamera(camera));
   updateMeteors(frameDt);
   updateWeatherEffects(frameDt, nightFactor);
@@ -1813,7 +1855,6 @@ export function animate(now) {
     gameState.hudUpdateAccumulator = 0;
     updateHud();
   }
-  updateFirstPersonCamera(frameDt);
   renderer.render(scene, getGameplayCamera(camera));
 }
 
