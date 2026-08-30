@@ -1910,10 +1910,10 @@ canvas {
 }
 .quick-item-arrow,
 .quick-item-current {
-  color: #fff4d8;
-  background: rgba(25, 31, 31, 0.92);
-  border: 2px solid #c9a86a;
-  box-shadow: 0 3px 0 rgba(73, 48, 37, 0.9);
+  color: #573b27;
+  background: rgba(252, 240, 213, 0.88);
+  border: 2px solid #c99b50;
+  box-shadow: 0 3px 0 rgba(104, 69, 39, 0.72);
   font: inherit;
   font-size: 18px;
   cursor: pointer;
@@ -1950,11 +1950,15 @@ canvas {
 }
 .quick-item-symbol {
   display: grid;
-  width: 42px;
-  height: 42px;
+  width: 60px;
+  height: 60px;
   place-items: center;
   color: #493025;
-  background: #f2d08c;
+  background: radial-gradient(
+    circle,
+    rgba(255, 250, 236, 0.96),
+    rgba(239, 201, 121, 0.72)
+  );
   border-radius: 12px;
   font-weight: 800;
 }
@@ -1986,7 +1990,8 @@ canvas {
   font-variant-numeric: tabular-nums;
 }
 #quickItemHud.holding .quick-item-current {
-  border-color: #ffe09a;
+  background: #efc979;
+  border-color: #b77d36;
   box-shadow:
     0 3px 0 rgba(73, 48, 37, 0.9),
     0 0 0 3px rgba(242, 208, 140, 0.22);
