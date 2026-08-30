@@ -817,6 +817,38 @@ canvas {
   align-self: end;
   margin-top: 6px;
 }
+.inventory-pager {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  min-height: 48px;
+}
+.inventory-pager button {
+  padding: 8px 14px;
+  color: #f3ead7;
+  background: rgba(40, 51, 54, 0.9);
+  border: 1px solid #9c8355;
+  border-radius: 8px;
+  font: inherit;
+  font-size: 18px;
+  cursor: pointer;
+}
+.inventory-pager button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.inventory-pager button:focus-visible {
+  outline: 3px solid #f4d68e;
+  outline-offset: 2px;
+}
+.inventory-pager span {
+  min-width: 64px;
+  color: #f2d08c;
+  font-size: 18px;
+  text-align: center;
+}
 .inventory-empty {
   grid-column: 1 / -1;
   display: grid;

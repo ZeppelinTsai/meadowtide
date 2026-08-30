@@ -7,6 +7,13 @@ export type InventoryItemId =
   | "harvested"
   | "fish"
   | "oysters"
+  | "wood"
+  | "stone"
+  | "copper"
+  | "silver"
+  | "gold"
+  | "starCrystal"
+  | "godCrystal"
   | "pearl-white"
   | "pearl-pink"
   | "pearl-purple"
@@ -32,6 +39,13 @@ export const BASIC_ITEMS: readonly ItemDefinition[] = [
   { id: "harvested", label: "農作物", edible: true },
   { id: "fish", label: "魚", edible: true },
   { id: "oysters", label: "牡蠣", edible: true },
+  { id: "wood", label: "木材", edible: false },
+  { id: "stone", label: "石材", edible: false },
+  { id: "copper", label: "銅礦", edible: false },
+  { id: "silver", label: "銀礦", edible: false },
+  { id: "gold", label: "金礦", edible: false },
+  { id: "starCrystal", label: "星晶", edible: false },
+  { id: "godCrystal", label: "神晶", edible: false },
   { id: "pearl-white", label: "白珍珠", edible: false },
   { id: "pearl-pink", label: "粉珍珠", edible: false },
   { id: "pearl-purple", label: "紫珍珠", edible: false },

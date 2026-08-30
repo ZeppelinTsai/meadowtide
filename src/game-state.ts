@@ -238,6 +238,8 @@ export const inventory = {
   // 料理成品——跟其他資源不同，種類不只一種，所以用「食譜 id -> 數量」
   // 的表，不是單一數字。哪個 id 對應哪道菜看下面的 RECIPES。
   dishes: {} as Record<string, number>,
+  // 倉庫沿用物品 id，數量為 0 的項目不保存也不顯示。
+  storage: {} as Record<string, number>,
 };
 
 export function hasTool(toolId: ToolId) {

@@ -48,6 +48,13 @@ export function itemAmount(itemId: string): number {
   if (itemId === "harvested") return inventory.harvested;
   if (itemId === "fish") return inventory.fish;
   if (itemId === "oysters") return inventory.oysters;
+  if (itemId === "wood") return inventory.wood;
+  if (itemId === "stone") return inventory.stone;
+  if (itemId === "copper") return inventory.copper;
+  if (itemId === "silver") return inventory.silver;
+  if (itemId === "gold") return inventory.gold;
+  if (itemId === "starCrystal") return inventory.starCrystal;
+  if (itemId === "godCrystal") return inventory.godCrystal;
   if (itemId.startsWith("pearl-"))
     return inventory.pearls[itemId.slice(6) as import("./pearl-system").PearlRarity] ?? 0;
   if (itemId.startsWith("dish-")) return inventory.dishes[itemId.slice(5)] ?? 0;
@@ -67,6 +74,13 @@ function changeItemAmount(itemId: string, delta: number) {
     inventory.fish = Math.max(0, inventory.fish + delta);
   else if (itemId === "oysters")
     inventory.oysters = Math.max(0, inventory.oysters + delta);
+  else if (itemId === "wood") inventory.wood = Math.max(0, inventory.wood + delta);
+  else if (itemId === "stone") inventory.stone = Math.max(0, inventory.stone + delta);
+  else if (itemId === "copper") inventory.copper = Math.max(0, inventory.copper + delta);
+  else if (itemId === "silver") inventory.silver = Math.max(0, inventory.silver + delta);
+  else if (itemId === "gold") inventory.gold = Math.max(0, inventory.gold + delta);
+  else if (itemId === "starCrystal") inventory.starCrystal = Math.max(0, inventory.starCrystal + delta);
+  else if (itemId === "godCrystal") inventory.godCrystal = Math.max(0, inventory.godCrystal + delta);
   else if (itemId.startsWith("pearl-")) {
     const rarity = itemId.slice(6) as import("./pearl-system").PearlRarity;
     inventory.pearls[rarity] = Math.max(0, (inventory.pearls[rarity] ?? 0) + delta);
@@ -78,6 +92,33 @@ function changeItemAmount(itemId: string, delta: number) {
       (inventory.dishes[recipeId] ?? 0) + delta,
     );
   }
+}
+
+export function storedItemAmount(itemId: string) {
+  return Math.max(0, Number(inventory.storage[itemId]) || 0);
+}
+
+export function moveItemToStorage(itemId: string): boolean {
+  const item = inventoryItem(itemId);
+  if (!item || itemAmount(itemId) <= 0) return false;
+  changeItemAmount(itemId, -1);
+  inventory.storage[itemId] = storedItemAmount(itemId) + 1;
+  if (inventory.heldItemId === itemId && itemAmount(itemId) <= 0) {
+    inventory.heldItemId = null;
+    renderedItemId = null;
+  }
+  showUiToast("倉庫", item.label + "已放入倉庫。");
+  return true;
+}
+
+export function moveItemFromStorage(itemId: string): boolean {
+  const item = inventoryItem(itemId);
+  if (!item || storedItemAmount(itemId) <= 0) return false;
+  inventory.storage[itemId] = storedItemAmount(itemId) - 1;
+  if (inventory.storage[itemId] <= 0) delete inventory.storage[itemId];
+  changeItemAmount(itemId, 1);
+  showUiToast("倉庫", item.label + "已放入背包。");
+  return true;
 }
 
 export function takeOutItem(itemId: string): boolean {

@@ -67,6 +67,7 @@ const prevHeld = { w: false, a: false, s: false, d: false, e: false, r: false, f
 const prevShoulder = { left: false, right: false };
 const prevUiDirection = { up: false, down: false, left: false, right: false };
 let prevUiConfirm = false;
+let prevUiTransfer = false;
 let prevCancelButton = false;
 let prevZoomIn = false;
 let prevZoomOut = false;
@@ -78,6 +79,7 @@ function syncKey(key: keyof typeof prevHeld, held: boolean) {
 }
 
 function releaseAllGamepadInputs() {
+  prevUiTransfer = false;
   (Object.keys(prevHeld) as Array<keyof typeof prevHeld>).forEach((key) => {
     if (prevHeld[key]) dispatchKey("keyup", key);
     prevHeld[key] = false;
@@ -215,6 +217,10 @@ export function pollGamepad() {
       }
     }
     prevUiConfirm = confirmButton;
+    const transferButton = !!pad.buttons[2]?.pressed;
+    if (transferButton && !prevUiTransfer) dispatchKey("keydown", "x");
+    if (!transferButton && prevUiTransfer) dispatchKey("keyup", "x");
+    prevUiTransfer = transferButton;
     if (cancelButton && !prevCancelButton) dispatchKey("keydown", "Escape");
     if (!cancelButton && prevCancelButton) dispatchKey("keyup", "Escape");
   } else {
@@ -227,6 +233,7 @@ export function pollGamepad() {
       },
     );
     prevUiConfirm = confirmButton;
+    prevUiTransfer = false;
     leftStickX = dx;
     leftStickZ = dz;
     syncKey("a", dx < 0);

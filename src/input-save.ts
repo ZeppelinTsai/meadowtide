@@ -282,7 +282,7 @@ export function getSaveSlotSummaries(): SaveSlotSummary[] {
 export function saveGame(slot = "default") {
   npcs.forEach((npc) => getRelationship(npc.id));
   const data = {
-    version: 12,
+    version: 13,
     savedAt: Date.now(),
     playerProfile: {
       name: gameState.playerName,
@@ -406,6 +406,12 @@ export function loadGame(
     black: Math.max(0, Number(data.inventory?.pearls?.black) || 0),
     gold: Math.max(0, Number(data.inventory?.pearls?.gold) || 0),
   };
+  inventory.storage = Object.fromEntries(
+    Object.entries(data.inventory?.storage || {}).flatMap(([itemId, amount]) => {
+      const safeAmount = Math.max(0, Math.floor(Number(amount) || 0));
+      return safeAmount > 0 ? [[itemId, safeAmount]] : [];
+    }),
+  );
   if (data.inventory?.animalProducts) Object.assign(inventory.animalProducts, data.inventory.animalProducts);
   restoreAnimalInteractionState(data.animalInteractions);
   gameState.feederUnits = Number.isFinite(data.feederUnits)
