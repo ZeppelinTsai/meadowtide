@@ -274,7 +274,11 @@ import {
         // 上半球星空。nx 覆蓋完整 360° 方位，ny 從地平線升到天頂；第一人稱
         // 轉頭或抬頭時不會離開原本的單面星幕而看到大片無星區。
         const longitude = (nx / 0.7) * Math.PI;
-        const latitude = 0.04 + ny * (Math.PI / 2 - 0.04);
+        // 向地平線下延伸約 16°，吸收第一人稱／標題展示鏡頭的俯仰差；實際
+        // 地形仍會靠 depthTest 遮住低於岸線的星點。
+        const horizonOverlap = 0.28;
+        const latitude =
+          -horizonOverlap + ny * (Math.PI / 2 + horizonOverlap);
         const radius = 78 + seasonIndex * 0.06;
         return new THREE.Vector3(
           Math.cos(latitude) * Math.sin(longitude) * radius,

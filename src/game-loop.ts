@@ -212,19 +212,19 @@ function sampleStarlightReflection(
   const cellZ = Math.floor(worldZ * 0.72);
   const seed = Math.sin(cellX * 127.1 + cellZ * 311.7) * 43758.5453;
   const random = seed - Math.floor(seed);
-  const star = THREE.MathUtils.smoothstep(random, 0.76, 0.975);
+  const star = THREE.MathUtils.smoothstep(random, 0.52, 0.94);
   const twinkle = Math.pow(
     Math.max(0, Math.sin(elapsed * (1.25 + random * 1.8) + random * 31.4)),
     5,
   );
-  const ripple = 0.55 + 0.45 * Math.sin(worldX * 4.2 - elapsed * 2.1);
+  const ripple = 0.7 + 0.3 * Math.sin(worldX * 4.2 - elapsed * 2.1);
   return Math.min(
     1,
     celestialReflection +
       nightVisibility *
         weatherVisibility *
         star *
-        (0.28 + 0.72 * twinkle) *
+        (0.45 + 0.55 * twinkle) *
         ripple,
   );
 }
@@ -313,7 +313,7 @@ function setSeaVertexColor(
   const r = baseR * (1 - foamMix) + foamMix;
   const g = baseG * (1 - foamMix) + foamMix;
   const b = baseB * (1 - foamMix) + foamMix;
-  const glow = Math.min(1, starlight * 1.18);
+  const glow = Math.min(1, starlight * 1.65);
   colors.setXYZ(
     index,
     r + (0.78 - r) * glow,
