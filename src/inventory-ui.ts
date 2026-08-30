@@ -597,6 +597,15 @@ addEventListener("keydown", (event) => {
   }
 
   const activeId = TABS[activeTabIndex].id;
+  if (
+    contentMenu.hidden &&
+    (event.key === "PageUp" || event.key === "PageDown") &&
+    (activeId === "bag" || activeId === "storage")
+  ) {
+    event.preventDefault();
+    changeItemPage(activeId, event.key === "PageDown" ? 1 : -1);
+    return;
+  }
   if (key === "x" && contentMenu.hidden && (activeId === "bag" || activeId === "storage")) {
     const focused = document.activeElement;
     const itemId = focused instanceof HTMLButtonElement ? focused.dataset.itemId : undefined;

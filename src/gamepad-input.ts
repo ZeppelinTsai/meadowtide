@@ -131,10 +131,17 @@ export function pollGamepad() {
   if (rightStickButton && !prevRightStickButton) dispatchKey("keydown", "Tab");
   if (!rightStickButton && prevRightStickButton) dispatchKey("keyup", "Tab");
   prevRightStickButton = rightStickButton;
+  const uiNavigation = isUiNavigationActive();
   const zoomOut = (pad.buttons[6]?.value ?? 0) > 0.55;
   const zoomIn = (pad.buttons[7]?.value ?? 0) > 0.55;
-  if (zoomOut && !prevZoomOut) window.dispatchEvent(new WheelEvent("wheel", { deltaY: 100 }));
-  if (zoomIn && !prevZoomIn) window.dispatchEvent(new WheelEvent("wheel", { deltaY: -100 }));
+  if (zoomOut && !prevZoomOut) {
+    if (uiNavigation) dispatchKey("keydown", "PageUp");
+    else window.dispatchEvent(new WheelEvent("wheel", { deltaY: 100 }));
+  }
+  if (zoomIn && !prevZoomIn) {
+    if (uiNavigation) dispatchKey("keydown", "PageDown");
+    else window.dispatchEvent(new WheelEvent("wheel", { deltaY: -100 }));
+  }
   prevZoomOut = zoomOut;
   prevZoomIn = zoomIn;
 
@@ -159,7 +166,6 @@ export function pollGamepad() {
     else if (pad.buttons[13]?.pressed) dz = 1;
   }
 
-  const uiNavigation = isUiNavigationActive();
   const confirmButton = !!pad.buttons[0]?.pressed;
   const cancelButton = !!pad.buttons[1]?.pressed;
   if (uiNavigation) {
