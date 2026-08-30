@@ -759,7 +759,9 @@ canvas {
 .menu-info-card.selected {
   border-color: rgba(242, 208, 140, 0.72);
   outline: none;
-  box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.22), 0 0 0 3px rgba(242, 208, 140, 0.2);
+  box-shadow:
+    inset 0 0 20px rgba(0, 0, 0, 0.22),
+    0 0 0 3px rgba(242, 208, 140, 0.2);
 }
 .inventory-tool-card .inventory-icon {
   grid-row: 1 / 3;
@@ -932,19 +934,19 @@ canvas {
   box-shadow: 0 0 0 3px rgba(79, 48, 21, 0.65);
 }
 .world-map-location-mountain {
-  left: 19%;
-  top: 27%;
+  left: 35%;
+  top: 35%;
 }
 .world-map-location-old-village {
-  left: 50%;
-  top: 72%;
+  left: 35%;
+  top: 80%;
 }
 .world-map-location-living-area {
   left: 62%;
   top: 36%;
 }
 .world-map-location-port {
-  left: 84%;
+  left: 75%;
   top: 74%;
 }
 @media (max-width: 620px) {
@@ -1796,9 +1798,44 @@ canvas {
   }
 }
 
-#inventoryPanel { position: relative; }
-.inventory-content-menu { position:absolute; inset:0; z-index:3; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:14px; padding:28px; background:rgba(16,24,31,.94); border-radius:14px; }
-.inventory-content-menu[hidden] { display:none; }
-.inventory-content-menu h3 { margin:0 0 10px; font-size:26px; color:#f5dfb0; }
-.inventory-content-menu button { min-width:min(360px,80%); padding:12px 22px; border:2px solid rgba(226,198,139,.65); border-radius:9px; background:rgba(52,68,76,.9); color:#fff5df; font:inherit; font-size:20px; cursor:pointer; }
-.inventory-content-menu button:hover, .inventory-content-menu button:focus-visible { background:#a77b43; outline:3px solid #f4d68e; outline-offset:2px; }
+#inventoryPanel {
+  position: relative;
+}
+.inventory-content-menu {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  padding: 28px;
+  background: rgba(16, 24, 31, 0.94);
+  border-radius: 14px;
+}
+.inventory-content-menu[hidden] {
+  display: none;
+}
+.inventory-content-menu h3 {
+  margin: 0 0 10px;
+  font-size: 26px;
+  color: #f5dfb0;
+}
+.inventory-content-menu button {
+  min-width: min(360px, 80%);
+  padding: 12px 22px;
+  border: 2px solid rgba(226, 198, 139, 0.65);
+  border-radius: 9px;
+  background: rgba(52, 68, 76, 0.9);
+  color: #fff5df;
+  font: inherit;
+  font-size: 20px;
+  cursor: pointer;
+}
+.inventory-content-menu button:hover,
+.inventory-content-menu button:focus-visible {
+  background: #a77b43;
+  outline: 3px solid #f4d68e;
+  outline-offset: 2px;
+}
