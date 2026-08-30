@@ -84,7 +84,14 @@ let activeTabIndex = 0;
 let contextItemId: string | null = null;
 let contextReturnCard: HTMLButtonElement | null = null;
 const pageByTab: Record<"bag" | "storage", number> = { bag: 0, storage: 0 };
-const ITEMS_PER_PAGE = 6;
+function getItemsPerPage() {
+  const minimumCardWidth = innerWidth <= 620 ? 88 : 128;
+  const gridWidth = grid.clientWidth || Math.min(900, innerWidth * 0.9) - 48;
+  const columns = Math.max(1, Math.floor((gridWidth + 12) / (minimumCardWidth + 12)));
+  const availableGridHeight = innerHeight * 0.84 - 250;
+  const rows = Math.max(1, Math.min(5, Math.floor((availableGridHeight + 12) / 138)));
+  return columns * rows;
+}
 const modelIconCache = new Map<string, string>();
 const INVENTORY_THUMBNAIL_LONG_EDGE = 1.05;
 let thumbnailRenderer: THREE.WebGLRenderer | null = null;
@@ -132,6 +139,7 @@ function selectInfoCard(
   });
   card.classList.add("selected");
   card.setAttribute("aria-current", "true");
+  if (card.dataset.itemId) contextItemId = card.dataset.itemId;
   showEntryDescription(label, description);
 }
 function oreModel(kind: string) {
@@ -274,19 +282,43 @@ function makeActionButton(label: string, action: () => void) {
   return button;
 }
 
-function openItemContentMenu(itemId: string, returnCard?: HTMLButtonElement) {
+function openItemContentMenu(
+  itemId: string,
+  itemTab: "bag" | "storage",
+  returnCard?: HTMLButtonElement,
+) {
   contextReturnCard = returnCard ?? null;
   const item = inventoryItem(itemId);
-  if (!item || itemAmount(itemId) <= 0) return;
+  const available = itemTab === "storage"
+    ? storedItemAmount(itemId)
+    : itemAmount(itemId);
+  if (!item || available <= 0) return;
   contextItemId = itemId;
   contentMenu.innerHTML = "";
   contentMenu.hidden = false;
   const heading = document.createElement("h3");
   heading.textContent = translateText(item.label);
   contentMenu.appendChild(heading);
-  const take = makeActionButton("拿出", () => { if (takeOutItem(itemId)) setInventoryOpen(false); });
-  contentMenu.appendChild(take);
-  if (item.edible) contentMenu.appendChild(makeActionButton("食用", () => { eatItem(itemId); closeItemContentMenu(); renderInventory(); }));
+  if (itemTab === "bag") {
+    const take = makeActionButton("拿出", () => {
+      if (takeOutItem(itemId)) setInventoryOpen(false);
+    });
+    contentMenu.appendChild(take);
+    if (item.edible) {
+      contentMenu.appendChild(makeActionButton("食用", () => {
+        eatItem(itemId);
+        closeItemContentMenu(false);
+        renderInventory(true);
+      }));
+    }
+  }
+  contentMenu.appendChild(makeActionButton(
+    itemTab === "storage" ? "放入背包" : "放入倉庫",
+    () => {
+      closeItemContentMenu(false);
+      transferSelectedItem(itemId, itemTab);
+    },
+  ));
   contentMenu.appendChild(makeActionButton("取消", closeItemContentMenu));
   (contentMenu.querySelector("button") as HTMLButtonElement | null)?.focus();
 }
@@ -302,7 +334,8 @@ function changeItemPage(activeId: "bag" | "storage", direction: -1 | 1) {
   const entries = inventoryEntries().filter((item) =>
     activeId === "storage" ? storedItemAmount(item.id) > 0 : item.amount > 0,
   );
-  const pageCount = Math.max(1, Math.ceil(entries.length / ITEMS_PER_PAGE));
+  const itemsPerPage = getItemsPerPage();
+  const pageCount = Math.max(1, Math.ceil(entries.length / itemsPerPage));
   pageByTab[activeId] = (pageByTab[activeId] + direction + pageCount) % pageCount;
   renderInventory(true);
 }
@@ -310,6 +343,13 @@ function changeItemPage(activeId: "bag" | "storage", direction: -1 | 1) {
 function renderPager(activeId: "bag" | "storage", page: number, pageCount: number) {
   const pager = document.createElement("div");
   pager.className = "inventory-pager";
+  const transfer = makeActionButton(
+    activeId === "storage" ? "X　放入背包" : "X　放入倉庫",
+    () => {
+      if (contextItemId) transferSelectedItem(contextItemId, activeId);
+    },
+  );
+  transfer.classList.add("inventory-transfer-button");
   const previous = makeActionButton("← 上一頁", () => changeItemPage(activeId, -1));
   previous.disabled = pageCount <= 1;
   const indicator = document.createElement("span");
@@ -317,7 +357,7 @@ function renderPager(activeId: "bag" | "storage", page: number, pageCount: numbe
   indicator.setAttribute("aria-live", "polite");
   const next = makeActionButton("下一頁 →", () => changeItemPage(activeId, 1));
   next.disabled = pageCount <= 1;
-  pager.append(previous, indicator, next);
+  pager.append(transfer, previous, indicator, next);
   grid.appendChild(pager);
 }
 
@@ -342,13 +382,15 @@ export function renderInventory(focusFirstCard = false) {
       amount: itemTab === "storage" ? storedItemAmount(item.id) : item.amount,
     }))
     .filter((item) => item.amount > 0);
-  const pageCount = Math.max(1, Math.ceil(visibleEntries.length / ITEMS_PER_PAGE));
+  const itemsPerPage = getItemsPerPage();
+  const pageCount = Math.max(1, Math.ceil(visibleEntries.length / itemsPerPage));
   pageByTab[itemTab] = Math.min(pageByTab[itemTab], pageCount - 1);
   const page = pageByTab[itemTab];
   const pageEntries = visibleEntries.slice(
-    page * ITEMS_PER_PAGE,
-    (page + 1) * ITEMS_PER_PAGE,
+    page * itemsPerPage,
+    (page + 1) * itemsPerPage,
   );
+  contextItemId = pageEntries[0]?.id ?? null;
 
   if (!pageEntries.length) {
     const empty = document.createElement("div");
@@ -392,7 +434,7 @@ export function renderInventory(focusFirstCard = false) {
     );
     slot.addEventListener("click", () => {
       selectInfoCard(slot, item.label, entryDescription(item));
-      if (itemTab === "bag") openItemContentMenu(item.id, slot);
+      openItemContentMenu(item.id, itemTab, slot);
     });
     grid.appendChild(slot);
   });
@@ -557,9 +599,6 @@ addEventListener("keydown", (event) => {
     if (focused instanceof HTMLElement && tabList.contains(focused)) {
       event.preventDefault();
       setActiveTab(activeTabIndex + direction, true);
-    } else if (contentMenu.hidden && (activeId === "bag" || activeId === "storage")) {
-      event.preventDefault();
-      changeItemPage(activeId, direction);
     } else if (contentMenu.hidden && moveContentFocus(direction)) {
       event.preventDefault();
     }
@@ -578,6 +617,13 @@ document.getElementById("quickInfoMenuBtn")?.addEventListener("click", () => {
   window.dispatchEvent(new Event("close-map-menu"));
   setInventoryOpen(true);
 });
+let inventoryResizeTimer = 0;
+addEventListener("resize", () => {
+  if (!open) return;
+  clearTimeout(inventoryResizeTimer);
+  inventoryResizeTimer = window.setTimeout(() => renderInventory(true), 80);
+});
+
 overlay.addEventListener("click", (event) => {
   if (event.target === overlay) setInventoryOpen(false);
 });

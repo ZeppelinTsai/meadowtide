@@ -822,7 +822,8 @@ canvas {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 18px;
+  flex-wrap: wrap;
+  gap: 12px 18px;
   min-height: 48px;
 }
 .inventory-pager button {
