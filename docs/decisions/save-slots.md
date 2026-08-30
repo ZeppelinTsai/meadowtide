@@ -95,3 +95,7 @@ slot markup 或 CSS。清單必須顯示高對比且穩定佔位的垂直捲軸�
 
 ## Save format v12
 Save v12 adds inventory.pearls and oysterRackSlots. Missing pearl counts safely default to zero, and old saves default to one oyster rack. It retains the v11 animal interaction and legacy-tool migration behavior.\n\n## Save format v13\nSave v13 adds inventory.storage, keyed by the same permanent item ids used by the backpack. Old saves start with an empty warehouse; invalid, fractional, zero, and negative stored quantities are discarded during load.
+
+## Save format v14
+
+Save v14 adds `lastGiftDay` to each existing relationship record. Legacy saves default every NPC to `-1`, meaning no gift has been given today. Relationship data remains the single save source for affection, daily conversation, and daily gifting.

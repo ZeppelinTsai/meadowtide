@@ -22,6 +22,7 @@ export type AffectionRewardSource = keyof typeof AFFECTION_REWARDS;
 export interface RelationshipState {
   points: number;
   lastDailyConversationDay: number;
+  lastGiftDay: number;
   completedEvents: string[];
   unlockedStages: AffectionLockStar[];
   currentLock: AffectionLockStar | null;
@@ -51,6 +52,7 @@ function makeRelationshipState(): RelationshipState {
   return {
     points: 0,
     lastDailyConversationDay: -1,
+    lastGiftDay: -1,
     completedEvents: [],
     unlockedStages: [],
     currentLock: null,
@@ -212,6 +214,9 @@ export function restoreRelationships(saved: unknown) {
       )
         ? Number(value.lastDailyConversationDay)
         : -1;
+      state.lastGiftDay = Number.isFinite(value.lastGiftDay)
+        ? Number(value.lastGiftDay)
+        : -1;
       state.completedEvents = Array.isArray(value.completedEvents)
         ? [...new Set(value.completedEvents.filter((id) => typeof id === "string"))]
         : [];
@@ -237,6 +242,10 @@ export function restoreRelationships(saved: unknown) {
   );
 }
 
-export function resetRelationshipsForTests() {
+export function resetRelationships() {
   Object.keys(relationships).forEach((id) => delete relationships[id]);
+}
+
+export function resetRelationshipsForTests() {
+  resetRelationships();
 }

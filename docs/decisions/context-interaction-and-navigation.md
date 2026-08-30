@@ -99,3 +99,9 @@ When the player has a fishing rod and is within the shared fishing-water radius,
 ## Animal stuck recovery
 
 Animals track continuous walking time without movement. After two seconds, daytime animals move to a validated safe pasture point and choose a new target; animals stuck while returning home complete the barn transition. Random pasture fallback scans for a point that passes both pasture and collision checks instead of returning a possibly blocked fixed corner.
+
+## NPC gifts and edible held items
+
+When the player holds an item near an available NPC, `give-gift` is the highest-priority context target and conversation moves to the secondary slot. Each NPC accepts one normal gift per game day; festival gifts use `setFestivalGiftMultiplier()` and do not consume that daily allowance. Gift preferences use five data tiers (`hated`, `disliked`, `normal`, `liked`, `loved`) mapped to the existing affection rewards and placeholder symbols ×／▽／○／△／♥. Unconfigured NPC-item pairs safely default to `normal`.
+
+If no gift target wins and the held item is edible, the context HUD exposes `eat-held-item`. Both actions consume the same held inventory source; gifting or eating the final copy clears the held state and visual.

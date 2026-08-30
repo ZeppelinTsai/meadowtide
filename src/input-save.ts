@@ -282,7 +282,7 @@ export function getSaveSlotSummaries(): SaveSlotSummary[] {
 export function saveGame(slot = "default") {
   npcs.forEach((npc) => getRelationship(npc.id));
   const data = {
-    version: 13,
+    version: 14,
     savedAt: Date.now(),
     playerProfile: {
       name: gameState.playerName,

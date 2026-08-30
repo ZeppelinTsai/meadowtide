@@ -18,6 +18,7 @@ import { makeFemaleHeroPlayer, makeMaleHeroPlayer } from "./humanoid";
 import { resetStoryState } from "./story/story-state";
 import { resetNpcNameRevealState } from "./npc-name-reveal";
 import { resetAnimalInteractionState } from "./animal-interactions";
+import { resetRelationships } from "./affection";
 import { scene } from "./scene-sky";
 import { hideLoadingScreen } from "./loading-screen";
 import { animalGroup, animals } from "./npc-runtime";
@@ -258,6 +259,7 @@ export function initTitleScreen() {
     resetStoryState();
     resetNpcNameRevealState();
     resetAnimalInteractionState();
+    resetRelationships();
     gameState.oysterRackSlots = 1;
     inventory.pearls.white = 0;
     inventory.pearls.pink = 0;

@@ -121,6 +121,17 @@ export function moveItemFromStorage(itemId: string): boolean {
   return true;
 }
 
+export function consumeInventoryItem(itemId: string, amount = 1): boolean {
+  const safeAmount = Math.max(1, Math.floor(amount));
+  if (!inventoryItem(itemId) || itemAmount(itemId) < safeAmount) return false;
+  changeItemAmount(itemId, -safeAmount);
+  if (inventory.heldItemId === itemId && itemAmount(itemId) <= 0) {
+    inventory.heldItemId = null;
+    renderedItemId = null;
+  }
+  return true;
+}
+
 export function takeOutItem(itemId: string): boolean {
   if (gameState.player?.userData.carryingAnimal) {
     showUiToast("背包", "請先放下抱著的動物。");
@@ -138,9 +149,7 @@ export function takeOutItem(itemId: string): boolean {
 export function eatItem(itemId: string): boolean {
   const item = inventoryItem(itemId);
   if (!item?.edible || itemAmount(itemId) <= 0) return false;
-  changeItemAmount(itemId, -1);
-  if (inventory.heldItemId === itemId && itemAmount(itemId) <= 0)
-    inventory.heldItemId = null;
+  consumeInventoryItem(itemId, 1);
   renderedItemId = null;
   showUiToast("背包", `吃下了${item.label}。`);
   return true;
