@@ -66,6 +66,7 @@ function dispatchKey(type: "keydown" | "keyup", key: string) {
 const prevHeld = { w: false, a: false, s: false, d: false, e: false, r: false, f: false, q: false, m: false };
 const prevShoulder = { left: false, right: false };
 const prevUiDirection = { up: false, down: false, left: false, right: false };
+const prevQuickDpad = { up: false, down: false, left: false, right: false };
 let prevUiConfirm = false;
 let prevUiTransfer = false;
 let prevCancelButton = false;
@@ -80,6 +81,9 @@ function syncKey(key: keyof typeof prevHeld, held: boolean) {
 
 function releaseAllGamepadInputs() {
   prevUiTransfer = false;
+  (Object.keys(prevQuickDpad) as Array<keyof typeof prevQuickDpad>).forEach((key) => {
+    prevQuickDpad[key] = false;
+  });
   (Object.keys(prevHeld) as Array<keyof typeof prevHeld>).forEach((key) => {
     if (prevHeld[key]) dispatchKey("keyup", key);
     prevHeld[key] = false;
@@ -157,13 +161,23 @@ export function pollGamepad() {
   let dz = pad.axes[1] ?? 0;
   if (Math.abs(dx) < STICK_DEADZONE) dx = 0;
   if (Math.abs(dz) < STICK_DEADZONE) dz = 0;
-  if (dx === 0 && dz === 0) {
-    // d-pad 備援(標準映射：buttons[12]=上 13=下 14=左 15=右)，Xbox 360
-    // 手把在 Chrome 底下的「standard」映射也遵循這個 index。
-    if (pad.buttons[14]?.pressed) dx = -1;
-    else if (pad.buttons[15]?.pressed) dx = 1;
-    if (pad.buttons[12]?.pressed) dz = -1;
-    else if (pad.buttons[13]?.pressed) dz = 1;
+  const dpad = {
+    up: !!pad.buttons[12]?.pressed,
+    down: !!pad.buttons[13]?.pressed,
+    left: !!pad.buttons[14]?.pressed,
+    right: !!pad.buttons[15]?.pressed,
+  };
+  if (!uiNavigation) {
+    (Object.keys(dpad) as Array<keyof typeof dpad>).forEach((key) => {
+      if (dpad[key] && !prevQuickDpad[key]) {
+        window.dispatchEvent(new CustomEvent("quick-item-direction", { detail: key }));
+      }
+      prevQuickDpad[key] = dpad[key];
+    });
+  } else {
+    (Object.keys(prevQuickDpad) as Array<keyof typeof prevQuickDpad>).forEach((key) => {
+      prevQuickDpad[key] = false;
+    });
   }
 
   const confirmButton = !!pad.buttons[0]?.pressed;
@@ -179,10 +193,10 @@ export function pollGamepad() {
     syncKey("r", false);
     syncKey("f", false);
     const directions = {
-      up: dz < 0,
-      down: dz > 0,
-      left: dx < 0,
-      right: dx > 0,
+      up: dz < 0 || dpad.up,
+      down: dz > 0 || dpad.down,
+      left: dx < 0 || dpad.left,
+      right: dx > 0 || dpad.right,
     };
     (Object.keys(directions) as Array<keyof typeof directions>).forEach((key) => {
       if (directions[key] && !prevUiDirection[key]) {
