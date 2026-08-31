@@ -166,3 +166,11 @@ Zeppelin
 🌠 又一次流星雨	婚後流星雨	回到當初告白／接吻地點，但台詞完全不同
 📷 翻以前的東西	結婚周年	發現交往時送的禮物對方一直留著
 🧓 談到很多年以後	結婚多年	「等我們都走不動了，還要住在這裡嗎？」
+
+
+改主線演出
+C:\meadowtide\src\prologue.ts
+C:\meadowtide\src\story\chapters\prologue-script.ts
+
+
+"[村長交給主角九包蘿蔔種子]",
