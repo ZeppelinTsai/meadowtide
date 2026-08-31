@@ -769,13 +769,12 @@ export function makePortScene() {
   );
   const waterMat = new THREE.MeshStandardMaterial({
     vertexColors: true,
-    // 規則 PlaneGeometry 不可使用尖銳金屬高光，否則峰谷間會顯成灰色菱形。
-    roughness: 0.62,
-    metalness: 0,
+    roughness: 0.2,
+    metalness: 0.1,
+    flatShading: true,
     transparent: true,
     // 港區船塢是淺水，比北邊主海域(0.88)透明得多，星空才透得出來。
     opacity: 0.6,
-    side: THREE.DoubleSide,
   });
   const waterDepthMat = new THREE.MeshStandardMaterial({
     color: 0x245f7f,

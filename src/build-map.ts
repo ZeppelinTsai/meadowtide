@@ -1433,12 +1433,11 @@ export function buildMap(mapName) {
       // 開一份幾乎一樣的更新邏輯。
       const oldVillageWaterMat = new THREE.MeshStandardMaterial({
         vertexColors: true,
-        // 規則網格改用寬而柔和的高光，避免峰谷間顯成灰色菱形。
-        roughness: 0.62,
-        metalness: 0,
+        roughness: 0.2,
+        metalness: 0.1,
+        flatShading: true,
         transparent: true,
         opacity: 0.6,
-        side: THREE.DoubleSide,
       });
       const oldVillageWaterDepthMat = new THREE.MeshStandardMaterial({
         color: 0x245f7f,

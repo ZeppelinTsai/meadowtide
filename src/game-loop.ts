@@ -1556,10 +1556,11 @@ export function animate(now) {
           pos.setY(i, localY - waveSample.displacementZ);
           pos.setZ(i, waveSample.height);
         }
-        // 即使浪向單一，主浪與橫浪組成的二維波形也只有局部最高點通過
-        // crest 門檻；逐頂點染白會在俯視時規則排列成灰色亮島。水面本體
-        // 只保留連續法線明暗，明顯白浪統一交給岸線 foamMeshes。
-        setSeaVertexColor(colors, i, 0.18, 0.43, 0.68, 0, 0);
+        // 與生活區 oceanMesh 使用同一套完整白峰公式；港口／城鎮只保留
+        // 淺水透明度差異，海浪幾何、法線與 crest 顯色規則必須一致。
+        const crestFactor = Math.max(0, (waveSample.crest - 0.4) / 0.6);
+        const crestColor = Math.pow(crestFactor, 1.8);
+        setSeaVertexColor(colors, i, 0.18, 0.43, 0.68, crestColor, 0);
       }
       pos.needsUpdate = true;
       colors.needsUpdate = true;
