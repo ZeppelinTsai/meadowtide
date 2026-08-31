@@ -136,9 +136,7 @@ export const PROLOGUE_SCRIPT: Record<string, DialogueLine[]> = {
 
     "[村長望向空蕩蕩的圍欄]",
 
-    mayor(
-      "「那陣子我每天都得過來餵牠們。光是提著飼料走到這裡，就夠我吃不消了。」",
-    ),
+    mayor("「那陣子我每天都得過來照顧牠們。」"),
 
     "[村長苦笑了一下]",
 
@@ -175,7 +173,6 @@ export const PROLOGUE_SCRIPT: Record<string, DialogueLine[]> = {
   house: [
     "[兩人進入牧場小屋]",
     mayor("「這就是你的住處。家具不多，但爐灶、床和基本用品都還能使用。」"),
-    "[村長走到床邊]",
     mayor(
       "「使用床鋪可以讓時間快速經過。你可以睡到隔天早上六點，或休息到今天傍晚六點。」",
     ),

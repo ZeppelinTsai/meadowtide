@@ -172,5 +172,30 @@ Zeppelin
 C:\meadowtide\src\prologue.ts
 C:\meadowtide\src\story\chapters\prologue-script.ts
 
-
+前面先跟主角走到[livingArea] (21,20)-[livingArea] (14,20)
 "[村長交給主角九包蘿蔔種子]",
+忘了講了 初始設定主角物品是空的 工具也是
+這時候給主角加上9包蘿蔔種子
+然後"[主角看向周圍堆滿石頭與樹枝的田地]",
+這裡也是要先在初始階段
+在除了[livingArea] (13-15,22-24)的田地外
+其他田地預設塞滿了石材木材
+
+這邊比較重要 改自由操作
+"[玩家完成九格播種]",
+但限制主角使用傳送跟走出地圖
+判斷種完九格才繼續演出
+
+先黑屏
+兩個都定位到[livingArea] (14,20)
+"[兩人沿著水渠往牧場另一側走]",改共同行走到
+[livingArea] (14,20)- [livingArea] (14,14)-[livingArea] (17,14)-[livingArea] (17,5)-[livingArea] (21,5)
+
+"[兩人繼續往前，來到牧場的休憩區]"改共同行走到
+行走[livingArea] (21,5)-[livingArea] (26,5)-[livingArea] (26,20)
+
+"[兩人進入牧場小屋]",改共同行走到
+行走[livingArea] (26,20)-[livingArea] (21,20)-[livingArea] (21,16)
+
+
+用選項呈現    "「在蘿蔔成熟以前，我要吃什麼？」",
