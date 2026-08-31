@@ -24,6 +24,19 @@ test("corner waves blend two nearby shore directions", () => {
   assert.ok(Math.abs(Math.hypot(direction.x, direction.z) - 1) < 0.0001);
 });
 
+test("direction remains continuous across tile boundaries", () => {
+  const before = getShorewardSeaWaveDirection(surroundedIsland, 0.49, 0, {
+    x: -1,
+    z: 0,
+  });
+  const after = getShorewardSeaWaveDirection(surroundedIsland, 0.51, 0, {
+    x: -1,
+    z: 0,
+  });
+  const dot = before.x * after.x + before.z * after.z;
+  assert.ok(dot > 0.99, `direction jumped across boundary: ${dot}`);
+});
+
 test("open water without cardinal land uses the provided fallback", () => {
   assert.deepEqual(getShorewardSeaWaveDirection([[9]], 0, 0, { x: 0, z: -1 }), { x: 0, z: -1 });
 });
