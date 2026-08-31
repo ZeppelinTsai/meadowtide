@@ -3579,12 +3579,22 @@ export function buildMap(mapName) {
     // 生活區採集點：靠西側山景的開闊草地，每個半日批次各 5 木、5 石。
     WOOD_NODES.filter((n) => n.map === "livingArea").forEach((n) => {
       const pile = makeWoodPile(n.x, n.z);
+      if (n.id.startsWith("prologue-farm-")) {
+        pile.position.x += (hash2(n.x * 1.73, n.z * 2.11) - 0.5) * 0.34;
+        pile.position.z += (hash2(n.x * 2.47, n.z * 1.39) - 0.5) * 0.34;
+        pile.rotation.y = hash2(n.x * 3.17, n.z * 2.83) * Math.PI * 2;
+      }
       pile.visible = !n.collected;
       plateauGroup.add(pile);
       gatherNodeMeshes.push({ group: pile, nodeId: n.id, map: "livingArea" });
     });
     STONE_NODES.filter((n) => n.map === "livingArea").forEach((n) => {
       const pile = makeStonePile(n.x, n.z);
+      if (n.id.startsWith("prologue-farm-")) {
+        pile.position.x += (hash2(n.x * 2.19, n.z * 1.61) - 0.5) * 0.34;
+        pile.position.z += (hash2(n.x * 1.31, n.z * 2.93) - 0.5) * 0.34;
+        pile.rotation.y = hash2(n.x * 2.71, n.z * 3.43) * Math.PI * 2;
+      }
       pile.visible = !n.collected;
       plateauGroup.add(pile);
       gatherNodeMeshes.push({ group: pile, nodeId: n.id, map: "livingArea" });

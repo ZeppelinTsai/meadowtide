@@ -151,12 +151,14 @@ function tutorialCropCount() {
 function prepareAbandonedFarm() {
   WOOD_NODES.length = 0;
   STONE_NODES.length = 0;
-  FARMLAND_TILES.forEach(([x, z], index) => {
+  FARMLAND_TILES.forEach(([x, z]) => {
     if (
       x >= TUTORIAL_PLOT.minX && x <= TUTORIAL_PLOT.maxX &&
       z >= TUTORIAL_PLOT.minZ && z <= TUTORIAL_PLOT.maxZ
     ) return;
-    const kind = index % 2 === 0 ? "wood" : "stone";
+    // Coordinate-seeded noise keeps the field stable without a checkerboard pattern.
+    const scatter = Math.sin(x * 12.9898 + z * 78.233) * 43758.5453;
+    const kind = scatter - Math.floor(scatter) < 0.5 ? "wood" : "stone";
     (kind === "wood" ? WOOD_NODES : STONE_NODES).push({
       id: `prologue-farm-${kind}-${x}-${z}`,
       kind,
@@ -791,7 +793,14 @@ function startVillageToFarmGuide() {
         "livingArea",
         LAYOUT.livingArea.prologueArrival.player,
         LAYOUT.livingArea.prologueArrival.mayor,
-        finishPrologueTour,
+        () =>
+          startGuidedWalk(
+            [
+              LAYOUT.livingArea.prologueArrival.mayor,
+              { x: 21, z: 20 },
+            ],
+            finishPrologueTour,
+          ),
       );
     },
   );
@@ -960,11 +969,13 @@ export function updatePrologueGameplayGate() {
   fadeEl.style.opacity = "1";
   window.setTimeout(() => {
     const mayor = npcs.find((npc) => npc.id === "mayor");
-    gameState.player.position.x = 14;
+    gameState.player.position.x = 13;
     gameState.player.position.z = 20;
-    gameState.player.position.y = guideGroundY("livingArea", 14, 20);
-    gameState.playerGridPos = { x: 14, z: 20 };
+    gameState.player.position.y = guideGroundY("livingArea", 13, 20);
+    gameState.playerGridPos = { x: 13, z: 20 };
     if (mayor) placeGuideActor(mayor, 14, 20);
+    faceDirection(1, 0);
+    faceMayor(-1, 0);
     syncLastPlayerY();
     fadeEl.style.opacity = "0";
     window.setTimeout(continueAfterPlanting, 450);
