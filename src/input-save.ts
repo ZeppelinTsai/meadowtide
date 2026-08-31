@@ -1543,7 +1543,7 @@ export function updateHud() {
     const iconKey = showerForDay
       ? (showerForDay.phase === "peak" ? "meteor-peak" : "meteor-shower")
       : weatherKey;
-    if (emojiEl) emojiEl.innerHTML = weatherIconSvg(weatherKey);
+    if (emojiEl) emojiEl.innerHTML = weatherIconSvg(iconKey);
     if (labelEl) {
       // 流星雨只掛在「今天」
       labelEl.innerHTML =
