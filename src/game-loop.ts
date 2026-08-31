@@ -1540,19 +1540,9 @@ export function animate(now) {
         pos.setX(i, localX + waveSample.displacementX);
         pos.setY(i, localY - waveSample.displacementZ);
         pos.setZ(i, waveSample.height);
-        const crestFactor = Math.max(0, (waveSample.crest - 0.4) / 0.6);
-        const t = Math.pow(crestFactor, 1.8);
-        const worldX = localX + water.position.x;
-        const worldZ = water.position.z - localY;
-        setSeaVertexColor(
-          colors,
-          i,
-          0.18,
-          0.43,
-          0.68,
-          t,
-          0,
-        );
+        // 港口／舊城鎮由低模平面拼成；逐頂點浪峰染白會沿 flatShading
+        // 顯示成規律菱形亮塊。保留幾何起伏，白色碎浪只交給岸線泡沫。
+        setSeaVertexColor(colors, i, 0.18, 0.43, 0.68, 0, 0);
       }
       pos.needsUpdate = true;
       colors.needsUpdate = true;
