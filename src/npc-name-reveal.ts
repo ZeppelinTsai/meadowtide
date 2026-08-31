@@ -13,7 +13,7 @@ const localized = (zh: string, en: string, ja = zh): LocalizedName => ({ zh, en,
 
 export const NPC_IDENTITIES: Record<string, NpcIdentityDefinition> = {
   mayor: { id: "mayor", maxStage: 1, displayNames: { 0: localized("???", "???", "???"), 1: localized("梅貝爾", "Mabel") } },
-  captain: { id: "captain", maxStage: 1, displayNames: { 0: localized("???", "???", "???"), 1: localized("赫克托", "Hector") } },
+  captain: { id: "captain", maxStage: 1, displayNames: { 0: localized("船長", "Captain", "船長"), 1: localized("赫克托", "Hector") } },
   carpenter: { id: "carpenter", maxStage: 1, displayNames: { 0: localized("???", "???", "???"), 1: localized("歐文", "Owen") } },
   marine_biologist: { id: "marine_biologist", maxStage: 1, displayNames: { 0: localized("???", "???", "???"), 1: localized("傑米", "Jamie") } },
   artist: { id: "artist", maxStage: 1, displayNames: { 0: localized("???", "???", "???"), 1: localized("露比", "Ruby") } },

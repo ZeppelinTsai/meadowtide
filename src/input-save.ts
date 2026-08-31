@@ -75,7 +75,12 @@ import {
   MAPS,
 } from "./layout-maps";
 import { tryShareChefMeal, mergeChefMealIntoChatLine } from "./chef-quest";
-import { previewPrologue } from "./prologue";
+import {
+  isPrologueFishingTutorialActive,
+  previewPrologue,
+  reportPrologueFishingFailure,
+  reportPrologueFishingSuccess,
+} from "./prologue";
 import {
   isFirstPersonModeActive,
   recordFirstPersonCameraShot,
@@ -835,6 +840,7 @@ function cancelFishing() {
   gameState.pendingFishTier = null;
   if (gameState.bobberMesh) { scene.remove(gameState.bobberMesh); gameState.bobberMesh = null; }
   if (gameState.player?.parts?.rod) gameState.player.parts.rod.visible = false;
+  if (isPrologueFishingTutorialActive()) reportPrologueFishingFailure();
 }
 
 // Fishing mouse aliases: left click acts as E while biting; right click cancels fishing.
@@ -1200,6 +1206,7 @@ addEventListener("keydown", (e) => {
       }
       if (gameState.player.parts.rod)
         gameState.player.parts.rod.visible = false;
+      if (isPrologueFishingTutorialActive()) reportPrologueFishingFailure();
     } else if (gameState.fishingState === "biting") {
       // 魚階在咬鉤那一刻(game-loop.ts 的 casting→biting 轉換)就抽好
       // 存在 pendingFishTier，這裡只決定要不要進入拉扯期。
@@ -1304,6 +1311,7 @@ export function resolveFishCatch(tier: FishTierDef) {
     start: gameState.elapsed,
     duration: 0.7,
   };
+  if (isPrologueFishingTutorialActive()) reportPrologueFishingSuccess();
 }
 
 function clampTension(t: number): number {
@@ -1329,6 +1337,7 @@ function advanceFishingQteAfterJudge() {
       text: "斷線了……牠掙脫跑了",
       until: gameState.elapsed + 1.4,
     };
+    if (isPrologueFishingTutorialActive()) reportPrologueFishingFailure();
     return;
   }
   qte.index++;

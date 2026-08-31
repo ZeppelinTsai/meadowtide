@@ -34,7 +34,7 @@ import {
   hasCompletedStoryEvent,
 } from "./story/story-state";
 import { setPresentationCamera } from "./first-person-camera";
-import { setNpcNameStage } from "./npc-name-reveal";
+import { showLoadingScreen, hideLoadingScreen } from "./loading-screen";
 import {
   PROLOGUE_MARKERS,
   PROLOGUE_OPENING_CAMERA_SHOTS,
@@ -117,6 +117,8 @@ type Stage =
   | "farmingFree"
   | "seekingRod"
   | "fishingDialogue"
+  | "fishingTutorial"
+  | "fishingReturn"
   | "done";
 
 type PrologueMapLoader = (
@@ -667,14 +669,57 @@ export function isPrologueSeekingRod(): boolean {
   return stage === "seekingRod";
 }
 
+export function isPrologueFishingTutorialActive(): boolean {
+  return stage === "fishingTutorial";
+}
+
+let fishingTutorialResultPending = false;
+
+export function reportPrologueFishingFailure() {
+  if (stage !== "fishingTutorial" || fishingTutorialResultPending) return;
+  fishingTutorialResultPending = true;
+  gameState.cutsceneActive = true;
+  showDialogSequence(PROLOGUE_SCRIPT.fishingFailed, () => {
+    fishingTutorialResultPending = false;
+    gameState.cutsceneActive = false;
+    lockPrologueDateTime();
+  });
+}
+
+export function reportPrologueFishingSuccess() {
+  if (stage !== "fishingTutorial" || fishingTutorialResultPending) return;
+  fishingTutorialResultPending = true;
+  beginStage("fishingReturn");
+  gameState.cutsceneActive = true;
+  showDialogSequence(PROLOGUE_SCRIPT.fishingSuccess, () => {
+    void returnToFarmHouseAfterFishing();
+  });
+}
+
+async function returnToFarmHouseAfterFishing() {
+  if (!prologueMapLoader) {
+    console.warn("[序幕] 尚未接入 loadMap，無法返回牧場小屋。");
+    return;
+  }
+  await showLoadingScreen();
+  prologueMapLoader("house", { x: 8, z: 12 }, () => {
+    const mayor = npcs.find((npc) => npc.id === "mayor");
+    if (mayor) {
+      npcGroup.visible = true;
+      placeGuideActor(mayor, 7, 12);
+    }
+    void hideLoadingScreen();
+    showDialogSequence(PROLOGUE_SCRIPT.cooking, finishPrologue);
+  });
+}
+
 export function startPrologueFishingSequence() {
   if (stage !== "seekingRod" || fishingSequenceStarted) return;
   fishingSequenceStarted = true;
   beginStage("fishingDialogue");
   gameState.cutsceneActive = true;
   lockPrologueDateTime();
-  // 主角已在序章開場搭過船；回港正式交談時直接以身分「船長」顯示。
-  setNpcNameStage("captain", 1);
+
   const captain = npcs.find((npc) => npc.id === "captain");
   const mayor = npcs.find((npc) => npc.id === "mayor");
   if (captain) {
@@ -701,9 +746,10 @@ export function startPrologueFishingSequence() {
   );
   showDialogSequence(PROLOGUE_SCRIPT.fishing, () => {
     inventory.tools.fishingRod = true;
-    showDialogSequence(PROLOGUE_SCRIPT.cooking, () => {
-      finishPrologue();
-    });
+    fishingTutorialResultPending = false;
+    beginStage("fishingTutorial");
+    gameState.cutsceneActive = false;
+    lockPrologueDateTime();
   });
 }
 
@@ -1063,9 +1109,13 @@ export function isPrologueFarmingActive(): boolean {
 }
 
 export function updatePrologueGameplayGate() {
-  if (stage !== "farmingFree" && stage !== "seekingRod") return;
+  if (
+    stage !== "farmingFree" &&
+    stage !== "seekingRod" &&
+    stage !== "fishingTutorial"
+  ) return;
   lockPrologueDateTime();
-  if (stage === "seekingRod") return;
+  if (stage === "seekingRod" || stage === "fishingTutorial") return;
   const plantedCount = tutorialCropCount();
   if (plantedCount < 9) {
     // 舊版可能把種子消耗在教學區外；補回缺口，避免存檔永久軟鎖。

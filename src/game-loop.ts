@@ -31,7 +31,7 @@ import {
 import { isInventoryOpen } from "./inventory-ui";
 import { syncHeldItemVisual } from "./inventory-system";
 import { translateText } from "./i18n";
-import { rollFishTier, COUNTER_DIRECTION } from "./fishing";
+import { rollFishTier, FISH_TIERS, COUNTER_DIRECTION } from "./fishing";
 import { getGamepadLookInput, pollGamepad } from "./gamepad-input";
 import {
   getGameplayCamera,
@@ -46,7 +46,9 @@ import {
   updatePrologueCutscene,
   updatePrologueGameplayGate,
   isPrologueFarmingActive,
+  isPrologueFishingTutorialActive,
   isPrologueSeekingRod,
+  reportPrologueFishingFailure,
   startPrologueFishingSequence,
   isPrologueShipStage,
   reapplyProloguePlayerY,
@@ -380,7 +382,11 @@ export function animate(now) {
   // updatePrologueCutscene() 接管；需要玩家實際操作的教學階段會明確解除鎖定。
   let dx = 0,
     dz = 0;
-  if (!gameState.cutsceneActive && !isCameraAdjustModeActive()) {
+  if (
+    !gameState.cutsceneActive &&
+    !isCameraAdjustModeActive() &&
+    !isPrologueFishingTutorialActive()
+  ) {
     if (keys["w"] || keys["arrowup"]) dz -= 1;
     if (keys["s"] || keys["arrowdown"]) dz += 1;
     if (keys["a"] || keys["arrowleft"]) dx -= 1;
@@ -661,7 +667,9 @@ export function animate(now) {
       gameState.fishingState = "biting";
       gameState.biteWindowStart = gameState.elapsed;
       // 咬鉤這一刻就把魚階抽出來定案，等玩家按 E 決定是否進入拉扯期。
-      gameState.pendingFishTier = rollFishTier();
+      gameState.pendingFishTier = isPrologueFishingTutorialActive()
+        ? FISH_TIERS.small
+        : rollFishTier();
       // 2026-08-26 上鉤提示要「大震動大音效」——咬鉤窗只有 1.1 秒，
       // 用最強的震動強度(見 gamepad-haptics.ts 的 FISHING_HAPTICS.bite)
       // 搭一顆比拋竿/收竿更突兀的音效(見 sfx.ts 的 FISH_BITE_SFX 註解，
@@ -684,6 +692,7 @@ export function animate(now) {
         text: "牠跑掉了……",
         until: gameState.elapsed + 1.2,
       };
+      if (isPrologueFishingTutorialActive()) reportPrologueFishingFailure();
     }
   } else if (gameState.fishingState === "reeling" && gameState.fishingQte) {
     advanceFishingQte();
@@ -850,7 +859,11 @@ export function animate(now) {
       // 用跟其他地方同一支旗標擋掉：cutsceneActive 為真時，代表玩家
       // 位置目前是被某段演出(目前只有序幕)直接控制，不該讓任何 touch
       // 事件跟著誤觸發。
-      if (!gameState.cutsceneActive && !isPrologueFarmingActive()) {
+      if (
+        !gameState.cutsceneActive &&
+        !isPrologueFarmingActive() &&
+        !isPrologueFishingTutorialActive()
+      ) {
         events
           .filter(
             (ev) =>
@@ -912,7 +925,8 @@ export function animate(now) {
     if (
       (gameState.cutsceneActive ||
         isPrologueFarmingActive() ||
-        isPrologueSeekingRod()) &&
+        isPrologueSeekingRod() ||
+        isPrologueFishingTutorialActive()) &&
       (n.id === "mayor" || n.id === "captain")
     )
       return;

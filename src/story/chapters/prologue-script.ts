@@ -19,10 +19,14 @@ const mayor = (
   name: "村長",
   revealNameAfter,
 });
-const captain = (text: string): DialogueLine => ({
+const captain = (
+  text: string,
+  revealNameAfter?: { npcId: string; stage: 1 | 2 },
+): DialogueLine => ({
   text,
   speaker: "captain",
   name: "船長",
+  revealNameAfter,
 });
 const mayorWithoutPortrait = (text: string): DialogueLine => ({
   text,
@@ -240,6 +244,10 @@ export const PROLOGUE_SCRIPT: Record<string, DialogueLine[]> = {
     "[船長離開]",
     mayor("「真是不好意思。太久沒有新人搬來，我以為自己都準備好了……」"),
     "[船長帶著釣竿回來]",
+    captain(
+      "「說起來，我還沒跟你自我介紹是吧。我叫赫克托，是這艘補給船的船長。」",
+      { npcId: "captain", stage: 1 },
+    ),
     captain("「找到了。雖然舊了點，但還很結實。看來你的運氣不錯。」"),
     "[獲得釣竿]",
     captain("「都拿出來了，我就順便教你怎麼用吧。」"),
@@ -248,9 +256,10 @@ export const PROLOGUE_SCRIPT: Record<string, DialogueLine[]> = {
     ),
     captain("「先試一次，我在旁邊看著。」"),
   ],
-  fishingTooEarly: [captain("「太早了，魚還沒咬穩。別急，再試一次。」")],
-  fishingTooLate: [captain("「晚了一步，牠把餌吃完就跑了。再來一次吧。」")],
-  fishingSuccess: [captain("「就是這樣。有了釣竿，至少不用擔心餓肚子了。」")],
+  fishingFailed: [
+    captain("「別在意，第一次失手很正常。看準魚咬鉤的提示，再試一次吧。」"),
+  ],
+  fishingSuccess: [mayor("「太好了！那我們回牧場小屋去吧。」")],
   cooking: [
     "[直接轉場至牧場小屋]",
     mayor("「接下來是料理。使用爐灶後，就能從已經學會的食譜中選擇一道製作。」"),
