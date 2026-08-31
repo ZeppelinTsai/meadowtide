@@ -25,6 +25,10 @@ export function weatherIconSvg(weatherKey: string) {
       return svg(snow);
     case "blizzard":
       return svg(cloud + `<g transform="translate(0 9) scale(.72)">${snow}</g>`);
+    case "meteor-shower":
+      return svg("<path d=\"M6 12l25 12-14 3M19 5l8 19-3 19M43 10L29 25l14 7\" fill=\"none\" stroke=\"#6b5aa8\" stroke-width=\"3\" stroke-linecap=\"round\"/><circle cx=\"35\" cy=\"12\" r=\"2\" fill=\"#f5c85b\"/>");
+    case "meteor-peak":
+      return svg("<path d=\"M3 8l28 14-16 4M20 2l8 22-3 22M45 7L29 25l16 8M7 31l18-7\" fill=\"none\" stroke=\"#7c4db4\" stroke-width=\"3.5\" stroke-linecap=\"round\"/><circle cx=\"28\" cy=\"24\" r=\"5\" fill=\"#ffd45e\" stroke=\"#b47a00\" stroke-width=\"2\"/>");
     default:
       return svg(`<circle cx="24" cy="24" r="10" fill="#d8c38f"/><path d="M24 17v9" stroke="#493025" stroke-width="3"/><circle cx="24" cy="32" r="2" fill="#493025"/>`);
   }

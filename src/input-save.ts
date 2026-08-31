@@ -1538,6 +1538,8 @@ export function updateHud() {
 
     const emojiEl = dayEl.querySelector(".hud-weather-emoji");
     const labelEl = dayEl.querySelector(".hud-weather-label");
+    const showerForIcon = offset === 0 ? getMeteorShowerHudLabel() : "";
+    const iconKey = showerForIcon ? (showerForIcon.includes("高峰") ? "meteor-peak" : "meteor-shower") : weatherKey;
     if (emojiEl) emojiEl.innerHTML = weatherIconSvg(weatherKey);
     if (labelEl) {
       // 流星雨只掛在「今天」
