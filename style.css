@@ -1932,10 +1932,18 @@ canvas {
   outline: 3px solid rgba(255, 240, 190, 0.45);
   outline-offset: 2px;
 }
-.quick-item-up { grid-area: up; }
-.quick-item-left { grid-area: left; }
-.quick-item-right { grid-area: right; }
-.quick-item-down { grid-area: down; }
+.quick-item-up {
+  grid-area: up;
+}
+.quick-item-left {
+  grid-area: left;
+}
+.quick-item-right {
+  grid-area: right;
+}
+.quick-item-down {
+  grid-area: down;
+}
 .quick-item-current {
   position: relative;
   grid-area: current;
@@ -1944,14 +1952,11 @@ canvas {
   height: 76px;
   align-items: center;
   justify-items: center;
-  padding: 8px;
   border-radius: 14px;
   text-align: left;
 }
 .quick-item-symbol {
   display: grid;
-  width: 60px;
-  height: 60px;
   place-items: center;
   color: #493025;
   background: radial-gradient(
@@ -2008,33 +2013,103 @@ canvas {
 /* 資訊選單奶油米色主題：與地圖頁共用視覺語言。 */
 #inventoryPanel {
   color: #573b27;
-  background: linear-gradient(145deg, rgba(252, 240, 213, 0.98), rgba(242, 222, 183, 0.98));
+  background: linear-gradient(
+    145deg,
+    rgba(252, 240, 213, 0.98),
+    rgba(242, 222, 183, 0.98)
+  );
   border-color: #c99b50;
-  box-shadow: 0 24px 70px rgba(20, 28, 24, 0.48), 0 0 0 4px rgba(255, 247, 226, 0.72), 0 0 0 5px rgba(119, 76, 37, 0.3);
+  box-shadow:
+    0 24px 70px rgba(20, 28, 24, 0.48),
+    0 0 0 4px rgba(255, 247, 226, 0.72),
+    0 0 0 5px rgba(119, 76, 37, 0.3);
 }
-#inventoryPanel .inventory-kicker, #inventoryPanel #inventoryTitle, #inventoryPanel .inventory-menu-label { color: #6a452b; }
-#inventoryPanel .inventory-header { border-bottom-color: rgba(130, 87, 43, 0.45); }
-#inventoryPanel #inventoryClose, #inventoryPanel .inventory-tab, #inventoryPanel .inventory-pager button {
-  color: #62432d; background: rgba(255, 248, 229, 0.64); border-color: rgba(132, 91, 49, 0.48);
+#inventoryPanel .inventory-kicker,
+#inventoryPanel #inventoryTitle,
+#inventoryPanel .inventory-menu-label {
+  color: #6a452b;
 }
-#inventoryPanel #inventoryClose:hover, #inventoryPanel .inventory-tab:hover, #inventoryPanel .inventory-tab:focus-visible, #inventoryPanel .inventory-pager button:hover, #inventoryPanel .inventory-pager button:focus-visible {
-  color: #3f291c; background: rgba(255, 250, 236, 0.94); border-color: #b67d38;
+#inventoryPanel .inventory-header {
+  border-bottom-color: rgba(130, 87, 43, 0.45);
 }
-#inventoryPanel .inventory-tab.active { color: #4b301f; background: #efc979; border-color: #b77d36; }
-#inventoryPanel .inventory-slot, #inventoryPanel .menu-info-card {
-  color: #573b27; background: rgba(255, 249, 232, 0.7); border-color: rgba(132, 91, 49, 0.32); box-shadow: inset 0 0 18px rgba(139, 96, 51, 0.08);
+#inventoryPanel #inventoryClose,
+#inventoryPanel .inventory-tab,
+#inventoryPanel .inventory-pager button {
+  color: #62432d;
+  background: rgba(255, 248, 229, 0.64);
+  border-color: rgba(132, 91, 49, 0.48);
 }
-#inventoryPanel .inventory-slot:hover, #inventoryPanel .inventory-slot:focus-visible, #inventoryPanel .inventory-slot.selected, #inventoryPanel .menu-info-card.selected {
-  border-color: #b87932; box-shadow: inset 0 0 18px rgba(139, 96, 51, 0.08), 0 0 0 3px rgba(205, 151, 75, 0.24);
+#inventoryPanel #inventoryClose:hover,
+#inventoryPanel .inventory-tab:hover,
+#inventoryPanel .inventory-tab:focus-visible,
+#inventoryPanel .inventory-pager button:hover,
+#inventoryPanel .inventory-pager button:focus-visible {
+  color: #3f291c;
+  background: rgba(255, 250, 236, 0.94);
+  border-color: #b67d38;
 }
-#inventoryPanel .inventory-item-label, #inventoryPanel #inventoryDescription, #inventoryPanel .menu-info-card h3, #inventoryPanel .menu-tool-items, #inventoryPanel .inventory-pager span { color: #5b3d28; }
-#inventoryPanel .inventory-footer-controls, #inventoryPanel .menu-info-card span, #inventoryPanel .menu-tool-empty, #inventoryPanel .inventory-empty { color: rgba(91, 61, 40, 0.68); }
-#inventoryPanel .menu-info-card strong { color: #9a632c; }
-#inventoryPanel .inventory-empty { border-color: rgba(132, 91, 49, 0.34); }
+#inventoryPanel .inventory-tab.active {
+  color: #4b301f;
+  background: #efc979;
+  border-color: #b77d36;
+}
+#inventoryPanel .inventory-slot,
+#inventoryPanel .menu-info-card {
+  color: #573b27;
+  background: rgba(255, 249, 232, 0.7);
+  border-color: rgba(132, 91, 49, 0.32);
+  box-shadow: inset 0 0 18px rgba(139, 96, 51, 0.08);
+}
+#inventoryPanel .inventory-slot:hover,
+#inventoryPanel .inventory-slot:focus-visible,
+#inventoryPanel .inventory-slot.selected,
+#inventoryPanel .menu-info-card.selected {
+  border-color: #b87932;
+  box-shadow:
+    inset 0 0 18px rgba(139, 96, 51, 0.08),
+    0 0 0 3px rgba(205, 151, 75, 0.24);
+}
+#inventoryPanel .inventory-item-label,
+#inventoryPanel #inventoryDescription,
+#inventoryPanel .menu-info-card h3,
+#inventoryPanel .menu-tool-items,
+#inventoryPanel .inventory-pager span {
+  color: #5b3d28;
+}
+#inventoryPanel .inventory-footer-controls,
+#inventoryPanel .menu-info-card span,
+#inventoryPanel .menu-tool-empty,
+#inventoryPanel .inventory-empty {
+  color: rgba(91, 61, 40, 0.68);
+}
+#inventoryPanel .menu-info-card strong {
+  color: #9a632c;
+}
+#inventoryPanel .inventory-empty {
+  border-color: rgba(132, 91, 49, 0.34);
+}
 #inventoryPanel .inventory-icon-model {
-  background: radial-gradient(circle, rgba(255, 248, 226, 0.58), rgba(202, 166, 110, 0.18)); border-color: rgba(121, 79, 40, 0.3);
+  background: radial-gradient(
+    circle,
+    rgba(255, 248, 226, 0.58),
+    rgba(202, 166, 110, 0.18)
+  );
+  border-color: rgba(121, 79, 40, 0.3);
 }
-#inventoryPanel .inventory-content-menu { color: #573b27; background: rgba(247, 230, 197, 0.97); }
-#inventoryPanel .inventory-content-menu h3 { color: #5b3d28; }
-#inventoryPanel .inventory-content-menu button { color: #573b27; background: rgba(255, 249, 232, 0.82); border-color: rgba(132, 91, 49, 0.55); }
-#inventoryPanel .inventory-content-menu button:hover, #inventoryPanel .inventory-content-menu button:focus-visible { color: #3f291c; background: #efc979; }
+#inventoryPanel .inventory-content-menu {
+  color: #573b27;
+  background: rgba(247, 230, 197, 0.97);
+}
+#inventoryPanel .inventory-content-menu h3 {
+  color: #5b3d28;
+}
+#inventoryPanel .inventory-content-menu button {
+  color: #573b27;
+  background: rgba(255, 249, 232, 0.82);
+  border-color: rgba(132, 91, 49, 0.55);
+}
+#inventoryPanel .inventory-content-menu button:hover,
+#inventoryPanel .inventory-content-menu button:focus-visible {
+  color: #3f291c;
+  background: #efc979;
+}
