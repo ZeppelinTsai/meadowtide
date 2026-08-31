@@ -54,6 +54,9 @@ export const PROLOGUE_OPENING_CAMERA_SHOTS: StoryCameraShot[] = [
 
 // 序章文字的單一資料源。鏡頭、走位與實際操作閘門留在 prologue.ts。
 export const PROLOGUE_MARKERS = Object.freeze({
+  grantRadishSeeds: "[村長交給主角九包蘿蔔種子]",
+  lookAtAbandonedFarm: "[主角看向周圍堆滿石頭與樹枝的田地]",
+  whyOnlyPlot: "「嗯？你問為什麼只有這一小塊整理好了？」",
   farmingComplete: "[玩家完成九格播種]",
   walkIrrigation: "[兩人沿著水渠往牧場另一側走]",
   walkRestArea: "[兩人繼續往前，來到牧場的休憩區]",
@@ -94,13 +97,13 @@ export const PROLOGUE_SCRIPT: Record<string, DialogueLine[]> = {
     ),
   ],
   farming: [
-    "[村長交給主角九包蘿蔔種子]",
+    PROLOGUE_MARKERS.grantRadishSeeds,
 
     mayor("「先從這裡開始吧。這是九包蘿蔔種子，你試著種進田裡看看。」"),
 
-    "[主角看向周圍堆滿石頭與樹枝的田地]",
+    PROLOGUE_MARKERS.lookAtAbandonedFarm,
 
-    mayor("「嗯？你問為什麼只有這一小塊整理好了？」"),
+    mayor(PROLOGUE_MARKERS.whyOnlyPlot),
 
     "[村長短暫停頓]",
 

@@ -339,6 +339,17 @@ function faceDirection(dx: number, dz: number) {
   gameState.player.rotation.y = Math.atan2(dx, dz) + Math.PI;
 }
 
+function faceMayor(dx: number, dz: number) {
+  const mayor = npcs.find((npc) => npc.id === "mayor");
+  if (!mayor || (dx === 0 && dz === 0)) return;
+  mayor.mesh.rotation.y = Math.atan2(-dx, -dz);
+}
+
+function faceBoth(dx: number, dz: number) {
+  faceDirection(dx, dz);
+  faceMayor(dx, dz);
+}
+
 // 見上面 lastPlayerY 的註解——每次寫完 gameState.player.position.y 之後
 // 呼叫，把「這幀真正該有的高度」存起來，給 reapplyProloguePlayerY() 用。
 function syncLastPlayerY() {
@@ -636,7 +647,13 @@ function walkToFarmHouse() {
       { x: 21, z: 20 },
       { x: 21, z: 16 },
     ],
-    showHouseSequence,
+    () =>
+      transitionPrologueMap(
+        "house",
+        { x: 8, z: 12 },
+        { x: 7, z: 12 },
+        showHouseSequence,
+      ),
   );
 }
 
@@ -655,7 +672,10 @@ function walkToRestArea() {
       { x: 26, z: 5 },
       { x: 26, z: 20 },
     ],
-    showRestAreaSequence,
+    () => {
+      faceBoth(0, 1);
+      showRestAreaSequence();
+    },
   );
 }
 
@@ -683,7 +703,10 @@ function walkAlongIrrigationChannel() {
       { x: 17, z: 5 },
       { x: 21, z: 5 },
     ],
-    showAnimalBarnSequence,
+    () => {
+      faceBoth(0, -1);
+      showAnimalBarnSequence();
+    },
   );
 }
 
@@ -713,12 +736,28 @@ function startFarmingTutorial() {
     PROLOGUE_SCRIPT.farming,
     PROLOGUE_MARKERS.farmingComplete,
   );
+  const lookMarker = scriptMarkerIndex(
+    PROLOGUE_SCRIPT.farming,
+    PROLOGUE_MARKERS.lookAtAbandonedFarm,
+  );
+  for (let x = TUTORIAL_PLOT.minX; x <= TUTORIAL_PLOT.maxX; x++) {
+    for (let z = TUTORIAL_PLOT.minZ; z <= TUTORIAL_PLOT.maxZ; z++) {
+      delete cropState[`${x},${z}`];
+    }
+  }
   inventory.seeds = 9;
   inventory.heldItemId = null;
-  showDialogSequence(
-    PROLOGUE_SCRIPT.farming.slice(0, plantedMarker),
-    beginFreePlanting,
-  );
+  faceMayor(1, 0);
+  showDialogSequence(PROLOGUE_SCRIPT.farming.slice(0, lookMarker), () => {
+    faceDirection(0, 1);
+    showDialogSequence([PROLOGUE_SCRIPT.farming[lookMarker]], () => {
+      faceMayor(0, 1);
+      showDialogSequence(
+        PROLOGUE_SCRIPT.farming.slice(lookMarker + 1, plantedMarker),
+        beginFreePlanting,
+      );
+    });
+  });
 }
 
 function finishPrologueTour() {
@@ -912,6 +951,8 @@ export function updatePrologueGameplayGate() {
   if (stage !== "farmingFree") return;
   lockPrologueDateTime();
   if (tutorialCropCount() < 9) return;
+  inventory.seeds = 0;
+  if (inventory.heldItemId === "radishSeeds") inventory.heldItemId = null;
   beginStage("mapTransition");
   gameState.cutsceneActive = true;
   setTimePauseSource("event", false);
