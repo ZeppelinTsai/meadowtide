@@ -53,6 +53,13 @@ export const PROLOGUE_OPENING_CAMERA_SHOTS: StoryCameraShot[] = [
 ];
 
 // 序章文字的單一資料源。鏡頭、走位與實際操作閘門留在 prologue.ts。
+export const PROLOGUE_MARKERS = Object.freeze({
+  farmingComplete: "[玩家完成九格播種]",
+  walkIrrigation: "[兩人沿著水渠往牧場另一側走]",
+  walkRestArea: "[兩人繼續往前，來到牧場的休憩區]",
+  enterFarmHouse: "[兩人進入牧場小屋]",
+  foodQuestion: "「在蘿蔔成熟以前，我要吃什麼？」",
+});
 export const PROLOGUE_SCRIPT: Record<string, DialogueLine[]> = {
   flyer: [
     "[主角搭船前往小島，拿起手中的招募傳單]",
@@ -112,7 +119,7 @@ export const PROLOGUE_SCRIPT: Record<string, DialogueLine[]> = {
     mayor("「先按下右下的種子圖示，把種子拿出來。」"),
     mayor("「站在田地上按下 E，就能播種。來，把這九格都種滿看看。」"),
 
-    "[玩家完成九格播種]",
+    PROLOGUE_MARKERS.farmingComplete,
 
     mayor("「沒錯，就是這樣。」"),
 
@@ -126,7 +133,7 @@ export const PROLOGUE_SCRIPT: Record<string, DialogueLine[]> = {
 
     mayor("「所以播種後不用每天澆水。等作物成熟，就可以直接收成了。」"),
 
-    "[兩人沿著水渠往牧場另一側走]",
+    PROLOGUE_MARKERS.walkIrrigation,
 
     "[一座空蕩蕩的動物小屋出現在眼前]",
 
@@ -154,7 +161,7 @@ export const PROLOGUE_SCRIPT: Record<string, DialogueLine[]> = {
 
     mayor("「到時候我再教你怎麼照顧牠們。」"),
 
-    "[兩人繼續往前，來到牧場的休憩區]",
+    PROLOGUE_MARKERS.walkRestArea,
 
     mayor("「這裡以前是座觀光牧場，所以還留著給遊客吃東西、休息的地方。」"),
 
@@ -171,13 +178,13 @@ export const PROLOGUE_SCRIPT: Record<string, DialogueLine[]> = {
     mayor("「所以接下來，要種什麼、養什麼、把這裡變成什麼樣子……就交給你了。」"),
   ],
   house: [
-    "[兩人進入牧場小屋]",
+    PROLOGUE_MARKERS.enterFarmHouse,
     mayor("「這就是你的住處。家具不多，但爐灶、床和基本用品都還能使用。」"),
     mayor(
       "「使用床鋪可以讓時間快速經過。你可以睡到隔天早上六點，或休息到今天傍晚六點。」",
     ),
     mayor("「大致上就是這些。還有什麼想問的嗎？」"),
-    "「在蘿蔔成熟以前，我要吃什麼？」",
+    PROLOGUE_MARKERS.foodQuestion,
     "[村長愣住]",
     mayor("「……哎呀。」"),
     mayor(

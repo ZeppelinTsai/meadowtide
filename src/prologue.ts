@@ -1,13 +1,22 @@
 import * as THREE from "three";
-import { dayLength, gameState, inventory } from "./game-state";
+import {
+  cropState,
+  dayLength,
+  gameState,
+  inventory,
+  STONE_NODES,
+  WOOD_NODES,
+} from "./game-state";
 import {
   LAYOUT,
   isOnMountainStair,
   mountainGroundY,
   oldVillageGroundY,
   portGroundY,
+  FARMLAND_TILES,
 } from "./layout-maps";
-import { showDialogSequence } from "./dialogue";
+import { showChoice, showDialogSequence } from "./dialogue";
+import { setTimePauseSource } from "./time-pause";
 import { npcs, npcGroup } from "./npc-runtime";
 import { prologueRefs } from "./scene-registries";
 import { groundY, updateCameraFrustum } from "./scene-sky";
@@ -26,6 +35,7 @@ import {
 } from "./story/story-state";
 import { setPresentationCamera } from "./first-person-camera";
 import {
+  PROLOGUE_MARKERS,
   PROLOGUE_OPENING_CAMERA_SHOTS,
   PROLOGUE_SCRIPT,
 } from "./story/chapters/prologue-script";
@@ -103,6 +113,7 @@ type Stage =
   | "guidedWalking"
   | "mapTransition"
   | "farmScan"
+  | "farmingFree"
   | "done";
 
 type PrologueMapLoader = (
@@ -125,6 +136,70 @@ let guideWaypointIndex = 0;
 let guideTrail: THREE.Vector3[] = [];
 let guideOnComplete: (() => void) | null = null;
 let useGuideZoom = false;
+const TUTORIAL_PLOT = { minX: 13, maxX: 15, minZ: 22, maxZ: 24 } as const;
+
+function tutorialCropCount() {
+  let count = 0;
+  for (let x = TUTORIAL_PLOT.minX; x <= TUTORIAL_PLOT.maxX; x++) {
+    for (let z = TUTORIAL_PLOT.minZ; z <= TUTORIAL_PLOT.maxZ; z++) {
+      if (cropState[`${x},${z}`]) count++;
+    }
+  }
+  return count;
+}
+
+function prepareAbandonedFarm() {
+  WOOD_NODES.length = 0;
+  STONE_NODES.length = 0;
+  FARMLAND_TILES.forEach(([x, z], index) => {
+    if (
+      x >= TUTORIAL_PLOT.minX && x <= TUTORIAL_PLOT.maxX &&
+      z >= TUTORIAL_PLOT.minZ && z <= TUTORIAL_PLOT.maxZ
+    ) return;
+    const kind = index % 2 === 0 ? "wood" : "stone";
+    (kind === "wood" ? WOOD_NODES : STONE_NODES).push({
+      id: `prologue-farm-${kind}-${x}-${z}`,
+      kind,
+      map: "livingArea",
+      zone: "mountainSide",
+      x,
+      z,
+      collected: false,
+    });
+  });
+}
+
+function resetPrologueStartingItems() {
+  Object.keys(inventory.tools).forEach((toolId) => {
+    inventory.tools[toolId] = false;
+  });
+  inventory.seeds = 0;
+  inventory.potatoSeeds = 0;
+  inventory.tomatoSeeds = 0;
+  inventory.heldItemId = null;
+  inventory.harvested = 0;
+  inventory.fish = 0;
+  inventory.wood = 0;
+  inventory.stone = 0;
+  inventory.oysters = 0;
+  inventory.copper = 0;
+  inventory.silver = 0;
+  inventory.gold = 0;
+  inventory.starCrystal = 0;
+  inventory.godCrystal = 0;
+  Object.keys(inventory.fishByTier).forEach((key) => {
+    inventory.fishByTier[key] = 0;
+  });
+  Object.keys(inventory.pearls).forEach((key) => {
+    inventory.pearls[key as keyof typeof inventory.pearls] = 0;
+  });
+  Object.keys(inventory.animalProducts).forEach((key) => {
+    inventory.animalProducts[key as keyof typeof inventory.animalProducts] = 0;
+  });
+  inventory.dishes = {};
+  inventory.storage = {};
+  Object.keys(cropState).forEach((key) => delete cropState[key]);
+}
 // 2026-08-26 第六輪反饋「主角剛落地是陷進碼頭的」——查出來的真正原因：
 // game-loop.ts 的 animate() 每幀在 updatePrologueCutscene() 之後，
 // 不管 cutsceneActive 是不是 true，都還是會呼叫 animateRun()/
@@ -505,52 +580,161 @@ function startFarmScan(onComplete: () => void) {
   });
 }
 
+function scriptMarkerIndex(lines: any[], marker: string) {
+  const index = lines.findIndex((line) => line === marker);
+  if (index < 0) throw new Error(`[序幕] 找不到腳本標記：${marker}`);
+  return index;
+}
+
+function finishPrologue() {
+  const captain = npcs.find((npc) => npc.id === "captain");
+  if (captain) {
+    captain.mesh.position.set(PROLOGUE_CAPTAIN_X, LAYOUT.port.elevation, PROLOGUE_CAPTAIN_Z);
+    captain.mesh.rotation.y = Math.PI;
+    const scheduleTarget = getScheduleTarget(captain.schedule, gameState.currentPhase);
+    captain.lastTargetKey = scheduleTarget.x + "," + scheduleTarget.z;
+    captain.path = [];
+    captain.pathIndex = 0;
+  }
+  beginStage("done");
+  completeStoryEvent("main.prologue.arrival");
+  gameState.cutsceneActive = false;
+  setTimePauseSource("event", false);
+  gameState.elapsed = dayLength * FREE_TIME_PHASE;
+  gameState.currentPhase = FREE_TIME_PHASE;
+}
+
+function showHouseSequence() {
+  const choiceIndex = scriptMarkerIndex(
+    PROLOGUE_SCRIPT.house,
+    PROLOGUE_MARKERS.foodQuestion,
+  );
+  showDialogSequence(PROLOGUE_SCRIPT.house.slice(1, choiceIndex), () => {
+    showChoice(
+      "「還有什麼想問的嗎？」",
+      [{ label: "在蘿蔔成熟以前，我要吃什麼？", value: "food" }],
+      () => {
+        inventory.fish += 3;
+        inventory.harvested += 6;
+        showDialogSequence(
+          [
+            ...PROLOGUE_SCRIPT.house.slice(choiceIndex + 1),
+            ...PROLOGUE_SCRIPT.fishing,
+            ...PROLOGUE_SCRIPT.cooking,
+          ],
+          finishPrologue,
+        );
+      },
+    );
+  });
+}
+
+function walkToFarmHouse() {
+  startGuidedWalk(
+    [
+      { x: 26, z: 20 },
+      { x: 21, z: 20 },
+      { x: 21, z: 16 },
+    ],
+    showHouseSequence,
+  );
+}
+
+function showRestAreaSequence() {
+  const secondWalk = scriptMarkerIndex(
+    PROLOGUE_SCRIPT.farming,
+    PROLOGUE_MARKERS.walkRestArea,
+  );
+  showDialogSequence(PROLOGUE_SCRIPT.farming.slice(secondWalk + 1), walkToFarmHouse);
+}
+
+function walkToRestArea() {
+  startGuidedWalk(
+    [
+      { x: 21, z: 5 },
+      { x: 26, z: 5 },
+      { x: 26, z: 20 },
+    ],
+    showRestAreaSequence,
+  );
+}
+
+function showAnimalBarnSequence() {
+  const firstWalk = scriptMarkerIndex(
+    PROLOGUE_SCRIPT.farming,
+    PROLOGUE_MARKERS.walkIrrigation,
+  );
+  const secondWalk = scriptMarkerIndex(
+    PROLOGUE_SCRIPT.farming,
+    PROLOGUE_MARKERS.walkRestArea,
+  );
+  showDialogSequence(
+    PROLOGUE_SCRIPT.farming.slice(firstWalk + 1, secondWalk),
+    walkToRestArea,
+  );
+}
+
+function walkAlongIrrigationChannel() {
+  startGuidedWalk(
+    [
+      { x: 14, z: 20 },
+      { x: 14, z: 14 },
+      { x: 17, z: 14 },
+      { x: 17, z: 5 },
+      { x: 21, z: 5 },
+    ],
+    showAnimalBarnSequence,
+  );
+}
+
+function continueAfterPlanting() {
+  const plantedMarker = scriptMarkerIndex(
+    PROLOGUE_SCRIPT.farming,
+    PROLOGUE_MARKERS.farmingComplete,
+  );
+  const firstWalk = scriptMarkerIndex(
+    PROLOGUE_SCRIPT.farming,
+    PROLOGUE_MARKERS.walkIrrigation,
+  );
+  showDialogSequence(
+    PROLOGUE_SCRIPT.farming.slice(plantedMarker + 1, firstWalk),
+    walkAlongIrrigationChannel,
+  );
+}
+
+function beginFreePlanting() {
+  beginStage("farmingFree");
+  gameState.cutsceneActive = false;
+  lockPrologueDateTime();
+}
+
+function startFarmingTutorial() {
+  const plantedMarker = scriptMarkerIndex(
+    PROLOGUE_SCRIPT.farming,
+    PROLOGUE_MARKERS.farmingComplete,
+  );
+  inventory.seeds = 9;
+  inventory.heldItemId = null;
+  showDialogSequence(
+    PROLOGUE_SCRIPT.farming.slice(0, plantedMarker),
+    beginFreePlanting,
+  );
+}
+
 function finishPrologueTour() {
   useGuideZoom = false;
   lockPrologueZoom();
-  // 1. 先播放村長抵達牧場台詞「到了。這裡就是你未來的牧場。」(PROLOGUE_SCRIPT.tour[9])
   showDialogSequence([PROLOGUE_SCRIPT.tour[9]], () => {
-    // 2. 觸發第一人稱牧場掃視鏡頭：往左 90 度 -> 回正 -> 往右 90 度 -> 回正切回正常視角
     startFarmScan(() => {
-      // 3. 掃視完成後切回正常視角，繼續後續牧場、種田、房屋、釣魚、料理對話
-      showDialogSequence(
-        [
-          ...PROLOGUE_SCRIPT.tour.slice(10),
-          ...PROLOGUE_SCRIPT.farming,
-          ...PROLOGUE_SCRIPT.house,
-          ...PROLOGUE_SCRIPT.fishing,
-          ...PROLOGUE_SCRIPT.cooking,
-        ],
-        () => {
-          const captain = npcs.find((npc) => npc.id === "captain");
-          if (captain) {
-            captain.mesh.position.set(
-              PROLOGUE_CAPTAIN_X,
-              LAYOUT.port.elevation,
-              PROLOGUE_CAPTAIN_Z,
-            );
-            captain.mesh.rotation.y = Math.PI;
-            const scheduleTarget = getScheduleTarget(
-              captain.schedule,
-              gameState.currentPhase,
-            );
-            captain.lastTargetKey = scheduleTarget.x + "," + scheduleTarget.z;
-            captain.path = [];
-            captain.pathIndex = 0;
-          }
-          if (!hasCompletedStoryEvent("main.prologue.arrival")) {
-            inventory.seeds += 9;
-            inventory.fish += 3;
-            inventory.harvested += 6;
-            gameState.rodLevel = Math.max(1, gameState.rodLevel);
-          }
-          beginStage("done");
-          completeStoryEvent("main.prologue.arrival");
-          gameState.cutsceneActive = false;
-          gameState.elapsed = dayLength * FREE_TIME_PHASE;
-          gameState.currentPhase = FREE_TIME_PHASE;
-        },
-      );
+      showDialogSequence(PROLOGUE_SCRIPT.tour.slice(10), () => {
+        startGuidedWalk(
+          [
+            { x: 21, z: 20 },
+            { x: 14, z: 20 },
+          ],
+          startFarmingTutorial,
+        );
+      });
     });
   });
 }
@@ -562,13 +746,15 @@ function startVillageToFarmGuide() {
       LAYOUT.oldVillage.prologueGuide.corner,
       LAYOUT.oldVillage.prologueGuide.exit,
     ],
-    () =>
+    () => {
+      prepareAbandonedFarm();
       transitionPrologueMap(
         "livingArea",
         LAYOUT.livingArea.prologueArrival.player,
         LAYOUT.livingArea.prologueArrival.mayor,
         finishPrologueTour,
-      ),
+      );
+    },
   );
 }
 
@@ -650,6 +836,7 @@ export function startPrologueScene(
     );
     return;
   }
+  if (!opts.force) resetPrologueStartingItems();
   const fadeEl = document.getElementById("fade") as HTMLElement;
   // 序章開場比一般換圖慢：先用一秒淡到黑，完成船／角色定位後再用一秒
   // 淡入第一顆鏡頭。只覆寫這次序章，淡入完成後恢復 style.css 的全域值。
@@ -717,6 +904,31 @@ export function previewPrologue() {
 // 本身更明確、也不怕之後主角站位再調整就跟著跑掉)。走下船跟碼頭迎接
 // 這兩個階段鏡頭要恢復正常跟著玩家，所以只在這三個「人還在船上」的
 // 階段回傳 true。
+export function isPrologueFarmingActive(): boolean {
+  return stage === "farmingFree";
+}
+
+export function updatePrologueGameplayGate() {
+  if (stage !== "farmingFree") return;
+  lockPrologueDateTime();
+  if (tutorialCropCount() < 9) return;
+  beginStage("mapTransition");
+  gameState.cutsceneActive = true;
+  setTimePauseSource("event", false);
+  const fadeEl = document.getElementById("fade") as HTMLElement;
+  fadeEl.style.opacity = "1";
+  window.setTimeout(() => {
+    const mayor = npcs.find((npc) => npc.id === "mayor");
+    gameState.player.position.x = 14;
+    gameState.player.position.z = 20;
+    gameState.player.position.y = guideGroundY("livingArea", 14, 20);
+    gameState.playerGridPos = { x: 14, z: 20 };
+    if (mayor) placeGuideActor(mayor, 14, 20);
+    syncLastPlayerY();
+    fadeEl.style.opacity = "0";
+    window.setTimeout(continueAfterPlanting, 450);
+  }, 450);
+}
 export function isPrologueShipStage(): boolean {
   return (
     stage === "atSea" || stage === "approaching" || stage === "rampLowering"

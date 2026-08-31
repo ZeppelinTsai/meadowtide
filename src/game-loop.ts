@@ -44,6 +44,8 @@ import { vibrateGamepad, FISHING_HAPTICS } from "./gamepad-haptics";
 import { playRandomSfx, FISH_BITE_SFX } from "./sfx";
 import {
   updatePrologueCutscene,
+  updatePrologueGameplayGate,
+  isPrologueFarmingActive,
   isPrologueShipStage,
   reapplyProloguePlayerY,
 } from "./prologue";
@@ -307,6 +309,7 @@ export function animate(now) {
       );
   }
   syncHeldItemVisual();
+  updatePrologueGameplayGate();
 
   // --- 自由移動：方向鍵給的是速度向量，不是格子跳，可以八方向、可以貼牆滑 ---
   // 序幕演出(cutsceneActive)期間整段跳過：船/跳板/下船走位都是
@@ -784,7 +787,7 @@ export function animate(now) {
       // 用跟其他地方同一支旗標擋掉：cutsceneActive 為真時，代表玩家
       // 位置目前是被某段演出(目前只有序幕)直接控制，不該讓任何 touch
       // 事件跟著誤觸發。
-      if (!gameState.cutsceneActive) {
+      if (!gameState.cutsceneActive && !isPrologueFarmingActive()) {
         events
           .filter(
             (ev) =>
@@ -805,7 +808,7 @@ export function animate(now) {
     // 序章期間村長與船長的位置由 prologue.ts 完整控制，不能再讓日常
     // 排程於同一幀覆寫，否則船長會瞬移或偏離下船路線。
     if (
-      gameState.cutsceneActive &&
+      (gameState.cutsceneActive || isPrologueFarmingActive()) &&
       (n.id === "mayor" || n.id === "captain")
     )
       return;
