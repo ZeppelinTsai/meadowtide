@@ -6,11 +6,12 @@ import {
 
 export type SeaCell = { x: number; z: number };
 
+// 每格四分割，避免動態白峰門檻只命中少數頂點後，插值成孤立的菱形亮塊。
 export function createConnectedTileSeaGeometry(
   cells: Iterable<SeaCell>,
   tiles: number[][],
   fallback: WaveDirection,
-  subdivisions = 2,
+  subdivisions = 4,
 ) {
   const positions: number[] = [];
   const colors: number[] = [];

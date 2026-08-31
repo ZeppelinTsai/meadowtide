@@ -3426,11 +3426,8 @@ export function buildMap(mapName) {
 
       gameState.oceanMesh = new THREE.Mesh(
         geo,
-        new THREE.MeshStandardMaterial({
+        new THREE.MeshBasicMaterial({
           vertexColors: true,
-          roughness: 0.2,
-          metalness: 0.1,
-          flatShading: true,
           transparent: true,
           // 深水（北邊主海域）幾乎不透明，跟淺水（湖、港口船塢）區分開——
           // 水深當作簡化過的透明度依據，不用真的算深度貼圖。
@@ -3438,7 +3435,7 @@ export function buildMap(mapName) {
         }),
       );
       waterSurfaceMaterials.push(
-        gameState.oceanMesh.material as THREE.MeshStandardMaterial,
+        gameState.oceanMesh.material as THREE.MeshBasicMaterial,
       );
       // 頂點座標已經是世界座標（每排西緣各自不同，不能再用單一中心點套用
       // PlaneGeometry 的本地座標系），mesh 本身只需要負責 y 的抬高量。

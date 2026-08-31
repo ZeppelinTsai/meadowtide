@@ -51,6 +51,16 @@ test("adjacent sea tiles share boundary vertices", () => {
     [[9, 9]],
     { x: 0, z: -1 },
   );
-  assert.equal(geometry.attributes.position.count, 15);
-  assert.equal(geometry.index?.count, 48);
+  const subdivisions = 4;
+  assert.equal(
+    geometry.attributes.position.count,
+    (subdivisions * 2 + 1) * (subdivisions + 1),
+  );
+  assert.equal(geometry.index?.count, 2 * subdivisions * subdivisions * 6);
+  const positions = geometry.attributes.position;
+  let sharedEdgeVertices = 0;
+  for (let i = 0; i < positions.count; i++) {
+    if (Math.abs(positions.getX(i) - 0.5) < 1e-6) sharedEdgeVertices++;
+  }
+  assert.equal(sharedEdgeVertices, subdivisions + 1);
 });
