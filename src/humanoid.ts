@@ -1,9 +1,35 @@
 import * as THREE from "three";
 import { HELD_ARM_ROTATION } from "./held-item-pose";
 
-// 人形角色從鞋底到最高髮梢的統一世界高度；以村長專用模型為基準。
+// 人形角色從鞋底到頭骨頂端的統一世界高度。頭髮、帽子與頭飾可超出此高度，
+// 但不得參與本體縮放，否則裝飾越高，角色身體反而越小。
 export const HUMANOID_WORLD_HEIGHT = 1;
 const humanoidScale = (unscaledHeight) => HUMANOID_WORLD_HEIGHT / unscaledHeight;
+
+export interface HumanoidHeightFrame {
+  footY: number;
+  headTopY: number;
+}
+
+export function getHumanoidHeightFrame(
+  model: THREE.Object3D,
+): HumanoidHeightFrame | null {
+  const frame = model.userData.humanoidHeightFrame as
+    | HumanoidHeightFrame
+    | undefined;
+  return frame ?? null;
+}
+
+function applyAnatomicalHumanoidScale(
+  group: THREE.Group,
+  unscaledHeadTopY: number,
+) {
+  group.scale.setScalar(humanoidScale(unscaledHeadTopY));
+  group.userData.humanoidHeightFrame = {
+    footY: 0,
+    headTopY: HUMANOID_WORLD_HEIGHT,
+  } satisfies HumanoidHeightFrame;
+}
 
 // 人形角色的固定預設微笑：兩條短斜線形成淺弧，避免半圓 Torus 在俯視鏡頭下
 // 變成厚重的大嘴。角色只調整整張臉的 Y/Z 落點，不改線段比例與角度。
@@ -1015,7 +1041,8 @@ export function addDefaultHumanoidSmile(
         parts.rod = rod;
 
         group.parts = parts;
-        group.scale.setScalar(humanoidScale(1.265));
+        // 頭部球體中心 1.0、半徑 0.205、Y scale 1.06；不計髮帽與呆毛。
+        applyAnatomicalHumanoidScale(group, 1.0 + 0.205 * 1.06);
         return group;
       }
       // 保留已完成的男主角版本，方便隨時切回或做角色選擇功能。

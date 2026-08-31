@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { getHumanoidHeightFrame } from "./humanoid";
 import { buildMap, fadeIn, loadMap } from "./build-map";
 import {
   getSaveSlotSummaries,
@@ -109,10 +110,19 @@ function renderAppearancePreview(
   const model = makeModel();
   scene.add(model);
   const bounds = new THREE.Box3().setFromObject(model);
-  const center = bounds.getCenter(new THREE.Vector3());
   const size = bounds.getSize(new THREE.Vector3());
-  const halfHeight = Math.max(size.y * 0.62, 0.62);
-  const halfWidth = Math.max(size.x * 0.62, halfHeight * (240 / 280));
+  const heightFrame = getHumanoidHeightFrame(model);
+  // 選角卡統一依鞋底至頭骨頂端取景。髮型、呆毛等裝飾不得拉遠個別鏡頭，
+  // 否則相同身材會因髮型高度不同而看起來一大一小。
+  const center = heightFrame
+    ? new THREE.Vector3(0, (heightFrame.footY + heightFrame.headTopY) / 2, 0)
+    : bounds.getCenter(new THREE.Vector3());
+  const halfHeight = heightFrame
+    ? (heightFrame.headTopY - heightFrame.footY) * 0.68
+    : Math.max(size.y * 0.62, 0.62);
+  const halfWidth = heightFrame
+    ? Math.max(halfHeight * (240 / 280), 0.58)
+    : Math.max(size.x * 0.62, halfHeight * (240 / 280));
   const camera = new THREE.OrthographicCamera(
     -halfWidth,
     halfWidth,
