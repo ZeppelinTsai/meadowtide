@@ -30,7 +30,7 @@ import {
   waterSurfaceMaterials,
   waterSkyUnderlayMaterials,
   outdoorLampLights,
-  foamMeshes,
+
   windmillRotors,
   pastureGrassBlades,
   avenueLeafMaterials,
@@ -38,12 +38,12 @@ import {
   seasonalGroundMaterials,
   mountainSeasonalMaterials,
   GRASS_STAGE_HEIGHTS,
-  EAST_SEA_WAVE_DIRECTION,
-  SOUTH_SEA_WAVE_DIRECTION,
+
+
   gangplankMeshes,
   prologueRefs,
 } from "./scene-registries";
-import { findSouthernShoreSandZ } from "./shore-foam";
+
 import { createConnectedTileSeaGeometry } from "./tile-sea-geometry";
 import { randomPasturePoint } from "./npc-runtime";
 
@@ -51,7 +51,7 @@ import { randomPasturePoint } from "./npc-runtime";
 // 同一套「3D 世界不接外部圖片，程式生成貼圖」規則。畫一塊正方形貼圖，
 // 靠 texture.repeat 依實際世界尺寸鋪滿，不用每個呼叫端各自重畫一次。
 // 目前給山頂觀景台用；之後棧橋/碼頭甲板要類似木板質感也能直接共用。
-import { makeSand, makeFoam } from "./props-nature";
+import { makeSand } from "./props-nature";
 
 export function makeWoodPlankTexture({
   plankColor = 0xa9825a,
@@ -799,8 +799,6 @@ export function makePortScene() {
     });
     const geometry = createConnectedTileSeaGeometry(
       cells,
-      MAPS.port.tiles,
-      EAST_SEA_WAVE_DIRECTION,
     );
     const depthMask = new THREE.Mesh(geometry.clone(), waterDepthMat);
     depthMask.position.y = 0.025;
@@ -809,7 +807,6 @@ export function makePortScene() {
     const water = new THREE.Mesh(geometry, waterMat);
     water.position.y = 0.09;
     water.receiveShadow = true;
-    gameState.portWaterMeshes.push(water);
     group.add(water);
   };
   addWater(port.basin.x, port.basin.z, port.basin.width, port.basin.height);
@@ -836,33 +833,6 @@ export function makePortScene() {
   }
   addWater(0, port.height, oceanViewEdge, port.oceanViewPadding);
   buildConnectedWater();
-
-  for (let z = 0; z <= port.beachDepth; z += 2) {
-    const foam = makeFoam(13.65, z, 700 + z * 1.37);
-    foamMeshes.push(foam);
-    group.add(foam);
-  }
-  // 南側沙灘的浪花直接掃最終 tile 8/9 邊界；從 x=1 開始避開地圖
-  // 西緣，朝北捲上岸。岸線日後重畫時不用再同步另一份視覺座標。
-  for (
-    let x = port.southBeach.x + 1;
-    x < port.southBeach.x + port.southBeach.width;
-    x += 2
-  ) {
-    const shoreZ = findSouthernShoreSandZ(
-      MAPS.port.tiles,
-      x,
-      port.southBeach.z,
-      port.southBeach.z + port.southBeach.depth - 1,
-    );
-    if (shoreZ === null) continue;
-    const foam = makeFoam(x, shoreZ + 0.65, 900 + x * 1.37, {
-      waveDirection: SOUTH_SEA_WAVE_DIRECTION,
-      rotationY: Math.PI / 2,
-    });
-    foamMeshes.push(foam);
-    group.add(foam);
-  }
 
   const addPlatform = (x, z, width, depth) => {
     const slab = new THREE.Mesh(

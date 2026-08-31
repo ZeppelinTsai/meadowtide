@@ -116,7 +116,6 @@ export const gameState = {
   musicMuted: false,
   activeMusicKey: null as string | null,
   oceanMesh: null as THREE.Mesh | null, // 整片海面網格，animate() 裡逐頂點做波浪動畫
-  portWaterMeshes: [] as THREE.Mesh[],
   lakeMesh: null as THREE.Mesh | null, // 湖面，跟海一樣是合併網格，只是波浪幅度小很多、沒有碎浪
   seaGlimpseMesh: null as THREE.Mesh | null, // 北邊的遠方海景背景板，會輕輕起伏
   mapGroup: new THREE.Group(),

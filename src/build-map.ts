@@ -37,8 +37,8 @@ import {
   SHRINE_PATH_ELEVATION,
   portGroundY,
   oldVillageGroundY,
-  oldVillageSouthBeachEndZ,
-  oldVillageWestBeachStartX,
+
+
   mountainGroundY,
   isOnMountainStair,
   MOUNTAIN_GATE_BLOCKER,
@@ -68,8 +68,8 @@ import {
   SEA_FISH_SCALE,
   LAKE_FISH_SCALE,
   EAST_SEA_WAVE_DIRECTION,
-  SOUTH_SEA_WAVE_DIRECTION,
-  WEST_SEA_WAVE_DIRECTION,
+
+
   thresholdMarkerMeshes,
   thresholdMarkersVisible,
   gatherNodeMeshes,
@@ -77,7 +77,7 @@ import {
   celestialSparkleMaterials,
   southIndoorWallMeshes,
 } from "./scene-registries";
-import { findSouthernShoreSandZ, findWesternShoreSandX } from "./shore-foam";
+
 import { getShorewardSeaWaveDirection } from "./sea-wave-direction";
 import { createConnectedTileSeaGeometry } from "./tile-sea-geometry";
 import {
@@ -266,7 +266,6 @@ export function buildMap(mapName) {
   // 在任何場景建置之前清空，不能等到共用海面收尾才清，否則模型看得到、
   // animate() 卻收不到登記項目，浪花或水面會完全靜止。
   foamMeshes.length = 0;
-  gameState.portWaterMeshes = [];
 
   const map = MAPS[mapName];
   const rows = map.tiles.length,
@@ -1424,12 +1423,7 @@ export function buildMap(mapName) {
         }
       });
 
-      // 南側新沙灘的海——跟港口南沙灘(makePortScene 的 addWater)同一套
-      // 「每欄水面從實際岸線後開始」寫法，避免矩形水面蓋住鋸齒沙灘。波浪
-      // 動畫沿用 gameState.portWaterMeshes 同一個登記表：game-loop.ts 的
-      // 更新迴圈純讀 mesh 自己的 geometry/position，跟哪張地圖建的無關，
-      // 兩張地圖從不會同時載入，共用同一個陣列不會互相污染，不用另外
-      // 開一份幾乎一樣的更新邏輯。
+      // 舊城鎮海面依最終 tile 9 合成單一靜態網格；不做頂點浪動畫與白峰上色。
       const oldVillageWaterMat = new THREE.MeshBasicMaterial({
         vertexColors: true,
         transparent: true,
@@ -1455,8 +1449,6 @@ export function buildMap(mapName) {
       const buildOldVillageWater = () => {
         const geometry = createConnectedTileSeaGeometry(
           oldVillageWaterCells,
-          MAPS.oldVillage.tiles,
-          EAST_SEA_WAVE_DIRECTION,
         );
         const depthMask = new THREE.Mesh(
           geometry.clone(),
@@ -1468,7 +1460,6 @@ export function buildMap(mapName) {
         const water = new THREE.Mesh(geometry, oldVillageWaterMat);
         water.position.y = 0.09;
         water.receiveShadow = true;
-        gameState.portWaterMeshes.push(water);
         fishingWaterMeshes.push(water);
         gameState.mapGroup.add(water);
       };
@@ -1490,47 +1481,6 @@ export function buildMap(mapName) {
       }
       buildOldVillageWater();
 
-      // 舊城鎮的南岸與西岸共用生活區的「衝上岸→碎開→退回」浪花模型。
-      // 端點只用 LAYOUT 算範圍，真正落點仍從最終 tile 8/9 鄰接邊界取得。
-      const southFoamStartX = oldVillageWestBeachStartX(
-        LAYOUT.oldVillage.westBeach.z + 1,
-      );
-      const southFoamEndX =
-        LAYOUT.oldVillage.southBeach.x + LAYOUT.oldVillage.southBeach.width - 2;
-      const southFoamEndZ = oldVillageSouthBeachEndZ(southFoamEndX);
-      for (let x = southFoamStartX; x <= southFoamEndX; x += 2) {
-        const shoreZ = findSouthernShoreSandZ(
-          MAPS.oldVillage.tiles,
-          x,
-          LAYOUT.oldVillage.southBeach.z,
-          southFoamEndZ,
-        );
-        if (shoreZ === null) continue;
-        const foam = makeFoam(x, shoreZ + 0.65, 1200 + x * 1.37, {
-          waveDirection: SOUTH_SEA_WAVE_DIRECTION,
-          rotationY: Math.PI / 2,
-        });
-        foamMeshes.push(foam);
-        gameState.mapGroup.add(foam);
-      }
-      for (
-        let z = LAYOUT.oldVillage.westBeach.z + 1;
-        z <= southFoamEndZ;
-        z += 2
-      ) {
-        const shoreX = findWesternShoreSandX(
-          MAPS.oldVillage.tiles,
-          z,
-          LAYOUT.oldVillage.westBeach.x,
-          LAYOUT.oldVillage.westBeach.x + LAYOUT.oldVillage.westBeach.width - 1,
-        );
-        if (shoreX === null) continue;
-        const foam = makeFoam(shoreX - 0.65, z, 1500 + z * 1.37, {
-          waveDirection: WEST_SEA_WAVE_DIRECTION,
-        });
-        foamMeshes.push(foam);
-        gameState.mapGroup.add(foam);
-      }
     } else if (mapName === "mountain") {
       const mountain = LAYOUT.mountain;
       plateauGroup.add(makeMountainCaveEntrance());

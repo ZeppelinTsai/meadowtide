@@ -1637,51 +1637,6 @@ export function animate(now) {
     if (gameState.animationFrameCount % 8 === 0)
       gameState.lakeMesh.geometry.computeVertexNormals();
   }
-  // 港口／城鎮依各頂點最近岸線決定浪向，環島海浪由外海朝岸推進。
-  if (gameState.portWaterMeshes.length && updateWaterSurface) {
-    gameState.portWaterMeshes.forEach((water) => {
-      const pos = water.geometry.attributes.position;
-      const colors = water.geometry.attributes.color;
-      const base = water.geometry.userData.basePositions;
-      const waveDirections = water.geometry.userData.waveDirections;
-      const horizontalXZ = water.geometry.userData.horizontalXZ === true;
-      const waveSample: any = {};
-      const waveDirection = { x: 0, z: 0 };
-      for (let i = 0; i < pos.count; i++) {
-        const localX = base[i * 3];
-        const localY = base[i * 3 + 1];
-        const localZ = base[i * 3 + 2];
-        waveDirection.x = waveDirections?.[i * 2] ?? EAST_SEA_WAVE_DIRECTION.x;
-        waveDirection.z =
-          waveDirections?.[i * 2 + 1] ?? EAST_SEA_WAVE_DIRECTION.z;
-        sampleDirectedSeaWave(
-          localX + water.position.x,
-          horizontalXZ ? localZ + water.position.z : water.position.z - localY,
-          gameState.effectElapsed,
-          waveDirection,
-          EAST_SEA_WAVE,
-          waveSample,
-        );
-        pos.setX(i, localX + waveSample.displacementX);
-        if (horizontalXZ) {
-          pos.setY(i, waveSample.height);
-          pos.setZ(i, localZ + waveSample.displacementZ);
-        } else {
-          pos.setY(i, localY - waveSample.displacementZ);
-          pos.setZ(i, waveSample.height);
-        }
-        // 與生活區 oceanMesh 使用同一套完整白峰公式；港口／城鎮只保留
-        // 淺水透明度差異，海浪幾何、法線與 crest 顯色規則必須一致。
-        const crestFactor = Math.max(0, (waveSample.crest - 0.4) / 0.6);
-        const crestColor = Math.pow(crestFactor, 1.8);
-        setSeaVertexColor(colors, i, 0.18, 0.43, 0.68, crestColor, 0);
-      }
-      pos.needsUpdate = true;
-      colors.needsUpdate = true;
-      if (gameState.animationFrameCount % 8 === 0)
-        water.geometry.computeVertexNormals();
-    });
-  }
   if (gameState.seaGlimpseMesh && updateWaterSurface) {
     const sgPosAttr = gameState.seaGlimpseMesh.geometry.attributes.position;
     const sgColorAttr = gameState.seaGlimpseMesh.geometry.attributes.color;

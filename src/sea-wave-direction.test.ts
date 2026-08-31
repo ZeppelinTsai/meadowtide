@@ -48,10 +48,8 @@ test("adjacent sea tiles share boundary vertices", () => {
       { x: 0, z: 0 },
       { x: 1, z: 0 },
     ],
-    [[9, 9]],
-    { x: 0, z: -1 },
   );
-  const subdivisions = 4;
+  const subdivisions = 1;
   assert.equal(
     geometry.attributes.position.count,
     (subdivisions * 2 + 1) * (subdivisions + 1),

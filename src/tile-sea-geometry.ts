@@ -1,17 +1,10 @@
 import * as THREE from "three";
-import {
-  getShorewardSeaWaveDirection,
-  type WaveDirection,
-} from "./sea-wave-direction";
-
 export type SeaCell = { x: number; z: number };
 
-// 每格四分割，避免動態白峰門檻只命中少數頂點後，插值成孤立的菱形亮塊。
+// 港口與舊城鎮使用靜態海面；每格只需一個面，避免浪動畫移除後仍浪費頂點。
 export function createConnectedTileSeaGeometry(
   cells: Iterable<SeaCell>,
-  tiles: number[][],
-  fallback: WaveDirection,
-  subdivisions = 4,
+  subdivisions = 1,
 ) {
   const positions: number[] = [];
   const colors: number[] = [];
@@ -46,21 +39,5 @@ export function createConnectedTileSeaGeometry(
   geometry.setAttribute("color", new THREE.BufferAttribute(new Float32Array(colors), 3));
   geometry.setIndex(indices);
   geometry.computeVertexNormals();
-  const waveDirections = new Float32Array((positionArray.length / 3) * 2);
-  for (let i = 0; i < positionArray.length / 3; i++) {
-    const direction = getShorewardSeaWaveDirection(
-      tiles,
-      positionArray[i * 3],
-      positionArray[i * 3 + 2],
-      fallback,
-    );
-    waveDirections[i * 2] = direction.x;
-    waveDirections[i * 2 + 1] = direction.z;
-  }
-  geometry.userData = {
-    basePositions: positionArray.slice(),
-    waveDirections,
-    horizontalXZ: true,
-  };
   return geometry;
 }
