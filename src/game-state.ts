@@ -769,6 +769,8 @@ export interface GatherNode {
   x: number;
   z: number;
   collected: boolean;
+  // 序章荒廢農田固定障礙：跨刷新時段保留，直到玩家親自清除。
+  persistent?: boolean;
 }
 export const WOOD_NODES: GatherNode[] = [];
 export const STONE_NODES: GatherNode[] = [];
@@ -834,9 +836,20 @@ export function refreshGatherNodes(force = false) {
   const slot = getGatherSpawnSlot();
   if (!force && gameState.gatherSpawnSlot === slot) return false;
   gameState.gatherSpawnSlot = slot;
-  WOOD_NODES.length = 0;
-  STONE_NODES.length = 0;
+  const persistentWood = WOOD_NODES.filter(
+    (node) => node.persistent && !node.collected,
+  );
+  const persistentStone = STONE_NODES.filter(
+    (node) => node.persistent && !node.collected,
+  );
+  WOOD_NODES.splice(0, WOOD_NODES.length, ...persistentWood);
+  STONE_NODES.splice(0, STONE_NODES.length, ...persistentStone);
   const usedByMap = new Map<string, { x: number; z: number }[]>();
+  [...persistentWood, ...persistentStone].forEach((node) => {
+    const used = usedByMap.get(node.map) || [];
+    usedByMap.set(node.map, used);
+    used.push({ x: node.x, z: node.z });
+  });
   const zones: GatherNode["zone"][] = ["mountainSide", "foot", "waist"];
   for (const zone of zones) {
     const map = zone === "mountainSide" ? "livingArea" : "mountain";

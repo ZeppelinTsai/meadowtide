@@ -71,6 +71,12 @@ slot markup 或 CSS。清單必須顯示高對比且穩定佔位的垂直捲軸�
 `prologue.ts` 的存檔存在判斷也包含 autosave。即使玩家沒有建立手動存檔，
 只要 06:00 autosave 存在，標題畫面仍會顯示「繼續遊戲」。
 
+## 序章檢查點（存檔版本 15，2026-09-01）
+
+- 手動快速存檔必須先通過 `canQuickSaveDuringPrologue()`；序章只有進入 `seekingRod`（前往港口找釣竿的自由同行階段）後可存，更早階段直接擋下。一般遊戲與已完成序章不受影響。
+- 存檔的 `prologue.checkpoint` 只保存可安全還原的 `seekingRod`。讀檔時須在 `loadMap()` 前呼叫 `restorePrologueSaveState()`，恢復村長同行、港口事件觸發與序章時間鎖；不可只還原玩家座標。
+- 舊版存檔缺少此欄位時不猜測序章進度，避免把播種或過場中的存檔誤判成自由同行。
+
 ## 玩家資料（存檔版本 6，2026-08-28）
 
 - `playerProfile.name`：序章前輸入的牧場主姓名，去除首尾空白後最多 16 字元。

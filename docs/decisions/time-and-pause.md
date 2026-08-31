@@ -24,7 +24,7 @@
   流星雨，第 13 日高峰。`meteorPool` 固定最多 16 個物件；室內、白天或
   不可見天氣會清空活動狀態，不會累積 geometry/material。
 - 木材／石頭採集點每天 06:00、18:00 各刷新一次；採集後整個模型立即消失，
-  不使用 emissive 發光提示。每區、每批的數量以 `src/game-state.ts` 的
+  不使用 emissive 發光提示。標記 `persistent` 的序章荒廢農田木石不屬於一般刷新：跨時段與換圖都保留未採集節點，只有玩家親自清除後才永久消失。每區、每批的數量以 `src/game-state.ts` 的
   `GATHER_NODES_PER_KIND` 為單一資料源，目前生活區西側、山區山腳與山腰
   都各為 3 木＋3 石，山頂不生成。隨機座標必須從 `MAPS` 的可走草地與
   `LAYOUT.mountain.foot/waist` 推導；山腳／山腰只可生成在各層

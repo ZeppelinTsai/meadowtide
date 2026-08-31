@@ -76,10 +76,13 @@ import {
 } from "./layout-maps";
 import { tryShareChefMeal, mergeChefMealIntoChatLine } from "./chef-quest";
 import {
+  canQuickSaveDuringPrologue,
+  exportPrologueSaveState,
   isPrologueFishingTutorialActive,
   previewPrologue,
   reportPrologueFishingFailure,
   reportPrologueFishingSuccess,
+  restorePrologueSaveState,
 } from "./prologue";
 import {
   isFirstPersonModeActive,
@@ -286,7 +289,7 @@ export function getSaveSlotSummaries(): SaveSlotSummary[] {
 export function saveGame(slot = "default") {
   npcs.forEach((npc) => getRelationship(npc.id));
   const data = {
-    version: 14,
+    version: 15,
     savedAt: Date.now(),
     playerProfile: {
       name: gameState.playerName,
@@ -314,6 +317,7 @@ export function saveGame(slot = "default") {
     npcMemory: npcs.map((npc) => ({ id: npc.id, memory: npc.memory })),
     relationships: exportRelationships(),
     story: exportStoryState(),
+    prologue: exportPrologueSaveState(),
     npcNameRevealStages: exportNpcNameRevealState(),
     carpenterQuest: { ...carpenterQuest },
     oysterRackState: JSON.parse(JSON.stringify(oysterRackState)),
@@ -370,6 +374,7 @@ export function loadGame(
   const data = JSON.parse(raw);
   // v6 以前没有 story 栏位；restore 会补齐默认值，不让旧存档失效。
   restoreStoryState(data.story);
+  restorePrologueSaveState(data.prologue);
   restoreNpcNameRevealState(
     data.npcNameRevealStages,
     legacyKnownNpcIds(data),
@@ -645,6 +650,10 @@ addEventListener("keydown", (event) => {
     return;
   event.preventDefault();
   if (event.shiftKey) {
+    if (!canQuickSaveDuringPrologue()) {
+      console.info("[存檔] 序章尚未到達可安全存檔的自由活動階段");
+      return;
+    }
     setActiveSaveSlot(slotNum);
     saveGame("slot" + slotNum);
     console.info(`[存檔] 已儲存到第 ${slotNum} 格`);

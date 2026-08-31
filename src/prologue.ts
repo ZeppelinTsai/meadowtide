@@ -172,6 +172,7 @@ function prepareAbandonedFarm() {
       x,
       z,
       collected: false,
+      persistent: true,
     });
   });
 }
@@ -664,6 +665,38 @@ function finishPrologue() {
 }
 
 let fishingSequenceStarted = false;
+
+export interface PrologueSaveState {
+  checkpoint: "seekingRod";
+}
+
+export function canQuickSaveDuringPrologue(): boolean {
+  return stage === "inactive" || stage === "done" || stage === "seekingRod";
+}
+
+export function exportPrologueSaveState(): PrologueSaveState | null {
+  return stage === "seekingRod" ? { checkpoint: "seekingRod" } : null;
+}
+
+export function restorePrologueSaveState(value: unknown) {
+  if (
+    value &&
+    typeof value === "object" &&
+    (value as { checkpoint?: unknown }).checkpoint === "seekingRod" &&
+    !hasCompletedStoryEvent("main.prologue.arrival")
+  ) {
+    fishingSequenceStarted = false;
+    fishingTutorialResultPending = false;
+    beginStage("seekingRod");
+    gameState.cutsceneActive = false;
+    useGuideZoom = false;
+    lockPrologueDateTime();
+    return;
+  }
+  beginStage(
+    hasCompletedStoryEvent("main.prologue.arrival") ? "done" : "inactive",
+  );
+}
 
 export function isPrologueSeekingRod(): boolean {
   return stage === "seekingRod";
