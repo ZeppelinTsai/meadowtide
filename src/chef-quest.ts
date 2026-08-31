@@ -164,7 +164,7 @@ export function startChefMoveInScene() {
     },
   ]);
   const chefNpc = npcs.find((n) => n.id === "chef");
-  if (chefNpc) chefNpc.mesh.visible = true;
+  if (chefNpc) chefNpc.mesh.visible = false;
 }
 
 export function handleChefDoorstepTouch() {

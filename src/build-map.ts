@@ -3815,7 +3815,9 @@ export function buildMap(mapName) {
   gameState.currentMapName = mapName;
   npcGroup.position.y = 0;
   npcs.forEach((npc) => {
-    if (npc.id === "carpenter") {
+    if (npc.id === "chef") {
+      npc.mesh.visible = false;
+    } else if (npc.id === "carpenter") {
       npc.mesh.visible =
         (carpenterQuest.stage === "moved_in" && npc.map === mapName) ||
         ((carpenterQuest.stage === "construction" ||
