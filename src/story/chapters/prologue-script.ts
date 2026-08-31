@@ -8,6 +8,7 @@ type DialogueLine =
       name?: string;
       revealNameAfter?: { npcId: string; stage: 1 | 2 };
       comicCue?: ComicCueSpec;
+      hidePortrait?: boolean;
     };
 const mayor = (
   text: string,
@@ -22,6 +23,12 @@ const captain = (text: string): DialogueLine => ({
   text,
   speaker: "captain",
   name: "船長",
+});
+const mayorWithoutPortrait = (text: string): DialogueLine => ({
+  text,
+  speaker: "mayor",
+  name: "村長",
+  hidePortrait: true,
 });
 const cue = (
   text: string,
@@ -105,10 +112,10 @@ export const PROLOGUE_SCRIPT: Record<string, DialogueLine[]> = {
     mayor("「那麼，我們去你的牧場吧，跟我來。」"),
     "[村長帶主角來到島上的廣場]",
     mayor("「這裡是島上的廣場。以前人多的時候，慶典和市集都會在這裡舉辦。」"),
-    mayor(
+    mayorWithoutPortrait(
       "「靠近廣場最南邊的第一間店就是雜貨店。營業時間是上午十點到下午四點，星期一公休。」",
     ),
-    mayor(
+    mayorWithoutPortrait(
       "「沿著城鎮往西北走可以上山。不過今天要看的地方不少，山區就留給你之後慢慢探索吧。」",
     ),
     cue("[兩人接著來到城鎮東北方的牧場]", "player", "!"),

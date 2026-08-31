@@ -162,6 +162,8 @@ function bowWorldPoint(localPoint: THREE.Vector3): THREE.Vector3 {
 - `port`：`(4,22) → (0,22)`，完成後用既有 `loadMap()` 進入舊城鎮。
 - `oldVillage`：`(175,23) → (164,23) → (164,0)`，完成後轉入生活區。
 
+進入生活區後，主角與村長先留在 `LAYOUT.livingArea.prologueArrival` 的入口站位；先顯示抵達提示並完成主角第一人稱環視，環視結束後才啟動入口到 `(21,20)` 的同行，不得在換圖回呼中直接把演出推到家門前。雜貨店與山區介紹兩句保留村長名牌但隱藏立繪，抵達牧場後恢復立繪。
+
 原始路徑不可寫死在 `prologue.ts`；唯一資料源是 `LAYOUT.port.prologueGuide`、
 `LAYOUT.oldVillage.prologueGuide` 與 `LAYOUT.livingArea.prologueArrival`。
 舊城鎮路徑用西擴張前的座標宣告，會由既有 `shiftCoordinatesDeep()` 隨整張

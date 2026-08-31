@@ -769,17 +769,29 @@ function startFarmingTutorial() {
 function finishPrologueTour() {
   useGuideZoom = false;
   lockPrologueZoom();
-  showDialogSequence([PROLOGUE_SCRIPT.tour[9]], () => {
+  showDialogSequence(PROLOGUE_SCRIPT.tour.slice(9), () => {
+    startGuidedWalk(
+      [
+        { x: 21, z: 20 },
+        { x: 14, z: 20 },
+      ],
+      startFarmingTutorial,
+    );
+  });
+}
+
+function startLivingAreaArrival() {
+  useGuideZoom = false;
+  lockPrologueZoom();
+  showDialogSequence([PROLOGUE_SCRIPT.tour[8]], () => {
     startFarmScan(() => {
-      showDialogSequence(PROLOGUE_SCRIPT.tour.slice(10), () => {
-        startGuidedWalk(
-          [
-            { x: 21, z: 20 },
-            { x: 14, z: 20 },
-          ],
-          startFarmingTutorial,
-        );
-      });
+      startGuidedWalk(
+        [
+          LAYOUT.livingArea.prologueArrival.mayor,
+          { x: 21, z: 20 },
+        ],
+        finishPrologueTour,
+      );
     });
   });
 }
@@ -797,14 +809,7 @@ function startVillageToFarmGuide() {
         "livingArea",
         LAYOUT.livingArea.prologueArrival.player,
         LAYOUT.livingArea.prologueArrival.mayor,
-        () =>
-          startGuidedWalk(
-            [
-              LAYOUT.livingArea.prologueArrival.mayor,
-              { x: 21, z: 20 },
-            ],
-            finishPrologueTour,
-          ),
+        startLivingAreaArrival,
       );
     },
   );

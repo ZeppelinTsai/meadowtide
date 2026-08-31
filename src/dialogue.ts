@@ -105,7 +105,7 @@ export function renderDialogLine(line) {
   showComicCue(line.comicCue || null);
   dialogTextEl.textContent = translateText(line.text);
   setDialogCg(line.cg || null);
-  setDialogPortrait(line.speaker || null);
+  setDialogPortrait(line.hidePortrait ? null : line.speaker || null);
   if (line.name || line.speaker) {
     const npc = npcs.find((n) => n.id === line.speaker);
     dialogNameEl.textContent =
