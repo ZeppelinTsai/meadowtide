@@ -46,6 +46,7 @@ import {
   updatePrologueCutscene,
   updatePrologueGameplayGate,
   isPrologueFarmingActive,
+  isPrologueGuidedWalkingActive,
   isPrologueShipStage,
   reapplyProloguePlayerY,
 } from "./prologue";
@@ -312,13 +313,13 @@ export function animate(now) {
   updatePrologueGameplayGate();
 
   // --- 自由移動：方向鍵給的是速度向量，不是格子跳，可以八方向、可以貼牆滑 ---
-  // 序幕演出(cutsceneActive)期間整段跳過：船/跳板/下船走位都是
-  // updatePrologueCutscene() 自己直接寫 gameState.player.position，
-  // 不透過 WASD/碰撞這條路(演出路徑是設計好的安全路徑，不需要碰撞判定)。
+  // 一般序幕演出由 cutsceneActive 鎖住移動；guidedWalking 是唯一例外：
+  // 玩家可用正常碰撞自由跟上村長，但 cutsceneActive 仍保留，持續封鎖
+  // 世界互動、山區入口與所有 touch 換圖事件。
   let dx = 0,
     dz = 0;
   if (
-    !gameState.cutsceneActive &&
+    (!gameState.cutsceneActive || isPrologueGuidedWalkingActive()) &&
     !isCameraAdjustModeActive()
   ) {
     if (keys["w"] || keys["arrowup"]) dz -= 1;
@@ -425,6 +426,7 @@ export function animate(now) {
             ? "down"
             : "up";
     }
+    if (isPrologueGuidedWalkingActive()) updatePrologueCutscene(dt);
   } else {
     updatePrologueCutscene(dt);
   }
