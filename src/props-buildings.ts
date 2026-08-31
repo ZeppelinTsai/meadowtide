@@ -44,6 +44,7 @@ import {
   prologueRefs,
 } from "./scene-registries";
 import { findSouthernShoreSandZ } from "./shore-foam";
+import { getShorewardSeaWaveDirection } from "./sea-wave-direction";
 import { randomPasturePoint } from "./npc-runtime";
 
 // 木棧板材質——canvas 現畫木紋貼圖，跟 scene-sky.ts/weather-particles.ts
@@ -768,9 +769,9 @@ export function makePortScene() {
   );
   const waterMat = new THREE.MeshStandardMaterial({
     vertexColors: true,
-    roughness: 0.2,
-    metalness: 0.1,
-    flatShading: true,
+    // 規則 PlaneGeometry 不可使用尖銳金屬高光，否則峰谷間會顯成灰色菱形。
+    roughness: 0.62,
+    metalness: 0,
     transparent: true,
     // 港區船塢是淺水，比北邊主海域(0.88)透明得多，星空才透得出來。
     opacity: 0.6,
@@ -791,8 +792,8 @@ export function makePortScene() {
     const geometry = new THREE.PlaneGeometry(
       width,
       depth,
-      Math.max(2, Math.ceil(width)),
-      Math.max(2, Math.ceil(depth)),
+      Math.max(2, Math.ceil(width * 2)),
+      Math.max(2, Math.ceil(depth * 2)),
     );
     const water = new THREE.Mesh(geometry, waterMat);
     const colors = new Float32Array(geometry.attributes.position.count * 3);
@@ -807,9 +808,25 @@ export function makePortScene() {
     water.rotation.x = -Math.PI / 2;
     water.position.set(x + (width - 1) / 2, 0.09, z + (depth - 1) / 2);
     water.receiveShadow = true;
-    geometry.userData.basePositions = Float32Array.from(
+    const basePositions = Float32Array.from(
       geometry.attributes.position.array,
     );
+    const waveDirections = new Float32Array(
+      geometry.attributes.position.count * 2,
+    );
+    const centerX = x + (width - 1) / 2;
+    const centerZ = z + (depth - 1) / 2;
+    for (let i = 0; i < geometry.attributes.position.count; i++) {
+      const direction = getShorewardSeaWaveDirection(
+        MAPS.port.tiles,
+        basePositions[i * 3] + centerX,
+        centerZ - basePositions[i * 3 + 1],
+        EAST_SEA_WAVE_DIRECTION,
+      );
+      waveDirections[i * 2] = direction.x;
+      waveDirections[i * 2 + 1] = direction.z;
+    }
+    geometry.userData = { basePositions, waveDirections };
     gameState.portWaterMeshes.push(water);
     group.add(water);
   };

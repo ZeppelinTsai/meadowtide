@@ -71,7 +71,6 @@ import {
   EAST_SEA_WAVE_DIRECTION,
   SOUTH_SEA_WAVE_DIRECTION,
   WEST_SEA_WAVE_DIRECTION,
-  NORTHEAST_SEA_WAVE_DIRECTION,
   thresholdMarkerMeshes,
   thresholdMarkersVisible,
   gatherNodeMeshes,
@@ -80,6 +79,7 @@ import {
   southIndoorWallMeshes,
 } from "./scene-registries";
 import { findSouthernShoreSandZ, findWesternShoreSandX } from "./shore-foam";
+import { getShorewardSeaWaveDirection } from "./sea-wave-direction";
 import {
   MINE_SIZE,
   MINE_FLOOR_MAX,
@@ -1432,9 +1432,9 @@ export function buildMap(mapName) {
       // 開一份幾乎一樣的更新邏輯。
       const oldVillageWaterMat = new THREE.MeshStandardMaterial({
         vertexColors: true,
-        roughness: 0.2,
-        metalness: 0.1,
-        flatShading: true,
+        // 規則網格改用寬而柔和的高光，避免峰谷間顯成灰色菱形。
+        roughness: 0.62,
+        metalness: 0,
         transparent: true,
         opacity: 0.6,
         side: THREE.DoubleSide,
@@ -1453,8 +1453,8 @@ export function buildMap(mapName) {
         const geometry = new THREE.PlaneGeometry(
           width,
           depth,
-          Math.max(2, Math.ceil(width)),
-          Math.max(2, Math.ceil(depth)),
+          Math.max(2, Math.ceil(width * 2)),
+          Math.max(2, Math.ceil(depth * 2)),
         );
         const colors = new Float32Array(geometry.attributes.position.count * 3);
         for (let i = 0; i < geometry.attributes.position.count; i++)
@@ -1476,9 +1476,25 @@ export function buildMap(mapName) {
         water.rotation.x = -Math.PI / 2;
         water.position.set(wx + (width - 1) / 2, 0.09, wz + (depth - 1) / 2);
         water.receiveShadow = true;
-        geometry.userData.basePositions = Float32Array.from(
+        const basePositions = Float32Array.from(
           geometry.attributes.position.array,
         );
+        const waveDirections = new Float32Array(
+          geometry.attributes.position.count * 2,
+        );
+        const centerX = wx + (width - 1) / 2;
+        const centerZ = wz + (depth - 1) / 2;
+        for (let i = 0; i < geometry.attributes.position.count; i++) {
+          const direction = getShorewardSeaWaveDirection(
+            MAPS.oldVillage.tiles,
+            basePositions[i * 3] + centerX,
+            centerZ - basePositions[i * 3 + 1],
+            EAST_SEA_WAVE_DIRECTION,
+          );
+          waveDirections[i * 2] = direction.x;
+          waveDirections[i * 2 + 1] = direction.z;
+        }
+        geometry.userData = { basePositions, waveDirections };
         gameState.portWaterMeshes.push(water);
         fishingWaterMeshes.push(water);
         gameState.mapGroup.add(water);
@@ -3397,7 +3413,18 @@ export function buildMap(mapName) {
       );
       geo.setIndex(indices);
       geo.computeVertexNormals();
-      geo.userData = { basePositions: posArray.slice() };
+      const waveDirections = new Float32Array((posArray.length / 3) * 2);
+      for (let i = 0; i < posArray.length / 3; i++) {
+        const direction = getShorewardSeaWaveDirection(
+          MAPS.livingArea.tiles,
+          posArray[i * 3],
+          posArray[i * 3 + 2],
+          EAST_SEA_WAVE_DIRECTION,
+        );
+        waveDirections[i * 2] = direction.x;
+        waveDirections[i * 2 + 1] = direction.z;
+      }
+      geo.userData = { basePositions: posArray.slice(), waveDirections };
 
       const oceanDepthMask = new THREE.Mesh(
         geo.clone(),

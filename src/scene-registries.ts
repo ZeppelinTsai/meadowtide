@@ -109,8 +109,8 @@ export const prologueRefs: {
       export const EAST_SEA_WAVE_DIRECTION = Object.freeze({ x: -1, z: 0 });
       export const SOUTH_SEA_WAVE_DIRECTION = Object.freeze({ x: 0, z: -1 });
       export const WEST_SEA_WAVE_DIRECTION = Object.freeze({ x: 1, z: 0 });
-      // 東北外海朝西南方推進；sampleDirectedSeaWave 會再次正規化。
-      export const NORTHEAST_SEA_WAVE_DIRECTION = Object.freeze({ x: -1, z: 1 });
+      // 北側海面朝南推進；sampleDirectedSeaWave 會再次正規化。
+      export const NORTH_SEA_WAVE_DIRECTION = Object.freeze({ x: 0, z: 1 });
       export const EAST_SEA_WAVE = Object.freeze({
         waveNumber: 1.4,
         speed: 2.2,

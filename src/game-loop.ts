@@ -138,7 +138,7 @@ import {
   EAST_SEA_WAVE,
   NORTH_SEA_WAVE,
   EAST_SEA_WAVE_DIRECTION,
-  NORTHEAST_SEA_WAVE_DIRECTION,
+  NORTH_SEA_WAVE_DIRECTION,
   sampleDirectedSeaWave,
   gangplankMeshes,
   prologueRefs,
@@ -1446,20 +1446,24 @@ export function animate(now) {
     const posAttr = gameState.oceanMesh.geometry.attributes.position;
     const colorAttr = gameState.oceanMesh.geometry.attributes.color;
     const basePos = gameState.oceanMesh.geometry.userData.basePositions;
+    const waveDirections = gameState.oceanMesh.geometry.userData.waveDirections;
     const ox = gameState.oceanMesh.position.x,
       oz = gameState.oceanMesh.position.z;
     const waveSample: any = {};
+    const waveDirection = { x: 0, z: 0 };
     for (let i = 0; i < posAttr.count; i++) {
       const bx = basePos[i * 3],
         bz = basePos[i * 3 + 2];
       const worldX = bx + ox,
         worldZ = bz + oz;
-      // 東海的方向向量朝西，波峰與水平位移都沿該向量推向沙灘。
+      waveDirection.x = waveDirections?.[i * 2] ?? EAST_SEA_WAVE_DIRECTION.x;
+      waveDirection.z =
+        waveDirections?.[i * 2 + 1] ?? EAST_SEA_WAVE_DIRECTION.z;
       sampleDirectedSeaWave(
         worldX,
         worldZ,
         gameState.effectElapsed,
-        EAST_SEA_WAVE_DIRECTION,
+        waveDirection,
         EAST_SEA_WAVE,
         waveSample,
       );
@@ -1519,30 +1523,36 @@ export function animate(now) {
     if (gameState.animationFrameCount % 8 === 0)
       gameState.lakeMesh.geometry.computeVertexNormals();
   }
-  // 東北海以短波呈現，整片波峰從東北往西南推進。
+  // 港口／城鎮依各頂點最近岸線決定浪向，環島海浪由外海朝岸推進。
   if (gameState.portWaterMeshes.length && updateWaterSurface) {
     gameState.portWaterMeshes.forEach((water) => {
       const pos = water.geometry.attributes.position;
       const colors = water.geometry.attributes.color;
       const base = water.geometry.userData.basePositions;
+      const waveDirections = water.geometry.userData.waveDirections;
       const waveSample: any = {};
+      const waveDirection = { x: 0, z: 0 };
       for (let i = 0; i < pos.count; i++) {
         const localX = base[i * 3];
         const localY = base[i * 3 + 1];
+        waveDirection.x = waveDirections?.[i * 2] ?? EAST_SEA_WAVE_DIRECTION.x;
+        waveDirection.z =
+          waveDirections?.[i * 2 + 1] ?? EAST_SEA_WAVE_DIRECTION.z;
         sampleDirectedSeaWave(
           localX + water.position.x,
           water.position.z - localY,
           gameState.effectElapsed,
-          EAST_SEA_WAVE_DIRECTION,
+          waveDirection,
           EAST_SEA_WAVE,
           waveSample,
         );
         pos.setX(i, localX + waveSample.displacementX);
         pos.setY(i, localY - waveSample.displacementZ);
         pos.setZ(i, waveSample.height);
-        // 港口／舊城鎮由低模平面拼成；逐頂點浪峰染白會沿 flatShading
-        // 顯示成規律菱形亮塊。保留幾何起伏，白色碎浪只交給岸線泡沫。
-        setSeaVertexColor(colors, i, 0.18, 0.43, 0.68, 0, 0);
+        const crestFactor = Math.max(0, (waveSample.crest - 0.4) / 0.6);
+        // 只留下少量浪峰提亮；過強會在規則網格插值成菱形。
+        const crestColor = Math.pow(crestFactor, 1.8) * 0.12;
+        setSeaVertexColor(colors, i, 0.18, 0.43, 0.68, crestColor, 0);
       }
       pos.needsUpdate = true;
       colors.needsUpdate = true;
@@ -1565,7 +1575,7 @@ export function animate(now) {
         worldX,
         worldZ,
         gameState.effectElapsed,
-        NORTHEAST_SEA_WAVE_DIRECTION,
+        NORTH_SEA_WAVE_DIRECTION,
         NORTH_SEA_WAVE,
         northWaveSample,
       );
