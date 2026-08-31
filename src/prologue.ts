@@ -497,6 +497,9 @@ function beginStage(next: Stage) {
 }
 
 function guideGroundY(mapName: string, x: number, z: number): number {
+  // Interior floors are built at Y=0. Falling through to living-area groundY()
+  // re-applies the outdoor plateau height after loadMap positioned the player.
+  if (mapName === "house") return 0;
   if (mapName === "port") return portGroundY(x, z);
   if (mapName === "oldVillage") return oldVillageGroundY(x, z) + 0.03;
   if (mapName === "mountain")
@@ -554,6 +557,9 @@ function transitionPrologueMap(
   prologueMapLoader(mapName, playerPosition, () => {
     const mayor = npcs.find((npc) => npc.id === "mayor");
     if (mayor) {
+      // buildMap hides the shared NPC parent outside normal outdoor schedules.
+      // A visible story actor under that hidden parent would still not render.
+      npcGroup.visible = true;
       placeGuideActor(mayor, mayorPosition.x, mayorPosition.z);
       mayor.mesh.rotation.y = 0;
     }
