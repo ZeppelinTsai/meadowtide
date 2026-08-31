@@ -1,10 +1,17 @@
 import { gameState } from "./game-state";
 import { dialogQueue, activeChoice } from "./dialogue";
 import { isInventoryOpen, setInventoryOpen } from "./inventory-ui";
-import { loadGame, setActiveSaveSlot } from "./input-save";
+import {
+  getActiveSaveSlot,
+  loadGame,
+  saveGame,
+  setActiveSaveSlot,
+} from "./input-save";
 import { renderSaveSlotButtons } from "./save-slot-ui";
 import { mountSystemSettings } from "./system-settings-ui";
 import { translateText } from "./i18n";
+import { canQuickSaveDuringPrologue } from "./prologue";
+import { showUiToast } from "./ui-toast";
 
 // ==============================================================
 // 遊戲中 Esc 暫停選單——2026-08-26 Zeppelin 要求「參照主選單或背包做好
@@ -40,6 +47,7 @@ function byId<T extends HTMLElement>(id: string): T {
 export function initPauseMenu() {
   const overlay = byId<HTMLElement>("pauseMenu");
   const resumeButton = byId<HTMLButtonElement>("pauseResumeBtn");
+  const saveButton = byId<HTMLButtonElement>("pauseSaveBtn");
   const loadButton = byId<HTMLButtonElement>("pauseLoadBtn");
   const tutorialButton = byId<HTMLButtonElement>("pauseTutorialBtn");
   const quickPauseButton = byId<HTMLButtonElement>("quickPauseMenuBtn");
@@ -163,6 +171,16 @@ export function initPauseMenu() {
   }
 
   resumeButton.addEventListener("click", closePauseMenu);
+  saveButton.addEventListener("click", () => {
+    if (!canQuickSaveDuringPrologue()) {
+      showUiToast("無法儲存", "序章尚未到達可安全存檔的自由活動階段。");
+      return;
+    }
+    const slot = getActiveSaveSlot();
+    saveGame("slot" + slot);
+    showUiToast("儲存進度", `已儲存到第 ${slot} 格。`);
+    closePauseMenu();
+  });
   quickPauseButton.addEventListener("click", () => {
     if (!gameState.player || gameState.cutsceneActive) return;
     if (dialogQueue.length || activeChoice || isInventoryOpen()) return;

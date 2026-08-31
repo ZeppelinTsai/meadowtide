@@ -95,6 +95,7 @@ export const PROLOGUE_MARKERS = Object.freeze({
   walkRestArea: "[兩人繼續往前，來到牧場的休憩區]",
   enterFarmHouse: "[兩人進入牧場小屋]",
   foodQuestion: "「在蘿蔔成熟以前，我要吃什麼？」",
+  captainWarehouseFade: "[船長前往倉庫取釣竿]",
 });
 export const PROLOGUE_SCRIPT: Record<string, DialogueLine[]> = {
   flyer: [
@@ -233,6 +234,10 @@ export const PROLOGUE_SCRIPT: Record<string, DialogueLine[]> = {
     cue("[村長停頓了一下]", "mayor", "..."),
     mayorCue("「糟糕，我是不是連釣竿也忘了準備？」", "gloom"),
     mayor("「真不好意思。我們去問問船長吧，他現在應該還在港口。」"),
+    mayor(
+      "「對了，這張島嶼地圖交給你。去港口的路也標在上面，之後自己出門時會用得上。」",
+    ),
+    "[村長將島嶼地圖交給主角]",
     "[村長進入同行狀態。港口在東邊；黃色地板代表可進入區域]",
   ],
   fishing: [
@@ -241,9 +246,8 @@ export const PROLOGUE_SCRIPT: Record<string, DialogueLine[]> = {
     mayor("「是我的問題。我忘了替人家準備釣竿，你這裡還有備用的嗎？」"),
     captain("「這可不是小事。島上沒餐館，再沒有釣竿，今晚真得餓肚子了。」"),
     captain("「等著，我去倉庫找找。」"),
-    "[船長離開]",
+    PROLOGUE_MARKERS.captainWarehouseFade,
     mayor("「真是不好意思。太久沒有新人搬來，我以為自己都準備好了……」"),
-    "[船長帶著釣竿回來]",
     captain(
       "「說起來，我還沒跟你自我介紹是吧。我叫赫克托，是這艘補給船的船長。」",
       { npcId: "captain", stage: 1 },

@@ -3,6 +3,7 @@ import { isPrimaryInteractionKey } from "./context-interaction";
 import { exportAnimalInteractionState, restoreAnimalInteractionState } from "./animal-interactions";
 import {
   gameState,
+  dayLength,
   inventory,
   cropState,
   TIME_CONFIG,
@@ -32,7 +33,7 @@ import {
   refreshGatherNodes,
   cookMeal,
 } from "./game-state";
-import { updateSeasonAndDate } from "./game-clock";
+import { updateGameClock, updateSeasonAndDate } from "./game-clock";
 import { getLocale, translateText } from "./i18n";
 import {
   FishTierDef,
@@ -102,6 +103,7 @@ import {
   advanceDialogSequence,
   showDialog,
   showDialogSequence,
+  showChoice,
   dialogEl,
   activeChoice,
   handleChoiceDigitKey,
@@ -127,7 +129,12 @@ import {
 import { completeNpcDailyConversation } from "./affection-ui";
 import { weatherIconSvg } from "./weather-icons";
 import { SAVE_SLOT_COUNT, saveSlotForDigitCode } from "./save-slot-config";
-import { exportStoryState, restoreStoryState } from "./story/story-state";
+import {
+  exportStoryState,
+  hasCompletedStoryEvent,
+  restoreStoryState,
+} from "./story/story-state";
+import { showUiToast } from "./ui-toast";
 import {
   exportNpcNameRevealState,
   restoreNpcNameRevealState,
@@ -1176,6 +1183,37 @@ addEventListener("keydown", (e) => {
           });
         }
       }
+      return;
+    }
+  }
+
+  // 床鋪——序章結束後才開放。睡眠與休息都走 updateGameClock()，確保換日、
+  // 作物成長、天氣與 06:00 自動存檔沿用正式時間事件路徑。
+  if (gameState.currentMapName === "house") {
+    const { x: hx, z: hz } = gameState.playerGridPos;
+    const bed = (MAPS.house.furniture || []).find(
+      (item) => item.type === "bed",
+    );
+    if (bed && Math.abs(bed.x - hx) + Math.abs(bed.z - hz) <= 1) {
+      if (!hasCompletedStoryEvent("main.prologue.arrival")) {
+        showUiToast("床鋪", "序章結束後才能使用床鋪休息。");
+        return;
+      }
+      const hour = gameState.currentPhase * TIME_CONFIG.gameHoursPerDay;
+      const options = [
+        { label: "睡到隔天早上六點", value: "tomorrow" },
+      ];
+      if (hour < 18) {
+        options.unshift({ label: "休息到今天傍晚六點", value: "evening" });
+      }
+      showChoice("要休息到什麼時候？", options, (value) => {
+        const currentDayStart = Math.floor(gameState.elapsed / dayLength) * dayLength;
+        const target =
+          value === "evening"
+            ? currentDayStart + dayLength * (18 / 24)
+            : currentDayStart + dayLength * (1 + 6 / 24);
+        updateGameClock(Math.max(0, target - gameState.elapsed));
+      });
       return;
     }
   }

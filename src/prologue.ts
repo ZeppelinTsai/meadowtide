@@ -777,12 +777,24 @@ export function startPrologueFishingSequence() {
     PROLOGUE_CAPTAIN_X - gameState.player.position.x,
     PROLOGUE_CAPTAIN_Z - gameState.player.position.z,
   );
-  showDialogSequence(PROLOGUE_SCRIPT.fishing, () => {
+  const warehouseIndex = scriptMarkerIndex(
+    PROLOGUE_SCRIPT.fishing,
+    PROLOGUE_MARKERS.captainWarehouseFade,
+  );
+  const finishFishingDialogue = () => {
     inventory.tools.fishingRod = true;
     fishingTutorialResultPending = false;
     beginStage("fishingTutorial");
     gameState.cutsceneActive = false;
     lockPrologueDateTime();
+  };
+  showDialogSequence(PROLOGUE_SCRIPT.fishing.slice(0, warehouseIndex), async () => {
+    await showLoadingScreen();
+    showDialogSequence(
+      PROLOGUE_SCRIPT.fishing.slice(warehouseIndex + 1),
+      finishFishingDialogue,
+    );
+    await hideLoadingScreen();
   });
 }
 
