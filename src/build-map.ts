@@ -1431,11 +1431,8 @@ export function buildMap(mapName) {
       // 更新迴圈純讀 mesh 自己的 geometry/position，跟哪張地圖建的無關，
       // 兩張地圖從不會同時載入，共用同一個陣列不會互相污染，不用另外
       // 開一份幾乎一樣的更新邏輯。
-      const oldVillageWaterMat = new THREE.MeshStandardMaterial({
+      const oldVillageWaterMat = new THREE.MeshBasicMaterial({
         vertexColors: true,
-        roughness: 0.2,
-        metalness: 0.1,
-        flatShading: true,
         transparent: true,
         opacity: 0.6,
       });

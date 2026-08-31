@@ -1,7 +1,10 @@
 import { gameState } from "./game-state";
 
 export const windowMats = [];
-export const waterSurfaceMaterials: import("three").MeshStandardMaterial[] = [];
+export const waterSurfaceMaterials: Array<
+  | import("three").MeshStandardMaterial
+  | import("three").MeshBasicMaterial
+> = [];
 export const fishingWaterMeshes: import("three").Object3D[] = [];
 export const waterSkyUnderlayMaterials: import("three").MeshStandardMaterial[] = [];
       // 地圖切換點的黃色門檻標記，跟其他登記表同一套：buildMap() 清空重建，

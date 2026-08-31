@@ -1197,9 +1197,12 @@ export function animate(now) {
     }[gameState.currentWeather] ?? 0.12) *
     (0.82 + nightFactor * 0.42);
   waterSurfaceMaterials.forEach((material) => {
-    // Opaque water remains the base; emissive sky tint acts as the alpha reflection layer.
-    material.emissive.copy(sky);
-    material.emissiveIntensity = skyReflectionAlpha;
+    // Standard 水面以 emissive 補環境色；港口／城鎮的 Basic 水面不受場景
+    // 半球光影響，天空顏色由 planar reflection 本身提供。
+    if (material instanceof THREE.MeshStandardMaterial) {
+      material.emissive.copy(sky);
+      material.emissiveIntensity = skyReflectionAlpha;
+    }
   });
   const underwaterSky = sky.clone().multiplyScalar(0.58 + nightFactor * 0.12);
   waterSkyUnderlayMaterials.forEach((material) => {

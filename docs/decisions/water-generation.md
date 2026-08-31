@@ -34,9 +34,10 @@
   不可每幀重新掃描地圖。南／西／北／東側海面分別往北／東／南／西推進，
   距離相近的轉角會混合兩個方向，且四個相鄰 tile 的結果必須再做雙線性插值；
   不可先 `round()` 到單格，否則跨過半格時浪向與相位會突然換軸形成筆直斷層。
-- 港口與舊城鎮的動態海面效果必須沿用生活區 `oceanMesh`：相同的
-  `MeshStandardMaterial` 粗糙度／金屬度／flatShading，以及相同的完整 `crest`
-  白峰公式；只允許依水深保留 opacity 差異。
+- 港口與舊城鎮沿用生活區 `oceanMesh` 的波形、完整 `crest` 白峰與平面反射；
+  但表面材質使用 `MeshBasicMaterial`，不得參與場景半球光。這是必要例外：環島
+  方向場的局部動態法線若吃到 `seasonalBounceLight.groundColor`，夜間會形成灰色
+  亮塊、白天則隨地面光變成綠色。水深仍可保留 opacity 差異。
 - 港口／舊城鎮不得把每列海格各建一張獨立 `PlaneGeometry`；必須使用
   `src/tile-sea-geometry.ts` 將相鄰 tile 9 合成單一索引網格並共享邊界頂點，
   否則各列獨立重算法線會產生亮塊與接縫。每世界單位至少細分兩段；提高細分後

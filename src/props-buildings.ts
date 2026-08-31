@@ -767,11 +767,8 @@ export function makePortScene() {
   const southStairMats = [0xd8c89f, 0xa99470].map(
     (color) => new THREE.MeshStandardMaterial({ color, roughness: 0.98 }),
   );
-  const waterMat = new THREE.MeshStandardMaterial({
+  const waterMat = new THREE.MeshBasicMaterial({
     vertexColors: true,
-    roughness: 0.2,
-    metalness: 0.1,
-    flatShading: true,
     transparent: true,
     // 港區船塢是淺水，比北邊主海域(0.88)透明得多，星空才透得出來。
     opacity: 0.6,

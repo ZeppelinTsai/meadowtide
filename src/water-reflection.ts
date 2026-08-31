@@ -20,7 +20,10 @@ const textureMatrix = new THREE.Matrix4();
 const reflectionMapUniform = { value: renderTarget.texture };
 const textureMatrixUniform = { value: textureMatrix };
 
-const installedMaterials = new WeakSet<THREE.MeshStandardMaterial>();
+type ReflectiveWaterMaterial =
+  | THREE.MeshStandardMaterial
+  | THREE.MeshBasicMaterial;
+const installedMaterials = new WeakSet<ReflectiveWaterMaterial>();
 let virtualCamera: THREE.Camera | null = null;
 let virtualCameraType = "";
 
@@ -35,7 +38,7 @@ const reflectorPlane = new THREE.Plane();
 const clipPlane = new THREE.Vector4();
 const q = new THREE.Vector4();
 
-function installReflection(material: THREE.MeshStandardMaterial) {
+function installReflection(material: ReflectiveWaterMaterial) {
   if (installedMaterials.has(material)) return;
   installedMaterials.add(material);
   const previousCompile = material.onBeforeCompile.bind(material);
@@ -175,7 +178,7 @@ export function updatePlanarWaterReflection(
     if (
       !materials.some((material) =>
         waterSurfaceMaterials.includes(
-          material as THREE.MeshStandardMaterial,
+          material as ReflectiveWaterMaterial,
         ),
       )
     )
