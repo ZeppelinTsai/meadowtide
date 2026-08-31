@@ -71,11 +71,11 @@ export function weatherIconSvg(weatherKey: string) {
       return svg(`
     <g fill="#ffd45e" stroke="#b47a00" stroke-linejoin="round">
 
-      <!-- 左上小流星（再往右上微調 X+1.5, Y-1.5） -->
+      <!-- 左上小流星（上流星再往左 2px） -->
       <g>
         <!-- 尾巴 -->
         <path
-          d="M26 -1 L15.5 15.5 L12.5 12.5 Z"
+          d="M24 -1 L13.5 15.5 L10.5 12.5 Z"
           fill="#ffd45e"
           stroke="#b47a00"
           stroke-width="1.2"
@@ -84,23 +84,23 @@ export function weatherIconSvg(weatherKey: string) {
         <!-- 星星 -->
         <path
           d="
-            M13.5 10
-            L15.6 14.3
-            L20.4 15
-            L16.9 18.4
-            L17.8 23.1
-            L13.5 20.9
-            L9.2 23.1
-            L10.1 18.4
-            L6.6 15
-            L11.4 14.3
+            M11.5 10
+            L13.6 14.3
+            L18.4 15
+            L14.9 18.4
+            L15.8 23.1
+            L11.5 20.9
+            L7.2 23.1
+            L8.1 18.4
+            L4.6 15
+            L9.4 14.3
             Z
           "
           stroke-width="1.2"
         />
       </g>
 
-      <!-- 中央主流星（再往右上微調 X+1.5, Y-1.5） -->
+      <!-- 中央主流星（維持不動） -->
       <g>
         <!-- 粗、長尾巴 -->
         <path
@@ -133,11 +133,11 @@ export function weatherIconSvg(weatherKey: string) {
         />
       </g>
 
-      <!-- 右下小流星（再往右上微調 X+1.5, Y-1.5） -->
+      <!-- 右下小流星（下流星再往下 2px） -->
       <g>
         <!-- 尾巴 -->
         <path
-          d="M51 18 L41.5 33.5 L38.5 30.5 Z"
+          d="M51 20 L41.5 35.5 L38.5 32.5 Z"
           fill="#ffd45e"
           stroke="#b47a00"
           stroke-width="1.2"
@@ -146,16 +146,16 @@ export function weatherIconSvg(weatherKey: string) {
         <!-- 星星 -->
         <path
           d="
-            M39.5 27
-            L41.6 31.3
-            L46.4 32
-            L42.9 35.4
-            L43.8 40.1
-            L39.5 37.9
-            L35.2 40.1
-            L36.1 35.4
-            L32.6 32
-            L37.4 31.3
+            M39.5 29
+            L41.6 33.3
+            L46.4 34
+            L42.9 37.4
+            L43.8 42.1
+            L39.5 39.9
+            L35.2 42.1
+            L36.1 37.4
+            L32.6 34
+            L37.4 33.3
             Z
           "
           stroke-width="1.2"
