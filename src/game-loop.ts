@@ -1530,25 +1530,32 @@ export function animate(now) {
       const colors = water.geometry.attributes.color;
       const base = water.geometry.userData.basePositions;
       const waveDirections = water.geometry.userData.waveDirections;
+      const horizontalXZ = water.geometry.userData.horizontalXZ === true;
       const waveSample: any = {};
       const waveDirection = { x: 0, z: 0 };
       for (let i = 0; i < pos.count; i++) {
         const localX = base[i * 3];
         const localY = base[i * 3 + 1];
+        const localZ = base[i * 3 + 2];
         waveDirection.x = waveDirections?.[i * 2] ?? EAST_SEA_WAVE_DIRECTION.x;
         waveDirection.z =
           waveDirections?.[i * 2 + 1] ?? EAST_SEA_WAVE_DIRECTION.z;
         sampleDirectedSeaWave(
           localX + water.position.x,
-          water.position.z - localY,
+          horizontalXZ ? localZ + water.position.z : water.position.z - localY,
           gameState.effectElapsed,
           waveDirection,
           EAST_SEA_WAVE,
           waveSample,
         );
         pos.setX(i, localX + waveSample.displacementX);
-        pos.setY(i, localY - waveSample.displacementZ);
-        pos.setZ(i, waveSample.height);
+        if (horizontalXZ) {
+          pos.setY(i, waveSample.height);
+          pos.setZ(i, localZ + waveSample.displacementZ);
+        } else {
+          pos.setY(i, localY - waveSample.displacementZ);
+          pos.setZ(i, waveSample.height);
+        }
         const crestFactor = Math.max(0, (waveSample.crest - 0.4) / 0.6);
         // 只留下少量浪峰提亮；過強會在規則網格插值成菱形。
         const crestColor = Math.pow(crestFactor, 1.8) * 0.12;

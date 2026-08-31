@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { getShorewardSeaWaveDirection } from "./sea-wave-direction";
+import { createConnectedTileSeaGeometry } from "./tile-sea-geometry";
 
 const surroundedIsland = [
   [9, 9, 9, 9, 9],
@@ -39,4 +40,17 @@ test("direction remains continuous across tile boundaries", () => {
 
 test("open water without cardinal land uses the provided fallback", () => {
   assert.deepEqual(getShorewardSeaWaveDirection([[9]], 0, 0, { x: 0, z: -1 }), { x: 0, z: -1 });
+});
+
+test("adjacent sea tiles share boundary vertices", () => {
+  const geometry = createConnectedTileSeaGeometry(
+    [
+      { x: 0, z: 0 },
+      { x: 1, z: 0 },
+    ],
+    [[9, 9]],
+    { x: 0, z: -1 },
+  );
+  assert.equal(geometry.attributes.position.count, 15);
+  assert.equal(geometry.index?.count, 48);
 });

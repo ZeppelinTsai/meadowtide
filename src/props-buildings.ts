@@ -44,7 +44,7 @@ import {
   prologueRefs,
 } from "./scene-registries";
 import { findSouthernShoreSandZ } from "./shore-foam";
-import { getShorewardSeaWaveDirection } from "./sea-wave-direction";
+import { createConnectedTileSeaGeometry } from "./tile-sea-geometry";
 import { randomPasturePoint } from "./npc-runtime";
 
 // 木棧板材質——canvas 現畫木紋貼圖，跟 scene-sky.ts/weather-particles.ts
@@ -788,45 +788,31 @@ export function makePortScene() {
   });
   waterSurfaceMaterials.push(waterMat);
   waterSkyUnderlayMaterials.push(waterDepthMat);
+  const waterCellKeys = new Set<string>();
   const addWater = (x, z, width, depth) => {
-    const geometry = new THREE.PlaneGeometry(
-      width,
-      depth,
-      Math.max(2, Math.ceil(width * 2)),
-      Math.max(2, Math.ceil(depth * 2)),
+    for (let waterZ = z; waterZ < z + depth; waterZ++) {
+      for (let waterX = x; waterX < x + width; waterX++) {
+        waterCellKeys.add(`${waterX},${waterZ}`);
+      }
+    }
+  };
+  const buildConnectedWater = () => {
+    const cells = [...waterCellKeys].map((key) => {
+      const [x, z] = key.split(",").map(Number);
+      return { x, z };
+    });
+    const geometry = createConnectedTileSeaGeometry(
+      cells,
+      MAPS.port.tiles,
+      EAST_SEA_WAVE_DIRECTION,
     );
-    const water = new THREE.Mesh(geometry, waterMat);
-    const colors = new Float32Array(geometry.attributes.position.count * 3);
-    for (let i = 0; i < geometry.attributes.position.count; i++)
-      colors.set([0.18, 0.43, 0.68], i * 3);
-    geometry.setAttribute("color", new THREE.BufferAttribute(colors, 3));
     const depthMask = new THREE.Mesh(geometry.clone(), waterDepthMat);
-    depthMask.rotation.x = -Math.PI / 2;
-    depthMask.position.set(x + (width - 1) / 2, 0.025, z + (depth - 1) / 2);
+    depthMask.position.y = 0.025;
     depthMask.receiveShadow = true;
     group.add(depthMask);
-    water.rotation.x = -Math.PI / 2;
-    water.position.set(x + (width - 1) / 2, 0.09, z + (depth - 1) / 2);
+    const water = new THREE.Mesh(geometry, waterMat);
+    water.position.y = 0.09;
     water.receiveShadow = true;
-    const basePositions = Float32Array.from(
-      geometry.attributes.position.array,
-    );
-    const waveDirections = new Float32Array(
-      geometry.attributes.position.count * 2,
-    );
-    const centerX = x + (width - 1) / 2;
-    const centerZ = z + (depth - 1) / 2;
-    for (let i = 0; i < geometry.attributes.position.count; i++) {
-      const direction = getShorewardSeaWaveDirection(
-        MAPS.port.tiles,
-        basePositions[i * 3] + centerX,
-        centerZ - basePositions[i * 3 + 1],
-        EAST_SEA_WAVE_DIRECTION,
-      );
-      waveDirections[i * 2] = direction.x;
-      waveDirections[i * 2 + 1] = direction.z;
-    }
-    geometry.userData = { basePositions, waveDirections };
     gameState.portWaterMeshes.push(water);
     group.add(water);
   };
@@ -853,6 +839,7 @@ export function makePortScene() {
     addWater(x, waterStartZ, 1, port.height - waterStartZ);
   }
   addWater(0, port.height, oceanViewEdge, port.oceanViewPadding);
+  buildConnectedWater();
 
   for (let z = 0; z <= port.beachDepth; z += 2) {
     const foam = makeFoam(13.65, z, 700 + z * 1.37);

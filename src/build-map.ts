@@ -80,6 +80,7 @@ import {
 } from "./scene-registries";
 import { findSouthernShoreSandZ, findWesternShoreSandX } from "./shore-foam";
 import { getShorewardSeaWaveDirection } from "./sea-wave-direction";
+import { createConnectedTileSeaGeometry } from "./tile-sea-geometry";
 import {
   MINE_SIZE,
   MINE_FLOOR_MAX,
@@ -1448,53 +1449,30 @@ export function buildMap(mapName) {
       });
       waterSurfaceMaterials.push(oldVillageWaterMat);
       waterSkyUnderlayMaterials.push(oldVillageWaterDepthMat);
+      const oldVillageWaterCells: Array<{ x: number; z: number }> = [];
       const addOldVillageWater = (wx, wz, width, depth) => {
-        if (depth <= 0) return;
-        const geometry = new THREE.PlaneGeometry(
-          width,
-          depth,
-          Math.max(2, Math.ceil(width * 2)),
-          Math.max(2, Math.ceil(depth * 2)),
+        for (let waterZ = wz; waterZ < wz + depth; waterZ++) {
+          for (let waterX = wx; waterX < wx + width; waterX++) {
+            oldVillageWaterCells.push({ x: waterX, z: waterZ });
+          }
+        }
+      };
+      const buildOldVillageWater = () => {
+        const geometry = createConnectedTileSeaGeometry(
+          oldVillageWaterCells,
+          MAPS.oldVillage.tiles,
+          EAST_SEA_WAVE_DIRECTION,
         );
-        const colors = new Float32Array(geometry.attributes.position.count * 3);
-        for (let i = 0; i < geometry.attributes.position.count; i++)
-          colors.set([0.18, 0.43, 0.68], i * 3);
-        geometry.setAttribute("color", new THREE.BufferAttribute(colors, 3));
         const depthMask = new THREE.Mesh(
           geometry.clone(),
           oldVillageWaterDepthMat,
         );
-        depthMask.rotation.x = -Math.PI / 2;
-        depthMask.position.set(
-          wx + (width - 1) / 2,
-          0.025,
-          wz + (depth - 1) / 2,
-        );
+        depthMask.position.y = 0.025;
         depthMask.receiveShadow = true;
         gameState.mapGroup.add(depthMask);
         const water = new THREE.Mesh(geometry, oldVillageWaterMat);
-        water.rotation.x = -Math.PI / 2;
-        water.position.set(wx + (width - 1) / 2, 0.09, wz + (depth - 1) / 2);
+        water.position.y = 0.09;
         water.receiveShadow = true;
-        const basePositions = Float32Array.from(
-          geometry.attributes.position.array,
-        );
-        const waveDirections = new Float32Array(
-          geometry.attributes.position.count * 2,
-        );
-        const centerX = wx + (width - 1) / 2;
-        const centerZ = wz + (depth - 1) / 2;
-        for (let i = 0; i < geometry.attributes.position.count; i++) {
-          const direction = getShorewardSeaWaveDirection(
-            MAPS.oldVillage.tiles,
-            basePositions[i * 3] + centerX,
-            centerZ - basePositions[i * 3 + 1],
-            EAST_SEA_WAVE_DIRECTION,
-          );
-          waveDirections[i * 2] = direction.x;
-          waveDirections[i * 2 + 1] = direction.z;
-        }
-        geometry.userData = { basePositions, waveDirections };
         gameState.portWaterMeshes.push(water);
         fishingWaterMeshes.push(water);
         gameState.mapGroup.add(water);
@@ -1515,6 +1493,7 @@ export function buildMap(mapName) {
           addOldVillageWater(startX, z, x - startX, 1);
         }
       }
+      buildOldVillageWater();
 
       // 舊城鎮的南岸與西岸共用生活區的「衝上岸→碎開→退回」浪花模型。
       // 端點只用 LAYOUT 算範圍，真正落點仍從最終 tile 8/9 鄰接邊界取得。
