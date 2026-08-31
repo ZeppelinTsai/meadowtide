@@ -300,11 +300,11 @@ export function addDefaultHumanoidSmile(
         const group: any = new THREE.Group();
         const parts: any = {};
         const mat = (color) => new THREE.MeshStandardMaterial({ color, flatShading: true });
-        const skinMat = mat(0xc77b49), hairMat = mat(0x65351f);
-        const jacketMat = mat(0x294f48), jacketEdgeMat = mat(0x416b5f);
+        const skinMat = mat(0xc77b49), hairMat = mat(0x8a5728);
+        const jacketMat = mat(0x71301f), jacketEdgeMat = mat(0x9a482c);
         const shirtMat = mat(0xead9b8);
-        const trouserMat = mat(0xa64f25), patchMat = mat(0x765137);
-        const leatherMat = mat(0x56351f), bootMat = mat(0x3a2a20);
+        const trouserMat = mat(0x272a2a), patchMat = mat(0x454445);
+        const leatherMat = mat(0x4a2d1c), bootMat = mat(0x5a321e);
         const soleMat = mat(0x211b17), brassMat = mat(0xb27b2d);
         const woodMat = mat(0x6a4228), metalMat = mat(0x5d6260);
 
