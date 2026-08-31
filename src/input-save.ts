@@ -10,6 +10,7 @@ import {
   WEATHER_NAMES,
   getSeasonDay,
   getSeasonPeriod,
+  METEOR_SHOWER_SCHEDULE,
   rollWeatherForSeason,
   growCropsForNewDay,
   nearWater,
@@ -1538,8 +1539,10 @@ export function updateHud() {
 
     const emojiEl = dayEl.querySelector(".hud-weather-emoji");
     const labelEl = dayEl.querySelector(".hud-weather-label");
-    const showerForIcon = offset === 0 ? getMeteorShowerHudLabel() : "";
-    const iconKey = showerForIcon ? (showerForIcon.includes("高峰") ? "meteor-peak" : "meteor-shower") : weatherKey;
+    const showerForDay = METEOR_SHOWER_SCHEDULE[getSeasonDay(day)];
+    const iconKey = showerForDay
+      ? (showerForDay.phase === "peak" ? "meteor-peak" : "meteor-shower")
+      : weatherKey;
     if (emojiEl) emojiEl.innerHTML = weatherIconSvg(weatherKey);
     if (labelEl) {
       // 流星雨只掛在「今天」
