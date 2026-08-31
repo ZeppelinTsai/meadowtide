@@ -247,13 +247,13 @@ export const PROLOGUE_SCRIPT: Record<string, DialogueLine[]> = {
     captain("「這可不是小事。島上沒餐館，再沒有釣竿，今晚真得餓肚子了。」"),
     captain("「等著，我去倉庫找找。」"),
     PROLOGUE_MARKERS.captainWarehouseFade,
+    captain("「找到了，給你吧。」"),
+    "[獲得釣竿]",
     mayor("「真是不好意思。太久沒有新人搬來，我以為自己都準備好了……」"),
     captain(
       "「說起來，我還沒跟你自我介紹是吧。我叫赫克托，是這艘補給船的船長。」",
       { npcId: "captain", stage: 1 },
     ),
-    captain("「找到了。雖然舊了點，但還很結實。看來你的運氣不錯。」"),
-    "[獲得釣竿]",
     captain("「都拿出來了，我就順便教你怎麼用吧。」"),
     captain(
       "「裝備釣竿後，面向水邊按下 E，就能拋竿。魚上鉤時會出現提示，要把握時機收竿。」",

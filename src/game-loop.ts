@@ -384,8 +384,7 @@ export function animate(now) {
     dz = 0;
   if (
     !gameState.cutsceneActive &&
-    !isCameraAdjustModeActive() &&
-    !isPrologueFishingTutorialActive()
+    !isCameraAdjustModeActive()
   ) {
     if (keys["w"] || keys["arrowup"]) dz -= 1;
     if (keys["s"] || keys["arrowdown"]) dz += 1;
