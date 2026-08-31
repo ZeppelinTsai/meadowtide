@@ -1428,6 +1428,7 @@ export function addDefaultHumanoidSmile(
       }
       export function animateWalk(humanoid: any, moving, t) {
         const p = humanoid.parts;
+        if (!p?.legL || !p?.legR || !p?.armL || !p?.armR) return;
         if (moving) {
           const swing = Math.sin(t * 10) * 0.5;
           p.legL.rotation.x = swing; p.legR.rotation.x = -swing;
@@ -1443,6 +1444,7 @@ export function addDefaultHumanoidSmile(
       }
       export function animateRun(humanoid: any, moving, t) {
         const p = humanoid.parts;
+        if (!p?.legL || !p?.legR || !p?.armL || !p?.armR) return;
         if (moving) {
           const stride = Math.sin(t * 15) * 0.88;
           p.legL.rotation.x = stride; p.legR.rotation.x = -stride;
@@ -1459,6 +1461,7 @@ export function addDefaultHumanoidSmile(
       }
       export function animateSit(humanoid: any) {
         const p = humanoid.parts;
+        if (!p?.legL || !p?.legR || !p?.armL || !p?.armR) return;
         p.legL.rotation.x += (1.28 - p.legL.rotation.x) * 0.28; p.legR.rotation.x += (1.28 - p.legR.rotation.x) * 0.28;
         if (humanoid.userData?.holdingItem) applyHeldItemPose(p);
         else { p.armL.rotation.x *= 0.75; p.armR.rotation.x *= 0.75; p.armL.rotation.z += (-0.12 - p.armL.rotation.z) * 0.2; p.armR.rotation.z += (0.12 - p.armR.rotation.z) * 0.2; }

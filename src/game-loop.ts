@@ -805,6 +805,11 @@ export function animate(now) {
   const npcSpeed = 1.6;
   updateCarpenterEscortTrail();
   npcs.forEach((n) => {
+    // Story NPCs may intentionally retain only an empty compatibility node.
+    if (n.mesh.parts == null) {
+      n.mesh.visible = false;
+      return;
+    }
     // 序章期間村長與船長的位置由 prologue.ts 完整控制，不能再讓日常
     // 排程於同一幀覆寫，否則船長會瞬移或偏離下船路線。
     if (
