@@ -229,6 +229,10 @@ let flyerPoseDuration = 1;
 // 序幕演出用的固定鏡頭縮放——見 startPrologueScene() 內的設定。
 const PROLOGUE_ZOOM = 5;
 const PROLOGUE_GUIDE_ZOOM = 12;
+const PROLOGUE_FARMING_ZOOM = 3;
+const PROLOGUE_ZOOM_TRANSITION_SECONDS = 0.9;
+let prologueZoomAnimationId = 0;
+let prologueZoomTransitionActive = false;
 const PROLOGUE_MAYOR_X = 3;
 const PROLOGUE_MAYOR_Z = 22;
 export const PROLOGUE_CAPTAIN_X = 5;
@@ -250,6 +254,36 @@ function lockPrologueZoom() {
   if (gameState.zoom === targetZoom) return;
   gameState.zoom = targetZoom;
   updateCameraFrustum();
+}
+
+function animatePrologueZoom(
+  targetZoom: number,
+  durationSeconds: number,
+  onComplete: () => void,
+) {
+  const animationId = ++prologueZoomAnimationId;
+  const fromZoom = gameState.zoom;
+  const startedAt = performance.now();
+  prologueZoomTransitionActive = true;
+  const tick = (now: number) => {
+    if (animationId !== prologueZoomAnimationId) return;
+    const progress = Math.min(
+      1,
+      (now - startedAt) / (Math.max(0.01, durationSeconds) * 1000),
+    );
+    const eased = 0.5 - 0.5 * Math.cos(progress * Math.PI);
+    gameState.zoom = THREE.MathUtils.lerp(fromZoom, targetZoom, eased);
+    updateCameraFrustum();
+    if (progress < 1) {
+      requestAnimationFrame(tick);
+      return;
+    }
+    gameState.zoom = targetZoom;
+    updateCameraFrustum();
+    prologueZoomTransitionActive = false;
+    onComplete();
+  };
+  requestAnimationFrame(tick);
 }
 
 function placePrologueMayor() {
@@ -786,10 +820,17 @@ function continueAfterPlanting() {
 }
 
 function beginFreePlanting() {
-  gameState.plantingBounds = { ...TUTORIAL_PLOT };
-  beginStage("farmingFree");
-  gameState.cutsceneActive = false;
-  lockPrologueDateTime();
+  beginStage("mapTransition");
+  animatePrologueZoom(
+    PROLOGUE_FARMING_ZOOM,
+    PROLOGUE_ZOOM_TRANSITION_SECONDS,
+    () => {
+      gameState.plantingBounds = { ...TUTORIAL_PLOT };
+      beginStage("farmingFree");
+      gameState.cutsceneActive = false;
+      lockPrologueDateTime();
+    },
+  );
 }
 
 function startFarmingTutorial() {
@@ -1041,21 +1082,27 @@ export function updatePrologueGameplayGate() {
   beginStage("mapTransition");
   gameState.cutsceneActive = true;
   setTimePauseSource("event", false);
-  const fadeEl = document.getElementById("fade") as HTMLElement;
-  fadeEl.style.opacity = "1";
-  window.setTimeout(() => {
-    const mayor = npcs.find((npc) => npc.id === "mayor");
-    gameState.player.position.x = 13;
-    gameState.player.position.z = 20;
-    gameState.player.position.y = guideGroundY("livingArea", 13, 20);
-    gameState.playerGridPos = { x: 13, z: 20 };
-    if (mayor) placeGuideActor(mayor, 14, 20);
-    faceDirection(1, 0);
-    faceMayor(-1, 0);
-    syncLastPlayerY();
-    fadeEl.style.opacity = "0";
-    window.setTimeout(continueAfterPlanting, 450);
-  }, 450);
+  animatePrologueZoom(
+    PROLOGUE_ZOOM,
+    PROLOGUE_ZOOM_TRANSITION_SECONDS,
+    () => {
+      const fadeEl = document.getElementById("fade") as HTMLElement;
+      fadeEl.style.opacity = "1";
+      window.setTimeout(() => {
+        const mayor = npcs.find((npc) => npc.id === "mayor");
+        gameState.player.position.x = 13;
+        gameState.player.position.z = 20;
+        gameState.player.position.y = guideGroundY("livingArea", 13, 20);
+        gameState.playerGridPos = { x: 13, z: 20 };
+        if (mayor) placeGuideActor(mayor, 14, 20);
+        faceDirection(1, 0);
+        faceMayor(-1, 0);
+        syncLastPlayerY();
+        fadeEl.style.opacity = "0";
+        window.setTimeout(continueAfterPlanting, 450);
+      }, 450);
+    },
+  );
 }
 export function isPrologueShipStage(): boolean {
   return (
@@ -1074,7 +1121,11 @@ export function updatePrologueCutscene(dt: number) {
   // playCameraShots() 清單剛改完 zoom、下一幀馬上被這裡蓋回去，鏡頭看起來
   // 完全「動不了」。改成只在鏡頭系統沒有接管時才每幀重新確認/防守，鏡頭
   // 系統接管時 zoom 完全交給它決定。
-  if (!isCameraShotsPlaying() && !isCameraAdjustModeActive()) {
+  if (
+    !prologueZoomTransitionActive &&
+    !isCameraShotsPlaying() &&
+    !isCameraAdjustModeActive()
+  ) {
     lockPrologueZoom();
   }
   const ferry = prologueRefs.ferry;
