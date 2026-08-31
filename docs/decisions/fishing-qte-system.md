@@ -38,7 +38,7 @@ E 取消**（`input-save.ts`），原本「casting 中途按 E 沒有作用」�
 （貼在主角頭頂正上方，每幀用 `new THREE.Vector3(player.x, player.y+1.75,
 player.z).project(camera)` 算螢幕座標——這是跟著 `scene-sky.ts` 既有的
 `.project(camera)` 太陽/月亮天際遮罩用法抄的技巧，第一次用在 DOM 定位
-上），內含一個當下要按的按鍵/方向大字。兩組 UI 互斥顯示。 上鉤與拉扯膠囊同時顯示取消提示：上鉤時為「E／左鍵」並標示「右鍵取消」，拉扯期方向提示也標示「右鍵取消」；右鍵可在 casting、biting、reeling 任一階段取消並清理釣魚狀態。
+上），內含一個當下要按的按鍵/方向大字。兩組 UI 互斥顯示。 取消操作改放在左下角情境互動膠囊：釣魚進行中顯示「右鍵／取消」（手把顯示對應的 secondary 取消鍵）；右鍵可在 casting、biting、reeling 任一階段取消並清理釣魚狀態。頭頂 QTE 膠囊只顯示當下的 E 或方向提示。
 
 **水域與點擊釣魚**：`src/fishing-water.ts` 將 tile `6`（湖）與 `9`（海）
 統一視為可釣水域；`nearWater()` 不再限制地圖。各場景水面建立時登記到

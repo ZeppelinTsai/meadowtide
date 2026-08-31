@@ -47,7 +47,11 @@ function targetForGather(nodeId:string):WorldTarget|null{if(!hasTool("dualAxe"))
 function targetForOre(nodeId:string):WorldTarget|null{if(!hasTool("dualAxe"))return null;const entry=oreNodeMeshes.find(e=>e.nodeId===nodeId);const nodes=gameState.currentMapName==="mountainCave"?MOUNTAIN_ORE_NODES:gameState.currentMapName==="stalactiteCave"?ORE_NODES:[];const node=nodes.find(n=>n.id===nodeId);if(!entry||!node||node.collected)return null;return{id:"ore:"+nodeId,object:entry.group,radius:1.2,actions:[legacyAction("ore","敲礦")],getPosition:()=>node.collected?null:{x:node.x,z:node.z},isValid:()=>hasTool("dualAxe")&&!node.collected&&entry.group.visible};}
 function targetForPasture():WorldTarget|null{if(gameState.currentMapName!=="livingArea"||!hasTool("sickle"))return null;const {x,z}=gameState.playerGridPos;if(pastureGrassStageAt(x,z)!==2)return null;const id=`pasture:${x},${z}`;return{id,object:pastureTargetObject,radius:0.35,actions:[{id:"cut-grass",label:"割草",slot:"secondary",execute:runLegacySecondaryInteraction}],getPosition:()=>gameState.playerGridPos.x===x&&gameState.playerGridPos.z===z?{x,z}:null,isValid:()=>hasTool("sickle")&&gameState.playerGridPos.x===x&&gameState.playerGridPos.z===z&&pastureGrassStageAt(x,z)===2};}
 function targetForHeldItem():WorldTarget|null{const heldId=inventory.heldItemId,held=heldId?inventoryItem(heldId):null;if(!heldId||!held?.edible||itemAmount(heldId)<=0||!gameState.player)return null;return{id:"held-item",object:heldItemTargetObject,radius:0.1,actions:[{id:"eat-held-item",label:"食用",slot:"primary",execute:()=>eatItem(heldId)}],getPosition:()=>gameState.player?{x:gameState.player.position.x,z:gameState.player.position.z}:null,isValid:()=>inventory.heldItemId===heldId&&itemAmount(heldId)>0};}
-function targetForFishing():WorldTarget|null{if(!gameState.player||!hasTool("fishingRod")||gameState.fishingState!=="idle"||!fishingWaterMeshes.length||!isNearFishingWater(gameState.currentMapName,gameState.player.position.x,gameState.player.position.z))return null;return{id:"fishing-nearby",object:fishingTargetObject,radius:0.1,actions:[legacyAction("fish","釣魚")],getPosition:()=>gameState.player?{x:gameState.player.position.x,z:gameState.player.position.z}:null,isValid:()=>Boolean(gameState.player)&&hasTool("fishingRod")&&gameState.fishingState==="idle"&&isNearFishingWater(gameState.currentMapName,gameState.player.position.x,gameState.player.position.z)};}
+function targetForFishing():WorldTarget|null{
+  if(!gameState.player||!hasTool("fishingRod")||!fishingWaterMeshes.length)return null;
+  const active=gameState.fishingState!=="idle";
+  if(!active&&!isNearFishingWater(gameState.currentMapName,gameState.player.position.x,gameState.player.position.z))return null;
+  return{id:active?"fishing-active":"fishing-nearby",object:fishingTargetObject,radius:0.1,actions:active?[{id:"fish-cancel",label:"取消釣魚",slot:"secondary",prompt:"右鍵",execute:()=>window.dispatchEvent(new KeyboardEvent("keydown",{key:"r"}))}]:[legacyAction("fish","釣魚")],getPosition:()=>gameState.player?{x:gameState.player.position.x,z:gameState.player.position.z}:null,isValid:()=>Boolean(gameState.player)&&hasTool("fishingRod")&&(active?gameState.fishingState!=="idle":gameState.fishingState==="idle"&&isNearFishingWater(gameState.currentMapName,gameState.player.position.x,gameState.player.position.z))}}
 function targetForFarm(x:number,z:number,object:THREE.Object3D=farmGroup):WorldTarget|null{
   if(gameState.currentMapName!=="livingArea")return null;
   if(x===POUCH_POS.x&&z===POUCH_POS.z&&gameState.currentDay>gameState.pouchCollectedDay)return{id:"pouch",object,radius:0.9,actions:[legacyAction("pickup","\u62fe\u53d6")],getPosition:()=>({x,z}),isValid:()=>gameState.currentDay>gameState.pouchCollectedDay};
@@ -72,7 +76,7 @@ function allTargets(){
   return list;
 }
 function refreshSelectedTarget(target: WorldTarget) {
-  if (target.id === "fishing-nearby") return targetForFishing();
+  if (target.id === "fishing-nearby" || target.id === "fishing-active") return targetForFishing();
   if (target.id === "held-item") return targetForHeldItem();
   if (target.id.startsWith("animal:")) return targetForAnimal(target.id.slice(7));
   if (target.id.startsWith("npc:")) return targetForNpc(target.id.slice(4));
@@ -101,7 +105,7 @@ function render(){
   const sig=(currentTarget?.id||"")+"|"+currentActions.map(a=>a.id+promptFor(a.slot,device,layout)).join("|")+`|held:${heldId||""}:${heldId?itemAmount(heldId):0}:${device}:${layout}`;
   box.classList.toggle("visible",currentActions.length>0||Boolean(held)); if(box.dataset.signature===sig)return; box.dataset.signature=sig; box.replaceChildren();
   const appendPrompt=(key:string,label:string,onClick?:()=>void)=>{const button=document.createElement("button");button.type="button";button.className="contextInteractionAction";const kbd=document.createElement("kbd"),text=document.createElement("span");kbd.textContent=key;text.textContent=label;button.append(kbd,text);if(onClick)button.addEventListener("click",event=>{event.stopPropagation();onClick();});else button.disabled=true;box.append(button);};
-  currentActions.forEach(action=>{appendPrompt(promptFor(action.slot,device,layout),action.label,()=>{markKeyboardMouseInput(new Event("pointerdown"));executeContextInteraction(action.slot);});});
+  currentActions.forEach(action=>{appendPrompt(action.prompt && device !== "gamepad" ? action.prompt : promptFor(action.slot,device,layout),action.label,()=>{markKeyboardMouseInput(new Event("pointerdown"));executeContextInteraction(action.slot);});});
   if(getCarriedAnimalId()&&device!=="gamepad")appendPrompt("右鍵","放下",dropCarriedAnimal);
   if(held){appendPrompt(device==="gamepad"?"LB/RB":"滾輪","切換物品",()=>cycleHeldItem(1));appendPrompt("右鍵","收回",stowHeldItem);}
 }

@@ -7,6 +7,7 @@ export type ContextAction = {
   label: string;
   slot: InteractionSlot;
   execute: () => void;
+  prompt?: string;
 };
 
 export type InteractionCandidate = {

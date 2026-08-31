@@ -671,7 +671,7 @@ export function animate(now) {
     fishActionHudEl.style.top = `${screenY}px`;
 
     if (gameState.fishingState === "biting") {
-      fishActionKeyEl.textContent = "E／左鍵　右鍵取消";
+      fishActionKeyEl.textContent = "E";
       fishActionKeyEl.classList.remove("warn");
     } else {
       const qte = gameState.fishingQte!;
@@ -689,7 +689,7 @@ export function animate(now) {
           right: "→",
         };
         const counterDir = COUNTER_DIRECTION[event.fishDirection!];
-        fishActionKeyEl.textContent = `${ARROW[counterDir]}　右鍵取消`;
+        fishActionKeyEl.textContent = ARROW[counterDir];
         fishActionKeyEl.classList.remove("warn");
       }
     }
