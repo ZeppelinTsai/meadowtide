@@ -932,79 +932,264 @@ export function makeFurniture(item) {
     rug.receiveShadow = true;
     g.add(rug);
   } else if (item.type === "stove") {
-    // 通用料理系統的互動點——爐台本體+一口鍋，鍋底一圈常亮的暖色
-    // emissive 代表爐火，不用另外做真的火焰粒子。跟採集點的
-    // 「今天能不能用」發光不同，這裡沒有每日限制(食材夠不夠才是
-    // 唯一限制)，所以固定亮著，不用 game-loop.ts 逐幀調整。
+    const enamelMat = new THREE.MeshStandardMaterial({
+      color: 0x4c5356,
+      metalness: 0.22,
+      roughness: 0.48,
+    });
+    const steelMat = new THREE.MeshStandardMaterial({
+      color: 0xaeb9b8,
+      metalness: 0.68,
+      roughness: 0.28,
+    });
+    const darkMat = new THREE.MeshStandardMaterial({ color: 0x242728 });
     const body = new THREE.Mesh(
-      new THREE.BoxGeometry(0.62, 0.46, 0.5),
-      new THREE.MeshStandardMaterial({ color: 0x4a4a4d, flatShading: true }),
+      new THREE.BoxGeometry(0.78, 0.62, 0.58),
+      enamelMat,
     );
-    body.position.y = 0.23;
+    body.position.y = 0.31;
     body.castShadow = true;
     body.receiveShadow = true;
     g.add(body);
-    const stovetop = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.16, 0.18, 0.05, 10),
+    const ovenWindow = new THREE.Mesh(
+      new THREE.BoxGeometry(0.5, 0.25, 0.025),
       new THREE.MeshStandardMaterial({
-        color: 0x2c2c2e,
-        roughness: 0.7,
-        emissive: new THREE.Color(0xff7a3c),
-        emissiveIntensity: 0.4,
+        color: 0x182226,
+        metalness: 0.35,
+        roughness: 0.2,
       }),
     );
-    stovetop.position.y = 0.48;
-    g.add(stovetop);
+    ovenWindow.position.set(0, 0.27, 0.304);
+    g.add(ovenWindow);
+    const ovenHandle = new THREE.Mesh(
+      new THREE.BoxGeometry(0.52, 0.035, 0.055),
+      steelMat,
+    );
+    ovenHandle.position.set(0, 0.48, 0.34);
+    g.add(ovenHandle);
+    [-0.23, 0, 0.23].forEach((x) => {
+      const knob = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.045, 0.045, 0.04, 10),
+        darkMat,
+      );
+      knob.rotation.x = Math.PI / 2;
+      knob.position.set(x, 0.56, 0.32);
+      g.add(knob);
+    });
+    [-0.21, 0.21].forEach((x) =>
+      [-0.14, 0.14].forEach((z) => {
+        const burner = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.09, 0.1, 0.025, 12),
+          darkMat,
+        );
+        burner.position.set(x, 0.635, z);
+        g.add(burner);
+      }),
+    );
     const pot = new THREE.Mesh(
       new THREE.CylinderGeometry(0.13, 0.14, 0.16, 10),
-      new THREE.MeshStandardMaterial({
-        color: 0x6b6f76,
-        metalness: 0.3,
-        roughness: 0.6,
-      }),
+      steelMat,
     );
-    pot.position.y = 0.58;
+    pot.position.set(-0.21, 0.73, -0.14);
     pot.castShadow = true;
     g.add(pot);
-    const potHandleMat = new THREE.MeshStandardMaterial({ color: 0x3a3a3c });
-    [-0.14, 0.14].forEach((hx) => {
+  } else if (item.type === "counter") {
+    const cabinetMat = new THREE.MeshStandardMaterial({
+      color: 0xb88758,
+      roughness: 0.78,
+    });
+    const worktopMat = new THREE.MeshStandardMaterial({
+      color: 0xe0d2b5,
+      roughness: 0.42,
+    });
+    const metalMat = new THREE.MeshStandardMaterial({
+      color: 0xaab8b8,
+      metalness: 0.65,
+      roughness: 0.24,
+    });
+    const cabinet = new THREE.Mesh(
+      new THREE.BoxGeometry(0.82, 0.58, 0.56),
+      cabinetMat,
+    );
+    cabinet.position.y = 0.29;
+    cabinet.castShadow = true;
+    cabinet.receiveShadow = true;
+    g.add(cabinet);
+    const worktop = new THREE.Mesh(
+      new THREE.BoxGeometry(0.88, 0.07, 0.62),
+      worktopMat,
+    );
+    worktop.position.y = 0.615;
+    worktop.castShadow = true;
+    worktop.receiveShadow = true;
+    g.add(worktop);
+    const addCabinetHandle = (x: number, y: number) => {
       const handle = new THREE.Mesh(
-        new THREE.SphereGeometry(0.025, 6, 5),
-        potHandleMat,
+        new THREE.BoxGeometry(0.22, 0.025, 0.035),
+        metalMat,
       );
-      handle.position.set(hx, 0.58, 0);
+      handle.position.set(x, y, 0.305);
+      g.add(handle);
+    };
+    if (item.variant === "drawer") {
+      [0.46, 0.29, 0.12].forEach((y) => {
+        const seam = new THREE.Mesh(
+          new THREE.BoxGeometry(0.7, 0.015, 0.012),
+          new THREE.MeshStandardMaterial({ color: 0x765337 }),
+        );
+        seam.position.set(0, y, 0.292);
+        g.add(seam);
+        addCabinetHandle(0, y + 0.055);
+      });
+    } else {
+      const doorSeam = new THREE.Mesh(
+        new THREE.BoxGeometry(0.018, 0.46, 0.012),
+        new THREE.MeshStandardMaterial({ color: 0x765337 }),
+      );
+      doorSeam.position.set(0, 0.29, 0.292);
+      g.add(doorSeam);
+      addCabinetHandle(-0.12, 0.43);
+      addCabinetHandle(0.12, 0.43);
+    }
+    if (item.variant === "sink") {
+      const basin = new THREE.Mesh(
+        new THREE.BoxGeometry(0.52, 0.045, 0.36),
+        metalMat,
+      );
+      basin.position.set(0, 0.66, 0);
+      g.add(basin);
+      const faucetStem = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.025, 0.025, 0.24, 8),
+        metalMat,
+      );
+      faucetStem.position.set(-0.2, 0.78, -0.19);
+      g.add(faucetStem);
+      const faucetSpout = new THREE.Mesh(
+        new THREE.BoxGeometry(0.05, 0.05, 0.2),
+        metalMat,
+      );
+      faucetSpout.position.set(-0.2, 0.89, -0.1);
+      g.add(faucetSpout);
+    } else if (item.variant === "prep") {
+      const board = new THREE.Mesh(
+        new THREE.BoxGeometry(0.46, 0.025, 0.3),
+        new THREE.MeshStandardMaterial({ color: 0xd4b277 }),
+      );
+      board.position.set(-0.05, 0.665, 0.04);
+      board.receiveShadow = true;
+      g.add(board);
+      [
+        { x: 0.19, z: -0.06, color: 0xc74a38 },
+        { x: 0.24, z: 0.08, color: 0xe1a62c },
+      ].forEach((v) => {
+        const veg = new THREE.Mesh(
+          new THREE.SphereGeometry(0.065, 7, 6),
+          new THREE.MeshStandardMaterial({ color: v.color, flatShading: true }),
+        );
+        veg.position.set(v.x, 0.72, v.z);
+        veg.castShadow = true;
+        g.add(veg);
+      });
+    } else if (item.variant === "storage") {
+      const jarMat = new THREE.MeshStandardMaterial({ color: 0xe9dfc8 });
+      [-0.18, 0.18].forEach((x, index) => {
+        const jar = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.08, 0.09, 0.18, 10),
+          jarMat,
+        );
+        jar.position.set(x, 0.75, 0.02);
+        jar.castShadow = true;
+        g.add(jar);
+        const lid = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.085, 0.085, 0.025, 10),
+          new THREE.MeshStandardMaterial({ color: index ? 0x76907d : 0x9e6e55 }),
+        );
+        lid.position.set(x, 0.85, 0.02);
+        g.add(lid);
+      });
+    }
+  } else if (item.type === "fridge") {
+    const bodyMat = new THREE.MeshStandardMaterial({
+      color: 0xdbe4e1,
+      metalness: 0.18,
+      roughness: 0.4,
+    });
+    const trimMat = new THREE.MeshStandardMaterial({
+      color: 0x758481,
+      metalness: 0.55,
+      roughness: 0.28,
+    });
+    const body = new THREE.Mesh(
+      new THREE.BoxGeometry(0.78, 1.28, 0.64),
+      bodyMat,
+    );
+    body.position.y = 0.64;
+    body.castShadow = true;
+    body.receiveShadow = true;
+    g.add(body);
+    const freezerSeam = new THREE.Mesh(
+      new THREE.BoxGeometry(0.68, 0.018, 0.018),
+      trimMat,
+    );
+    freezerSeam.position.set(0, 0.82, 0.329);
+    g.add(freezerSeam);
+    [0.98, 0.57].forEach((y) => {
+      const handle = new THREE.Mesh(
+        new THREE.BoxGeometry(0.035, 0.25, 0.045),
+        trimMat,
+      );
+      handle.position.set(0.29, y, 0.35);
       g.add(handle);
     });
-  } else if (item.type === "counter") {
-    // 流理台——純裝飾，跟爐台湊出「廚房一角」；上面擺一顆砧板+兩顆
-    // 蔬果球體，暗示這裡是備料檯，不用真的做寫實食材模型。
-    const top = new THREE.Mesh(
-      new THREE.BoxGeometry(0.7, 0.44, 0.5),
-      new THREE.MeshStandardMaterial({ color: 0xc9a877, flatShading: true }),
+    const topCap = new THREE.Mesh(
+      new THREE.BoxGeometry(0.82, 0.045, 0.68),
+      trimMat,
     );
-    top.position.y = 0.22;
-    top.castShadow = true;
-    top.receiveShadow = true;
-    g.add(top);
-    const board = new THREE.Mesh(
-      new THREE.BoxGeometry(0.32, 0.02, 0.22),
-      new THREE.MeshStandardMaterial({ color: 0xdac496 }),
-    );
-    board.position.set(-0.08, 0.45, 0.05);
-    board.receiveShadow = true;
-    g.add(board);
-    [
-      { x: 0.16, z: -0.08, color: 0xd2483a },
-      { x: 0.2, z: 0.08, color: 0xe0a934 },
-    ].forEach((v) => {
-      const veg = new THREE.Mesh(
-        new THREE.SphereGeometry(0.06, 7, 6),
-        new THREE.MeshStandardMaterial({ color: v.color, flatShading: true }),
+    topCap.position.y = 1.3;
+    g.add(topCap);
+  } else if (item.type === "bathroom-door") {
+    const frameMat = new THREE.MeshStandardMaterial({ color: 0x6d4932 });
+    const panelMat = new THREE.MeshStandardMaterial({ color: 0xb9865e });
+    [-0.36, 0.36].forEach((x) => {
+      const post = new THREE.Mesh(
+        new THREE.BoxGeometry(0.09, 1.28, 0.1),
+        frameMat,
       );
-      veg.position.set(v.x, 0.5, v.z);
-      veg.castShadow = true;
-      g.add(veg);
+      post.position.set(x, 0.64, 0.39);
+      post.castShadow = true;
+      g.add(post);
     });
+    const lintel = new THREE.Mesh(
+      new THREE.BoxGeometry(0.81, 0.1, 0.1),
+      frameMat,
+    );
+    lintel.position.set(0, 1.24, 0.39);
+    g.add(lintel);
+    const panel = new THREE.Mesh(
+      new THREE.BoxGeometry(0.64, 1.15, 0.055),
+      panelMat,
+    );
+    panel.position.set(0, 0.59, 0.42);
+    panel.castShadow = true;
+    g.add(panel);
+    [0.3, 0.58, 0.86].forEach((y) => {
+      const inset = new THREE.Mesh(
+        new THREE.BoxGeometry(0.44, 0.18, 0.018),
+        new THREE.MeshStandardMaterial({ color: 0xa87552 }),
+      );
+      inset.position.set(0, y, 0.453);
+      g.add(inset);
+    });
+    const knob = new THREE.Mesh(
+      new THREE.SphereGeometry(0.045, 8, 6),
+      new THREE.MeshStandardMaterial({
+        color: 0xc5a45f,
+        metalness: 0.55,
+        roughness: 0.3,
+      }),
+    );
+    knob.position.set(0.23, 0.6, 0.49);
+    g.add(knob);
   }
   return g;
 }

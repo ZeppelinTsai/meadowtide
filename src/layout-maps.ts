@@ -1770,12 +1770,15 @@ export const MAPS = {
     furniture: [
       { type: "bed", x: 2, z: 1, w: 1, d: 2 },
       { type: "rug", x: 4, z: 3, nonBlocking: true }, // 臥室地毯
-      // 廚房——沿西牆(見上面 windows 的 (0,9) west)鋪一排，爐台是真正的
-      // 互動點(input-save.ts 動態找 furniture 裡的 stove，不用改程式碼)，
-      // 流理台純裝飾。
-      { type: "stove", x: 1, z: 9 },
-      { type: "counter", x: 2, z: 9 },
-      { type: "counter", x: 1, z: 10 },
+      // 北牆完整廚房：冰箱接五格櫥櫃；stove 仍是正式料理互動點。
+      { type: "fridge", x: 9, z: 1 },
+      { type: "counter", x: 10, z: 1, variant: "sink" },
+      { type: "counter", x: 11, z: 1, variant: "prep" },
+      { type: "stove", x: 12, z: 1 },
+      { type: "counter", x: 13, z: 1, variant: "drawer" },
+      { type: "counter", x: 14, z: 1, variant: "storage" },
+      // 北牆上的關閉裝飾門；牆 tile 保留碰撞，未來再接衛浴地圖。
+      { type: "bathroom-door", x: 8, z: 0, nonBlocking: true },
       // 主空間餐廳——房子變大了，餐桌從兩張椅子擴成四張，四面各一張，
       // 旋轉角度沿用舊格局「面向桌子」那組換算：南側 rot=PI、東側
       // rot=-PI/2，北側/西側對稱補上 rot=0／rot=PI/2。
