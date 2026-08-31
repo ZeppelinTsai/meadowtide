@@ -715,11 +715,14 @@ export function animate(now) {
     (window as any).__harvestToastTextEl ||
     ((window as any).__harvestToastTextEl =
       document.getElementById("harvestToastText"));
-  if (
-    gameState.harvestFeedback &&
-    gameState.elapsed > gameState.harvestFeedback.until
-  )
-    gameState.harvestFeedback = null;
+  if (gameState.harvestFeedback) {
+    const feedback = gameState.harvestFeedback;
+    feedback.shownAtMs ??= performance.now();
+    const exceededWallClockLimit =
+      performance.now() - feedback.shownAtMs >= 3500;
+    if (gameState.elapsed > feedback.until || exceededWallClockLimit)
+      gameState.harvestFeedback = null;
+  }
   if (gameState.harvestFeedback) {
     const fb = gameState.harvestFeedback;
     harvestToastTitleEl.textContent = fb.title;

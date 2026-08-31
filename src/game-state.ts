@@ -92,6 +92,7 @@ export const gameState = {
     text: string;
     count?: number;
     until: number;
+    shownAtMs?: number;
   } | null,
   // 牡蠣架上「還沒收成」那批殼用的共用材質——makeOysterRack() 建好之後把
   // 材質丟回這裡，animate() 每幀根據 isOysterRackReady() 幫它調
