@@ -264,8 +264,9 @@ export function buildMap(mapName) {
   southIndoorWallMeshes.length = 0;
   // 場景專屬物件可能在前面的 port／oldVillage 分支建好；動畫登記表必須
   // 在任何場景建置之前清空，不能等到共用海面收尾才清，否則模型看得到、
-  // animate() 卻收不到登記項目，浪花會完全靜止。
+  // animate() 卻收不到登記項目，浪花或水面會完全靜止。
   foamMeshes.length = 0;
+  gameState.portWaterMeshes = [];
 
   const map = MAPS[mapName];
   const rows = map.tiles.length,
@@ -3286,7 +3287,6 @@ export function buildMap(mapName) {
   // 捲浪的幾何細節看得出來；只涵蓋 tile 9 的範圍，動畫在 animate() 逐頂點更新
   windmillRotors.length = 0;
   gameState.oceanMesh = null;
-  gameState.portWaterMeshes = [];
   gameState.lakeMesh = null;
   lakeShoreColliders.length = 0;
   gameState.seaGlimpseMesh = null;
