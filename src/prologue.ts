@@ -178,6 +178,7 @@ function resetPrologueStartingItems() {
   Object.keys(inventory.tools).forEach((toolId) => {
     inventory.tools[toolId] = false;
   });
+  gameState.plantingBounds = null;
   inventory.seeds = 0;
   inventory.potatoSeeds = 0;
   inventory.tomatoSeeds = 0;
@@ -785,6 +786,7 @@ function continueAfterPlanting() {
 }
 
 function beginFreePlanting() {
+  gameState.plantingBounds = { ...TUTORIAL_PLOT };
   beginStage("farmingFree");
   gameState.cutsceneActive = false;
   lockPrologueDateTime();
@@ -1022,7 +1024,18 @@ export function isPrologueFarmingActive(): boolean {
 export function updatePrologueGameplayGate() {
   if (stage !== "farmingFree" && stage !== "seekingRod") return;
   lockPrologueDateTime();
-  if (stage === "seekingRod" || tutorialCropCount() < 9) return;
+  if (stage === "seekingRod") return;
+  const plantedCount = tutorialCropCount();
+  if (plantedCount < 9) {
+    // 舊版可能把種子消耗在教學區外；補回缺口，避免存檔永久軟鎖。
+    const missingSeeds = 9 - plantedCount;
+    if (inventory.seeds < missingSeeds) {
+      inventory.seeds = missingSeeds;
+      inventory.heldItemId = "radishSeeds";
+    }
+    return;
+  }
+  gameState.plantingBounds = null;
   inventory.seeds = 0;
   if (inventory.heldItemId === "radishSeeds") inventory.heldItemId = null;
   beginStage("mapTransition");

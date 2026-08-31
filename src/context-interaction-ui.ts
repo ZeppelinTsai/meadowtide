@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import { chooseInteractionTarget, promptFor, type ContextAction, type InteractionCandidate, type InteractionSlot } from "./context-interaction";
 import { actionsForAnimal, dropCarriedAnimal, getCarriedAnimalId } from "./animal-interactions";
-import { gameState, cropState, hasTool, inventory, pastureGrassStageAt, WOOD_NODES, STONE_NODES } from "./game-state";
+import { gameState, cropState, hasTool, inventory, pastureGrassStageAt, WOOD_NODES, STONE_NODES, isPlantingAllowedAt } from "./game-state";
 import { animals, npcs } from "./npc-runtime";
 import { renderer, camera, scene } from "./scene-sky";
 import { getGameplayCamera, isFirstPersonModeActive } from "./first-person-camera";
@@ -57,6 +57,7 @@ function targetForFarm(x:number,z:number,object:THREE.Object3D=farmGroup):WorldT
   if(!FARMLAND_TILES.some(([fx,fz])=>fx===x&&fz===z))return null;
   const crop=cropState[`${x},${z}`];
   if(crop?.stage>=2)return{id:`crop:${x},${z}`,object,radius:0.8,actions:[legacyAction("harvest","\u6536\u6210")],getPosition:()=>({x,z}),isValid:()=>Boolean(cropState[`${x},${z}`]?.stage>=2)};
+  if(!isPlantingAllowedAt(x,z))return null;
   const heldSeedId=inventory.heldItemId, heldCropType=cropTypeForSeedItem(heldSeedId);
   if(!crop&&heldSeedId&&heldCropType&&itemAmount(heldSeedId)>0)return{id:`soil:${x},${z}`,object,radius:0.8,actions:[legacyAction("plant","\u64ad\u7a2e")],getPosition:()=>({x,z}),isValid:()=>!cropState[`${x},${z}`]&&inventory.heldItemId===heldSeedId&&itemAmount(heldSeedId)>0};
   return null;

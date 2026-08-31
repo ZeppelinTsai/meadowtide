@@ -129,6 +129,13 @@ export const gameState = {
   // 讓 WASD 完全不生效，但刻意不透過 isGameTimePaused()(那個會讓
   // dt=0，連帶凍結船隻/跳板動畫的補間)，見 src/prologue.ts。
   cutsceneActive: false,
+  // 序章播種教學的可用範圍；null 表示一般遊戲可使用所有農地。
+  plantingBounds: null as null | {
+    minX: number;
+    maxX: number;
+    minZ: number;
+    maxZ: number;
+  },
   houseLampLight: null as THREE.PointLight | null,
   houseLampBulbMat: null as THREE.MeshStandardMaterial | null,
   // 2026-08-26 加的頂燈(makeCeilingLamp)——桌燈(houseLampLight)範圍只有
@@ -470,7 +477,29 @@ export function nearAnyNpc() {
     return false;
   });
 }
+export function isFarmTileObstructed(x: number, z: number) {
+  return [...WOOD_NODES, ...STONE_NODES].some(
+    (node) =>
+      !node.collected &&
+      node.map === gameState.currentMapName &&
+      node.x === x &&
+      node.z === z,
+  );
+}
+
+export function isPlantingAllowedAt(x: number, z: number) {
+  const bounds = gameState.plantingBounds;
+  const insideBounds =
+    !bounds ||
+    (x >= bounds.minX &&
+      x <= bounds.maxX &&
+      z >= bounds.minZ &&
+      z <= bounds.maxZ);
+  return insideBounds && !isFarmTileObstructed(x, z);
+}
+
 export function plantSeed(x: number, z: number) {
+  if (!isPlantingAllowedAt(x, z)) return;
   const key = `${x},${z}`;
   if (cropState[key]) return;
   const heldSeedId = inventory.heldItemId;
