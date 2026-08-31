@@ -819,6 +819,27 @@ const endPinch = () => {
 renderer.domElement.addEventListener("touchend", endPinch);
 renderer.domElement.addEventListener("touchcancel", endPinch);
 
+function cancelFishing() {
+  if (gameState.fishingState === "idle") return;
+  gameState.fishingState = "idle";
+  gameState.fishingQte = null;
+  gameState.pendingFishTier = null;
+  if (gameState.bobberMesh) { scene.remove(gameState.bobberMesh); gameState.bobberMesh = null; }
+  if (gameState.player?.parts?.rod) gameState.player.parts.rod.visible = false;
+}
+
+// Fishing mouse aliases: left click acts as E while biting; right click cancels fishing.
+addEventListener("pointerdown", (event) => {
+  if (!event.isPrimary || !gameState.player || gameState.titlePresentationActive) return;
+  const action = (event.button === 0 && gameState.fishingState === "biting") || (event.button === 2 && gameState.fishingState !== "idle");
+  if (!action) return;
+  event.preventDefault(); event.stopPropagation();
+  if (event.button === 2) { cancelFishing(); return; }
+  window.dispatchEvent(new KeyboardEvent("keydown", { key: "e", bubbles: true }));
+  window.dispatchEvent(new KeyboardEvent("keyup", { key: "e", bubbles: true }));
+}, true);
+addEventListener("contextmenu", (event) => { if (gameState.fishingState !== "idle") { event.preventDefault(); event.stopPropagation(); } }, true);
+
 // A dialogue line uses the same primary-action semantics as E, but a world
 // pointer handler cannot receive clicks reliably when the dialogue UI covers
 // the canvas. Listen at window level and consume the primary pointer action
