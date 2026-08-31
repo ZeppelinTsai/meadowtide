@@ -271,17 +271,18 @@ import {
       }
       export const MILKY_WAY_TEXTURE = makeMilkyWayTexture();
       export function starSkyPoint(nx, ny, seasonIndex) {
-        // 上半球星空。nx 覆蓋完整 360° 方位，ny 從地平線升到天頂；第一人稱
-        // 轉頭或抬頭時不會離開原本的單面星幕而看到大片無星區。
+        // nx 覆蓋完整 360° 方位；ny 以球面 Y 坐標等面積取樣。若直接讓緯度
+        // 等距，經線會在南北極收斂，抬頭時所有星點就會堆成天頂亮團。
         const longitude = (nx / 0.7) * Math.PI;
+        const sphereY = ny * 2 - 1;
+        const horizontalRadius = Math.sqrt(Math.max(0, 1 - sphereY * sphereY));
         // 平面鏡射相機會從水面下方取樣天空，因此星點幾何必須覆蓋完整球面；
-        // 主畫面的地平線下半球仍由地形與水面深度自然遮住。
-        const latitude = -Math.PI / 2 + ny * Math.PI;
+        // 主畫面的下半球仍由地形與水面深度自然遮住。
         const radius = 78 + seasonIndex * 0.06;
         return new THREE.Vector3(
-          Math.cos(latitude) * Math.sin(longitude) * radius,
-          Math.sin(latitude) * radius,
-          -Math.cos(latitude) * Math.cos(longitude) * radius,
+          horizontalRadius * Math.sin(longitude) * radius,
+          sphereY * radius,
+          -horizontalRadius * Math.cos(longitude) * radius,
         );
       }
       export function makeSeasonStarGroup(seasonIndex) {
