@@ -18,18 +18,155 @@ export function weatherIconSvg(weatherKey: string) {
     case "rain":
       return svg(cloud + rain);
     case "typhoon":
-      return svg(`<path d="M37 16c-8-9-25-4-24 8 1 10 16 13 21 5 4-7-3-14-10-10-5 3-2 10 3 9 3 0 4-4 2-6" fill="none" stroke="#4b8fc0" stroke-width="4" stroke-linecap="round"/>`);
+      return svg(
+        `<path d="M37 16c-8-9-25-4-24 8 1 10 16 13 21 5 4-7-3-14-10-10-5 3-2 10 3 9 3 0 4-4 2-6" fill="none" stroke="#4b8fc0" stroke-width="4" stroke-linecap="round"/>`,
+      );
     case "storm":
-      return svg(cloud + `<path d="m27 30-7 10h6l-3 6 11-13h-7Z" fill="#f2b72b" stroke="#b47a00" stroke-width="1.5"/>`);
+      return svg(
+        cloud +
+          `<path d="m27 30-7 10h6l-3 6 11-13h-7Z" fill="#f2b72b" stroke="#b47a00" stroke-width="1.5"/>`,
+      );
     case "snow":
       return svg(snow);
     case "blizzard":
-      return svg(cloud + `<g transform="translate(0 9) scale(.72)">${snow}</g>`);
+      return svg(
+        cloud + `<g transform="translate(0 9) scale(.72)">${snow}</g>`,
+      );
     case "meteor-shower":
-      return svg("<path d=\"M6 12l25 12-14 3M19 5l8 19-3 19M43 10L29 25l14 7\" fill=\"none\" stroke=\"#6b5aa8\" stroke-width=\"3\" stroke-linecap=\"round\"/><circle cx=\"35\" cy=\"12\" r=\"2\" fill=\"#f5c85b\"/>");
+      return svg(`
+    <g fill="#ffd45e">
+      <!-- 尾巴再往右上微調 -->
+      <path
+        d="M41.5 6 L27.5 29 L20.5 22 Z"
+        fill="#ffd45e"
+        stroke="#b47a00"
+        stroke-width="1.5"
+        stroke-linejoin="round"
+      />
+
+      <!-- 主星：再往右上微調 (X+1.5, Y-1.5) -->
+      <path
+        d="
+          M23 12.7
+          L28.4 23.8
+          L40.6 25.6
+          L31.7 34.2
+          L33.8 46.4
+          L23 40.8
+          L12.2 46.4
+          L14.3 34.2
+          L5.4 25.6
+          L17.6 23.8
+          Z
+        "
+        fill="#ffd45e"
+        stroke="#b47a00"
+        stroke-width="1.5"
+        stroke-linejoin="round"
+      />
+    </g>
+  `);
+
     case "meteor-peak":
-      return svg("<path d=\"M3 8l28 14-16 4M20 2l8 22-3 22M45 7L29 25l16 8M7 31l18-7\" fill=\"none\" stroke=\"#7c4db4\" stroke-width=\"3.5\" stroke-linecap=\"round\"/><circle cx=\"28\" cy=\"24\" r=\"5\" fill=\"#ffd45e\" stroke=\"#b47a00\" stroke-width=\"2\"/>");
+      return svg(`
+    <g fill="#ffd45e" stroke="#b47a00" stroke-linejoin="round">
+
+      <!-- 左上小流星（再往右上微調 X+1.5, Y-1.5） -->
+      <g>
+        <!-- 尾巴 -->
+        <path
+          d="M26 -1 L15.5 15.5 L12.5 12.5 Z"
+          fill="#ffd45e"
+          stroke="#b47a00"
+          stroke-width="1.2"
+        />
+
+        <!-- 星星 -->
+        <path
+          d="
+            M13.5 10
+            L15.6 14.3
+            L20.4 15
+            L16.9 18.4
+            L17.8 23.1
+            L13.5 20.9
+            L9.2 23.1
+            L10.1 18.4
+            L6.6 15
+            L11.4 14.3
+            Z
+          "
+          stroke-width="1.2"
+        />
+      </g>
+
+      <!-- 中央主流星（再往右上微調 X+1.5, Y-1.5） -->
+      <g>
+        <!-- 粗、長尾巴 -->
+        <path
+          d="M41.5 6 L27.5 29 L20.5 22 Z"
+          fill="#ffd45e"
+          stroke="#b47a00"
+          stroke-width="1.5"
+          stroke-linejoin="round"
+        />
+
+        <!-- 最大主星 -->
+        <path
+          d="
+            M23 12.7
+            L28.4 23.8
+            L40.6 25.6
+            L31.7 34.2
+            L33.8 46.4
+            L23 40.8
+            L12.2 46.4
+            L14.3 34.2
+            L5.4 25.6
+            L17.6 23.8
+            Z
+          "
+          fill="#ffd45e"
+          stroke="#b47a00"
+          stroke-width="1.5"
+          stroke-linejoin="round"
+        />
+      </g>
+
+      <!-- 右下小流星（再往右上微調 X+1.5, Y-1.5） -->
+      <g>
+        <!-- 尾巴 -->
+        <path
+          d="M51 18 L41.5 33.5 L38.5 30.5 Z"
+          fill="#ffd45e"
+          stroke="#b47a00"
+          stroke-width="1.2"
+        />
+
+        <!-- 星星 -->
+        <path
+          d="
+            M39.5 27
+            L41.6 31.3
+            L46.4 32
+            L42.9 35.4
+            L43.8 40.1
+            L39.5 37.9
+            L35.2 40.1
+            L36.1 35.4
+            L32.6 32
+            L37.4 31.3
+            Z
+          "
+          stroke-width="1.2"
+        />
+      </g>
+
+    </g>
+      `);
     default:
-      return svg(`<circle cx="24" cy="24" r="10" fill="#d8c38f"/><path d="M24 17v9" stroke="#493025" stroke-width="3"/><circle cx="24" cy="32" r="2" fill="#493025"/>`);
+      return svg(
+        `<circle cx="24" cy="24" r="10" fill="#d8c38f"/><path d="M24 17v9" stroke="#493025" stroke-width="3"/><circle cx="24" cy="32" r="2" fill="#493025"/>`,
+      );
   }
 }
