@@ -1,8 +1,8 @@
 import * as THREE from "three";
 import { PLATEAU_Y, scene } from "./scene-sky";
 import { gameState, cropState } from "./game-state";
-import { FARMLAND_TILES, POUCH_POS } from "./layout-maps";
-import { makeSoil, makeCropMesh, makeSeedPouch } from "./props";
+import { FARMLAND_TILES } from "./layout-maps";
+import { makeSoil, makeCropMesh } from "./props";
 
 // 農作獨立渲染層
 export const farmGroup = new THREE.Group();
@@ -25,9 +25,4 @@ export const farmGroup = new THREE.Group();
             farmGroup.add(mesh);
           }
         });
-        if (gameState.currentDay > gameState.pouchCollectedDay) {
-          const pouch = makeSeedPouch(0xe9d6a5);
-          pouch.position.set(POUCH_POS.x, 0, POUCH_POS.z);
-          farmGroup.add(pouch);
-        }
       }

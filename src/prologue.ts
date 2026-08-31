@@ -34,6 +34,7 @@ import {
   hasCompletedStoryEvent,
 } from "./story/story-state";
 import { setPresentationCamera } from "./first-person-camera";
+import { setNpcNameStage } from "./npc-name-reveal";
 import {
   PROLOGUE_MARKERS,
   PROLOGUE_OPENING_CAMERA_SHOTS,
@@ -637,6 +638,8 @@ export function startPrologueFishingSequence() {
   beginStage("fishingDialogue");
   gameState.cutsceneActive = true;
   lockPrologueDateTime();
+  // 主角已在序章開場搭過船；回港正式交談時直接以身分「船長」顯示。
+  setNpcNameStage("captain", 1);
   const captain = npcs.find((npc) => npc.id === "captain");
   const mayor = npcs.find((npc) => npc.id === "mayor");
   if (captain) {

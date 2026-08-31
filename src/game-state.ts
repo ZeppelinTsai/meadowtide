@@ -44,7 +44,6 @@ export const gameState = {
   // 快轉)，用共用旗標才不會漏接快轉那條路徑觸發的自動存檔。
   pendingAutosave: false,
   titlePresentationActive: false,
-  pouchCollectedDay: -1,
   currentDay: 0,
   currentPhase: 0, // 一天中的比例(0~1)，animate() 每幀更新，E 鍵事件也要讀
   currentSeason: 0, // 下面初始化時會用 getSeasonIndex(0) 覆蓋
@@ -496,12 +495,6 @@ export function harvestCrop(x: number, z: number) {
   delete cropState[key];
   inventory.harvested++;
   nearAnyNpc();
-  syncFarmVisuals();
-}
-export function pickupSeeds() {
-  if (gameState.currentDay <= gameState.pouchCollectedDay) return;
-  gameState.pouchCollectedDay = gameState.currentDay;
-  inventory.seeds += 3;
   syncFarmVisuals();
 }
 export function growCropsForNewDay() {

@@ -16,7 +16,6 @@ import {
   nearWater,
   plantSeed,
   harvestCrop,
-  pickupSeeds,
   CAST_ANIM_DURATION,
   isOysterRackInteractionTile,
   setOysterRackSlots,
@@ -70,7 +69,6 @@ import {
 } from "./sfx";
 import {
   carpenterQuest,
-  POUCH_POS,
   FARMLAND_TILES,
   chefQuest,
   REST_CHAIR,
@@ -296,7 +294,6 @@ export function saveGame(slot = "default") {
     currentSeason: gameState.currentSeason,
     currentWeather: gameState.currentWeather,
     weatherSchedules: JSON.parse(JSON.stringify(gameState.weatherSchedules)),
-    pouchCollectedDay: gameState.pouchCollectedDay,
     currentMapName: gameState.currentMapName,
     player: gameState.player
       ? {
@@ -386,9 +383,6 @@ export function loadGame(
   gameState.currentWeather =
     data.currentWeather ||
     rollWeatherForSeason(gameState.currentSeason, gameState.currentDay);
-  gameState.pouchCollectedDay = Number.isFinite(data.pouchCollectedDay)
-    ? data.pouchCollectedDay
-    : -1;
   const savedTools = data.inventory?.tools;
   Object.assign(inventory, data.inventory || {});
   inventory.tools = {
@@ -1246,10 +1240,6 @@ addEventListener("keydown", (e) => {
 
   if (gameState.currentMapName !== "livingArea") return;
   const { x, z } = gameState.playerGridPos;
-  if (x === POUCH_POS.x && z === POUCH_POS.z) {
-    pickupSeeds();
-    return;
-  }
   const onFarmland = FARMLAND_TILES.some(([fx, fz]) => fx === x && fz === z);
   if (onFarmland) {
     const key = `${x},${z}`;

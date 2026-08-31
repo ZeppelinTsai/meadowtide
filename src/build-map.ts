@@ -31,7 +31,6 @@ import {
   COAST_ROAD_CENTER_Z,
   COAST_ROAD_HALF_WIDTH,
   lakeEdgeFactor,
-  POUCH_POS,
   CARPENTER_DOORSTEP,
   SHRINE_PATH_START_X,
   SHRINE_PATH_LENGTH,
@@ -3243,7 +3242,6 @@ export function buildMap(mapName) {
       }
       // tile === 9（海）不逐格建置，迴圈結束後另外蓋成一整片海面，才能做波浪動畫
       else if (tile === 0 && mapName === "livingArea") {
-        if (x === POUCH_POS.x && z === POUCH_POS.z) return;
         const insideArea = (area) =>
           x >= area.x &&
           x < area.x + area.width &&

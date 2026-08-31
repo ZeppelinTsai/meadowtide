@@ -15,7 +15,7 @@ import { MOUNTAIN_ORE_NODES, ORE_NODES } from "./mine";
 import { isNearFishingWater } from "./fishing-water";
 import { showUiToast } from "./ui-toast";
 import { farmGroup } from "./farm-visuals";
-import { FARMLAND_TILES, POUCH_POS } from "./layout-maps";
+import { FARMLAND_TILES } from "./layout-maps";
 import { cycleHeldItem, eatItem, inventoryItem, itemAmount, stowHeldItem } from "./inventory-system";
 import { canGiveDailyGift, giveHeldItemToNpc } from "./gift-system";
 import { cropTypeForSeedItem } from "./item-catalog";
@@ -54,7 +54,6 @@ function targetForFishing():WorldTarget|null{
   return{id:active?"fishing-active":"fishing-nearby",object:fishingTargetObject,radius:0.1,actions:active?[{id:"fish-cancel",label:"取消釣魚",slot:"secondary",prompt:"右鍵",execute:()=>window.dispatchEvent(new KeyboardEvent("keydown",{key:"r"}))}]:[legacyAction("fish","釣魚")],getPosition:()=>gameState.player?{x:gameState.player.position.x,z:gameState.player.position.z}:null,isValid:()=>Boolean(gameState.player)&&hasTool("fishingRod")&&(active?gameState.fishingState!=="idle":gameState.fishingState==="idle"&&isNearFishingWater(gameState.currentMapName,gameState.player.position.x,gameState.player.position.z))}}
 function targetForFarm(x:number,z:number,object:THREE.Object3D=farmGroup):WorldTarget|null{
   if(gameState.currentMapName!=="livingArea")return null;
-  if(x===POUCH_POS.x&&z===POUCH_POS.z&&gameState.currentDay>gameState.pouchCollectedDay)return{id:"pouch",object,radius:0.9,actions:[legacyAction("pickup","\u62fe\u53d6")],getPosition:()=>({x,z}),isValid:()=>gameState.currentDay>gameState.pouchCollectedDay};
   if(!FARMLAND_TILES.some(([fx,fz])=>fx===x&&fz===z))return null;
   const crop=cropState[`${x},${z}`];
   if(crop?.stage>=2)return{id:`crop:${x},${z}`,object,radius:0.8,actions:[legacyAction("harvest","\u6536\u6210")],getPosition:()=>({x,z}),isValid:()=>Boolean(cropState[`${x},${z}`]?.stage>=2)};
@@ -72,7 +71,6 @@ function allTargets(){
   oreNodeMeshes.forEach(e=>{const t=targetForOre(e.nodeId);if(t)list.push(t);});
   {const t=targetForPasture();if(t)list.push(t);}
   FARMLAND_TILES.forEach(([x,z])=>{const t=targetForFarm(x,z);if(t)list.push(t);});
-  const pouch=targetForFarm(POUCH_POS.x,POUCH_POS.z);if(pouch)list.push(pouch);
   const fishing=targetForFishing();if(fishing)list.push(fishing);
   return list;
 }
