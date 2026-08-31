@@ -98,6 +98,7 @@ import {
   updateCameraAdjustMode,
 } from "./cutscene-camera";
 import { updateWeatherEffects } from "./weather-particles";
+import { updatePlanarWaterReflection } from "./water-reflection";
 import { isOutdoorMap } from "./environment";
 import {
   scene,
@@ -121,8 +122,6 @@ import {
   INTERIOR_BACKGROUND_COLOR,
   updateMeteors,
   updateSkyDome,
-  sunSkyGroup,
-  moonSkyGroup,
   updateCameraFrustum,
 } from "./scene-sky";
 import {
@@ -150,84 +149,6 @@ import {
 // 覆寫座標即可，不用每幀 new，跟 scene-sky.ts 的 SUN_MASK_PROJECTED_POINT
 // 同一個理由(避免每幀配置新物件造成 GC 壓力)。
 const FISH_HUD_PROJECT_VEC = new THREE.Vector3();
-
-const CELESTIAL_WORLD_POSITION = new THREE.Vector3();
-const CELESTIAL_VIEW_DIRECTION = new THREE.Vector3();
-const CELESTIAL_MIRROR_DIRECTION = new THREE.Vector3();
-const WATER_TO_CAMERA_DIRECTION = new THREE.Vector3();
-
-function sampleStarlightReflection(
-  worldX: number,
-  worldZ: number,
-  nightFactor: number,
-  elapsed: number,
-) {
-  const weatherVisibility =
-    {
-      clear: 1,
-      cloudy: 0.24,
-      rain: 0.08,
-      snow: 0.28,
-      typhoon: 0,
-      storm: 0,
-      blizzard: 0.02,
-    }[gameState.currentWeather] ?? 0;
-  const nightVisibility = THREE.MathUtils.smoothstep(nightFactor, 0.45, 0.92);
-
-  // 既有水面直接加入天體鏡射，不再疊第二層透明平面。
-  const viewCamera = getGameplayCamera(camera);
-  const celestial = sunSkyGroup.visible
-    ? sunSkyGroup
-    : moonSkyGroup.visible
-      ? moonSkyGroup
-      : null;
-  let celestialReflection = 0;
-  if (celestial && weatherVisibility > 0) {
-    celestial.getWorldPosition(CELESTIAL_WORLD_POSITION);
-    CELESTIAL_VIEW_DIRECTION.copy(CELESTIAL_WORLD_POSITION)
-      .sub(viewCamera.position)
-      .normalize();
-    CELESTIAL_MIRROR_DIRECTION.set(
-      -CELESTIAL_VIEW_DIRECTION.x,
-      Math.abs(CELESTIAL_VIEW_DIRECTION.y),
-      -CELESTIAL_VIEW_DIRECTION.z,
-    ).normalize();
-    WATER_TO_CAMERA_DIRECTION.set(
-      viewCamera.position.x - worldX,
-      Math.max(0.08, viewCamera.position.y),
-      viewCamera.position.z - worldZ,
-    ).normalize();
-    celestialReflection =
-      Math.pow(
-        Math.max(0, CELESTIAL_MIRROR_DIRECTION.dot(WATER_TO_CAMERA_DIRECTION)),
-        18,
-      ) *
-      weatherVisibility *
-      0.72;
-  }
-  if (nightVisibility <= 0 || weatherVisibility <= 0) return celestialReflection;
-
-  // Stable world-space star seeds, broken into short horizontal glints by the waves.
-  const cellX = Math.floor(worldX * 1.35);
-  const cellZ = Math.floor(worldZ * 0.72);
-  const seed = Math.sin(cellX * 127.1 + cellZ * 311.7) * 43758.5453;
-  const random = seed - Math.floor(seed);
-  const star = THREE.MathUtils.smoothstep(random, 0.52, 0.94);
-  const twinkle = Math.pow(
-    Math.max(0, Math.sin(elapsed * (1.25 + random * 1.8) + random * 31.4)),
-    5,
-  );
-  const ripple = 0.7 + 0.3 * Math.sin(worldX * 4.2 - elapsed * 2.1);
-  return Math.min(
-    1,
-    celestialReflection +
-      nightVisibility *
-        weatherVisibility *
-        star *
-        (0.45 + 0.55 * twinkle) *
-        ripple,
-  );
-}
 
 type EscortTrailPoint = { x: number; z: number; rotation: number };
 let carpenterEscortTrail: EscortTrailPoint[] = [];
@@ -1556,12 +1477,7 @@ export function animate(now) {
         0.43,
         0.68,
         t,
-        sampleStarlightReflection(
-          worldX,
-          worldZ,
-          nightFactor,
-          gameState.effectElapsed,
-        ),
+        0,
       );
     }
     posAttr.needsUpdate = true;
@@ -1595,12 +1511,7 @@ export function animate(now) {
         lBaseColors[colorOffset + 1],
         lBaseColors[colorOffset + 2],
         0,
-        sampleStarlightReflection(
-          wx,
-          wz,
-          nightFactor,
-          gameState.effectElapsed,
-        ) * 1.35,
+        0,
       );
     }
     lPosAttr.needsUpdate = true;
@@ -1640,12 +1551,7 @@ export function animate(now) {
           0.43,
           0.68,
           t,
-          sampleStarlightReflection(
-            worldX,
-            worldZ,
-            nightFactor,
-            gameState.effectElapsed,
-          ),
+          0,
         );
       }
       pos.needsUpdate = true;
@@ -1689,12 +1595,7 @@ export function animate(now) {
         sgBaseColors[colorOffset + 1],
         sgBaseColors[colorOffset + 2],
         foamMix,
-        sampleStarlightReflection(
-          worldX,
-          worldZ,
-          nightFactor,
-          gameState.effectElapsed,
-        ),
+        0,
       );
     }
     sgPosAttr.needsUpdate = true;
@@ -1855,7 +1756,9 @@ export function animate(now) {
     gameState.hudUpdateAccumulator = 0;
     updateHud();
   }
-  renderer.render(scene, getGameplayCamera(camera));
+  const gameplayCamera = getGameplayCamera(camera);
+  updatePlanarWaterReflection(gameplayCamera, gameState.animationFrameCount);
+  renderer.render(scene, gameplayCamera);
 }
 
 addEventListener("resize", () => {

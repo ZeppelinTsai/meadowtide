@@ -1439,7 +1439,7 @@ export function buildMap(mapName) {
         side: THREE.DoubleSide,
       });
       const oldVillageWaterDepthMat = new THREE.MeshStandardMaterial({
-        color: 0x174968,
+        color: 0x245f7f,
         roughness: 1,
         metalness: 0,
         side: THREE.DoubleSide,
@@ -3402,7 +3402,7 @@ export function buildMap(mapName) {
       const oceanDepthMask = new THREE.Mesh(
         geo.clone(),
         new THREE.MeshStandardMaterial({
-          color: 0x174968,
+          color: 0x245f7f,
           roughness: 1,
           metalness: 0,
           // 跟草地/港區地板同一套修法（transparent+opacity:1+depthWrite:
@@ -3701,10 +3701,11 @@ export function buildMap(mapName) {
       const lakeSkyUnderlay = new THREE.Mesh(
         lGeo.clone(),
         new THREE.MeshStandardMaterial({
-          color: 0x174968,
+          color: 0x32799b,
           roughness: 1,
           metalness: 0,
           side: THREE.DoubleSide,
+          // 淺湖底色刻意比海洋明亮，避免夜間俯視看起來像無底黑洞。
           // 不寫深度，理由同 oceanDepthMask。
           depthWrite: false,
         }),

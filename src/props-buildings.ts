@@ -777,7 +777,7 @@ export function makePortScene() {
     side: THREE.DoubleSide,
   });
   const waterDepthMat = new THREE.MeshStandardMaterial({
-    color: 0x174968,
+    color: 0x245f7f,
     roughness: 1,
     metalness: 0,
     side: THREE.DoubleSide,

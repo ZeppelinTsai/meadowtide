@@ -274,11 +274,9 @@ import {
         // 上半球星空。nx 覆蓋完整 360° 方位，ny 從地平線升到天頂；第一人稱
         // 轉頭或抬頭時不會離開原本的單面星幕而看到大片無星區。
         const longitude = (nx / 0.7) * Math.PI;
-        // 向地平線下延伸約 16°，吸收第一人稱／標題展示鏡頭的俯仰差；實際
-        // 地形仍會靠 depthTest 遮住低於岸線的星點。
-        const horizonOverlap = 0.28;
-        const latitude =
-          -horizonOverlap + ny * (Math.PI / 2 + horizonOverlap);
+        // 平面鏡射相機會從水面下方取樣天空，因此星點幾何必須覆蓋完整球面；
+        // 主畫面的地平線下半球仍由地形與水面深度自然遮住。
+        const latitude = -Math.PI / 2 + ny * Math.PI;
         const radius = 78 + seasonIndex * 0.06;
         return new THREE.Vector3(
           Math.cos(latitude) * Math.sin(longitude) * radius,
@@ -291,8 +289,8 @@ import {
         const group = new THREE.Group();
         const positions = [];
         // 原本所有星點集中在前方平面；改成 360° 上半球後，單一 65° 視野
-        // 約只看得到六分之一，因此補償總點數以維持原本的夜空密度。
-        const sphereStarCount = config.count * 6;
+        // 加上鏡射所需的下半球後，單一視野只看見更小部分，因此補償總點數。
+        const sphereStarCount = config.count * 10;
         for (let i = 0; i < sphereStarCount; i++) {
           const nx = (hash2(i * 7.17 + seasonIndex * 19, 3.4) - 0.5) * 1.4;
           const ny = hash2(i * 2.91, seasonIndex * 11 + 5.2);
@@ -319,10 +317,12 @@ import {
         );
         const starMaterial = new THREE.PointsMaterial({
           color: config.color,
+          map: STAR_SPARKLE_TEXTURE,
           size: seasonIndex === 3 ? 3.8 : 3.15,
           sizeAttenuation: false,
           transparent: true,
           opacity: 0,
+          alphaTest: 0.04,
           depthWrite: false,
           depthTest: true,
           fog: false,
