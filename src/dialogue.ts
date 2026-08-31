@@ -1,6 +1,7 @@
 import { npcs } from "./npc-runtime";
 import { gameState } from "./game-state";
 import { translateText } from "./i18n";
+import { showComicCue } from "./comic-cue";
 import {
   getNpcDisplayName,
   isNpcIdentityId,
@@ -101,6 +102,7 @@ export function normalizeDialogLine(line) {
   return typeof line === "string" ? { text: line } : line;
 }
 export function renderDialogLine(line) {
+  showComicCue(line.comicCue || null);
   dialogTextEl.textContent = translateText(line.text);
   setDialogCg(line.cg || null);
   setDialogPortrait(line.speaker || null);
@@ -116,6 +118,7 @@ export function renderDialogLine(line) {
   }
 }
 export function closeDialogUi() {
+  showComicCue(null);
   dialogEl.style.display = "none";
   dialogNameEl.style.display = "none";
   setDialogPortrait(null);

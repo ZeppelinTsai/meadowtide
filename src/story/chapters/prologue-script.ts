@@ -1,11 +1,13 @@
 import type { StoryCameraShot } from "../story-types";
+import type { ComicCueKind, ComicCueSpec } from "../../comic-cue";
 type DialogueLine =
   | string
   | {
       text: string;
-      speaker: string;
-      name: string;
+      speaker?: string;
+      name?: string;
       revealNameAfter?: { npcId: string; stage: 1 | 2 };
+      comicCue?: ComicCueSpec;
     };
 const mayor = (
   text: string,
@@ -20,6 +22,26 @@ const captain = (text: string): DialogueLine => ({
   text,
   speaker: "captain",
   name: "船長",
+});
+const cue = (
+  text: string,
+  actorId: string,
+  kind: ComicCueKind,
+): DialogueLine => ({ text, comicCue: { actorId, kind } });
+const mayorCue = (text: string, kind: ComicCueKind): DialogueLine => ({
+  text,
+  speaker: "mayor",
+  name: "村長",
+  comicCue: { actorId: "mayor", kind },
+});
+const mayorReactingToPlayer = (
+  text: string,
+  kind: ComicCueKind,
+): DialogueLine => ({
+  text,
+  speaker: "mayor",
+  name: "村長",
+  comicCue: { actorId: "player", kind },
 });
 
 // F4/C 鏡頭調整模式記錄；給「村長開始引路」事件使用。
@@ -89,7 +111,7 @@ export const PROLOGUE_SCRIPT: Record<string, DialogueLine[]> = {
     mayor(
       "「沿著城鎮往西北走可以上山。不過今天要看的地方不少，山區就留給你之後慢慢探索吧。」",
     ),
-    "[兩人接著來到城鎮東北方的牧場]",
+    cue("[兩人接著來到城鎮東北方的牧場]", "player", "!"),
     mayor("「到了。這裡就是你未來的牧場。」"),
     mayor("「看起來……確實比我記得的還要荒涼一點。」"),
     mayor(
@@ -103,9 +125,9 @@ export const PROLOGUE_SCRIPT: Record<string, DialogueLine[]> = {
 
     PROLOGUE_MARKERS.lookAtAbandonedFarm,
 
-    mayor(PROLOGUE_MARKERS.whyOnlyPlot),
+    mayorReactingToPlayer(PROLOGUE_MARKERS.whyOnlyPlot, "?"),
 
-    "[村長短暫停頓]",
+    cue("[村長短暫停頓]", "mayor", "..."),
 
     mayor("「……前一位牧場主人離開以後，這裡就一直沒有人正式接手。」"),
 
@@ -113,7 +135,7 @@ export const PROLOGUE_SCRIPT: Record<string, DialogueLine[]> = {
 
     mayor("「最後，也只來得及替你整理好這一小塊。」"),
 
-    "[主角連忙搖頭，冒著汗表示自己不是在責怪她]",
+    cue("[主角連忙搖頭，冒著汗表示自己不是在責怪她]", "player", "panicDrops"),
 
     mayor("「哈哈，不用急著道歉。至少現在，總算有人願意重新站在這塊田裡了。」"),
 
@@ -188,8 +210,8 @@ export const PROLOGUE_SCRIPT: Record<string, DialogueLine[]> = {
     ),
     mayor("「大致上就是這些。還有什麼想問的嗎？」"),
     PROLOGUE_MARKERS.foodQuestion,
-    "[村長愣住]",
-    mayor("「……哎呀。」"),
+    cue("[村長愣住]", "mayor", "!"),
+    mayorCue("「……哎呀。」", "sweatFace"),
     mayor(
       "「對不起，我居然忘了最重要的事。島上現在還沒有餐館，總不能讓你餓著等蘿蔔長大。」",
     ),
@@ -197,8 +219,8 @@ export const PROLOGUE_SCRIPT: Record<string, DialogueLine[]> = {
     mayor("「這些是我早上向船長買來的補給。你先拿去應急吧。」"),
     "「可是吃完之後呢？」",
     mayor("「說得也是，光靠這些撐不了幾天……」"),
-    "[村長停頓了一下]",
-    mayor("「糟糕，我是不是連釣竿也忘了準備？」"),
+    cue("[村長停頓了一下]", "mayor", "..."),
+    mayorCue("「糟糕，我是不是連釣竿也忘了準備？」", "gloom"),
     mayor("「真不好意思。我們去問問船長吧，他現在應該還在港口。」"),
     "[村長進入同行狀態。港口在東邊；黃色地板代表可進入區域]",
   ],

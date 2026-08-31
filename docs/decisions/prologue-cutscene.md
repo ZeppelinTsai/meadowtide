@@ -210,6 +210,13 @@ function bowWorldPoint(localPoint: THREE.Vector3): THREE.Vector3 {
 指向正式 E 鍵種植、釣魚與爐灶系統；後續加入逐項任務閘門時，必須讀正式玩法的成功
 結果，不得另做一套假的種田、釣魚或料理判定。
 
+## 角色頭頂漫畫提示
+
+`src/comic-cue.ts` 使用程式生成的 CanvasTexture + Three.js Sprite，在角色模型頭頂
+顯示漫畫提示。`!`、`?`、`…` 使用奶油米白對話泡泡與棕色粗框；慌張水滴、汗顏與
+`|||` 是不帶泡泡的獨立符號。劇本行以 `comicCue: { actorId, kind }` 宣告，
+`dialogue.ts` 每次顯示新行時同步替換提示，關閉對話時必須移除 Sprite 並 dispose
+材質與貼圖，禁止用不受對話進度控制的固定計時器堆疊提示。
 ## 演出期間 HUD
 
 主迴圈依 `gameState.cutsceneActive` 切換 `body.cutscene-presentation`。所有事件演出期間隱藏遊戲 HUD 與右上快捷卡，只保留演出所需的對話、選項與轉場；事件結束後自動恢復。
