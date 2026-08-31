@@ -30,6 +30,7 @@ import {
   waterSurfaceMaterials,
   waterSkyUnderlayMaterials,
   outdoorLampLights,
+  foamMeshes,
 
   windmillRotors,
   pastureGrassBlades,
@@ -38,6 +39,7 @@ import {
   seasonalGroundMaterials,
   mountainSeasonalMaterials,
   GRASS_STAGE_HEIGHTS,
+  SOUTH_SEA_WAVE_DIRECTION,
 
 
   gangplankMeshes,
@@ -51,7 +53,8 @@ import { randomPasturePoint } from "./npc-runtime";
 // 同一套「3D 世界不接外部圖片，程式生成貼圖」規則。畫一塊正方形貼圖，
 // 靠 texture.repeat 依實際世界尺寸鋪滿，不用每個呼叫端各自重畫一次。
 // 目前給山頂觀景台用；之後棧橋/碼頭甲板要類似木板質感也能直接共用。
-import { makeSand } from "./props-nature";
+import { makeFoam, makeSand } from "./props-nature";
+import { findSouthernShoreSandZ } from "./shore-foam";
 
 export function makeWoodPlankTexture({
   plankColor = 0xa9825a,
@@ -833,6 +836,32 @@ export function makePortScene() {
   }
   addWater(0, port.height, oceanViewEdge, port.oceanViewPadding);
   buildConnectedWater();
+
+  // 港口原有拍岸泡沫：西側直岸與南側不規則沙灘各自沿岸排列。
+  for (let z = 0; z <= port.beachDepth; z += 2) {
+    const foam = makeFoam(13.65, z, 700 + z * 1.37);
+    foamMeshes.push(foam);
+    group.add(foam);
+  }
+  for (
+    let x = port.southBeach.x + 1;
+    x < port.southBeach.x + port.southBeach.width;
+    x += 2
+  ) {
+    const shoreZ = findSouthernShoreSandZ(
+      MAPS.port.tiles,
+      x,
+      port.southBeach.z,
+      port.southBeach.z + port.southBeach.depth - 1,
+    );
+    if (shoreZ === null) continue;
+    const foam = makeFoam(x, shoreZ + 0.65, 900 + x * 1.37, {
+      waveDirection: SOUTH_SEA_WAVE_DIRECTION,
+      rotationY: Math.PI / 2,
+    });
+    foamMeshes.push(foam);
+    group.add(foam);
+  }
 
   const addPlatform = (x, z, width, depth) => {
     const slab = new THREE.Mesh(

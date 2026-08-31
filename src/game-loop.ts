@@ -71,6 +71,7 @@ import {
   npcs,
   animals,
   BARN_DOOR,
+  BARN_RETURN_APPROACH,
   randomPasturePoint,
   outsideCols,
   outsideRows,
@@ -1170,8 +1171,20 @@ export function animate(now) {
       if (a.state === "out") {
         // 17:00 後不管原本是否正在休息，都立即往穀倉移動。
         a.wanderState = "walking";
-        const dx = BARN_DOOR.x - a.mesh.position.x,
-          dz = BARN_DOOR.z - a.mesh.position.z;
+        if (
+          a.returningViaApproach &&
+          Math.hypot(
+            BARN_RETURN_APPROACH.x - a.mesh.position.x,
+            BARN_RETURN_APPROACH.z - a.mesh.position.z,
+          ) < 0.35
+        ) {
+          a.returningViaApproach = false;
+        }
+        const returnTarget = a.returningViaApproach
+          ? BARN_RETURN_APPROACH
+          : BARN_DOOR;
+        const dx = returnTarget.x - a.mesh.position.x,
+          dz = returnTarget.z - a.mesh.position.z;
         const dist = Math.hypot(dx, dz);
         if (dist > 0.12) {
           const step = Math.min(dist, a.speed * dt);
@@ -1194,6 +1207,7 @@ export function animate(now) {
       a.state = "out";
       a.mesh.visible = true;
       a.mesh.position.set(BARN_DOOR.x, 0, BARN_DOOR.z);
+      a.returningViaApproach = true;
       a.target = chooseSafeAnimalTarget(a);
       a.wanderState = "walking";
       a.restUntil = 0;

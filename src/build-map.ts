@@ -37,7 +37,8 @@ import {
   SHRINE_PATH_ELEVATION,
   portGroundY,
   oldVillageGroundY,
-
+  oldVillageSouthBeachEndZ,
+  oldVillageWestBeachStartX,
 
   mountainGroundY,
   isOnMountainStair,
@@ -68,7 +69,8 @@ import {
   SEA_FISH_SCALE,
   LAKE_FISH_SCALE,
   EAST_SEA_WAVE_DIRECTION,
-
+  SOUTH_SEA_WAVE_DIRECTION,
+  WEST_SEA_WAVE_DIRECTION,
 
   thresholdMarkerMeshes,
   thresholdMarkersVisible,
@@ -80,6 +82,10 @@ import {
 
 import { getShorewardSeaWaveDirection } from "./sea-wave-direction";
 import { createConnectedTileSeaGeometry } from "./tile-sea-geometry";
+import {
+  findSouthernShoreSandZ,
+  findWesternShoreSandX,
+} from "./shore-foam";
 import {
   MINE_SIZE,
   MINE_FLOOR_MAX,
@@ -1480,6 +1486,47 @@ export function buildMap(mapName) {
         }
       }
       buildOldVillageWater();
+
+      // 舊城鎮原有的南岸與西岸拍岸泡沫；海面本身仍保持靜態。
+      const southFoamStartX = oldVillageWestBeachStartX(
+        LAYOUT.oldVillage.westBeach.z + 1,
+      );
+      const southFoamEndX =
+        LAYOUT.oldVillage.southBeach.x + LAYOUT.oldVillage.southBeach.width - 2;
+      const southFoamEndZ = oldVillageSouthBeachEndZ(southFoamEndX);
+      for (let x = southFoamStartX; x <= southFoamEndX; x += 2) {
+        const shoreZ = findSouthernShoreSandZ(
+          MAPS.oldVillage.tiles,
+          x,
+          LAYOUT.oldVillage.southBeach.z,
+          southFoamEndZ,
+        );
+        if (shoreZ === null) continue;
+        const foam = makeFoam(x, shoreZ + 0.65, 1200 + x * 1.37, {
+          waveDirection: SOUTH_SEA_WAVE_DIRECTION,
+          rotationY: Math.PI / 2,
+        });
+        foamMeshes.push(foam);
+        gameState.mapGroup.add(foam);
+      }
+      for (
+        let z = LAYOUT.oldVillage.westBeach.z + 1;
+        z <= southFoamEndZ;
+        z += 2
+      ) {
+        const shoreX = findWesternShoreSandX(
+          MAPS.oldVillage.tiles,
+          z,
+          LAYOUT.oldVillage.westBeach.x,
+          LAYOUT.oldVillage.westBeach.x + LAYOUT.oldVillage.westBeach.width - 1,
+        );
+        if (shoreX === null) continue;
+        const foam = makeFoam(shoreX - 0.65, z, 1500 + z * 1.37, {
+          waveDirection: WEST_SEA_WAVE_DIRECTION,
+        });
+        foamMeshes.push(foam);
+        gameState.mapGroup.add(foam);
+      }
 
     } else if (mapName === "mountain") {
       const mountain = LAYOUT.mountain;
