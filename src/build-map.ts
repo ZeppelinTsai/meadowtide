@@ -3843,7 +3843,8 @@ export function buildMap(mapName) {
     ((carpenterQuest.stage === "escorting" ||
       carpenterQuest.stage === "village_scene_done") &&
       (mapName === "port" || mapName === "oldVillage"));
-  animalGroup.visible = mapName === "livingArea";
+  animalGroup.visible =
+    mapName === "livingArea" && (gameState.ownedAnimals?.length ?? 0) > 0;
   syncFarmVisuals();
 }
 

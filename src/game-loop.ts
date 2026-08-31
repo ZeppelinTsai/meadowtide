@@ -46,9 +46,12 @@ import {
   updatePrologueCutscene,
   updatePrologueGameplayGate,
   isPrologueFarmingActive,
-  isPrologueGuidedWalkingActive,
+  isPrologueSeekingRod,
+  startPrologueFishingSequence,
   isPrologueShipStage,
   reapplyProloguePlayerY,
+  PROLOGUE_CAPTAIN_X,
+  PROLOGUE_CAPTAIN_Z,
 } from "./prologue";
 import {
   LAYOUT,
@@ -64,6 +67,7 @@ import {
   isOnMountainStair,
 } from "./layout-maps";
 import {
+  npcGroup,
   npcs,
   animals,
   BARN_DOOR,
@@ -215,6 +219,64 @@ function sampleCarpenterEscortTrail(distanceBehind: number) {
   return carpenterEscortTrail[0];
 }
 
+let mayorPrologueTrail: EscortTrailPoint[] = [];
+let mayorPrologueTrailMap = "";
+
+function updateMayorPrologueTrail() {
+  if (!isPrologueSeekingRod() || !gameState.player) {
+    mayorPrologueTrail.length = 0;
+    mayorPrologueTrailMap = "";
+    return;
+  }
+  if (mayorPrologueTrailMap !== gameState.currentMapName) {
+    mayorPrologueTrailMap = gameState.currentMapName;
+    const mayor = npcs.find((npc) => npc.id === "mayor");
+    npcGroup.visible = true;
+    if (mayor) {
+      mayor.mesh.visible = true;
+      mayor.mesh.position.copy(gameState.player.position);
+      mayor.mesh.rotation.y = gameState.player.rotation.y;
+    }
+    mayorPrologueTrail = [{
+      x: gameState.player.position.x,
+      z: gameState.player.position.z,
+      rotation: gameState.player.rotation.y,
+    }];
+  }
+  const newest = mayorPrologueTrail[mayorPrologueTrail.length - 1];
+  const playerPoint = {
+    x: gameState.player.position.x,
+    z: gameState.player.position.z,
+    rotation: gameState.player.rotation.y,
+  };
+  if (
+    !newest ||
+    Math.hypot(playerPoint.x - newest.x, playerPoint.z - newest.z) >= 0.045
+  )
+    mayorPrologueTrail.push(playerPoint);
+  if (mayorPrologueTrail.length > 260) mayorPrologueTrail.shift();
+}
+
+function sampleMayorPrologueTrail(distanceBehind: number) {
+  if (!mayorPrologueTrail.length) return null;
+  let remaining = distanceBehind;
+  for (let i = mayorPrologueTrail.length - 1; i > 0; i--) {
+    const newer = mayorPrologueTrail[i];
+    const older = mayorPrologueTrail[i - 1];
+    const segment = Math.hypot(newer.x - older.x, newer.z - older.z);
+    if (segment >= remaining) {
+      const t = segment > 0 ? remaining / segment : 0;
+      return {
+        x: THREE.MathUtils.lerp(newer.x, older.x, t),
+        z: THREE.MathUtils.lerp(newer.z, older.z, t),
+        rotation: newer.rotation,
+      };
+    }
+    remaining -= segment;
+  }
+  return mayorPrologueTrail[0];
+}
+
 function characterGroundY(mapName: string, x: number, z: number) {
   if (mapName === "livingArea") return groundY(x, z);
   if (mapName === "port") return portGroundY(x, z);
@@ -313,15 +375,11 @@ export function animate(now) {
   updatePrologueGameplayGate();
 
   // --- 自由移動：方向鍵給的是速度向量，不是格子跳，可以八方向、可以貼牆滑 ---
-  // 一般序幕演出由 cutsceneActive 鎖住移動；guidedWalking 是唯一例外：
-  // 玩家可用正常碰撞自由跟上村長，但 cutsceneActive 仍保留，持續封鎖
-  // 世界互動、山區入口與所有 touch 換圖事件。
+  // 序幕演出(cutsceneActive)期間整段跳過：船、下船與村長同行走位都由
+  // updatePrologueCutscene() 接管；需要玩家實際操作的教學階段會明確解除鎖定。
   let dx = 0,
     dz = 0;
-  if (
-    (!gameState.cutsceneActive || isPrologueGuidedWalkingActive()) &&
-    !isCameraAdjustModeActive()
-  ) {
+  if (!gameState.cutsceneActive && !isCameraAdjustModeActive()) {
     if (keys["w"] || keys["arrowup"]) dz -= 1;
     if (keys["s"] || keys["arrowdown"]) dz += 1;
     if (keys["a"] || keys["arrowleft"]) dx -= 1;
@@ -426,7 +484,6 @@ export function animate(now) {
             ? "down"
             : "up";
     }
-    if (isPrologueGuidedWalkingActive()) updatePrologueCutscene(dt);
   } else {
     updatePrologueCutscene(dt);
   }
@@ -809,16 +866,52 @@ export function animate(now) {
   // --- NPC：先看行程表要去哪，再用 A* 決定「怎麼走」 ---
   const npcSpeed = 1.6;
   updateCarpenterEscortTrail();
+  updateMayorPrologueTrail();
+
+  if (
+    isPrologueSeekingRod() &&
+    gameState.currentMapName === "port" &&
+    Math.hypot(
+      gameState.player.position.x - PROLOGUE_CAPTAIN_X,
+      gameState.player.position.z - PROLOGUE_CAPTAIN_Z,
+    ) <= 4.2
+  ) {
+    startPrologueFishingSequence();
+  }
+
   npcs.forEach((n) => {
     // Story NPCs may intentionally retain only an empty compatibility node.
     if (n.mesh.parts == null) {
       n.mesh.visible = false;
       return;
     }
+    if (isPrologueSeekingRod() && n.id === "mayor") {
+      const trailPoint = sampleMayorPrologueTrail(0.72);
+      if (trailPoint) {
+        const moved = Math.hypot(
+          trailPoint.x - n.mesh.position.x,
+          trailPoint.z - n.mesh.position.z,
+        );
+        npcGroup.visible = true;
+        n.mesh.visible = true;
+        n.mesh.position.x = trailPoint.x;
+        n.mesh.position.z = trailPoint.z;
+        n.mesh.rotation.y = trailPoint.rotation;
+        animateWalk(n.mesh, moved > 0.008, gameState.effectElapsed);
+        n.mesh.position.y = characterGroundY(
+          gameState.currentMapName,
+          trailPoint.x,
+          trailPoint.z,
+        );
+      }
+      return;
+    }
     // 序章期間村長與船長的位置由 prologue.ts 完整控制，不能再讓日常
     // 排程於同一幀覆寫，否則船長會瞬移或偏離下船路線。
     if (
-      (gameState.cutsceneActive || isPrologueFarmingActive()) &&
+      (gameState.cutsceneActive ||
+        isPrologueFarmingActive() ||
+        isPrologueSeekingRod()) &&
       (n.id === "mayor" || n.id === "captain")
     )
       return;
@@ -1052,6 +1145,11 @@ export function animate(now) {
 
   updateCarriedAnimalPose();
   animals.forEach((a) => {
+    if (!gameState.ownedAnimals?.includes(a.id)) {
+      a.mesh.visible = false;
+      return;
+    }
+    a.mesh.visible = true;
     if (isAnimalCarried(a.id)) return;
     let moving = false;
     if (a.state === "out") rescueAnimalFromObstacle(a);

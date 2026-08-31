@@ -150,6 +150,7 @@ export const animals = animalDefs.map((def, i) => {
   mesh.scale.setScalar(2);
   const start = randomPasturePoint();
   mesh.position.set(start.x, 0, start.z);
+  mesh.visible = false;
   animalGroup.add(mesh);
   return {
     ...def,

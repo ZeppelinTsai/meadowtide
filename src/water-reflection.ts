@@ -1,6 +1,8 @@
 import * as THREE from "three";
 import { renderer, scene } from "./scene-sky";
 import { waterSurfaceMaterials } from "./scene-registries";
+import { gameState } from "./game-state";
+import { npcGroup, animalGroup } from "./npc-runtime";
 
 const WATER_PLANE_Y = 0.1;
 const REFLECTION_WIDTH = 1024;
@@ -134,29 +136,31 @@ function updateMirrorCamera(source: THREE.Camera) {
   textureMatrix.multiply(mirror.matrixWorldInverse);
 
   // Oblique near-plane clipping keeps geometry below the XZ water plane out
-  // of the mirrored render, matching Three r128's Reflector implementation.
-  reflectorPlane.setFromNormalAndCoplanarPoint(planeNormal, planePoint);
-  reflectorPlane.applyMatrix4(mirror.matrixWorldInverse);
-  clipPlane.set(
-    reflectorPlane.normal.x,
-    reflectorPlane.normal.y,
-    reflectorPlane.normal.z,
-    reflectorPlane.constant,
-  );
-  const projection = mirror.projectionMatrix;
-  q.x =
-    (Math.sign(clipPlane.x) + projection.elements[8]) /
-    projection.elements[0];
-  q.y =
-    (Math.sign(clipPlane.y) + projection.elements[9]) /
-    projection.elements[5];
-  q.z = -1;
-  q.w = (1 + projection.elements[10]) / projection.elements[14];
-  clipPlane.multiplyScalar(2 / clipPlane.dot(q));
-  projection.elements[2] = clipPlane.x;
-  projection.elements[6] = clipPlane.y;
-  projection.elements[10] = clipPlane.z + 0.997;
-  projection.elements[14] = clipPlane.w;
+  // of the mirrored render, applicable to perspective cameras.
+  if ((source as THREE.PerspectiveCamera).isPerspectiveCamera) {
+    reflectorPlane.setFromNormalAndCoplanarPoint(planeNormal, planePoint);
+    reflectorPlane.applyMatrix4(mirror.matrixWorldInverse);
+    clipPlane.set(
+      reflectorPlane.normal.x,
+      reflectorPlane.normal.y,
+      reflectorPlane.normal.z,
+      reflectorPlane.constant,
+    );
+    const projection = mirror.projectionMatrix;
+    q.x =
+      (Math.sign(clipPlane.x) + projection.elements[8]) /
+      projection.elements[0];
+    q.y =
+      (Math.sign(clipPlane.y) + projection.elements[9]) /
+      projection.elements[5];
+    q.z = -1;
+    q.w = (1 + projection.elements[10]) / projection.elements[14];
+    clipPlane.multiplyScalar(2 / clipPlane.dot(q));
+    projection.elements[2] = clipPlane.x;
+    projection.elements[6] = clipPlane.y;
+    projection.elements[10] = clipPlane.z + 0.997;
+    projection.elements[14] = clipPlane.w;
+  }
   return mirror;
 }
 
@@ -169,6 +173,21 @@ export function updatePlanarWaterReflection(
 
   const mirror = updateMirrorCamera(activeCamera);
   const hidden: Array<{ object: THREE.Object3D; visible: boolean }> = [];
+
+  // Hide ground, buildings, characters, and animals during the reflection pass
+  // so only the sky dome, stars, clouds, and celestial atmosphere are reflected.
+  const reflectionExcludeGroups = [
+    gameState.mapGroup,
+    npcGroup,
+    animalGroup,
+    gameState.player,
+  ].filter(Boolean) as THREE.Object3D[];
+
+  reflectionExcludeGroups.forEach((group) => {
+    hidden.push({ object: group, visible: group.visible });
+    group.visible = false;
+  });
+
   scene.traverse((object) => {
     const mesh = object as THREE.Mesh;
     if (!mesh.isMesh) return;

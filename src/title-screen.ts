@@ -260,6 +260,7 @@ export function initTitleScreen() {
     resetNpcNameRevealState();
     resetAnimalInteractionState();
     resetRelationships();
+    gameState.ownedAnimals = [];
     gameState.oysterRackSlots = 1;
     inventory.pearls.white = 0;
     inventory.pearls.pink = 0;

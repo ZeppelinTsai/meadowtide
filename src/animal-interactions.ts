@@ -26,6 +26,7 @@ const productName = (type: string) => (type === "cow" ? "牛奶" : "羊毛");
 const isProductiveType = (type: string) => type === "cow" || type === "sheep";
 
 function animalFor(id: string) {
+  if (!gameState.ownedAnimals?.includes(id)) return undefined;
   return animals.find((animal) => animal.id === id);
 }
 
@@ -120,6 +121,7 @@ export function harvestAnimal(id: string) {
 
 export function recordAnimalFeedingDay(day: number, fed: boolean) {
   animals.forEach((animal) => {
+    if (!gameState.ownedAnimals?.includes(animal.id)) return;
     if (!isProductiveType(animal.type)) return;
     const record = recordFor(animal.id);
     if (record.lastProductionFeedDay === day) return;

@@ -144,6 +144,7 @@ export const gameState = {
   animationFrameCount: 0,
   grassAnimationAccumulator: 0,
   hudUpdateAccumulator: 0,
+  ownedAnimals: [] as string[],
   // 動物投餵機（放養式簡化模型，規格見 task.md）：早上放牧、傍晚投餵，
   // 一天各結算一次；兩個 SettledDay 記錄「這天有沒有結算過」，避免同一
   // 天內每一幀都重複結算。pastureGrazedToday 是給傍晚判斷用的「今天有
@@ -713,7 +714,7 @@ export function harvestPastureGrass(
 
 // 08:00 安全天氣只吃一格成熟牧草；惡劣天氣不結算外草，也不消耗機器。
 export function settlePastureGrazing(day = gameState.currentDay) {
-  if (isUnsafeAnimalWeather()) return false;
+  if (!gameState.ownedAnimals?.length || isUnsafeAnimalWeather()) return false;
   const candidates = pastureCandidateTiles(day);
   if (candidates.length === 0) return false;
   const pick = candidates[Math.floor(Math.random() * candidates.length)];
@@ -723,7 +724,7 @@ export function settlePastureGrazing(day = gameState.currentDay) {
 
 // 17:00 只有當天沒吃到外草時才消耗一單位；動物數量不影響消耗量。
 export function settleFeederConsumption() {
-  if (gameState.feederUnits <= 0) return false;
+  if (!gameState.ownedAnimals?.length || gameState.feederUnits <= 0) return false;
   gameState.feederUnits -= 1;
   return true;
 }

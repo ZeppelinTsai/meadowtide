@@ -114,6 +114,8 @@ type Stage =
   | "mapTransition"
   | "farmScan"
   | "farmingFree"
+  | "seekingRod"
+  | "fishingDialogue"
   | "done";
 
 type PrologueMapLoader = (
@@ -133,6 +135,7 @@ let hasTouchedDock = false; // 「腳踏上碼頭」的一次性判定，見 wal
 let prologueMapLoader: PrologueMapLoader | null = null;
 let guideWaypoints: THREE.Vector3[] = [];
 let guideWaypointIndex = 0;
+let guideTrail: THREE.Vector3[] = [];
 let guideOnComplete: (() => void) | null = null;
 let useGuideZoom = false;
 const TUTORIAL_PLOT = { minX: 13, maxX: 15, minZ: 22, maxZ: 24 } as const;
@@ -226,8 +229,8 @@ const PROLOGUE_ZOOM = 5;
 const PROLOGUE_GUIDE_ZOOM = 12;
 const PROLOGUE_MAYOR_X = 3;
 const PROLOGUE_MAYOR_Z = 22;
-const PROLOGUE_CAPTAIN_X = 5;
-const PROLOGUE_CAPTAIN_Z = 21;
+export const PROLOGUE_CAPTAIN_X = 5;
+export const PROLOGUE_CAPTAIN_Z = 21;
 const PROLOGUE_HOUR = 10;
 const PROLOGUE_PHASE = PROLOGUE_HOUR / 24;
 const FREE_TIME_PHASE = 15 / 24;
@@ -284,7 +287,7 @@ const RAMP_LOWER_SECONDS = 1.4;
 const RAMP_RAISED_ROTATION_Z = Math.PI / 2; // 收合貼船頭(90 度)時的角度
 const WALK_SPEED = 2.6; // 格/秒，下船這段用的是自己算的位移，不吃碰撞
 const GUIDE_FOLLOW_DISTANCE = 0.72;
-const GUIDE_MAX_LEAD_DISTANCE = 2.5;
+const GUIDE_FOLLOW_SPEED = WALK_SPEED * 1.25;
 
 // 2026-08-26 Zeppelin 反饋「把主角模型放到船頭並對著碼頭」——原本站
 // 甲板中段(local x=0.3，偏船尾側)，改到船頭(local x=-1.3，pen 前緣
@@ -532,6 +535,7 @@ function startGuidedWalk(
       new THREE.Vector3(x, guideGroundY(gameState.currentMapName, x, z), z),
   );
   guideWaypointIndex = 1;
+  guideTrail = [mayor.mesh.position.clone()];
   guideOnComplete = onComplete;
   useGuideZoom = true;
   lockPrologueZoom();
@@ -621,6 +625,50 @@ function finishPrologue() {
   gameState.currentPhase = FREE_TIME_PHASE;
 }
 
+let fishingSequenceStarted = false;
+
+export function isPrologueSeekingRod(): boolean {
+  return stage === "seekingRod";
+}
+
+export function startPrologueFishingSequence() {
+  if (stage !== "seekingRod" || fishingSequenceStarted) return;
+  fishingSequenceStarted = true;
+  beginStage("fishingDialogue");
+  gameState.cutsceneActive = true;
+  lockPrologueDateTime();
+  const captain = npcs.find((npc) => npc.id === "captain");
+  const mayor = npcs.find((npc) => npc.id === "mayor");
+  if (captain) {
+    captain.mesh.visible = true;
+    captain.mesh.position.set(
+      PROLOGUE_CAPTAIN_X,
+      LAYOUT.port.elevation,
+      PROLOGUE_CAPTAIN_Z,
+    );
+    captain.mesh.rotation.y = Math.PI;
+  }
+  if (mayor) {
+    mayor.mesh.visible = true;
+    mayor.mesh.position.set(
+      PROLOGUE_CAPTAIN_X - 1.2,
+      LAYOUT.port.elevation,
+      PROLOGUE_CAPTAIN_Z + 1,
+    );
+    mayor.mesh.rotation.y = -Math.PI / 4;
+  }
+  faceDirection(
+    PROLOGUE_CAPTAIN_X - gameState.player.position.x,
+    PROLOGUE_CAPTAIN_Z - gameState.player.position.z,
+  );
+  showDialogSequence(PROLOGUE_SCRIPT.fishing, () => {
+    inventory.tools.fishingRod = true;
+    showDialogSequence(PROLOGUE_SCRIPT.cooking, () => {
+      finishPrologue();
+    });
+  });
+}
+
 function showHouseSequence() {
   const choiceIndex = scriptMarkerIndex(
     PROLOGUE_SCRIPT.house,
@@ -634,12 +682,14 @@ function showHouseSequence() {
         inventory.fish += 3;
         inventory.harvested += 6;
         showDialogSequence(
-          [
-            ...PROLOGUE_SCRIPT.house.slice(choiceIndex + 1),
-            ...PROLOGUE_SCRIPT.fishing,
-            ...PROLOGUE_SCRIPT.cooking,
-          ],
-          finishPrologue,
+          PROLOGUE_SCRIPT.house.slice(choiceIndex + 1),
+          () => {
+            beginStage("seekingRod");
+            gameState.cutsceneActive = false;
+            useGuideZoom = false;
+            lockPrologueZoom();
+            lockPrologueDateTime();
+          },
         );
       },
     );
@@ -887,6 +937,7 @@ export function startPrologueScene(
 ) {
   if (opts.loadMap) prologueMapLoader = opts.loadMap;
   if (!opts.force && stage !== "inactive" && stage !== "done") return;
+  fishingSequenceStarted = false;
   if (!prologueRefs.ferry || !prologueRefs.gangplank) {
     console.warn(
       "[序幕] prologueRefs 還沒填好(需要先進過一次港口地圖)，跳過演出。",
@@ -965,14 +1016,10 @@ export function isPrologueFarmingActive(): boolean {
   return stage === "farmingFree";
 }
 
-export function isPrologueGuidedWalkingActive(): boolean {
-  return stage === "guidedWalking";
-}
-
 export function updatePrologueGameplayGate() {
-  if (stage !== "farmingFree") return;
+  if (stage !== "farmingFree" && stage !== "seekingRod") return;
   lockPrologueDateTime();
-  if (tutorialCropCount() < 9) return;
+  if (stage === "seekingRod" || tutorialCropCount() < 9) return;
   inventory.seeds = 0;
   if (inventory.heldItemId === "radishSeeds") inventory.heldItemId = null;
   beginStage("mapTransition");
@@ -1028,12 +1075,8 @@ export function updatePrologueCutscene(dt: number) {
     }
 
     const target = guideWaypoints[guideWaypointIndex];
-    const leaderDistance = Math.hypot(
-      mayor.mesh.position.x - gameState.player.position.x,
-      mayor.mesh.position.z - gameState.player.position.z,
-    );
     let mayorMoving = false;
-    if (target && leaderDistance <= GUIDE_MAX_LEAD_DISTANCE) {
+    if (target) {
       const dx = target.x - mayor.mesh.position.x;
       const dz = target.z - mayor.mesh.position.z;
       const distance = Math.hypot(dx, dz);
@@ -1049,6 +1092,47 @@ export function updatePrologueCutscene(dt: number) {
         mayor.mesh.position.z += nz * stepDistance;
         mayor.mesh.rotation.y = Math.atan2(-nx, -nz);
         mayorMoving = true;
+      }
+      const lastTrailPoint = guideTrail[guideTrail.length - 1];
+      if (
+        !lastTrailPoint ||
+        Math.hypot(
+          mayor.mesh.position.x - lastTrailPoint.x,
+          mayor.mesh.position.z - lastTrailPoint.z,
+        ) >= 0.12
+      )
+        guideTrail.push(mayor.mesh.position.clone());
+    }
+
+    const leaderDistance = Math.hypot(
+      mayor.mesh.position.x - gameState.player.position.x,
+      mayor.mesh.position.z - gameState.player.position.z,
+    );
+    let playerMoving = false;
+    while (guideTrail.length) {
+      const reached = guideTrail[0];
+      if (
+        Math.hypot(
+          reached.x - gameState.player.position.x,
+          reached.z - gameState.player.position.z,
+        ) > 0.1
+      )
+        break;
+      guideTrail.shift();
+    }
+    if (guideTrail.length && leaderDistance > GUIDE_FOLLOW_DISTANCE) {
+      const playerTarget = guideTrail[0];
+      const dx = playerTarget.x - gameState.player.position.x;
+      const dz = playerTarget.z - gameState.player.position.z;
+      const distance = Math.hypot(dx, dz);
+      if (distance > 0) {
+        const stepDistance = Math.min(distance, GUIDE_FOLLOW_SPEED * dt);
+        const nx = dx / distance;
+        const nz = dz / distance;
+        gameState.player.position.x += nx * stepDistance;
+        gameState.player.position.z += nz * stepDistance;
+        faceDirection(nx, nz);
+        playerMoving = true;
       }
     }
 
@@ -1068,6 +1152,7 @@ export function updatePrologueCutscene(dt: number) {
       x: Math.round(gameState.player.position.x),
       z: Math.round(gameState.player.position.z),
     };
+    gameState.isMoving = playerMoving;
     syncLastPlayerY();
 
     if (
@@ -1082,12 +1167,17 @@ export function updatePrologueCutscene(dt: number) {
       const onComplete = guideOnComplete;
       guideOnComplete = null;
       guideWaypoints = [];
+      guideTrail = [];
       onComplete?.();
     }
     return;
   }
 
   if (stage === "mapTransition") {
+    gameState.isMoving = false;
+    return;
+  }
+  if (stage === "fishingDialogue") {
     gameState.isMoving = false;
     return;
   }

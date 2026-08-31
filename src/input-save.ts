@@ -89,7 +89,7 @@ import {
   isCameraAdjustModeActive,
   recordCameraAdjustShot,
 } from "./cutscene-camera";
-import { npcGroup, npcs } from "./npc-runtime";
+import { animalGroup, animals, npcGroup, npcs } from "./npc-runtime";
 import { npcLine } from "./npc-defs";
 import {
   dialogQueue,
@@ -306,6 +306,7 @@ export function saveGame(slot = "default") {
         }
       : null,
     inventory: JSON.parse(JSON.stringify(inventory)),
+    ownedAnimals: [...(gameState.ownedAnimals || [])],
     animalInteractions: exportAnimalInteractionState(),
     crops: JSON.parse(JSON.stringify(cropState)),
     npcMemory: npcs.map((npc) => ({ id: npc.id, memory: npc.memory })),
@@ -414,6 +415,19 @@ export function loadGame(
     }),
   );
   if (data.inventory?.animalProducts) Object.assign(inventory.animalProducts, data.inventory.animalProducts);
+  // ownedAnimals 加入前的舊存檔來自「六隻動物預設存在」版本；缺欄位時
+  // 保留原有動物，只有新遊戲與明確存成空陣列的存檔維持零隻。
+  gameState.ownedAnimals = Array.isArray(data.ownedAnimals)
+    ? data.ownedAnimals.filter((id: unknown): id is string =>
+        typeof id === "string" && animals.some((animal) => animal.id === id),
+      )
+    : animals.map((animal) => animal.id);
+  animalGroup.visible =
+    (data.currentMapName || "livingArea") === "livingArea" &&
+    gameState.ownedAnimals.length > 0;
+  animals.forEach((animal) => {
+    animal.mesh.visible = gameState.ownedAnimals.includes(animal.id);
+  });
   restoreAnimalInteractionState(data.animalInteractions);
   gameState.feederUnits = Number.isFinite(data.feederUnits)
     ? Math.max(0, Math.min(FEEDER_CAPACITY, data.feederUnits))
