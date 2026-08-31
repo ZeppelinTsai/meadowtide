@@ -73,6 +73,7 @@ function allTargets(){
   {const t=targetForPasture();if(t)list.push(t);}
   FARMLAND_TILES.forEach(([x,z])=>{const t=targetForFarm(x,z);if(t)list.push(t);});
   const pouch=targetForFarm(POUCH_POS.x,POUCH_POS.z);if(pouch)list.push(pouch);
+  const fishing=targetForFishing();if(fishing)list.push(fishing);
   return list;
 }
 function refreshSelectedTarget(target: WorldTarget) {
@@ -86,8 +87,8 @@ function refreshSelectedTarget(target: WorldTarget) {
   const position = target.getPosition();
   return position ? targetForFarm(Math.round(position.x), Math.round(position.z), target.object) : null;
 }
-function chooseTarget(){
-  if(blocked())return null;
+function chooseTarget(allowActiveFishing=false){
+  if(blocked(allowActiveFishing))return null;
   if(selectedTarget) selectedTarget = refreshSelectedTarget(selectedTarget);
   if(selectedTarget?.isValid())return selectedTarget;
   selectedTarget=null;
@@ -99,7 +100,7 @@ function chooseTarget(){
 }
 function ensureRoot(){if(root)return root;root=document.createElement("div");root.id="contextInteractionHud";root.setAttribute("aria-live","polite");root.setAttribute("aria-label","\u60c5\u5883\u4e92\u52d5");document.body.append(root);return root;}
 function render(){
-  const box=ensureRoot(); currentTarget=chooseTarget(); currentActions=currentTarget?.actions||[];
+  const box=ensureRoot(); currentTarget=chooseTarget(true); currentActions=currentTarget?.actions||[];
   const heldId=inventory.heldItemId, held=heldId?inventoryItem(heldId):undefined;
   const layout=getEffectiveControllerLayout(), device=getLastInputDevice();
   const sig=(currentTarget?.id||"")+"|"+currentActions.map(a=>a.id+promptFor(a.slot,device,layout)).join("|")+`|held:${heldId||""}:${heldId?itemAmount(heldId):0}:${device}:${layout}`;
@@ -129,8 +130,8 @@ function approachWater(water:THREE.Object3D,point:{x:number;z:number}){
   return requestPlayerNavigation(shore,{id:"fishing-water",radius:0.35,getPosition:()=>shore,isValid:()=>fishingWaterMeshes.includes(water)&&Boolean(water.parent),execute});
 }
 function showHighlight(target:WorldTarget){if(highlight){scene.remove(highlight);highlight.geometry.dispose(); (highlight.material as THREE.Material).dispose();}highlight=new THREE.BoxHelper(target.object,0xffd45a);scene.add(highlight);highlightTimer=performance.now()+850;}
-function approach(target:WorldTarget,action:ContextAction){const p=target.getPosition();if(!p)return false;selectedTarget=target;if(target.id!=="fishing-nearby")showHighlight(target);const dx=p.x-gameState.player.position.x,dz=p.z-gameState.player.position.z;if(Math.hypot(dx,dz)<=target.radius+0.2){gameState.player.rotation.y=Math.atan2(-dx,-dz);action.execute();selectedTarget=null;return true;}return requestPlayerNavigation(p,{id:target.id,radius:target.radius,getPosition:target.getPosition,isValid:()=>target.isValid()&&target.actions.some(a=>a.id===action.id),execute:()=>{if(target.isValid()){action.execute();selectedTarget=null;}}});}
-export function executeContextInteraction(slot:InteractionSlot){currentTarget=chooseTarget();const action=currentTarget?.actions.find(a=>a.slot===slot);if(!currentTarget||!action)return false;return approach(currentTarget,action);}
+function approach(target:WorldTarget,action:ContextAction){const p=target.getPosition();if(!p)return false;selectedTarget=target;if(target.id!=="fishing-nearby"&&target.id!=="fishing-active")showHighlight(target);const dx=p.x-gameState.player.position.x,dz=p.z-gameState.player.position.z;if(Math.hypot(dx,dz)<=target.radius+0.2){gameState.player.rotation.y=Math.atan2(-dx,-dz);action.execute();selectedTarget=null;return true;}return requestPlayerNavigation(p,{id:target.id,radius:target.radius,getPosition:target.getPosition,isValid:()=>target.isValid()&&target.actions.some(a=>a.id===action.id),execute:()=>{if(target.isValid()){action.execute();selectedTarget=null;}}});}
+export function executeContextInteraction(slot:InteractionSlot){currentTarget=chooseTarget(true);const action=currentTarget?.actions.find(a=>a.slot===slot);if(!currentTarget||!action)return false;return approach(currentTarget,action);}
 function dispatchPrimaryInteraction(){window.dispatchEvent(new KeyboardEvent("keydown",{key:"e"}));window.dispatchEvent(new KeyboardEvent("keyup",{key:"e"}));}
 export function runLegacyPrimaryInteraction(){bypassLegacy=true;dispatchPrimaryInteraction();}
 export function consumeLegacyPrimaryBypass(){const value=bypassLegacy;bypassLegacy=false;return value;}
