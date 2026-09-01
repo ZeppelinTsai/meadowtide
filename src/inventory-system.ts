@@ -66,7 +66,11 @@ export function itemAmount(itemId: string): number {
   if (itemId === "starCrystal") return inventory.starCrystal;
   if (itemId === "godCrystal") return inventory.godCrystal;
   if (itemId.startsWith("pearl-"))
-    return inventory.pearls[itemId.slice(6) as import("./pearl-system").PearlRarity] ?? 0;
+    return (
+      inventory.pearls[
+        itemId.slice(6) as import("./pearl-system").PearlRarity
+      ] ?? 0
+    );
   if (itemId.startsWith("dish-")) return inventory.dishes[itemId.slice(5)] ?? 0;
   return 0;
 }
@@ -86,18 +90,27 @@ function changeItemAmount(itemId: string, delta: number) {
     inventory.fish = Math.max(0, inventory.fish + delta);
   else if (itemId === "oysters")
     inventory.oysters = Math.max(0, inventory.oysters + delta);
-  else if (itemId === "wood") inventory.wood = Math.max(0, inventory.wood + delta);
-  else if (itemId === "stone") inventory.stone = Math.max(0, inventory.stone + delta);
-  else if (itemId === "copper") inventory.copper = Math.max(0, inventory.copper + delta);
-  else if (itemId === "silver") inventory.silver = Math.max(0, inventory.silver + delta);
-  else if (itemId === "gold") inventory.gold = Math.max(0, inventory.gold + delta);
-  else if (itemId === "starCrystal") inventory.starCrystal = Math.max(0, inventory.starCrystal + delta);
-  else if (itemId === "godCrystal") inventory.godCrystal = Math.max(0, inventory.godCrystal + delta);
+  else if (itemId === "wood")
+    inventory.wood = Math.max(0, inventory.wood + delta);
+  else if (itemId === "stone")
+    inventory.stone = Math.max(0, inventory.stone + delta);
+  else if (itemId === "copper")
+    inventory.copper = Math.max(0, inventory.copper + delta);
+  else if (itemId === "silver")
+    inventory.silver = Math.max(0, inventory.silver + delta);
+  else if (itemId === "gold")
+    inventory.gold = Math.max(0, inventory.gold + delta);
+  else if (itemId === "starCrystal")
+    inventory.starCrystal = Math.max(0, inventory.starCrystal + delta);
+  else if (itemId === "godCrystal")
+    inventory.godCrystal = Math.max(0, inventory.godCrystal + delta);
   else if (itemId.startsWith("pearl-")) {
     const rarity = itemId.slice(6) as import("./pearl-system").PearlRarity;
-    inventory.pearls[rarity] = Math.max(0, (inventory.pearls[rarity] ?? 0) + delta);
-  }
-  else if (itemId.startsWith("dish-")) {
+    inventory.pearls[rarity] = Math.max(
+      0,
+      (inventory.pearls[rarity] ?? 0) + delta,
+    );
+  } else if (itemId.startsWith("dish-")) {
     const recipeId = itemId.slice(5);
     inventory.dishes[recipeId] = Math.max(
       0,
@@ -110,7 +123,10 @@ export function storedItemAmount(itemId: string) {
   return Math.max(0, Number(inventory.storage[itemId]) || 0);
 }
 
-export function moveItemToStorageAmount(itemId: string, amount: number): boolean {
+export function moveItemToStorageAmount(
+  itemId: string,
+  amount: number,
+): boolean {
   const item = inventoryItem(itemId);
   if (!item) return false;
   const transferAmount = clampTransferAmount(itemAmount(itemId), amount);
@@ -157,7 +173,10 @@ export function moveItemToStorage(itemId: string): boolean {
   return moveItemToStorageAmount(itemId, 1);
 }
 
-export function moveItemFromStorageAmount(itemId: string, amount: number): boolean {
+export function moveItemFromStorageAmount(
+  itemId: string,
+  amount: number,
+): boolean {
   const item = inventoryItem(itemId);
   if (!item) return false;
   const transferAmount = clampTransferAmount(storedItemAmount(itemId), amount);
@@ -304,7 +323,9 @@ export function makeInventoryItemVisual(itemId: string): THREE.Object3D {
   const ore = ORE_TIERS.find((tier) => tier.kind === itemId);
   if (ore) return makeOreNode(0, 0, ore.color, ore.accentColor, 0.62);
   if (itemId.startsWith("pearl-"))
-    return makePearlProp(itemId.slice(6) as import("./pearl-system").PearlRarity);
+    return makePearlProp(
+      itemId.slice(6) as import("./pearl-system").PearlRarity,
+    );
   return new THREE.Mesh(
     new THREE.BoxGeometry(0.12, 0.12, 0.12),
     new THREE.MeshStandardMaterial({ color: 0xead4a8, flatShading: true }),
@@ -352,7 +373,10 @@ export function syncHeldItemVisual() {
   if (itemId && itemAmount(itemId) <= 0) inventory.heldItemId = null;
 
   const effectiveId = inventory.heldItemId;
-  if (player) player.userData.holdingItem = Boolean(effectiveId || player.userData.carryingAnimal);
+  if (player)
+    player.userData.holdingItem = Boolean(
+      effectiveId || player.userData.carryingAnimal,
+    );
   const parts = (player as any)?.parts;
   if (effectiveId && parts?.armL && parts?.armR) {
     parts.armL.rotation.x = HELD_ARM_ROTATION.x;
@@ -360,7 +384,8 @@ export function syncHeldItemVisual() {
     parts.armR.rotation.x = HELD_ARM_ROTATION.x;
     parts.armR.rotation.z = HELD_ARM_ROTATION.rightZ;
   }
-  const visualPresenceMatchesState = Boolean(heldVisual) === Boolean(effectiveId);
+  const visualPresenceMatchesState =
+    Boolean(heldVisual) === Boolean(effectiveId);
   if (
     player === visualOwner &&
     effectiveId === renderedItemId &&
