@@ -140,15 +140,11 @@ export const PROLOGUE_SCRIPT: Record<string, DialogueLine[]> = {
 
     mayorReactingToPlayer(PROLOGUE_MARKERS.whyOnlyPlot, "?"),
 
-    cue("[村長短暫停頓]", "mayor", "..."),
-
     mayor("「……前一位牧場主人離開以後，這裡就一直沒有人正式接手。」"),
 
     mayor("「我偶爾會過來整理一下，不過人上了年紀，清理這些東西比想像中累。」"),
 
     mayor("「最後，也只來得及替你整理好這一小塊。」"),
-
-    cue("[主角連忙搖頭，冒著汗表示自己不是在責怪她]", "player", "panicDrops"),
 
     mayor("「哈哈，不用急著道歉。至少現在，總算有人願意重新站在這塊田裡了。」"),
 
@@ -223,8 +219,6 @@ export const PROLOGUE_SCRIPT: Record<string, DialogueLine[]> = {
     ),
     mayor("「大致上就是這些。還有什麼想問的嗎？」"),
     PROLOGUE_MARKERS.foodQuestion,
-    cue("[村長愣住]", "mayor", "!"),
-    mayorCue("「……哎呀。」", "sweatFace"),
     mayor(
       "「對不起，我居然忘了最重要的事。島上現在還沒有餐館，總不能讓你餓著等蘿蔔長大。」",
     ),
@@ -232,8 +226,6 @@ export const PROLOGUE_SCRIPT: Record<string, DialogueLine[]> = {
     mayor("「這些是我早上向船長買來的補給。你先拿去應急吧。」"),
     "「可是吃完之後呢？」",
     mayor("「說得也是，光靠這些撐不了幾天……」"),
-    cue("[村長停頓了一下]", "mayor", "..."),
-    mayorCue("「糟糕，我是不是連釣竿也忘了準備？」", "gloom"),
     mayor("「真不好意思。我們去問問船長吧，他現在應該還在港口。」"),
     "[村長進入同行狀態。港口在東邊；黃色地板代表可進入區域]",
   ],

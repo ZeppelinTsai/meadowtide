@@ -1,14 +1,17 @@
 import * as THREE from "three";
 import { gameState } from "./game-state";
 import { npcs } from "./npc-runtime";
+import {
+  shouldDisplayDialogText,
+  type ComicCueKind,
+  type ComicCueSpec,
+} from "./comic-cue-logic";
 
-export type ComicCueKind = "!" | "?" | "..." | "panicDrops" | "sweatFace" | "gloom";
-export interface ComicCueSpec {
-  actorId: "player" | string;
-  kind: ComicCueKind;
-}
+export type { ComicCueKind, ComicCueSpec } from "./comic-cue-logic";
 
 let activeCue: THREE.Sprite | null = null;
+
+export { shouldDisplayDialogText } from "./comic-cue-logic";
 
 export function clearComicCue() {
   if (!activeCue) return;
@@ -110,10 +113,31 @@ export function showComicCue(spec?: ComicCueSpec | null) {
       depthWrite: false,
     }),
   );
+  const baseScale = 1.5;
+  const baseY = actor.position.y + 1.48;
+  const startAt = performance.now();
+  const isReverseBounce = spec.kind === "sweatFace";
   sprite.renderOrder = 1000;
-  sprite.scale.set(1.15, 1.15, 1);
+  sprite.scale.set(baseScale, baseScale, 1);
   sprite.position.copy(actor.position);
-  sprite.position.y += 1.48;
+  sprite.position.y = baseY + (isReverseBounce ? 0.4 : 0);
   actor.parent.add(sprite);
   activeCue = sprite;
+
+  const tick = () => {
+    if (!activeCue || activeCue !== sprite) return;
+    const elapsed = (performance.now() - startAt) / 1000;
+    const bouncePhase = Math.sin(elapsed * 9.5);
+    const lift = Math.abs(bouncePhase) * 0.6;
+    const travel = isReverseBounce ? -bouncePhase * 0.7 : bouncePhase * 0.7;
+    sprite.position.y = baseY + (isReverseBounce ? 0.55 - lift * 0.8 : 0) + travel;
+    const pulse = baseScale * (1 + Math.abs(Math.sin(elapsed * 9.5)) * 0.2);
+    sprite.scale.set(pulse, pulse, 1);
+    if (elapsed < 1.4) {
+      requestAnimationFrame(tick);
+    } else {
+      clearComicCue();
+    }
+  };
+  requestAnimationFrame(tick);
 }

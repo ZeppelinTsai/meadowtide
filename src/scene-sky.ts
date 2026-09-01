@@ -811,10 +811,10 @@ export const moonCore = new THREE.Mesh(
   moonCoreMat,
 );
 moonGlow.position.z = -0.04;
-moonGlow.renderOrder = -0.57;
-moonCore.renderOrder = -0.55;
+moonGlow.renderOrder = -0.18;
+moonCore.renderOrder = -0.12;
 moonSkyGroup.add(moonGlow, moonCore);
-placeSkyBillboard(moonSkyGroup, 0, 0);
+placeSkyBillboard(moonSkyGroup, 0, 0, 68);
 camera.add(moonSkyGroup);
 export function updateMoon() {
   if (!isOutdoorMap()) {

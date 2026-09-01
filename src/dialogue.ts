@@ -1,7 +1,7 @@
 import { npcs } from "./npc-runtime";
 import { gameState } from "./game-state";
 import { translateText } from "./i18n";
-import { showComicCue } from "./comic-cue";
+import { showComicCue, shouldDisplayDialogText } from "./comic-cue";
 import {
   getNpcDisplayName,
   isNpcIdentityId,
@@ -102,7 +102,25 @@ export function normalizeDialogLine(line) {
   return typeof line === "string" ? { text: line } : line;
 }
 export function renderDialogLine(line) {
+  clearComicCueAdvanceTimer();
+  const hideDialogText = !shouldDisplayDialogText(line);
   showComicCue(line.comicCue || null);
+  if (hideDialogText) {
+    dialogTextEl.textContent = "";
+    dialogNameEl.textContent = "";
+    dialogNameEl.style.display = "none";
+    setDialogPortrait(null);
+    setDialogCg(null);
+    comicCueAdvanceTimer = window.setTimeout(() => {
+      const isCurrentLine = dialogQueue.length > 0 && dialogQueue[dialogIndex] === line;
+      if (isCurrentLine) {
+        advanceDialogSequence();
+        return;
+      }
+      closeDialogUi();
+    }, 1400);
+    return;
+  }
   dialogTextEl.textContent = translateText(line.text);
   setDialogCg(line.cg || null);
   setDialogPortrait(line.hidePortrait ? null : line.speaker || null);
@@ -118,6 +136,7 @@ export function renderDialogLine(line) {
   }
 }
 export function closeDialogUi() {
+  clearComicCueAdvanceTimer();
   showComicCue(null);
   dialogEl.style.display = "none";
   dialogNameEl.style.display = "none";
@@ -132,7 +151,12 @@ export function showDialog(text) {
     closeDialogUi();
     return;
   }
-  renderDialogLine(normalizeDialogLine(text));
+  const line = normalizeDialogLine(text);
+  renderDialogLine(line);
+  if (!shouldDisplayDialogText(line)) {
+    dialogEl.style.display = "none";
+    return;
+  }
   dialogEl.style.display = "flex"; // flex 才吃得到 align-items:center 讓文字上下置中
 }
 // 多句對話用的小佇列——按 E 一句一句往下推，最後一句再按一次才關掉。
@@ -140,6 +164,15 @@ export function showDialog(text) {
 export let dialogQueue = [];
 export let dialogIndex = 0;
 export let dialogSequenceOnComplete = null;
+let comicCueAdvanceTimer = null;
+
+function clearComicCueAdvanceTimer() {
+  if (comicCueAdvanceTimer) {
+    clearTimeout(comicCueAdvanceTimer);
+    comicCueAdvanceTimer = null;
+  }
+}
+
 // onComplete 是選用的：劇情事件(如木匠抵達)要在整段對話跑完後接材料
 // 檢查/進度推進時傳進來，一般單純的多句對話不用管這個參數
 export function showDialogSequence(lines, onComplete = null) {
@@ -166,6 +199,10 @@ export function showDialogSequence(lines, onComplete = null) {
     return;
   }
   renderDialogLine(dialogQueue[0]);
+  if (!shouldDisplayDialogText(dialogQueue[0])) {
+    dialogEl.style.display = "none";
+    return;
+  }
   dialogEl.style.display = "flex"; // flex 才吃得到 align-items:center 讓文字上下置中
 }
 export function advanceDialogSequence() {
@@ -186,6 +223,11 @@ export function advanceDialogSequence() {
     return;
   }
   renderDialogLine(dialogQueue[dialogIndex]);
+  if (!shouldDisplayDialogText(dialogQueue[dialogIndex])) {
+    dialogEl.style.display = "none";
+    return;
+  }
+  dialogEl.style.display = "flex";
 }
 
 // ==============================================================
