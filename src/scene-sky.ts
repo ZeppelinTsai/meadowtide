@@ -192,7 +192,7 @@ scene.add(firstPersonSkyAnchor);
 
 // 架空北緯 8°海島的四季星空：四季合計涵蓋大部分南北天代表星群。
 export const MILKY_WAY_DENSE_STAR_COUNT = 30000;
-export const MILKY_WAY_MIST_COUNT = 000;
+export const MILKY_WAY_MIST_COUNT = 5000;
 export const SEASON_STAR_CONFIGS = [
   { count: 1440, color: 0xe8f4ff }, // 春：柔和
   { count: 2100, color: 0xddeaff }, // 夏：銀河最密
