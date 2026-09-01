@@ -229,47 +229,15 @@ import {
         0xffffff, 0xc9e8ff, 0x9fe8ff, 0xaef4dc, 0xffef9f, 0xffc98f, 0xffb3c8,
         0xe6c4ff, 0xb8c8ff, 0xd8ffd0,
       ];
-      export function makeMilkyWayTexture() {
-        const canvas = document.createElement("canvas");
-        canvas.width = 1024;
-        canvas.height = 256;
-        const ctx = canvas.getContext("2d");
-        const band = ctx.createLinearGradient(0, 0, 0, canvas.height);
-        band.addColorStop(0, "rgba(90,110,190,0)");
-        band.addColorStop(0.22, "rgba(105,128,220,0.2)");
-        band.addColorStop(0.42, "rgba(176,192,255,0.42)");
-        band.addColorStop(0.5, "rgba(238,239,255,0.62)");
-        band.addColorStop(0.6, "rgba(202,178,244,0.42)");
-        band.addColorStop(0.78, "rgba(139,105,210,0.2)");
-        band.addColorStop(1, "rgba(80,95,170,0)");
-        ctx.fillStyle = band;
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-        ctx.globalCompositeOperation = "lighter";
-        for (let i = 0; i < 180; i++) {
-          const x = hash2(i * 3.7, 8.1) * canvas.width;
-          const y = canvas.height * (0.32 + hash2(i * 5.9, 2.4) * 0.36);
-          const radius = 8 + hash2(i * 7.3, 4.6) * 28;
-          const cloud = ctx.createRadialGradient(x, y, 0, x, y, radius);
-          cloud.addColorStop(0, "rgba(205,215,255,0.12)");
-          cloud.addColorStop(1, "rgba(150,170,240,0)");
-          ctx.fillStyle = cloud;
-          ctx.fillRect(x - radius, y - radius, radius * 2, radius * 2);
-        }
-        for (let i = 0; i < 900; i++) {
-          const x = hash2(i * 2.13, 3.2) * canvas.width;
-          const centerBias =
-            (hash2(i * 7.41, 9.8) + hash2(i * 4.17, 1.2) - 1) * 0.5;
-          const y = canvas.height * (0.5 + centerBias * 0.62);
-          const alpha = 0.12 + hash2(i * 8.2, 6.5) * 0.5;
-          const size = 0.35 + hash2(i * 5.4, 7.7) * 1.25;
-          ctx.fillStyle = `rgba(225,232,255,${alpha})`;
-          ctx.fillRect(x, y, size, size);
-        }
-        const texture = new THREE.CanvasTexture(canvas);
-        texture.minFilter = THREE.LinearFilter;
-        return texture;
-      }
-      export const MILKY_WAY_TEXTURE = makeMilkyWayTexture();
+      // 銀河不可再用一張巨大的矩形 PlaneGeometry：第一人稱轉頭時會直接看到
+      // 貼圖四角與天空球分離。改用分布在星空球面上的柔光點雲，所有粒子的
+      // alpha 都由圓形漸層自然歸零，因此銀河沒有任何可辨識的矩形邊界。
+      export const MILKY_WAY_MIST_TEXTURE = makeRadialSpriteTexture(128, [
+        [0, "rgba(238,242,255,0.52)"],
+        [0.28, "rgba(202,216,255,0.3)"],
+        [0.68, "rgba(158,178,242,0.1)"],
+        [1, "rgba(130,150,220,0)"],
+      ]);
       export function starSkyPoint(nx, ny, seasonIndex) {
         // nx 覆蓋完整 360° 方位；ny 以球面 Y 坐標等面積取樣。若直接讓緯度
         // 等距，經線會在南北極收斂，抬頭時所有星點就會堆成天頂亮團。
@@ -334,21 +302,37 @@ import {
 
         let milkyWayMaterial = null;
         if (seasonIndex === 1) {
-          milkyWayMaterial = new THREE.MeshBasicMaterial({
-            map: MILKY_WAY_TEXTURE,
+          const mistPositions = [];
+          for (let i = 0; i < 520; i++) {
+            const t = hash2(i * 4.71, 17.2);
+            const spread =
+              (hash2(i * 7.13, 5.8) + hash2(i * 2.37, 23.1) - 1) * 0.12;
+            const p = starSkyPoint(
+              -0.86 + t * 1.72 + spread * 0.45,
+              0.17 + t * 0.64 + spread,
+              seasonIndex,
+            );
+            mistPositions.push(p.x, p.y, p.z);
+          }
+          const mistGeometry = new THREE.BufferGeometry();
+          mistGeometry.setAttribute(
+            "position",
+            new THREE.Float32BufferAttribute(mistPositions, 3),
+          );
+          milkyWayMaterial = new THREE.PointsMaterial({
+            color: 0xcbd8ff,
+            map: MILKY_WAY_MIST_TEXTURE,
+            size: 27,
+            sizeAttenuation: false,
             transparent: true,
             opacity: 0,
+            alphaTest: 0.002,
             depthWrite: false,
             depthTest: true,
             fog: false,
             blending: THREE.AdditiveBlending,
           });
-          const milkyWay = new THREE.Mesh(
-            new THREE.PlaneGeometry(260, 48),
-            milkyWayMaterial,
-          );
-          milkyWay.position.set(0, 1, -79);
-          milkyWay.rotation.z = -0.31;
+          const milkyWay = new THREE.Points(mistGeometry, milkyWayMaterial);
           milkyWay.renderOrder = -0.8;
           group.add(milkyWay);
         }
@@ -702,6 +686,27 @@ import {
       export const SUN_SKY_BLEND_COLOR = new THREE.Color();
       export const SUN_TARGET_COLOR = new THREE.Color();
       export const SUN_MASK_PROJECTED_POINT = new THREE.Vector3();
+      const SKY_LAYER_RADIUS = 76;
+      const SKY_BILLBOARD_FORWARD = new THREE.Vector3(0, 0, 1);
+      const SKY_BILLBOARD_INWARD = new THREE.Vector3();
+
+      // 日月與雲原本全貼在固定 z 的相機平面，第一人稱仰視或轉頭時會像 UI
+      // 圖層浮在天空前。保留既有 x/y 軌跡，但把每個物件壓到天空球內側，
+      // 並讓平面法線朝向球心，視覺上才會貼合天空穹頂。
+      function placeSkyBillboard(group, x, y, radius = SKY_LAYER_RADIUS) {
+        const planarLengthSq = x * x + y * y;
+        const safeRadius = Math.max(radius, Math.sqrt(planarLengthSq) + 0.01);
+        group.position.set(
+          x,
+          y,
+          -Math.sqrt(Math.max(0.01, safeRadius * safeRadius - planarLengthSq)),
+        );
+        SKY_BILLBOARD_INWARD.copy(group.position).normalize().negate();
+        group.quaternion.setFromUnitVectors(
+          SKY_BILLBOARD_FORWARD,
+          SKY_BILLBOARD_INWARD,
+        );
+      }
       export const sunSkyGroup = new THREE.Group();
       // 太陽位於相機遠端的天空層，但必須保留深度測試：天空球不寫入深度，
       // 太陽仍能顯示在天空；房屋、地形、角色與海岸等近景則會正確遮住太陽。
@@ -736,7 +741,7 @@ import {
       sunGlow.renderOrder = -0.58;
       sunCore.renderOrder = -0.56;
       sunSkyGroup.add(sunGlow, sunCore);
-      sunSkyGroup.position.z = -74;
+      placeSkyBillboard(sunSkyGroup, 0, 0);
       camera.add(sunSkyGroup);
 
       // 月亮——跟太陽同一套「掛在相機上的天空層」做法，差別是月核不是固定
@@ -812,7 +817,7 @@ import {
       moonGlow.renderOrder = -0.57;
       moonCore.renderOrder = -0.55;
       moonSkyGroup.add(moonGlow, moonCore);
-      moonSkyGroup.position.z = -74;
+      placeSkyBillboard(moonSkyGroup, 0, 0);
       camera.add(moonSkyGroup);
       export function updateMoon() {
         if (!isOutdoorMap()) {
@@ -852,8 +857,11 @@ import {
         moonSkyGroup.visible = moonOpacity > 0.005;
         if (!moonSkyGroup.visible) return;
         // 左右移動範圍縮窄(80→64)，同樣的高度在較窄的弧寬下視覺上更凸。
-        moonSkyGroup.position.x = 32 - moonProgress * 64;
-        moonSkyGroup.position.y = -5.5 + arc * daylight.peak * 0.5;
+        placeSkyBillboard(
+          moonSkyGroup,
+          32 - moonProgress * 64,
+          -5.5 + arc * daylight.peak * 0.5,
+        );
         // 跟太陽用同一招：把月亮所在 x 對應的北側懸崖投影到螢幕，低於地形
         // 輪廓時額外淡出，避免月亮掛在地形前面穿幫。
         const moonWorldX = gameState.player.position.x + moonSkyGroup.position.x;
@@ -927,6 +935,7 @@ import {
           2 + hash2(i, 3.7) * 3.5,
           -73.5 + i * 0.025,
         );
+        placeSkyBillboard(cloud, cloud.position.x, cloud.position.y, 75.5);
         cloud.scale.setScalar(0.72 + hash2(i, 9.2) * 0.75);
         cloud.userData = {
           baseX: cloud.position.x,
@@ -964,13 +973,17 @@ import {
         sunSkyGroup.visible = sunOpacity > 0.005;
         if (sunSkyGroup.visible) {
           // 左右移動範圍縮窄(80→64)，同樣的高度在較窄的弧寬下視覺上更凸。
-          sunSkyGroup.position.x = 32 - sunProgress * 64;
+          const sunSkyX = 32 - sunProgress * 64;
           // daylight.peak（13.5~21）是照原始設計拿來抓「太陽在天空中多高」的
           // 係數，但預設 gameState.zoom=6 時相機視錐只到 top=6，太陽升到接近中午
           // (arc 接近 1) 就會整個超出視錐範圍，等於中午前後太陽會直接消失。
           // 乘 0.5 把最高點壓到 gameState.zoom=6 也裝得下的範圍，四季相對高低差還在，
           // 只是整體矮一截
-          sunSkyGroup.position.y = -5.5 + arc * daylight.peak * 0.5;
+          placeSkyBillboard(
+            sunSkyGroup,
+            sunSkyX,
+            -5.5 + arc * daylight.peak * 0.5,
+          );
           // 太陽是掛在相機上的透明天空物件；只靠 depthTest，遇到不寫入深度的
           // 草地/透明特效仍可能穿透。把太陽所在 x 對應的北側懸崖投影到螢幕，
           // 低於地形輪廓時額外淡出，保證太陽只會留在真正的天空區域。
@@ -1062,10 +1075,11 @@ import {
           cloud.visible = index < cloudCount;
           if (!cloud.visible) return;
           const travel = cloud.userData.baseX + gameState.effectElapsed * cloudSpeed;
-          cloud.position.x = -55 + ((((travel + 55) % 110) + 110) % 110);
-          cloud.position.y =
+          const cloudX = -55 + ((((travel + 55) % 110) + 110) % 110);
+          const cloudY =
             cloud.userData.baseY +
             Math.sin(gameState.effectElapsed * 0.08 + cloud.userData.seed * 12) * 0.32;
+          placeSkyBillboard(cloud, cloudX, cloudY, 75.5);
           cloud.userData.material.color.setHex(cloudColor);
           cloud.userData.material.opacity =
             cloudOpacity * (0.3 + (1 - nightFactor) * 0.7);
