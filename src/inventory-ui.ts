@@ -26,7 +26,7 @@ import { getNpcDisplayName } from "./npc-name-reveal";
 import { makeToolModel } from "./tool-models";
 import { PEARL_DEFINITIONS } from "./pearl-system";
 
-type InventoryTab = "bag" | "storage" | "tools" | "relationships";
+type InventoryTab = "bag" | "storage" | "tools" | "animals" | "villagers";
 type InventoryEntry = {
   id: string;
   tab: InventoryTab;
@@ -63,7 +63,8 @@ const TABS: { id: InventoryTab; label: string }[] = [
   { id: "bag", label: "物品" },
   { id: "storage", label: "倉庫" },
   { id: "tools", label: "工具" },
-  { id: "relationships", label: "關係" },
+  { id: "animals", label: "動物" },
+  { id: "villagers", label: "村民" },
 ];
 
 const overlay = document.getElementById("inventoryOverlay") as HTMLDivElement;
@@ -642,14 +643,18 @@ export function renderInventory(focusFirstCard = false) {
   const activeId = TABS[activeTabIndex].id;
   grid.classList.toggle(
     "inventory-grid-info",
-    activeId === "relationships" || activeId === "tools",
+    activeId === "villagers" || activeId === "tools",
   );
   if (activeId === "tools") {
     renderTools();
     return;
   }
-  if (activeId === "relationships") {
-    renderRelationships();
+  if (activeId === "animals") {
+    renderAnimals();
+    return;
+  }
+  if (activeId === "villagers") {
+    renderVillagers();
     return;
   }
 
@@ -904,58 +909,107 @@ function renderAnimalRelationships() {
   });
 }
 
-function renderRelationships() {
-  const layout = document.createElement("div");
-  layout.className = "relationship-layout";
+function renderAnimals() {
+  const ownedAnimals = (gameState.ownedAnimals ?? [])
+    .map((animalId) => getAnimalInteractionStatus(animalId))
+    .filter((animal): animal is NonNullable<typeof animal> => Boolean(animal));
 
-  const sidebar = document.createElement("div");
-  sidebar.className = "relationship-sidebar";
+  if (!ownedAnimals.length) {
+    const empty = document.createElement("div");
+    empty.className = "inventory-empty";
+    empty.textContent = translateText("目前還沒有飼養動物");
+    grid.appendChild(empty);
+    return;
+  }
 
-  const modes = [
-    { id: "npc", label: "NPC", icon: makeRelationshipIcon("npc") },
-    { id: "animal", label: "動物", icon: makeRelationshipIcon("animal") },
-  ] as const;
+  ownedAnimals.forEach((animal) => {
+    const card = document.createElement("div");
+    card.className = "menu-info-card animal-relationship-card";
 
-  let activeMode: "npc" | "animal" = "npc";
+    const header = document.createElement("div");
+    header.className = "animal-relationship-header";
+    const badge = document.createElement("span");
+    badge.className = "relationship-animal-badge";
+    badge.appendChild(makeRelationshipIcon("animal"));
+    const title = document.createElement("h3");
+    title.textContent =
+      animal.type === "cow"
+        ? "牛"
+        : animal.type === "sheep"
+          ? "羊"
+          : "雞";
 
-  const updateMode = (nextMode: "npc" | "animal") => {
-    activeMode = nextMode;
-    sidebar.querySelectorAll<HTMLButtonElement>("button").forEach((button) => {
-      const selected = button.dataset.relationMode === nextMode;
-      button.classList.toggle("active", selected);
-      button.setAttribute("aria-pressed", String(selected));
+    header.append(badge, title);
+
+    const statusRow = document.createElement("div");
+    statusRow.className = "animal-status-row";
+
+    const actions = [
+      { label: "撫摸", done: animal.isPetToday, icon: "pet" as const },
+      { label: "餵食", done: animal.isFedToday, icon: "feed" as const },
+      { label: "刷毛", done: animal.isBrushedToday, icon: "brush" as const, hidden: animal.type === "chicken" },
+      { label: "收成", done: animal.isHarvestedToday, icon: "harvest" as const, hidden: animal.type === "chicken" },
+    ].filter((action) => !action.hidden);
+
+    actions.forEach((action) => {
+      const item = document.createElement("span");
+      item.className = "animal-status-item" + (action.done ? " done" : "");
+      item.title = `${action.label}${action.done ? "：今天已完成" : "：尚未完成"}`;
+      item.appendChild(makeRelationshipIcon(action.icon));
+      const label = document.createElement("small");
+      label.textContent = action.done ? "已" : "待";
+      item.appendChild(label);
+      statusRow.appendChild(item);
     });
-    grid.innerHTML = "";
-    const content = document.createElement("div");
-    content.className = "relationship-content";
-    if (nextMode === "npc") {
-      renderNpcRelationships();
-    } else {
-      renderAnimalRelationships();
-    }
-  };
 
-  modes.forEach(({ id, label, icon }) => {
-    const button = document.createElement("button");
-    button.type = "button";
-    button.className = "relationship-mode-button";
-    button.dataset.relationMode = id;
-    button.setAttribute("aria-pressed", String(id === "npc"));
-    button.appendChild(icon.cloneNode(true));
-    const text = document.createElement("span");
-    text.textContent = label;
-    button.appendChild(text);
-    button.addEventListener("click", () => updateMode(id));
-    sidebar.appendChild(button);
+    const meta = document.createElement("span");
+    meta.className = "animal-relationship-meta";
+    const todayText = [
+      animal.isPetToday ? "撫摸" : "",
+      animal.isFedToday ? "餵食" : "",
+      animal.type !== "chicken" && animal.isBrushedToday ? "刷毛" : "",
+      animal.type !== "chicken" && animal.isHarvestedToday ? "收成" : "",
+    ].filter(Boolean);
+    meta.textContent = todayText.length ? todayText.join(" · ") : "今日互動待完成";
+
+    card.append(header, statusRow, meta);
+    grid.appendChild(card);
   });
+}
 
-  layout.appendChild(sidebar);
-  const content = document.createElement("div");
-  content.className = "relationship-content";
-  layout.appendChild(content);
-  grid.appendChild(layout);
-
-  updateMode("npc");
+function renderVillagers() {
+  const relationships = [{ id: "mayor" }, { id: "carpenter" }];
+  relationships.forEach(({ id }) => {
+    const relationship = getRelationship(id);
+    const card = document.createElement("button");
+    card.type = "button";
+    card.className = "menu-info-card";
+    const heading = document.createElement("h3");
+    heading.textContent = getNpcDisplayName(id);
+    const value = document.createElement("strong");
+    value.textContent = `${getDisplayedStars(id)} ★`;
+    const caption = document.createElement("span");
+    const pointLabel = translateText("點");
+    caption.textContent = relationship.currentLock
+      ? getLocale() === "en"
+        ? `${relationship.points} ${pointLabel} · ${relationship.currentLock}${translateText("星鎖定")}`
+        : `${relationship.points} ${pointLabel}・${relationship.currentLock} ${translateText("星鎖定")}`
+      : `${relationship.points} ${pointLabel}`;
+    card.append(heading, value, caption);
+    const describeRelationship = () =>
+      selectInfoCard(
+        card,
+        getNpcDisplayName(id),
+        "目前關係為 " +
+          getDisplayedStars(id) +
+          " 星，共 " +
+          relationship.points +
+          " 點。",
+      );
+    card.addEventListener("focus", describeRelationship);
+    card.addEventListener("click", describeRelationship);
+    grid.appendChild(card);
+  });
 }
 
 export function isInventoryOpen() {
