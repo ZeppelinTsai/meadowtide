@@ -207,6 +207,10 @@ export function initTitleScreen() {
   let step: TitleStep = "splash";
   let titleActive = true;
   let titleGamepadReleased = false;
+  // openLoadSlots() 渲染清單時算好「該 focus 哪一格」(存檔時間最新的
+  // 那格，見 save-slot-ui.ts)，setStep() 的 loadSlots 分支再直接拿來用
+  // ——不用另外在這裡重找一次「第一個沒 disabled 的按鈕」。
+  let loadSlotsFocusTarget: HTMLButtonElement | null = null;
 
   function setStep(nextStep: TitleStep) {
     step = nextStep;
@@ -220,10 +224,7 @@ export function initTitleScreen() {
         firstSetting?.focus();
       }
       if (nextStep === "loadSlots") {
-        const firstEnabled = loadSlotsList.querySelector<HTMLButtonElement>(
-          "button:not(:disabled)",
-        );
-        (firstEnabled || loadSlotsBackButton).focus();
+        (loadSlotsFocusTarget || loadSlotsBackButton).focus();
       }
     });
   }
@@ -339,7 +340,7 @@ export function initTitleScreen() {
   }
 
   function openLoadSlots() {
-    renderSaveSlotButtons(loadSlotsList, loadFromSlot);
+    loadSlotsFocusTarget = renderSaveSlotButtons(loadSlotsList, loadFromSlot);
     setStep("loadSlots");
   }
 

@@ -140,10 +140,15 @@ export function initPauseMenu() {
     step = nextStep;
     overlay.dataset.step = nextStep;
     if (nextStep === "saveSlots") {
-      renderWritableSaveSlotButtons(saveSlotsList, saveToSlotInGame);
+      // 跟讀取一樣自動選到「最新一格」(這裡是最近手動存過的那格，見
+      // save-slot-ui.ts 的 renderWritableSaveSlotButtons())，不用玩家
+      // 自己找上次存到第幾格。
+      const target = renderWritableSaveSlotButtons(saveSlotsList, saveToSlotInGame);
+      requestAnimationFrame(() => target?.focus());
     }
     if (nextStep === "loadSlots") {
-      renderSaveSlotButtons(loadSlotsList, loadFromSlotInGame);
+      const target = renderSaveSlotButtons(loadSlotsList, loadFromSlotInGame);
+      requestAnimationFrame(() => target?.focus());
     }
     if (nextStep === "system") {
       const firstSetting = mountSystemSettings(systemSettings);

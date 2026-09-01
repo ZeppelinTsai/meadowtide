@@ -216,6 +216,9 @@ export interface SaveSlotSummary {
   currentSeason?: number;
   currentMapName?: string;
   playerName?: string;
+  /** 存檔當下的 Date.now()(見 saveGame())，給讀/存檔清單顯示時間、
+   * 自動選取「最新一筆」用。 */
+  savedAt?: number;
 }
 
 export interface TitlePreviewTime {
@@ -293,6 +296,7 @@ export function getSaveSlotSummaries(): SaveSlotSummary[] {
           typeof data.playerProfile?.name === "string" && data.playerProfile.name.trim()
             ? data.playerProfile.name.trim().slice(0, 16)
             : "牧場主",
+        savedAt: Number(data.savedAt) || 0,
       });
     } catch (err) {
       summaries.push({

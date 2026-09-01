@@ -457,7 +457,11 @@ body.cutscene-presentation #hud {
     0 0 0 1px rgba(245, 197, 66, 0.12) inset;
   opacity: 0;
   pointer-events: none;
-  z-index: 15;
+  /* 120：蓋過標題畫面(#titleScreen, 100)／暫停選單(#pauseMenu, 90)——
+     系統設定的 toast(showUiToast)常常是在這兩個滿版疊層開著的時候
+     觸發(調音量、切語言…)，原本 15 只夠蓋過 3D 畫布，切設定時 toast
+     會被壓在選單底下看不到。 */
+  z-index: 120;
   transition:
     opacity 0.28s ease,
     transform 0.28s cubic-bezier(0.2, 0.9, 0.3, 1.3);
@@ -1472,7 +1476,7 @@ canvas {
 .systemSettingGroupTitle {
   margin: 0;
   padding-bottom: 6px;
-  font-size: 14px;
+  font-size: 18px;
   font-weight: 700;
   letter-spacing: 0.06em;
   color: #8a5a2b;
@@ -1626,14 +1630,46 @@ canvas {
 
 /* 讀取遊戲的 9 格存檔清單——跟 .titleMenuBtn 同一套白底黑框風格，但要
    放兩行文字(格數+摘要)，所以另外開一組 class，不直接沿用 .titleMenuBtn。 */
-#titleSystemSettings {
+/* 系統設定清單的捲軸——跟下面 .saveSlotList 同一套奶油／棕色配色，原本
+   這裡是瀏覽器預設細灰色捲軸，跟存讀檔清單看起來是兩套不同風格。
+   #pauseSystemSettings 之前完全沒有自己的 overflow 設定，靠
+   #pauseSystemPanel(下面一起補上 max-height)撐；現在兩邊(標題畫面／
+   暫停選單)共用同一份規則。 */
+#titleSystemSettings,
+#pauseSystemSettings {
   flex: 1 1 auto;
   width: 100%;
   max-width: 620px;
   min-height: 0;
+  padding: 4px 12px 4px 4px;
   overflow-x: hidden;
-  overflow-y: auto;
-  padding: 4px;
+  overflow-y: scroll;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+  scrollbar-width: auto;
+  scrollbar-color: #75543f #dfcfaf;
+  box-sizing: border-box;
+}
+#titleSystemSettings::-webkit-scrollbar,
+#pauseSystemSettings::-webkit-scrollbar {
+  width: 16px;
+}
+#titleSystemSettings::-webkit-scrollbar-track,
+#pauseSystemSettings::-webkit-scrollbar-track {
+  background: #dfcfaf;
+  border: 2px solid #f3e7ce;
+  border-radius: 999px;
+}
+#titleSystemSettings::-webkit-scrollbar-thumb,
+#pauseSystemSettings::-webkit-scrollbar-thumb {
+  min-height: 48px;
+  background: #75543f;
+  border: 3px solid #dfcfaf;
+  border-radius: 999px;
+}
+#titleSystemSettings::-webkit-scrollbar-thumb:hover,
+#pauseSystemSettings::-webkit-scrollbar-thumb:hover {
+  background: #4e3123;
 }
 #titleLoadSlotsHeading {
   flex: 0 0 auto;
@@ -1646,7 +1682,12 @@ canvas {
   max-width: 720px;
   min-height: 0;
   margin-bottom: 12px;
-  overflow: hidden;
+  /* 這個元素同時是 #titleLoadSlotsList(ID) 也是 .saveSlotList(class)
+     ——render 函式直接把兩個 class 疊在同一個節點上。原本這裡寫
+     overflow:hidden，ID 選擇器的優先度比下面 .saveSlotList 的
+     overflow-y:scroll 高，結果實際生效的是 hidden，捲軸樣式全部白寫、
+     清單被直接裁切，超過視窗的存檔格看不到也捲不動。改成只裁橫向。 */
+  overflow-x: hidden;
 }
 .saveSlotList {
   display: flex;
@@ -1682,7 +1723,7 @@ canvas {
 }
 .titleSlotBtn {
   font-family: inherit;
-  min-height: 58px;
+  min-height: 76px;
   padding: 11px 16px;
   border: 1px solid #2b2b2b;
   border-radius: 6px;
@@ -1717,11 +1758,25 @@ canvas {
 .titleSlotNum {
   font-size: 18px;
   font-weight: 700;
+  flex: none;
+}
+.titleSlotMeta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  min-width: 0;
 }
 .titleSlotSummary {
   font-size: 18px;
   opacity: 0.75;
   text-align: right;
+}
+.titleSlotTime {
+  font-size: 18px;
+  opacity: 0.6;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
 }
 #titleLoadSlots .titleMenuBtn {
   flex: 0 0 auto;
@@ -1743,7 +1798,7 @@ canvas {
     gap: 6px;
   }
   .titleSlotBtn {
-    min-height: 52px;
+    min-height: 68px;
     padding: 8px 10px;
     gap: 10px;
   }
@@ -1817,8 +1872,22 @@ canvas {
 #pauseSystemPanel .titleMenuBtn {
   width: 220px;
 }
+/* .pauseStep 本身沒有高度限制，10 格手動存檔+自動存檔全部展開會比視窗
+   還高——原本沒有 max-height/flex，清單只會把面板整個撐爆，後面的
+   「返回」按鈕被推到畫面外，也完全沒有捲軸。這裡讓面板本身固定
+   最高 86vh，清單吃掉剩下的空間、自己用 .saveSlotList 的捲軸捲動。 */
+#pauseSaveSlotsPanel,
+#pauseLoadSlotsPanel,
+#pauseSystemPanel {
+  max-height: 86vh;
+  width: min(720px, 90vw);
+  box-sizing: border-box;
+}
 #pauseSaveSlotsList,
 #pauseLoadSlotsList {
+  flex: 1 1 auto;
+  min-height: 0;
+  width: 100%;
   margin-bottom: 10px;
 }
 

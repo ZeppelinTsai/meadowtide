@@ -81,7 +81,11 @@ export function setDialogPortrait(speakerId) {
   const webpImg = new Image();
   webpImg.onload = () => applyPortrait(webpImg.src);
   webpImg.onerror = loadOriginalPng;
-  webpImg.src = responsiveWebpUrl("/assets/portraits", speakerId, PORTRAIT_RESPONSIVE_WIDTHS);
+  webpImg.src = responsiveWebpUrl(
+    "/assets/portraits",
+    speakerId,
+    PORTRAIT_RESPONSIVE_WIDTHS,
+  );
 }
 export function setDialogCg(cgId) {
   if (cgId === currentCgId) return; // 沒變化，不用重新觸發淡入淡出
@@ -134,7 +138,8 @@ export function renderDialogLine(line) {
     setDialogPortrait(null);
     setDialogCg(null);
     comicCueAdvanceTimer = window.setTimeout(() => {
-      const isCurrentLine = dialogQueue.length > 0 && dialogQueue[dialogIndex] === line;
+      const isCurrentLine =
+        dialogQueue.length > 0 && dialogQueue[dialogIndex] === line;
       if (isCurrentLine) {
         advanceDialogSequence();
         return;
