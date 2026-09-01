@@ -711,11 +711,16 @@ export function animate(now) {
       gameState.player.position.z + forwardZ * 0.85,
     );
   }
-  if (
-    gameState.fishFeedback &&
-    gameState.elapsed > gameState.fishFeedback.until
-  )
-    gameState.fishFeedback = null;
+  if (gameState.fishFeedback) {
+    const feedback = gameState.fishFeedback;
+    feedback.shownAtMs ??= performance.now();
+    // 序章釣魚成功後會暫停遊戲時間並立刻換圖；只看 elapsed 時提示會永遠
+    // 不到期。真實時間上限同時保護一般暫停、對話與載入中的提示生命週期。
+    const exceededWallClockLimit =
+      performance.now() - feedback.shownAtMs >= 2200;
+    if (gameState.elapsed > feedback.until || exceededWallClockLimit)
+      gameState.fishFeedback = null;
+  }
   if (gameState.fishFeedback) {
     fishHintEl.textContent = gameState.fishFeedback.text;
     fishHintEl.style.display = "block";

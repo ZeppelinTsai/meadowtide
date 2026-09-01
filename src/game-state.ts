@@ -58,7 +58,11 @@ export const gameState = {
   biteWaitTime: 0,
   biteWindowStart: 0,
   bobberMesh: null as THREE.Object3D | null,
-  fishFeedback: null as { text: string; until: number } | null,
+  fishFeedback: null as {
+    text: string;
+    until: number;
+    shownAtMs?: number;
+  } | null,
   // 2026-08-26 釣魚 QTE：竿具等級——每級讓小/中/大魚的 QTE 次數扣 3
   // (下限 0)，魚霸主/特殊魚下限鎖 1，永遠留一次判定(見 src/fishing.ts
   // actualQteCount())。目前遊戲裡還沒有升級竿具的管道(商店/工作台之類

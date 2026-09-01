@@ -802,6 +802,8 @@ async function returnToFarmHouseAfterFishing() {
     console.warn("[序幕] 尚未接入 loadMap，無法返回牧場小屋。");
     return;
   }
+  // 釣魚成功提示屬於港口操作回饋，不應跨過載入黑幕留在牧場小屋。
+  gameState.fishFeedback = null;
   await showLoadingScreen();
   prologueMapLoader("house", { x: 8, z: 12 }, () => {
     const mayor = npcs.find((npc) => npc.id === "mayor");

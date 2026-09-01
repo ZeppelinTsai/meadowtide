@@ -303,7 +303,7 @@ import {
         let milkyWayMaterial = null;
         if (seasonIndex === 1) {
           const mistPositions = [];
-          for (let i = 0; i < 520; i++) {
+          for (let i = 0; i < 1560; i++) {
             const t = hash2(i * 4.71, 17.2);
             const spread =
               (hash2(i * 7.13, 5.8) + hash2(i * 2.37, 23.1) - 1) * 0.12;
@@ -730,11 +730,11 @@ import {
         fog: false,
       });
       export const sunGlow = new THREE.Mesh(
-        new THREE.CircleGeometry(3.1, 32),
+        new THREE.CircleGeometry(9.3, 32),
         sunGlowMat,
       );
       export const sunCore = new THREE.Mesh(
-        new THREE.CircleGeometry(0.82, 28),
+        new THREE.CircleGeometry(2.46, 28),
         sunCoreMat,
       );
       sunGlow.position.z = -0.04;
@@ -806,11 +806,11 @@ import {
         fog: false,
       });
       export const moonGlow = new THREE.Mesh(
-        new THREE.CircleGeometry(2.2, 32),
+        new THREE.CircleGeometry(6.6, 32),
         moonGlowMat,
       );
       export const moonCore = new THREE.Mesh(
-        new THREE.PlaneGeometry(1.5, 1.5),
+        new THREE.PlaneGeometry(4.5, 4.5),
         moonCoreMat,
       );
       moonGlow.position.z = -0.04;
@@ -853,7 +853,7 @@ import {
             snow: 0.2,
             blizzard: 0.02,
           }[gameState.currentWeather] ?? 1;
-        const moonOpacity = arc * illuminatedFraction * weatherMoonVisibility;
+        const moonOpacity = arc * illuminatedFraction * weatherMoonVisibility * 3;
         moonSkyGroup.visible = moonOpacity > 0.005;
         if (!moonSkyGroup.visible) return;
         // 左右移動範圍縮窄(80→64)，同樣的高度在較窄的弧寬下視覺上更凸。
@@ -969,7 +969,7 @@ import {
             snow: 0.22,
             blizzard: 0.02,
           }[gameState.currentWeather] ?? 1;
-        const sunOpacity = arc * weatherSunVisibility;
+        const sunOpacity = arc * weatherSunVisibility * 3;
         sunSkyGroup.visible = sunOpacity > 0.005;
         if (sunSkyGroup.visible) {
           // 左右移動範圍縮窄(80→64)，同樣的高度在較窄的弧寬下視覺上更凸。
