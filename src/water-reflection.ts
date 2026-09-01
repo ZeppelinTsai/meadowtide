@@ -127,12 +127,7 @@ function updateMirrorCamera(source: THREE.Camera) {
   mirror.updateMatrixWorld();
   mirror.projectionMatrix.copy(source.projectionMatrix);
 
-  textureMatrix.set(
-    0.5, 0, 0, 0.5,
-    0, 0.5, 0, 0.5,
-    0, 0, 0.5, 0.5,
-    0, 0, 0, 1,
-  );
+  textureMatrix.set(0.5, 0, 0, 0.5, 0, 0.5, 0, 0.5, 0, 0, 0.5, 0.5, 0, 0, 0, 1);
   textureMatrix.multiply(mirror.projectionMatrix);
   textureMatrix.multiply(mirror.matrixWorldInverse);
 
@@ -201,9 +196,7 @@ export function updatePlanarWaterReflection(
       : [mesh.material];
     if (
       !materials.some((material) =>
-        waterSurfaceMaterials.includes(
-          material as ReflectiveWaterMaterial,
-        ),
+        waterSurfaceMaterials.includes(material as ReflectiveWaterMaterial),
       )
     )
       return;

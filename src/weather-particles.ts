@@ -4,6 +4,7 @@ import { scene } from "./scene-sky";
 import { gameState, weatherTransitionRamp } from "./game-state";
 import { INDOOR_MAPS, isOutdoorMap } from "./environment";
 import { MAPS } from "./layout-maps";
+import { isFirstPersonModeActive } from "./first-person-camera";
 import {
   getTileGridWorldBounds,
   scaleCountForWorldBounds,
@@ -359,6 +360,11 @@ import {
           weatherFlashLight.intensity = 0;
           return;
         }
+        // 第一人稱靠近海面時，粒子不能再用 terrain floor 當最低點，
+        // 否則會被壓到海平線附近，像是卡在遠海地面上。
+        const lowerWeatherFloor = isFirstPersonModeActive()
+          ? Math.max(WEATHER_BOUNDS.minY + 2.4, 2.4)
+          : WEATHER_BOUNDS.minY;
         const rainMode =
           gameState.currentWeather === "rain" ||
           gameState.currentWeather === "typhoon" ||
@@ -395,7 +401,7 @@ import {
             );
             y = wrapWeatherParticle(
               y,
-              WEATHER_BOUNDS.minY,
+              lowerWeatherFloor,
               WEATHER_BOUNDS.maxY,
             );
             const slant = rainDrift * 0.055,
@@ -433,7 +439,7 @@ import {
             snowEffect.positions[base + 1] = wrapWeatherParticle(
               snowEffect.positions[base + 1] -
                 (gameState.currentWeather === "blizzard" ? 5.2 : 1.4 + seed) * dt,
-              WEATHER_BOUNDS.minY,
+              lowerWeatherFloor,
               WEATHER_BOUNDS.maxY,
             );
           }
@@ -475,7 +481,7 @@ import {
                     seed * 0.68 +
                     Math.sin(gameState.effectElapsed * 1.15 + seed * 13) * 0.18) *
                     dt,
-                WEATHER_BOUNDS.minY,
+                lowerWeatherFloor,
                 WEATHER_BOUNDS.maxY,
               );
             }
@@ -517,7 +523,7 @@ import {
                       seed * 0.85 +
                       Math.sin(gameState.effectElapsed + seed * 17) * 0.2) *
                       dt,
-                  WEATHER_BOUNDS.minY,
+                  lowerWeatherFloor,
                   WEATHER_BOUNDS.maxY,
                 );
               }
