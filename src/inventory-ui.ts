@@ -382,7 +382,8 @@ function renderModelThumbnail(item: InventoryEntry) {
   // 一點點」。只對 tone==="flower" 的項目往下再挪一點，比例用模型自己
   // 的高度算(不是寫死像素)，五個物種尺寸不同也適用，不影響其他項目。
   if (item.tone === "flower") {
-    model.position.y -= size.y * thumbnailScale * 0.14;
+    // 2026-09-01：0.14 不夠，Zeppelin 反饋「還是需要再度往下」，加大到 0.3。
+    model.position.y -= size.y * thumbnailScale * 0.3;
   }
   scene.add(model);
 
