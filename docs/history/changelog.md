@@ -2,6 +2,49 @@
 
 > 這份是從 `AGENTS.md` 搬過來的逐輪除錯／功能建置紀錄，照時間順序排列，純粹是稽核軌跡（誰在什麼時候回報了什麼、怎麼查出根因、怎麼修的），**不是**還在生效的規則或架構文件——那些留在 `AGENTS.md`（硬規則/驗證命令）跟 `docs/decisions/`（仍然有效的架構決策）。要找「這個系統現在長怎樣」看 `docs/decisions/`；要找「這個 bug 當初是怎麼一路查出來的」才翻這份。
 
+## event-system Phase 1：第一份真正接線的 StoryRuntimeBindings，F9 概念驗證（2026-09-01）
+
+跟 Zeppelin／GPT 討論後定案的做法：不直接 migrate 序章或木匠，先寫一個
+全新、跟現有劇情無關的小事件（`dev.phase1_probe.mayor_wave`，村長被
+叫過來寒暄兩句再回去巡田），接一份真正的 `StoryRuntimeBindings` 實作
+（`src/story/story-runtime-browser.ts`），用 F9 熱鍵手動觸發（見
+`src/input-save.ts`），照四個停損標準驗收。詳細設計跟結論記在
+`docs/decisions/event-system.md`「Phase 1」一節，這裡只記過程：
+
+- 第一次跑 `test:story` 就抓到一個真的問題：測試事件的 ID 跟 textKey
+  一開始寫成 camelCase，被 `story-audit.ts` 的 `ID_PATTERN` 擋下來（只
+  准全小寫+底線）。改成 snake_case 後過關——這是正式系統的 audit 能抓
+  、手刻腳本(carpenter-quest.ts 那種 camelCase key)抓不到的錯誤示範。
+- Zeppelin 實際在遊戲裡按 F9 測過一輪：村長現身/移動/位置正常、鏡頭
+  拉近、對話顯示、時間確實暫停，都過；只有淡出淡入「效果不明顯」。查
+  出來是測試事件自己的 `holdMilliseconds` 給太短（250ms），比對
+  `prologue.ts` 三處真正在用 `showLoadingScreen()` 的地方都是配 900ms
+  的 `holdPrologueBlackScreen()`，改成 900 後 Zeppelin 確認「黑幕有了」
+  。這次修復只動了事件資料裡一個數字，完全沒有動 binding／熱鍵邏輯，
+  驗證了「資料跟邏輯分開」這個賣點是真的。
+- 接線過程中也在 `time-pause.ts` 補了一個新的暫停來源 `"storyEvent"`
+  ——原本想讓 `pauseTime` step 沿用既有的 `"event"`，但 `"event"` 每次
+  都會被 `syncAutomaticPauseSources()` 依對話框開關狀態強制覆蓋，在
+  沒開對話框的鏡頭空檔手動暫停會被立刻蓋掉，等於白設，是真的接上去
+  才發現的坑。
+
+四個停損標準全過，結論是這套正式系統值得繼續投資；要不要進下一步
+（轉換木匠事件）留給 Zeppelin 決定。
+
+## 開發用熱鍵改用 import.meta.env.DEV 自動擋掉正式版（2026-09-01）
+
+Zeppelin 提醒之後會有 electron exe／純 HTML 靜態版好幾種出貨切片，每次
+出貨前手動記得關掉開發用熱鍵容易漏。順手把 `src/input-save.ts` 裡
+F4(鏡頭調整模式)／F8(序幕重播)／F9(event-system Phase 1 概念驗證)／
+C(記錄鏡頭座標) 這四個開發用熱鍵都加上 `import.meta.env.DEV &&` 前置
+條件——Vite 在 `npm run build` 產出的正式版這個值是 `false`，`build:win`
+(electron 包)跟未來的 HTML 靜態版都是吃同一份 `vite build` 輸出，一次
+擋掉兩種切片，不用每次出貨前手動檢查。另外盤點了幾個掛在 `window` 上
+的 console 除錯入口（`saveGame`/`loadGame`/`meadowtideI18n`/幾個雙底線
+前綴的內部除錯變數），這批風險較低（不會被誤觸，只能手動打字呼叫）
+先只記錄沒有動，之後要出公開穩定版時再一起決定要不要收掉。清單跟細節
+見新增的 `docs/decisions/dev-hotkeys.md`。
+
 ## 波上宮風主殿：`makeShrineHall()`（`props.ts`，2026-08-26 已實作）
 
 `LAYOUT.oldVillage.northBeachPlatform`(Codex 建的西北岸神社平台，含

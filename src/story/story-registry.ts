@@ -1,4 +1,5 @@
 import { ACT1_STORY_EVENTS } from "./chapters/act1";
+import { JSON_STORY_EVENTS } from "./chapters/json-events";
 import type { StoryEvent, StoryEventId } from "./story-types";
 
 
@@ -7,9 +8,14 @@ import type { StoryEvent, StoryEventId } from "./story-types";
 const PROLOGUE_STORY_EVENTS: StoryEvent[] = [];
 
 // 所有正式事件唯一的索引入口；不得从各章文件绕过 registry 直接查找。
+// JSON_STORY_EVENTS 是 2026-09-01 Phase A 補的手寫 JSON 事件（見
+// chapters/json-events.ts、chapters/data/*.json、docs/decisions/
+// event-system.md）——進了這個陣列不代表會自動觸發，一樣要看各自的
+// conditions（目前都是 manual only 的草稿/測試事件）。
 export const STORY_EVENTS: StoryEvent[] = [
   ...PROLOGUE_STORY_EVENTS,
   ...ACT1_STORY_EVENTS,
+  ...JSON_STORY_EVENTS,
 ];
 
 const storyEventById = new Map<StoryEventId, StoryEvent>();

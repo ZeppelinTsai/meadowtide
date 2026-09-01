@@ -12,6 +12,13 @@ export interface StoryRuntimeBindings {
   teleport(step: StepOf<"teleport">): Promise<void>;
   grantItem(step: StepOf<"grantItem">): Promise<void>;
   check(condition: StoryWaitCondition): boolean | Promise<boolean>;
+  // 2026-09-01 新增，見 story-types.ts 同一輪的註解跟
+  // docs/decisions/event-system.md。
+  setActorVisible(step: StepOf<"setActorVisible">): Promise<void>;
+  positionActor(step: StepOf<"positionActor">): Promise<void>;
+  matchActorPosition(step: StepOf<"matchActorPosition">): Promise<void>;
+  fade(step: StepOf<"fade">): Promise<void>;
+  pauseTime(step: StepOf<"pauseTime">): Promise<void>;
 }
 
 function delay(milliseconds: number): Promise<void> {
@@ -55,6 +62,21 @@ export function createStoryRuntimeAdapter(bindings: StoryRuntimeBindings): Story
           return;
         case "grantItem":
           await bindings.grantItem(step);
+          return;
+        case "setActorVisible":
+          await bindings.setActorVisible(step);
+          return;
+        case "positionActor":
+          await bindings.positionActor(step);
+          return;
+        case "matchActorPosition":
+          await bindings.matchActorPosition(step);
+          return;
+        case "fade":
+          await bindings.fade(step);
+          return;
+        case "pauseTime":
+          await bindings.pauseTime(step);
           return;
       }
     },

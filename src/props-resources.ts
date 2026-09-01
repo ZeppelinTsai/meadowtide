@@ -307,10 +307,16 @@ export function makeAnimalFeeder(config) {
 
 function makeRadishCropMesh(stage: number) {
   const g = new THREE.Group();
-  const leafMat = new THREE.MeshStandardMaterial({ color: 0x63a94f, flatShading: true });
+  const leafMat = new THREE.MeshStandardMaterial({
+    color: 0x63a94f,
+    flatShading: true,
+  });
   if (stage === 0) {
     for (const side of [-1, 1]) {
-      const leaf = new THREE.Mesh(new THREE.SphereGeometry(0.045, 6, 4), leafMat);
+      const leaf = new THREE.Mesh(
+        new THREE.SphereGeometry(0.045, 6, 4),
+        leafMat,
+      );
       leaf.scale.set(1.45, 0.35, 0.7);
       leaf.position.set(side * 0.035, 0.055, 0);
       leaf.rotation.z = side * 0.45;
@@ -319,7 +325,10 @@ function makeRadishCropMesh(stage: number) {
     return g;
   }
   if (stage === 2) {
-    const root = new THREE.Mesh(new THREE.SphereGeometry(0.105, 8, 6), new THREE.MeshStandardMaterial({ color: 0xf1eee2, flatShading: true }));
+    const root = new THREE.Mesh(
+      new THREE.SphereGeometry(0.105, 8, 6),
+      new THREE.MeshStandardMaterial({ color: 0xf1eee2, flatShading: true }),
+    );
     root.scale.set(0.82, 1.1, 0.82);
     root.position.y = 0.07;
     g.add(root);
@@ -329,14 +338,21 @@ function makeRadishCropMesh(stage: number) {
     const leaf = new THREE.Mesh(new THREE.SphereGeometry(0.075, 6, 4), leafMat);
     const angle = (i / leaves) * Math.PI * 2;
     leaf.scale.set(0.55, stage === 1 ? 0.9 : 1.35, 0.45);
-    leaf.position.set(Math.cos(angle) * 0.055, stage === 1 ? 0.13 : 0.22, Math.sin(angle) * 0.055);
+    leaf.position.set(
+      Math.cos(angle) * 0.055,
+      stage === 1 ? 0.13 : 0.22,
+      Math.sin(angle) * 0.055,
+    );
     leaf.rotation.z = Math.cos(angle) * 0.42;
     leaf.rotation.x = Math.sin(angle) * 0.42;
     g.add(leaf);
   }
   return g;
 }
-export function makeCropMesh(stage, cropType: "radish" | "potato" | "tomato" = "radish") {
+export function makeCropMesh(
+  stage,
+  cropType: "radish" | "potato" | "tomato" = "radish",
+) {
   if (stage === 0) {
     const m = new THREE.Mesh(
       new THREE.ConeGeometry(0.04, 0.1, 5),
@@ -391,7 +407,10 @@ export function makeCropMesh(stage, cropType: "radish" | "potato" | "tomato" = "
       flatShading: true,
     });
     for (let i = 0; i < 5; i++) {
-      const leaf = new THREE.Mesh(new THREE.IcosahedronGeometry(0.045, 0), leafMat);
+      const leaf = new THREE.Mesh(
+        new THREE.IcosahedronGeometry(0.045, 0),
+        leafMat,
+      );
       const a = (i / 5) * Math.PI * 2;
       leaf.position.set(Math.cos(a) * 0.04, 0.27, Math.sin(a) * 0.04);
       leaf.scale.set(1, 0.6, 1.4);
@@ -416,7 +435,10 @@ export function makeCropMesh(stage, cropType: "radish" | "potato" | "tomato" = "
       [-0.04, -0.01],
       [0.03, 0.02],
     ].forEach(([x, z]) => {
-      const bump = new THREE.Mesh(new THREE.SphereGeometry(0.02, 6, 5), bumpMat);
+      const bump = new THREE.Mesh(
+        new THREE.SphereGeometry(0.02, 6, 5),
+        bumpMat,
+      );
       bump.position.set(x, 0.11, z);
       g.add(bump);
     });
@@ -431,7 +453,10 @@ export function makeCropMesh(stage, cropType: "radish" | "potato" | "tomato" = "
       flatShading: true,
     });
     [-1, 1].forEach((side) => {
-      const leaf = new THREE.Mesh(new THREE.IcosahedronGeometry(0.035, 0), sproutMat);
+      const leaf = new THREE.Mesh(
+        new THREE.IcosahedronGeometry(0.035, 0),
+        sproutMat,
+      );
       leaf.position.set(side * 0.035, 0.24, 0);
       leaf.scale.set(1, 0.6, 1.3);
       g.add(leaf);

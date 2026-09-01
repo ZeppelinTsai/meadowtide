@@ -15,16 +15,26 @@ function walkSteps(
   errors: string[],
 ) {
   for (const step of steps) {
-    if (step.type === "dialogue" && !ID_PATTERN.test(step.textKey)) {
-      errors.push(`${event.id}: 非法 textKey「${step.textKey}」`);
+    if (step.type === "dialogue") {
+      if (step.textKey !== undefined) {
+        if (!ID_PATTERN.test(step.textKey)) {
+          errors.push(`${event.id}: 非法 textKey「${step.textKey}」`);
+        }
+      } else if (!step.text || !step.text.trim()) {
+        errors.push(`${event.id}: dialogue 缺少 textKey 或 text`);
+      }
     }
     if (step.type === "choice") {
       if (choiceIds.has(step.choiceId)) {
         errors.push(`${event.id}: 重複 choiceId「${step.choiceId}」`);
       }
       choiceIds.add(step.choiceId);
-      if (!ID_PATTERN.test(step.promptKey)) {
-        errors.push(`${event.id}: 非法 promptKey「${step.promptKey}」`);
+      if (step.promptKey !== undefined) {
+        if (!ID_PATTERN.test(step.promptKey)) {
+          errors.push(`${event.id}: 非法 promptKey「${step.promptKey}」`);
+        }
+      } else if (!step.prompt || !step.prompt.trim()) {
+        errors.push(`${event.id}: choice 缺少 promptKey 或 prompt`);
       }
       const values = new Set<string>();
       for (const option of step.options) {
@@ -32,8 +42,12 @@ function walkSteps(
           errors.push(`${event.id}/${step.choiceId}: 重複選項值「${option.value}」`);
         }
         values.add(option.value);
-        if (!ID_PATTERN.test(option.labelKey)) {
-          errors.push(`${event.id}: 非法 labelKey「${option.labelKey}」`);
+        if (option.labelKey !== undefined) {
+          if (!ID_PATTERN.test(option.labelKey)) {
+            errors.push(`${event.id}: 非法 labelKey「${option.labelKey}」`);
+          }
+        } else if (!option.label || !option.label.trim()) {
+          errors.push(`${event.id}/${step.choiceId}: 選項缺少 labelKey 或 label`);
         }
         if (option.steps) walkSteps(event, option.steps, choiceIds, rewardIds, errors);
       }
@@ -68,6 +82,29 @@ function walkSteps(
       if (step.maxDistance !== undefined && step.maxDistance <= 0) {
         errors.push(event.id + ": follow maxDistance 必須大於 0");
       }
+    }
+    if (
+      (step.type === "setActorVisible" ||
+        step.type === "positionActor" ||
+        step.type === "matchActorPosition") &&
+      !step.actorId.trim()
+    ) {
+      errors.push(event.id + ": " + step.type + " 缺少 actorId");
+    }
+    if (step.type === "positionActor") {
+      if (!Number.isFinite(step.target.x) || !Number.isFinite(step.target.z)) {
+        errors.push(event.id + ": positionActor 目的地座標不合法");
+      }
+    }
+    if (step.type === "matchActorPosition" && !step.toActorId.trim()) {
+      errors.push(event.id + ": matchActorPosition 缺少 toActorId");
+    }
+    if (
+      step.type === "fade" &&
+      step.holdMilliseconds !== undefined &&
+      (!Number.isFinite(step.holdMilliseconds) || step.holdMilliseconds < 0)
+    ) {
+      errors.push(event.id + ": fade holdMilliseconds 必須是不小於 0 的數字");
     }
   }
 }

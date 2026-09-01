@@ -1,0 +1,43 @@
+[
+  {
+    "id": "dev.carpenter_dock_intro_draft",
+    "title": "[草稿] 木匠碼頭初登場（個性化重寫）",
+    "summary": "Zeppelin 2026-09-01 重寫版：木匠一出場先處理危險，不寒暄，凸顯專業/直接的個性。這是 Phase A JSON 事件格式的實測草稿，manual 觸發，故意不接進正式 carpenter-quest.ts 流程，不會跟現行木匠劇情衝突。",
+    "chapter": "dev",
+    "characters": ["carpenter", "mayor"],
+    "priority": 0,
+    "once": false,
+    "conditions": [{ "type": "manual" }],
+    "steps": [
+      { "type": "dialogue", "text": "[木匠蹲在破木板旁檢查。]" },
+      { "type": "dialogue", "text": "別踩這裡。", "speakerId": "carpenter" },
+      {
+        "type": "dialogue",
+        "text": "[主角停住，冒出驚嘆號。]",
+        "comicCue": { "actorId": "player", "kind": "!" }
+      },
+      {
+        "type": "dialogue",
+        "text": "這塊木板裡面已經腐掉了。再拖一個月，誰踩上去誰就下海。",
+        "speakerId": "carpenter"
+      },
+      {
+        "type": "dialogue",
+        "text": "咦？有這麼嚴重嗎？我前幾天經過時還——",
+        "speakerId": "mayor"
+      },
+      { "type": "dialogue", "text": "表面看不出來才危險。", "speakerId": "carpenter" },
+      { "type": "dialogue", "text": "[他站起來，才注意到主角。]" },
+      {
+        "type": "dialogue",
+        "text": "……抱歉，我還沒自我介紹。我是今天剛到的木匠。",
+        "speakerId": "carpenter"
+      },
+      {
+        "type": "dialogue",
+        "text": "聽說島上有不少房子需要修。現在看來，工作可能比我想像中更多。",
+        "speakerId": "carpenter"
+      }
+    ]
+  }
+]

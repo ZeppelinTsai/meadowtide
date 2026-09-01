@@ -166,6 +166,16 @@ const TRANSLATIONS: Record<Locale, TranslationTree> = {
           "「這是我這輩子第一次，晚上回家的時候，知道裡面沒有別人在等我驗收。」",
       },
     },
+    // devTest.* — 2026-09-01 event-system Phase 1 概念驗證專用，見
+    // src/story/chapters/dev-phase1-probe.ts 跟 docs/decisions/event-system.md。
+    // 只有 F9 debug 熱鍵會觸發，不是正式章節內容，之後 Phase 1 驗證完可以整組刪掉。
+    devtest: {
+      wave: {
+        narration_approach: "[村長被叫住，腳步停了一下，轉身走過來]",
+        greeting: "「怎麼，找我有事？」",
+        follow_up: "「（笑）好，我知道了，先這樣，我還要去巡一下田。」",
+      },
+    },
   },
   en: {
     carpenter: {
@@ -212,6 +222,13 @@ const TRANSLATIONS: Record<Locale, TranslationTree> = {
           '"This is the first time in my life that, coming home at night, I know there\'s no one inside waiting to inspect my work."',
       },
     },
+    devtest: {
+      wave: {
+        narration_approach: "[The mayor, called over, pauses mid-step and turns to walk over.]",
+        greeting: '"What is it, need something?"',
+        follow_up: '"(Smiles) Alright, got it. I should get back to checking the fields."',
+      },
+    },
   },
   ja: {
     carpenter: {
@@ -251,6 +268,13 @@ const TRANSLATIONS: Record<Locale, TranslationTree> = {
         narrationLight: "[初めて窓に明かりが灯る。木匠は自分の家の前に立ち、中から漏れる光を見つめていた]",
         final:
           "「夜に家へ帰って、中で誰も俺の仕事を検分して待っていない——そう思えたのは、生まれて初めてだ。」",
+      },
+    },
+    devtest: {
+      wave: {
+        narration_approach: "[村長は呼び止められ、一瞬立ち止まってから振り返って歩いてきた]",
+        greeting: "「どうした、何か用か？」",
+        follow_up: "「（笑って）よし、わかった。じゃあ、畑を見回りに行くよ。」",
       },
     },
   },

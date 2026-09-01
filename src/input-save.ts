@@ -87,6 +87,15 @@ import {
   reportPrologueFishingSuccess,
   restorePrologueSaveState,
 } from "./prologue";
+// event-system Phase 1 概念驗證（F9 熱鍵，見下方 keydown 區塊）——
+// 只在 dev.phase1Probe 這個獨立測試事件用，不接進正式 STORY_EVENTS
+// registry。詳見 docs/decisions/event-system.md「Phase 1」。
+import { runStoryEvent } from "./story/story-runner";
+import { createStoryRuntimeAdapter } from "./story/story-runtime-adapter";
+import { createBrowserStoryRuntimeBindings } from "./story/story-runtime-browser";
+import { createDevPhase1ProbeEvent } from "./story/chapters/dev-phase1-probe";
+import { storyState } from "./story/story-state";
+import { getStoryEvent } from "./story/story-registry";
 import { openCookingMenu } from "./cooking-ui";
 import {
   isFirstPersonModeActive,
@@ -606,11 +615,17 @@ export function loadGame(
 }
 (window as any).saveGame = saveGame;
 (window as any).loadGame = loadGame;
+// 這個 keydown 區塊裡 F8／F4／F9／C 都是開發用熱鍵（序幕預覽、鏡頭調整
+// 模式、event-system 概念驗證、記錄鏡頭座標），一律用 import.meta.env.DEV
+// 擋掉——Vite 在 `npm run build` 產出的正式版裡這個值是 false，所以正式
+// 版(包含 build:win 的 electron 包跟純 HTML 靜態版，兩者都是同一份
+// `vite build` 輸出，不用另外分開處理)這幾支熱鍵會直接失效，不用每次
+// 出正式版前手動記得拔掉。清單跟細節見 docs/decisions/dev-hotkeys.md。
 addEventListener("keydown", (event) => {
   if (event.key === "Tab" && !event.repeat) {
     event.preventDefault();
     toggleFirstPersonMode();
-  } else if (event.key === "F8") {
+  } else if (import.meta.env.DEV && event.key === "F8") {
     // 序幕(開場第一天演出)預覽熱鍵——不清存檔也能重播，見 prologue.ts。
     // 只能在已經站在港口地圖時使用，因為演出要借用 makePortScene() 蓋
     // 好的渡輪/跳板參照(prologueRefs)，還沒進過港口地圖就不會有。
@@ -620,7 +635,7 @@ addEventListener("keydown", (event) => {
     } else {
       previewPrologue(loadMap);
     }
-  } else if (event.key === "F4") {
+  } else if (import.meta.env.DEV && event.key === "F4") {
     // 鏡頭調整模式(cutscene-camera.ts)——開發用，方向鍵平移鏡頭焦點、
     // 滾輪/雙指照舊縮放，C 鍵記一顆鏡頭，再按一次 F4 關閉。搭配 F8
     // 重播序幕，邊看畫面邊試鏡頭構圖。
@@ -635,7 +650,78 @@ addEventListener("keydown", (event) => {
         gameState.player.position.z,
       );
     }
-  } else if (event.key.toLowerCase() === "c") {
+  } else if (import.meta.env.DEV && event.key === "F9") {
+    // event-system Phase 1 概念驗證熱鍵——見 story/chapters/
+    // dev-phase1-probe.ts 開頭註解跟 docs/decisions/event-system.md。
+    // 跟現有劇情內容無關，純粹拿來測 story/ 系統＋
+    // story-runtime-browser.ts 這套 binding 能不能真的動起來。
+    event.preventDefault();
+    if (!gameState.player) return;
+    if (storyState.activeEventId) {
+      console.warn(
+        `[Phase1 概念驗證] 已有事件執行中：${storyState.activeEventId}，忽略這次 F9`,
+      );
+      return;
+    }
+    const probe = createDevPhase1ProbeEvent(
+      gameState.player.position.x,
+      gameState.player.position.z,
+    );
+    const adapter = createStoryRuntimeAdapter(createBrowserStoryRuntimeBindings());
+    runStoryEvent(
+      probe,
+      {
+        mapId: gameState.currentMapName,
+        day: gameState.currentDay,
+        season: gameState.currentSeason,
+        phase: 0,
+        relationships: {},
+        inventory: {},
+      },
+      adapter,
+      { allowManual: true },
+    )
+      .then(() => console.info("[Phase1 概念驗證] dev.phase1_probe.mayor_wave 執行完成"))
+      .catch((error) =>
+        console.error("[Phase1 概念驗證] dev.phase1_probe.mayor_wave 執行失敗：", error),
+      );
+  } else if (import.meta.env.DEV && event.key === "F10") {
+    // event-system Phase A 概念驗證熱鍵——播放 chapters/data/*.json 裡
+    // 手寫的草稿事件（目前是 dev.carpenter_dock_intro_draft，Zeppelin
+    // 2026-09-01 重寫的木匠碼頭初登場個性化版本）。跟 F9 一樣只能手動
+    // 觸發、跟正式 carpenter-quest.ts 流程完全無關，純粹拿來實測 JSON
+    // 手寫事件格式在真實畫面上能不能正確播放。見 docs/decisions/
+    // event-system.md「Phase A」。
+    event.preventDefault();
+    if (!gameState.player) return;
+    if (storyState.activeEventId) {
+      console.warn(
+        `[Phase A JSON 草稿] 已有事件執行中：${storyState.activeEventId}，忽略這次 F10`,
+      );
+      return;
+    }
+    const draft = getStoryEvent("dev.carpenter_dock_intro_draft");
+    if (!draft) {
+      console.warn("[Phase A JSON 草稿] 找不到 dev.carpenter_dock_intro_draft，檢查 chapters/data/ 底下的 JSON 檔案是否還在");
+      return;
+    }
+    const adapter = createStoryRuntimeAdapter(createBrowserStoryRuntimeBindings());
+    runStoryEvent(
+      draft,
+      {
+        mapId: gameState.currentMapName,
+        day: gameState.currentDay,
+        season: gameState.currentSeason,
+        phase: 0,
+        relationships: {},
+        inventory: {},
+      },
+      adapter,
+      { allowManual: true },
+    )
+      .then(() => console.info(`[Phase A JSON 草稿] ${draft.id} 執行完成`))
+      .catch((error) => console.error(`[Phase A JSON 草稿] ${draft.id} 執行失敗：`, error));
+  } else if (import.meta.env.DEV && event.key.toLowerCase() === "c") {
     if (isCameraAdjustModeActive()) {
       event.preventDefault();
       recordCameraAdjustShot();

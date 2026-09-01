@@ -1,7 +1,20 @@
 import { gameState } from "./game-state";
 import { INDOOR_MAPS } from "./environment";
 
-export type TimePauseSource = "event" | "inventory" | "interior" | "menu";
+// storyEvent：2026-09-01 event-system Phase 1 補的第五個來源，給
+// story/story-runtime-browser.ts 的 pauseTime binding 專用。不能沿用既有
+// "event"，因為 syncAutomaticPauseSources() 每次呼叫都會用 #dialog 的
+// 顯示狀態覆蓋 "event"——手動在「沒有對話框開著」的鏡頭/演出空檔呼叫
+// setTimePauseSource("event", true) 會在下一次任何地方呼叫
+// isWorldTimePaused()/isGameplayPaused() 時被自動同步邏輯蓋掉，等於白設。
+// "storyEvent" 沒有被 syncAutomaticPauseSources() 動到，設了就會一直生效
+// 到明確關掉為止。見 docs/decisions/event-system.md Phase 1 紀錄。
+export type TimePauseSource =
+  | "event"
+  | "inventory"
+  | "interior"
+  | "menu"
+  | "storyEvent";
 
 const activeSources = new Set<TimePauseSource>();
 
@@ -39,6 +52,7 @@ export function isGameplayPaused() {
     activeSources.has("event") ||
     activeSources.has("inventory") ||
     activeSources.has("menu") ||
+    activeSources.has("storyEvent") ||
     isLegacyPauseEnabled()
   );
 }
