@@ -376,6 +376,14 @@ function renderModelThumbnail(item: InventoryEntry) {
   // INVENTORY_THUMBNAIL_LONG_EDGE，縮圖大小才會真正統一。
   model.scale.multiplyScalar(thumbnailScale);
   model.position.sub(center.multiplyScalar(thumbnailScale));
+  // 2026-09-01：花的視覺重量集中在莖頂的花頭，3D bbox 幾何中心落在
+  // 細莖的中段(頭以上大半是空氣、頭以下才是細莖)，直接照幾何中心置中
+  // 會讓花頭看起來偏上——Zeppelin 反饋「花系列的在資訊列表太上面了
+  // 一點點」。只對 tone==="flower" 的項目往下再挪一點，比例用模型自己
+  // 的高度算(不是寫死像素)，五個物種尺寸不同也適用，不影響其他項目。
+  if (item.tone === "flower") {
+    model.position.y -= size.y * thumbnailScale * 0.14;
+  }
   scene.add(model);
 
   const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 10);

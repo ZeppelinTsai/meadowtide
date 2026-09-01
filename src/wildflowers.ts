@@ -220,12 +220,14 @@ function makeDandelionHead(): THREE.Group {
     side: THREE.DoubleSide,
   });
   // 2026-09-01：原尺寸實機測試太不明顯，Zeppelin 反饋「黃花需要大一點」，
-  // 花瓣加長加寬、基部離心距離跟著放大，其餘四個物種的比例不受影響。
-  const petalGeo = pointedPetalGeometry(0.07, 0.013);
+  // 花瓣加長加寬、基部離心距離跟著放大；第二輪反饋又要求再放大一點、
+  // 補上描邊(跟白雛菊/粉紅酢漿草同一套 radialPetalWithOutline)，其餘
+  // 物種的比例不受影響。
+  const petalGeo = pointedPetalGeometry(0.082, 0.016);
   const petalCount = 22;
   for (let i = 0; i < petalCount; i++) {
     const angle = (i / petalCount) * Math.PI * 2 + hash2(i, 3.1) * 0.2;
-    head.add(radialPart(petalGeo, petalMat, angle, 0.32, 0.009));
+    head.add(radialPetalWithOutline(petalGeo, petalMat, angle, 0.32, 0.011));
   }
   return g;
 }
@@ -300,15 +302,18 @@ function makePinkWoodSorrelHead(): THREE.Group {
   const head = new THREE.Group();
   head.position.set(0.02, flowerHeight, 0.02);
   g.add(head);
+  // 2026-09-01：原本的粉色實機測試「不夠明顯」，換成飽和度更高的洋紅粉
+  // (0xf1789f → 0xe0327d)；描邊倍率也從共用預設 1.3 收到 1.18，花瓣本身
+  // 比較窄，描邊太粗會把粉色面積吃掉太多，收窄後粉色本體比較看得出來。
   const petalMat = new THREE.MeshStandardMaterial({
-    color: 0xf1789f,
+    color: 0xe0327d,
     flatShading: true,
     side: THREE.DoubleSide,
   });
   const petalGeo = pointedPetalGeometry(0.055, 0.033);
   for (let i = 0; i < 5; i++) {
     const angle = (i / 5) * Math.PI * 2;
-    head.add(radialPetalWithOutline(petalGeo, petalMat, angle, 0.15, 0.011));
+    head.add(radialPetalWithOutline(petalGeo, petalMat, angle, 0.15, 0.011, 1.18));
   }
   const center = new THREE.Mesh(
     new THREE.SphereGeometry(0.01, 6, 4),
