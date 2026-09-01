@@ -692,17 +692,17 @@ export function buildMap(mapName) {
     plateauGroup.position.y = PLATEAU_Y;
     gameState.mapGroup.add(plateauGroup);
   } else if (mapName === "port") {
-    // 港區使用石板廣場底板；北緣 tile 8 仍在下方逐格呼叫共用 makeSand()，
-    // 因此與生活區沙灘保持同一套顏色與低模表面。港區的碼頭/樓梯材質都是
-    // 正常寫深度的 opaque 材質，沒有 oldVillage terraceMat 那種
-    // depthWrite:false 的台地，所以整片底板可以直接套 starSafe，不用分塊。
-    addMapFloorPatch({
+    // 港區也要跟城鎮/生活區一起走季節地表更新；冬天的地面應該覆上一層雪色，
+    // 不要一直停在固定的石板棕灰。這塊底板仍然是裸露地面，所以可以沿用
+    // starSafe 的透明蓋層手法，讓星空在白雪地上仍然正確被遮住。
+    const portGroundMat = addMapFloorPatch({
       width: cols,
       depth: rows,
-      color: 0xb8aa91,
+      color: getSeasonGrassTone().ground,
       roughness: 0.96,
       starSafe: true,
     });
+    seasonalGroundMaterials.push(portGroundMat);
     plateauGroup.add(makePortScene());
   } else {
     // oldVillage 這類獨立小地圖：跟 house 一樣是純平地，沒有懸崖/
