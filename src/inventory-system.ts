@@ -22,6 +22,11 @@ import {
   HELD_ITEM_POSITION,
   HELD_ITEM_WORLD_SIZE,
 } from "./held-item-pose";
+import {
+  applyTransferToBag,
+  applyTransferToStorage,
+  clampTransferAmount,
+} from "./inventory-transfer";
 
 let visualOwner: THREE.Object3D | null = null;
 let heldVisual: THREE.Object3D | null = null;
@@ -105,27 +110,94 @@ export function storedItemAmount(itemId: string) {
   return Math.max(0, Number(inventory.storage[itemId]) || 0);
 }
 
-export function moveItemToStorage(itemId: string): boolean {
+export function moveItemToStorageAmount(itemId: string, amount: number): boolean {
   const item = inventoryItem(itemId);
-  if (!item || itemAmount(itemId) <= 0) return false;
-  changeItemAmount(itemId, -1);
-  inventory.storage[itemId] = storedItemAmount(itemId) + 1;
-  if (inventory.heldItemId === itemId && itemAmount(itemId) <= 0) {
+  if (!item) return false;
+  const transferAmount = clampTransferAmount(itemAmount(itemId), amount);
+  if (transferAmount <= 0) return false;
+  const next = applyTransferToStorage(
+    itemAmount(itemId),
+    storedItemAmount(itemId),
+    transferAmount,
+  );
+  const bagAmount = next.bagAmount;
+  const storageAmount = next.storageAmount;
+  if (itemId === "radishSeeds") inventory.seeds = bagAmount;
+  else if (itemId === "potatoSeeds") inventory.potatoSeeds = bagAmount;
+  else if (itemId === "tomatoSeeds") inventory.tomatoSeeds = bagAmount;
+  else if (itemId === "harvested") inventory.harvested = bagAmount;
+  else if (itemId === "mushroom") inventory.mushrooms = bagAmount;
+  else if (itemId === "fish") inventory.fish = bagAmount;
+  else if (itemId === "oysters") inventory.oysters = bagAmount;
+  else if (itemId === "wood") inventory.wood = bagAmount;
+  else if (itemId === "stone") inventory.stone = bagAmount;
+  else if (itemId === "copper") inventory.copper = bagAmount;
+  else if (itemId === "silver") inventory.silver = bagAmount;
+  else if (itemId === "gold") inventory.gold = bagAmount;
+  else if (itemId === "starCrystal") inventory.starCrystal = bagAmount;
+  else if (itemId === "godCrystal") inventory.godCrystal = bagAmount;
+  else if (itemId.startsWith("pearl-")) {
+    const rarity = itemId.slice(6) as import("./pearl-system").PearlRarity;
+    inventory.pearls[rarity] = bagAmount;
+  } else if (itemId.startsWith("dish-")) {
+    const recipeId = itemId.slice(5);
+    inventory.dishes[recipeId] = bagAmount;
+  }
+  inventory.storage[itemId] = storageAmount > 0 ? storageAmount : undefined;
+  if (storageAmount <= 0) delete inventory.storage[itemId];
+  if (inventory.heldItemId === itemId && bagAmount <= 0) {
     inventory.heldItemId = null;
     renderedItemId = null;
   }
-  showUiToast("倉庫", item.label + "已放入倉庫。");
+  showUiToast("倉庫", `${item.label}已放入倉庫 ×${transferAmount}。`);
+  return true;
+}
+
+export function moveItemToStorage(itemId: string): boolean {
+  return moveItemToStorageAmount(itemId, 1);
+}
+
+export function moveItemFromStorageAmount(itemId: string, amount: number): boolean {
+  const item = inventoryItem(itemId);
+  if (!item) return false;
+  const transferAmount = clampTransferAmount(storedItemAmount(itemId), amount);
+  if (transferAmount <= 0) return false;
+  const next = applyTransferToBag(
+    itemAmount(itemId),
+    storedItemAmount(itemId),
+    transferAmount,
+  );
+  const bagAmount = next.bagAmount;
+  const storageAmount = next.storageAmount;
+  if (itemId === "radishSeeds") inventory.seeds = bagAmount;
+  else if (itemId === "potatoSeeds") inventory.potatoSeeds = bagAmount;
+  else if (itemId === "tomatoSeeds") inventory.tomatoSeeds = bagAmount;
+  else if (itemId === "harvested") inventory.harvested = bagAmount;
+  else if (itemId === "mushroom") inventory.mushrooms = bagAmount;
+  else if (itemId === "fish") inventory.fish = bagAmount;
+  else if (itemId === "oysters") inventory.oysters = bagAmount;
+  else if (itemId === "wood") inventory.wood = bagAmount;
+  else if (itemId === "stone") inventory.stone = bagAmount;
+  else if (itemId === "copper") inventory.copper = bagAmount;
+  else if (itemId === "silver") inventory.silver = bagAmount;
+  else if (itemId === "gold") inventory.gold = bagAmount;
+  else if (itemId === "starCrystal") inventory.starCrystal = bagAmount;
+  else if (itemId === "godCrystal") inventory.godCrystal = bagAmount;
+  else if (itemId.startsWith("pearl-")) {
+    const rarity = itemId.slice(6) as import("./pearl-system").PearlRarity;
+    inventory.pearls[rarity] = bagAmount;
+  } else if (itemId.startsWith("dish-")) {
+    const recipeId = itemId.slice(5);
+    inventory.dishes[recipeId] = bagAmount;
+  }
+  if (storageAmount > 0) inventory.storage[itemId] = storageAmount;
+  else delete inventory.storage[itemId];
+  showUiToast("倉庫", `${item.label}已放入背包 ×${transferAmount}。`);
   return true;
 }
 
 export function moveItemFromStorage(itemId: string): boolean {
-  const item = inventoryItem(itemId);
-  if (!item || storedItemAmount(itemId) <= 0) return false;
-  inventory.storage[itemId] = storedItemAmount(itemId) - 1;
-  if (inventory.storage[itemId] <= 0) delete inventory.storage[itemId];
-  changeItemAmount(itemId, 1);
-  showUiToast("倉庫", item.label + "已放入背包。");
-  return true;
+  return moveItemFromStorageAmount(itemId, 1);
 }
 
 export function consumeInventoryItem(itemId: string, amount = 1): boolean {
@@ -194,7 +266,44 @@ export function stowHeldItem(): boolean {
   return true;
 }
 
+function makeRadishDisplayModel() {
+  const group = new THREE.Group();
+  const root = new THREE.Mesh(
+    new THREE.SphereGeometry(0.18, 10, 8),
+    new THREE.MeshStandardMaterial({ color: 0xf0c38c, flatShading: true }),
+  );
+  root.scale.set(1.0, 0.72, 1.0);
+  root.position.y = 0.08;
+  group.add(root);
+
+  const top = new THREE.Mesh(
+    new THREE.SphereGeometry(0.14, 10, 8),
+    new THREE.MeshStandardMaterial({ color: 0x5cae4a, flatShading: true }),
+  );
+  top.scale.set(1.25, 0.5, 1.25);
+  top.position.y = 0.2;
+  group.add(top);
+
+  for (let i = 0; i < 5; i++) {
+    const leaf = new THREE.Mesh(
+      new THREE.SphereGeometry(0.08, 7, 6),
+      new THREE.MeshStandardMaterial({ color: 0x6cbf57, flatShading: true }),
+    );
+    const angle = (i / 5) * Math.PI * 2;
+    leaf.scale.set(1.5, 0.45, 0.75);
+    leaf.position.set(Math.cos(angle) * 0.12, 0.25, Math.sin(angle) * 0.12);
+    leaf.rotation.z = Math.cos(angle) * 0.8;
+    leaf.rotation.x = Math.sin(angle) * 0.8;
+    group.add(leaf);
+  }
+
+  return group;
+}
+
 export function makeInventoryItemVisual(itemId: string): THREE.Object3D {
+  if (itemId === "radishSeeds" || itemId === "harvested") {
+    return makeRadishDisplayModel();
+  }
   if (itemId.endsWith("Seeds")) {
     const colors: Record<string, number> = {
       radishSeeds: 0xe9d6a5,
@@ -203,7 +312,6 @@ export function makeInventoryItemVisual(itemId: string): THREE.Object3D {
     };
     return makeSeedPouch();
   }
-  if (itemId === "harvested") return makeCropMesh(2);
   if (itemId === "mushroom") {
     const group = new THREE.Group();
     const stem = new THREE.Mesh(

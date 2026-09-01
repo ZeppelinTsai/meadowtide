@@ -1854,17 +1854,22 @@ canvas {
   position: relative;
 }
 .inventory-content-menu {
-  position: absolute;
-  inset: 0;
-  z-index: 3;
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  z-index: 1200;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 14px;
+  width: min(560px, calc(100vw - 32px));
   padding: 28px;
-  background: rgba(16, 24, 31, 0.94);
-  border-radius: 14px;
+  background: rgba(20, 30, 37, 0.92);
+  border: 3px solid rgba(236, 201, 125, 0.9);
+  border-radius: 18px;
+  box-shadow: 0 26px 46px rgba(0, 0, 0, 0.38);
+  transform: translate(-50%, -50%);
 }
 .inventory-content-menu[hidden] {
   display: none;
@@ -1890,6 +1895,56 @@ canvas {
   background: #a77b43;
   outline: 3px solid #f4d68e;
   outline-offset: 2px;
+}
+.inventory-quantity-label {
+  font-size: 18px;
+  color: #f5dfb0;
+}
+.inventory-quantity-picker {
+  display: grid;
+  grid-template-columns: 92px 92px 92px;
+  grid-template-rows: 52px 92px 52px;
+  grid-template-areas:
+    ". up ."
+    "left display right"
+    ". down .";
+  gap: 8px;
+  align-items: center;
+  justify-items: center;
+  width: min(310px, 100%);
+}
+.inventory-quantity-arrow,
+.inventory-quantity-display {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  border: 2px solid rgba(226, 198, 139, 0.65);
+  border-radius: 12px;
+  background: rgba(252, 240, 213, 0.88);
+  color: #573b27;
+  font: inherit;
+  font-weight: 800;
+  box-shadow: 0 3px 0 rgba(104, 69, 39, 0.72);
+}
+.inventory-quantity-arrow {
+  min-width: 0;
+  font-size: 18px;
+}
+.inventory-quantity-up { grid-area: up; }
+.inventory-quantity-left { grid-area: left; }
+.inventory-quantity-right { grid-area: right; }
+.inventory-quantity-down { grid-area: down; }
+.inventory-quantity-display {
+  grid-area: display;
+  min-width: 0;
+  font-size: 42px;
+  line-height: 1;
+  background: rgba(242, 219, 175, 0.96);
+}
+.inventory-confirm-quantity {
+  min-width: min(300px, 72%);
 }
 /* 右下快捷背包：十字鍵與滑鼠共用同一組方向動作。 */
 #quickItemHud {

@@ -9,7 +9,9 @@ import {
   inventoryItem,
   makeInventoryItemVisual,
   moveItemFromStorage,
+  moveItemFromStorageAmount,
   moveItemToStorage,
+  moveItemToStorageAmount,
   storedItemAmount,
   takeOutItem,
 } from "./inventory-system";
@@ -264,6 +266,9 @@ function closeItemContentMenu(restoreFocus = true) {
   contextReturnCard = null;
   contentMenu.hidden = true;
   contentMenu.innerHTML = "";
+  if (contentMenu.parentNode && contentMenu.parentNode !== document.body) {
+    document.body.appendChild(contentMenu);
+  }
   if (restoreFocus && open && returnCard?.isConnected) returnCard.focus();
 }
 
@@ -288,6 +293,9 @@ function openItemContentMenu(
   if (!item || available <= 0) return;
   contextItemId = itemId;
   contentMenu.innerHTML = "";
+  if (contentMenu.parentNode !== document.body) {
+    document.body.appendChild(contentMenu);
+  }
   contentMenu.hidden = false;
   const heading = document.createElement("h3");
   heading.textContent = translateText(item.label);
@@ -305,21 +313,98 @@ function openItemContentMenu(
       }));
     }
   }
-  contentMenu.appendChild(makeActionButton(
-    itemTab === "storage" ? "放入背包" : "放入倉庫",
-    () => {
+
+  let selectedAmount = Math.min(1, available);
+  let quantityDisplay: HTMLButtonElement | null = null;
+  const quantityLabel = document.createElement("div");
+  quantityLabel.textContent = itemTab === "storage" ? "轉出數量" : "轉入數量";
+  quantityLabel.className = "inventory-quantity-label";
+
+  const updateQuantity = (delta: number) => {
+    selectedAmount = Math.max(1, Math.min(available, selectedAmount + delta));
+    if (quantityDisplay) {
+      quantityDisplay.textContent = `${selectedAmount}`;
+      quantityDisplay.setAttribute("aria-label", `${translateText(item.label)}，${selectedAmount} 個`);
+    }
+    const confirm = contentMenu.querySelector<HTMLButtonElement>(".inventory-confirm-quantity");
+    if (confirm) confirm.textContent = `確認轉移 ${selectedAmount} 個`;
+  };
+
+  const quantityPicker = document.createElement("div");
+  quantityPicker.className = "inventory-quantity-picker";
+
+  const buildArrow = (direction: "up" | "down" | "left" | "right", step: number, label: string) => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = `inventory-quantity-arrow inventory-quantity-${direction}`;
+    button.textContent = label;
+    button.setAttribute("aria-label", `${direction === "up" ? "增加" : direction === "down" ? "減少" : direction === "left" ? "減少" : "增加"} ${Math.abs(step)} 個`);
+    button.addEventListener("click", () => updateQuantity(step));
+    return button;
+  };
+
+  quantityDisplay = document.createElement("button");
+  quantityDisplay.type = "button";
+  quantityDisplay.className = "inventory-quantity-display";
+  quantityDisplay.textContent = String(selectedAmount);
+  quantityDisplay.setAttribute("aria-label", `${translateText(item.label)}，${selectedAmount} 個`);
+  quantityDisplay.tabIndex = 0;
+  quantityDisplay.addEventListener("keydown", (event) => {
+    if (event.key === "ArrowLeft") { event.preventDefault(); updateQuantity(-1); }
+    if (event.key === "ArrowRight") { event.preventDefault(); updateQuantity(1); }
+    if (event.key === "ArrowUp") { event.preventDefault(); updateQuantity(10); }
+    if (event.key === "ArrowDown") { event.preventDefault(); updateQuantity(-10); }
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
       closeItemContentMenu(false);
-      transferSelectedItem(itemId, itemTab);
-    },
-  ));
+      transferSelectedItem(itemId, itemTab, selectedAmount);
+    }
+  });
+
+  if (available > 1) {
+    contentMenu.appendChild(quantityLabel);
+    quantityPicker.append(
+      buildArrow("up", 10, "▲ 10"),
+      buildArrow("left", -1, "◀ 1"),
+      quantityDisplay,
+      buildArrow("right", 1, "1 ▶"),
+      buildArrow("down", -10, "▼ 10"),
+    );
+    contentMenu.appendChild(quantityPicker);
+    const confirm = makeActionButton(
+      `確認轉移 ${selectedAmount} 個`,
+      () => {
+        closeItemContentMenu(false);
+        transferSelectedItem(itemId, itemTab, selectedAmount);
+      },
+    );
+    confirm.classList.add("inventory-confirm-quantity");
+    contentMenu.appendChild(confirm);
+  } else {
+    contentMenu.appendChild(makeActionButton(
+      itemTab === "storage" ? "放入背包" : "放入倉庫",
+      () => {
+        closeItemContentMenu(false);
+        transferSelectedItem(itemId, itemTab);
+      },
+    ));
+  }
+
   contentMenu.appendChild(makeActionButton("取消", closeItemContentMenu));
-  (contentMenu.querySelector("button") as HTMLButtonElement | null)?.focus();
+  if (available > 1) {
+    const confirmButton = Array.from(contentMenu.querySelectorAll<HTMLButtonElement>("button")).find(
+      (button) => button.textContent?.includes("確認轉移"),
+    );
+    confirmButton?.focus();
+  } else {
+    (contentMenu.querySelector("button") as HTMLButtonElement | null)?.focus();
+  }
 }
 
-function transferSelectedItem(itemId: string, activeId: InventoryTab) {
+function transferSelectedItem(itemId: string, activeId: InventoryTab, amount = 1) {
   const moved = activeId === "storage"
-    ? moveItemFromStorage(itemId)
-    : moveItemToStorage(itemId);
+    ? moveItemFromStorageAmount(itemId, amount)
+    : moveItemToStorageAmount(itemId, amount);
   if (moved) renderInventory(true);
 }
 
