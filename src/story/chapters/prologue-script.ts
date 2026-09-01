@@ -96,6 +96,7 @@ export const PROLOGUE_MARKERS = Object.freeze({
   enterFarmHouse: "[兩人進入牧場小屋]",
   foodQuestion: "「在蘿蔔成熟以前，我要吃什麼？」",
   captainWarehouseFade: "[船長前往倉庫取釣竿]",
+  cookingComplete: "[玩家完成一份烤魚]",
 });
 export const PROLOGUE_SCRIPT: Record<string, DialogueLine[]> = {
   flyer: [
@@ -234,10 +235,6 @@ export const PROLOGUE_SCRIPT: Record<string, DialogueLine[]> = {
     cue("[村長停頓了一下]", "mayor", "..."),
     mayorCue("「糟糕，我是不是連釣竿也忘了準備？」", "gloom"),
     mayor("「真不好意思。我們去問問船長吧，他現在應該還在港口。」"),
-    mayor(
-      "「對了，這張島嶼地圖交給你。去港口的路也標在上面，之後自己出門時會用得上。」",
-    ),
-    "[村長將島嶼地圖交給主角]",
     "[村長進入同行狀態。港口在東邊；黃色地板代表可進入區域]",
   ],
   fishing: [
@@ -266,7 +263,7 @@ export const PROLOGUE_SCRIPT: Record<string, DialogueLine[]> = {
       "「說起來，我還沒跟你自我介紹是吧。我叫赫克托，是這艘補給船的船長。」",
       { npcId: "captain", stage: 1 },
     ),
-    captain("「都拿出來了，我就順便教你怎麼用吧。」"),
+    captain("「都拿出來了，我就順便教你怎麼用吧。到南邊的沙灘試試，那裡比較安全。」"),
     captain(
       "「裝備釣竿後，面向水邊按下 E，就能拋竿。魚上鉤時會出現提示，要把握時機收竿。」",
     ),
@@ -275,21 +272,21 @@ export const PROLOGUE_SCRIPT: Record<string, DialogueLine[]> = {
   fishingFailed: [
     captain("「別在意，第一次失手很正常。看準魚咬鉤的提示，再試一次吧。」"),
   ],
-  fishingSuccess: [mayor("「太好了！那我們回牧場小屋去吧。」")],
+  fishingSuccess: [mayor("「釣到魚了呢！那我們回牧場小屋去吧。」")],
   cooking: [
-    "[直接轉場至牧場小屋]",
-    mayor("「接下來是料理。使用爐灶後，就能從已經學會的食譜中選擇一道製作。」"),
+    mayor("「接下來是料理。爐灶就在屋子的右上角，走近調查就能做菜。」"),
     mayor(
-      "「廚房現在只有最基本的炊具，能做的料理還不多。先試著做一份烤魚吧。」",
+      "「廚房現在只有最基本的炊具，能做的料理還不多。先試著做一份料理吧。」",
     ),
-    "[玩家完成一份烤魚]",
+    PROLOGUE_MARKERS.cookingComplete,
     mayor("「很好，聞起來不錯。」"),
     mayor(
       "「不同料理除了恢復體力，也可能帶來暫時效果。出門前吃對料理，做事會輕鬆不少。」",
     ),
     mayor("「種田、釣魚和料理，你都已經會了。剩下的不用急，慢慢來就好。」"),
     mayor("「這一週應該還會有幾個人來到島上。有人抵達時，我會去牧場通知你。」"),
-    mayor("「那麼，今天就先到這裡。歡迎來到島上，牧場主。」"),
-    "[序章結束——時間從 15:00 開始流動]",
+    mayor("「最後，這張島嶼地圖交給你。按下 M 或 View 就能查看地圖。」"),
+    "[村長將島嶼地圖交給主角]",
+    mayor("「那麼，歡迎來到島上，牧場主。」"),
   ],
 };

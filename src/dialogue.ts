@@ -143,9 +143,28 @@ export let dialogSequenceOnComplete = null;
 // onComplete 是選用的：劇情事件(如木匠抵達)要在整段對話跑完後接材料
 // 檢查/進度推進時傳進來，一般單純的多句對話不用管這個參數
 export function showDialogSequence(lines, onComplete = null) {
-  dialogQueue = lines.map(normalizeDialogLine);
+  const normalized = lines.map(normalizeDialogLine);
+  const compacted = [];
+  let pendingComicCue = null;
+  normalized.forEach((line) => {
+    const isStageDirection = /^\[.*\]$/.test(line.text.trim());
+    if (isStageDirection) {
+      if (line.comicCue) pendingComicCue = line.comicCue;
+      return;
+    }
+    if (pendingComicCue && !line.comicCue) line.comicCue = pendingComicCue;
+    pendingComicCue = null;
+    compacted.push(line);
+  });
+  dialogQueue = compacted;
   dialogIndex = 0;
   dialogSequenceOnComplete = onComplete;
+  if (!dialogQueue.length) {
+    closeDialogUi();
+    dialogSequenceOnComplete = null;
+    if (onComplete) queueMicrotask(onComplete);
+    return;
+  }
   renderDialogLine(dialogQueue[0]);
   dialogEl.style.display = "flex"; // flex 才吃得到 align-items:center 讓文字上下置中
 }

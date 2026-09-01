@@ -7,7 +7,10 @@ import {
   saveGame,
   setActiveSaveSlot,
 } from "./input-save";
-import { renderSaveSlotButtons } from "./save-slot-ui";
+import {
+  renderSaveSlotButtons,
+  renderWritableSaveSlotButtons,
+} from "./save-slot-ui";
 import { mountSystemSettings } from "./system-settings-ui";
 import { translateText } from "./i18n";
 import { canQuickSaveDuringPrologue } from "./prologue";
@@ -26,7 +29,13 @@ import { showUiToast } from "./ui-toast";
 // 移動的邏輯。
 // ==============================================================
 
-type PauseStep = "menu" | "loadSlots" | "tutorial" | "tutorialCards" | "system";
+type PauseStep =
+  | "menu"
+  | "saveSlots"
+  | "loadSlots"
+  | "tutorial"
+  | "tutorialCards"
+  | "system";
 
 const WALKING_TUTORIAL = [
   { kicker: "第一章・基本操作", title: "移動與觀察", text: "用 WASD 或左搖桿移動；滑鼠與右搖桿控制鏡頭，滾輪或 LT／RT 調整遠近。", keys: ["W A S D", "左搖桿", "滑鼠／右搖桿"], image: "/assets/tutorial/walking-1.png", alt: "主角在農場道路上行走" },
@@ -55,6 +64,10 @@ export function initPauseMenu() {
   const titleButton = byId<HTMLButtonElement>("pauseTitleBtn");
   const quitButton = byId<HTMLButtonElement>("pauseQuitBtn");
   const quitMessage = byId<HTMLElement>("pauseQuitMessage");
+  const saveSlotsList = byId<HTMLElement>("pauseSaveSlotsList");
+  const saveSlotsBackButton = byId<HTMLButtonElement>(
+    "pauseSaveSlotsBackBtn",
+  );
   const loadSlotsList = byId<HTMLElement>("pauseLoadSlotsList");
   const loadSlotsBackButton = byId<HTMLButtonElement>(
     "pauseLoadSlotsBackBtn",
@@ -126,6 +139,9 @@ export function initPauseMenu() {
   function setStep(nextStep: PauseStep) {
     step = nextStep;
     overlay.dataset.step = nextStep;
+    if (nextStep === "saveSlots") {
+      renderWritableSaveSlotButtons(saveSlotsList, saveToSlotInGame);
+    }
     if (nextStep === "loadSlots") {
       renderSaveSlotButtons(loadSlotsList, loadFromSlotInGame);
     }
@@ -170,16 +186,20 @@ export function initPauseMenu() {
     closePauseMenu();
   }
 
+  function saveToSlotInGame(slot: number) {
+    setActiveSaveSlot(slot);
+    saveGame("slot" + slot);
+    showUiToast("儲存進度", `已儲存到第 ${slot} 格。`);
+    closePauseMenu();
+  }
+
   resumeButton.addEventListener("click", closePauseMenu);
   saveButton.addEventListener("click", () => {
     if (!canQuickSaveDuringPrologue()) {
       showUiToast("無法儲存", "序章尚未到達可安全存檔的自由活動階段。");
       return;
     }
-    const slot = getActiveSaveSlot();
-    saveGame("slot" + slot);
-    showUiToast("儲存進度", `已儲存到第 ${slot} 格。`);
-    closePauseMenu();
+    setStep("saveSlots");
   });
   quickPauseButton.addEventListener("click", () => {
     if (!gameState.player || gameState.cutsceneActive) return;
@@ -203,6 +223,7 @@ export function initPauseMenu() {
     lastTutorialScroll = now;
     changeTutorialPage(event.deltaY > 0 ? 1 : -1);
   }, { passive: false });
+  saveSlotsBackButton.addEventListener("click", () => setStep("menu"));
   loadSlotsBackButton.addEventListener("click", () => setStep("menu"));
   systemButton.addEventListener("click", () => setStep("system"));
   systemBackButton.addEventListener("click", () => setStep("menu"));

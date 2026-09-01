@@ -78,11 +78,13 @@ import {
 import { tryShareChefMeal, mergeChefMealIntoChatLine } from "./chef-quest";
 import {
   canQuickSaveDuringPrologue,
+  canUsePrologueKitchen,
   exportPrologueSaveState,
   isPrologueFishingTutorialActive,
   previewPrologue,
   reportPrologueFishingFailure,
   reportPrologueFishingSuccess,
+  reportPrologueCookingSuccess,
   restorePrologueSaveState,
 } from "./prologue";
 import {
@@ -1226,7 +1228,9 @@ addEventListener("keydown", (e) => {
       (item) => item.type === "stove",
     );
     if (stove && Math.abs(stove.x - hx) + Math.abs(stove.z - hz) <= 1) {
-      cookMeal();
+      if (!canUsePrologueKitchen()) return;
+      const meal = cookMeal();
+      if (meal) reportPrologueCookingSuccess();
       return;
     }
   }

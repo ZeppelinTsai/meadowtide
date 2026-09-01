@@ -15,10 +15,11 @@ import { MOUNTAIN_ORE_NODES, ORE_NODES } from "./mine";
 import { isNearFishingWater } from "./fishing-water";
 import { showUiToast } from "./ui-toast";
 import { farmGroup } from "./farm-visuals";
-import { FARMLAND_TILES } from "./layout-maps";
+import { FARMLAND_TILES, MAPS } from "./layout-maps";
 import { cycleHeldItem, eatItem, inventoryItem, itemAmount, stowHeldItem } from "./inventory-system";
 import { canGiveDailyGift, giveHeldItemToNpc } from "./gift-system";
 import { cropTypeForSeedItem } from "./item-catalog";
+import { canUsePrologueKitchen } from "./prologue";
 
 type WorldTarget = {
   id: string; object: THREE.Object3D; radius: number; actions: ContextAction[];
@@ -34,6 +35,7 @@ destinationMarker.rotation.x=-Math.PI/2; destinationMarker.visible=false; scene.
 const pastureTargetObject=new THREE.Object3D();
 const fishingTargetObject=new THREE.Object3D();
 const heldItemTargetObject=new THREE.Object3D();
+const stoveTargetObject=new THREE.Object3D();
 let markerTimer=0, highlight:THREE.BoxHelper|null=null, highlightTimer=0;
 const CONTINUOUS_PRIMARY_ACTIONS = new Set(["plant", "wood", "stone"]);
 let continuousPrimaryHeld=false, continuousGridKey="";
@@ -47,8 +49,14 @@ function targetForGather(nodeId:string):WorldTarget|null{if(!hasTool("dualAxe"))
 function targetForOre(nodeId:string):WorldTarget|null{if(!hasTool("dualAxe"))return null;const entry=oreNodeMeshes.find(e=>e.nodeId===nodeId);const nodes=gameState.currentMapName==="mountainCave"?MOUNTAIN_ORE_NODES:gameState.currentMapName==="stalactiteCave"?ORE_NODES:[];const node=nodes.find(n=>n.id===nodeId);if(!entry||!node||node.collected)return null;return{id:"ore:"+nodeId,object:entry.group,radius:1.2,actions:[legacyAction("ore","敲礦")],getPosition:()=>node.collected?null:{x:node.x,z:node.z},isValid:()=>hasTool("dualAxe")&&!node.collected&&entry.group.visible};}
 function targetForPasture():WorldTarget|null{if(gameState.currentMapName!=="livingArea"||!hasTool("sickle"))return null;const {x,z}=gameState.playerGridPos;if(pastureGrassStageAt(x,z)!==2)return null;const id=`pasture:${x},${z}`;return{id,object:pastureTargetObject,radius:0.35,actions:[{id:"cut-grass",label:"割草",slot:"secondary",execute:runLegacySecondaryInteraction}],getPosition:()=>gameState.playerGridPos.x===x&&gameState.playerGridPos.z===z?{x,z}:null,isValid:()=>hasTool("sickle")&&gameState.playerGridPos.x===x&&gameState.playerGridPos.z===z&&pastureGrassStageAt(x,z)===2};}
 function targetForHeldItem():WorldTarget|null{const heldId=inventory.heldItemId,held=heldId?inventoryItem(heldId):null;if(!heldId||!held?.edible||itemAmount(heldId)<=0||!gameState.player)return null;return{id:"held-item",object:heldItemTargetObject,radius:0.1,actions:[{id:"eat-held-item",label:"食用",slot:"primary",execute:()=>eatItem(heldId)}],getPosition:()=>gameState.player?{x:gameState.player.position.x,z:gameState.player.position.z}:null,isValid:()=>inventory.heldItemId===heldId&&itemAmount(heldId)>0};}
+function targetForStove():WorldTarget|null{
+  if(gameState.currentMapName!=="house"||!canUsePrologueKitchen())return null;
+  const stove=(MAPS.house.furniture||[]).find(item=>item.type==="stove");
+  if(!stove)return null;
+  return{id:"house-stove",object:stoveTargetObject,radius:1.25,actions:[legacyAction("cook","做菜")],getPosition:()=>gameState.currentMapName==="house"?{x:stove.x,z:stove.z}:null,isValid:()=>gameState.currentMapName==="house"&&canUsePrologueKitchen()};
+}
 function targetForFishing():WorldTarget|null{
-  if(!gameState.player||!hasTool("fishingRod")||!fishingWaterMeshes.length)return null;
+  if(!gameState.player||!hasTool("fishingRod"))return null;
   const active=gameState.fishingState!=="idle";
   if(!active&&!isNearFishingWater(gameState.currentMapName,gameState.player.position.x,gameState.player.position.z))return null;
   return{id:active?"fishing-active":"fishing-nearby",object:fishingTargetObject,radius:0.1,actions:active?[{id:"fish-cancel",label:"取消釣魚",slot:"secondary",prompt:"右鍵",execute:()=>window.dispatchEvent(new KeyboardEvent("keydown",{key:"r"}))}]:[legacyAction("fish","釣魚")],getPosition:()=>gameState.player?{x:gameState.player.position.x,z:gameState.player.position.z}:null,isValid:()=>Boolean(gameState.player)&&hasTool("fishingRod")&&(active?gameState.fishingState!=="idle":gameState.fishingState==="idle"&&isNearFishingWater(gameState.currentMapName,gameState.player.position.x,gameState.player.position.z))}}
@@ -71,6 +79,7 @@ function allTargets(){
   gatherNodeMeshes.forEach(e=>{const t=targetForGather(e.nodeId);if(t)list.push(t);});
   oreNodeMeshes.forEach(e=>{const t=targetForOre(e.nodeId);if(t)list.push(t);});
   {const t=targetForPasture();if(t)list.push(t);}
+  {const t=targetForStove();if(t)list.push(t);}
   FARMLAND_TILES.forEach(([x,z])=>{const t=targetForFarm(x,z);if(t)list.push(t);});
   const fishing=targetForFishing();if(fishing)list.push(fishing);
   return list;
@@ -78,6 +87,7 @@ function allTargets(){
 function refreshSelectedTarget(target: WorldTarget) {
   if (target.id === "fishing-nearby" || target.id === "fishing-active") return targetForFishing();
   if (target.id === "held-item") return targetForHeldItem();
+  if (target.id === "house-stove") return targetForStove();
   if (target.id.startsWith("animal:")) return targetForAnimal(target.id.slice(7));
   if (target.id.startsWith("npc:")) return targetForNpc(target.id.slice(4));
   if (target.id.startsWith("gather:")) return targetForGather(target.id.slice(7));

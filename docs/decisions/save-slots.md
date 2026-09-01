@@ -94,7 +94,7 @@ slot markup 或 CSS。清單必須顯示高對比且穩定佔位的垂直捲軸�
 
 - 開新遊戲目前固定寫進第 1 格，還沒有「開局先選要存去哪一格」的介面。
 - 2026-08-26 補：遊戲中 Esc/手把 Start 鍵的暫停選單(`pause-menu.ts`)
-  已經做了，「讀取進度」直接共用同一份 `getSaveSlotSummaries()`/
+  已經做了，「儲存進度」與「讀取進度」都先進入相同風格的 slot 清單；儲存清單可選空格或覆寫既有格（不列自動存檔），讀取清單只啟用已有資料的格。兩者直接共用同一份 `getSaveSlotSummaries()`/
   `renderSaveSlotButtons()`(抽到 `save-slot-ui.ts`，`title-screen.ts`
   跟 `pause-menu.ts` 都呼叫這份，不重寫)，見
   `docs/decisions/pause-menu.md`。

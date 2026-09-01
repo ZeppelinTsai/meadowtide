@@ -48,6 +48,7 @@ import {
   isPrologueFarmingActive,
   isPrologueFishingTutorialActive,
   isPrologueSeekingRod,
+  isPrologueMayorFollowing,
   reportPrologueFishingFailure,
   startPrologueFishingSequence,
   isPrologueShipStage,
@@ -226,7 +227,7 @@ let mayorPrologueTrail: EscortTrailPoint[] = [];
 let mayorPrologueTrailMap = "";
 
 function updateMayorPrologueTrail() {
-  if (!isPrologueSeekingRod() || !gameState.player) {
+  if (!isPrologueMayorFollowing() || !gameState.player) {
     mayorPrologueTrail.length = 0;
     mayorPrologueTrailMap = "";
     return;
@@ -898,7 +899,7 @@ export function animate(now) {
       n.mesh.visible = false;
       return;
     }
-    if (isPrologueSeekingRod() && n.id === "mayor") {
+    if (isPrologueMayorFollowing() && n.id === "mayor") {
       const trailPoint = sampleMayorPrologueTrail(0.72);
       if (trailPoint) {
         const moved = Math.hypot(

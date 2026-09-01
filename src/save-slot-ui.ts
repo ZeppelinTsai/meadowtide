@@ -30,6 +30,34 @@ function slotSummaryText(summary: SaveSlotSummary): string {
 
 // container 底下清空重建 autosave + 9 個手動 slot；空格 disabled，
 // 有資料的項目點下去回傳實際 saveName 與其來源手動格。
+export function renderWritableSaveSlotButtons(
+  container: HTMLElement,
+  onPick: (slot: number) => void,
+) {
+  container.innerHTML = "";
+  container.classList.add("saveSlotList");
+  getSaveSlotSummaries()
+    .filter((summary) => !summary.isAutosave)
+    .forEach((summary) => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "titleSlotBtn";
+      const numEl = document.createElement("span");
+      numEl.className = "titleSlotNum";
+      numEl.textContent = getLocale() === "en"
+        ? `Slot ${summary.slot}`
+        : getLocale() === "ja"
+          ? `スロット ${summary.slot}`
+          : `第 ${summary.slot} 格`;
+      const summaryEl = document.createElement("span");
+      summaryEl.className = "titleSlotSummary";
+      summaryEl.textContent = slotSummaryText(summary);
+      button.append(numEl, summaryEl);
+      button.addEventListener("click", () => onPick(summary.slot));
+      container.appendChild(button);
+    });
+}
+
 export function renderSaveSlotButtons(
   container: HTMLElement,
   onPick: (saveName: string, sourceSlot: number) => void,

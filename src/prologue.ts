@@ -35,6 +35,7 @@ import {
 } from "./story/story-state";
 import { setPresentationCamera } from "./first-person-camera";
 import { showLoadingScreen, hideLoadingScreen } from "./loading-screen";
+import { showUiToast } from "./ui-toast";
 import {
   PROLOGUE_MARKERS,
   PROLOGUE_OPENING_CAMERA_SHOTS,
@@ -119,6 +120,7 @@ type Stage =
   | "fishingDialogue"
   | "fishingTutorial"
   | "fishingReturn"
+  | "cookingTutorial"
   | "done";
 
 type PrologueMapLoader = (
@@ -706,6 +708,14 @@ export function isPrologueFishingTutorialActive(): boolean {
   return stage === "fishingTutorial";
 }
 
+export function isPrologueMayorFollowing(): boolean {
+  return stage === "seekingRod" || stage === "fishingTutorial";
+}
+
+export function canUsePrologueKitchen(): boolean {
+  return stage === "inactive" || stage === "done" || stage === "cookingTutorial";
+}
+
 let fishingTutorialResultPending = false;
 
 export function reportPrologueFishingFailure() {
@@ -729,6 +739,32 @@ export function reportPrologueFishingSuccess() {
   });
 }
 
+export function reportPrologueCookingSuccess() {
+  if (stage !== "cookingTutorial") return;
+  beginStage("mapTransition");
+  gameState.cutsceneActive = true;
+  const cookingCompleteIndex = scriptMarkerIndex(
+    PROLOGUE_SCRIPT.cooking,
+    PROLOGUE_MARKERS.cookingComplete,
+  );
+  showDialogSequence(
+    PROLOGUE_SCRIPT.cooking.slice(cookingCompleteIndex + 1),
+    () => void finishPrologueWithTransition(),
+  );
+}
+
+async function finishPrologueWithTransition() {
+  await showLoadingScreen();
+  const mayor = npcs.find((npc) => npc.id === "mayor");
+  if (mayor) mayor.mesh.visible = false;
+  finishPrologue();
+  await hideLoadingScreen();
+  showUiToast(
+    "基本操作",
+    "開啟選單即可儲存與讀取進度；使用滾輪或右蘑菇頭上下縮放鏡頭。",
+  );
+}
+
 async function returnToFarmHouseAfterFishing() {
   if (!prologueMapLoader) {
     console.warn("[序幕] 尚未接入 loadMap，無法返回牧場小屋。");
@@ -742,7 +778,18 @@ async function returnToFarmHouseAfterFishing() {
       placeGuideActor(mayor, 7, 12);
     }
     void hideLoadingScreen();
-    showDialogSequence(PROLOGUE_SCRIPT.cooking, finishPrologue);
+    const cookingCompleteIndex = scriptMarkerIndex(
+      PROLOGUE_SCRIPT.cooking,
+      PROLOGUE_MARKERS.cookingComplete,
+    );
+    showDialogSequence(
+      PROLOGUE_SCRIPT.cooking.slice(0, cookingCompleteIndex),
+      () => {
+        beginStage("cookingTutorial");
+        gameState.cutsceneActive = false;
+        lockPrologueDateTime();
+      },
+    );
   });
 }
 
@@ -751,6 +798,11 @@ export function startPrologueFishingSequence() {
   fishingSequenceStarted = true;
   beginStage("fishingDialogue");
   gameState.cutsceneActive = true;
+  gameState.player.position.y = portGroundY(
+    gameState.player.position.x,
+    gameState.player.position.z,
+  );
+  syncLastPlayerY();
   lockPrologueDateTime();
 
   const captain = npcs.find((npc) => npc.id === "captain");
@@ -788,7 +840,7 @@ export function startPrologueFishingSequence() {
     gameState.cutsceneActive = false;
     lockPrologueDateTime();
   };
-  showDialogSequence(PROLOGUE_SCRIPT.fishing.slice(0, warehouseIndex), async () => {
+  showDialogSequence(PROLOGUE_SCRIPT.fishing.slice(1, warehouseIndex), async () => {
     await showLoadingScreen();
     showDialogSequence(
       PROLOGUE_SCRIPT.fishing.slice(warehouseIndex + 1),
