@@ -212,6 +212,15 @@ body.cutscene-presentation #hud {
    錨點，不會因為每句台詞長短不同而跳動）。名牌跟立繪都用 position:
    absolute 疊在 #dialog 外面，#dialog 本身是 position:fixed，剛好也是
    absolute 子元素的定位基準，不用額外包一層容器。 */
+/* 2026-09-01 Zeppelin 要求：字體大小要跟著對話框「自己的高度」走
+   (=對話框高度的一半)，不能是寫死的 px——原本 32px 在小螢幕看起來
+   還好，但錄影用的大螢幕上 #dialog 的 30vh 會被撐得很高，字級卻還是
+   原本那個 32px，比例上就顯得很小。用 CSS Container Query 的
+   cqh(容器高度的 1%)直接把字體綁定 #dialog 的實際渲染高度，不管視窗
+   多大、對話框最後算出來是幾 px 高，字永遠等比例縮放，不用另外寫
+   一堆 breakpoint 去對應不同解析度。container-type:size 建立查詢
+   容器；不支援 cqh 的瀏覽器會直接忽略那行，退回原本的 px 當
+   fallback。 */
 #dialog {
   position: fixed;
   bottom: 30px;
@@ -228,6 +237,8 @@ body.cutscene-presentation #hud {
   box-sizing: border-box;
   z-index: 110;
   isolation: isolate;
+  container-type: size;
+  container-name: dialogBox;
 }
 #dialog::before {
   content: "";
@@ -245,6 +256,8 @@ body.cutscene-presentation #hud {
   z-index: 2;
   white-space: pre-wrap;
   line-height: 1.7;
+  /* 對話框高度的一半——見上面 #dialog 的 container-type 說明。 */
+  font-size: 50cqh;
 }
 #dialogName {
   position: absolute;
@@ -255,6 +268,10 @@ body.cutscene-presentation #hud {
   border-radius: 6px;
   padding: 6px 20px;
   font-size: 28px;
+  /* 跟 #dialogText 同一套邏輯等比例縮放(原本 28px／32px ≈ 0.875 倍，
+     換算成容器高度百分比就是 44cqh)，名牌字級才不會在大螢幕上跟對話
+     內文的比例跑掉。 */
+  font-size: 44cqh;
   color: #f5c542;
   display: none;
   z-index: 3;
@@ -302,6 +319,9 @@ body.cutscene-presentation #hud {
   right: 18px;
   bottom: 8px;
   font-size: 24px;
+  /* 原本 24px／32px = 0.75 倍，換算成 38cqh，跟內文/名牌一起等比例
+     縮放。 */
+  font-size: 38cqh;
   color: rgba(255, 255, 255, 0.5);
   z-index: 2;
 }
@@ -316,6 +336,24 @@ body.cutscene-presentation #hud {
    置中，樣式沿用同一組金色邊框+深色半透明底，維持同一個視覺語言，只
    是形狀從小按鈕換成大圓角長條(FGO 的選項條那種)。最多同時顯示三個
    (CHOICE_PAGE_SIZE)，超過的話最下面補一條較小的「換下一頁」列。 */
+@media (max-width: 720px) {
+  #dialog {
+    width: 94vw;
+    height: 34vh;
+    min-height: 150px;
+    padding: 14px 20px 16px;
+  }
+  #dialogName {
+    top: -40px;
+    left: 12px;
+    padding: 5px 14px;
+  }
+  #dialogContinue {
+    right: 12px;
+    bottom: 6px;
+  }
+}
+
 #dialogChoices {
   position: fixed;
   left: 50%;
@@ -2032,19 +2070,28 @@ canvas {
   border-radius: 50%;
   font-size: 25px;
 }
+/* flex:1+min-height:0 讓這個 carousel 從「內容多高就長多高」改成
+   「面板扣掉 hint／footer 剩多少就是多少」——有了實際的高度上限，
+   .pauseTutorialCard 才擋得住過長文字把卡片往下撐爆、把 footer 擠出
+   面板甚至擠出畫面(2026-09-01 Zeppelin 回報)。align-items 改
+   stretch 讓卡片吃滿這個高度，箭頭按鈕另外用 align-self 撈回原本置中
+   的樣子。 */
 .pauseTutorialCarousel {
   width: 100%;
   display: grid;
   grid-template-columns: 44px minmax(0, 1fr) 44px;
-  align-items: center;
+  align-items: stretch;
   gap: 12px;
   outline: none;
+  flex: 1 1 auto;
+  min-height: 0;
 }
 .pauseTutorialArrow {
   width: 42px;
   height: 64px;
   border-radius: 9px;
   font-size: 30px;
+  align-self: center;
 }
 .pauseTutorialArrow:hover,
 .pauseTutorialIconBtn:hover {
@@ -2053,6 +2100,7 @@ canvas {
 }
 .pauseTutorialCard {
   min-height: 380px;
+  max-height: 100%;
   overflow: hidden;
   display: grid;
   grid-template-columns: minmax(0, 1.45fr) minmax(240px, 0.75fr);
@@ -2083,11 +2131,37 @@ canvas {
   border-radius: 9px;
   color: #52665b;
 }
+/* 文字欄自己也要能在卡片高度固定之後內部捲動——即使教學文字已經自動
+   分頁(見 pause-menu.ts 的 splitTutorialText())，還是保留這層當最後
+   一道防線，不會因為單一句子過長或視窗過矮就整排被裁切消失。
+   justify-content 先 center 再疊一次 safe center：不支援 safe 的瀏覽器
+   吃第一行正常置中，支援的話捲動時不會出現「往上滾到看不到內容」的
+   flexbox 置中怪異行為。捲軸沿用跟存讀檔清單一樣的棕色主題。 */
 .pauseTutorialCopy {
   display: flex;
   flex-direction: column;
   justify-content: center;
+  justify-content: safe center;
   padding: 28px;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: #75543f #dfcfaf;
+}
+.pauseTutorialCopy::-webkit-scrollbar {
+  width: 10px;
+}
+.pauseTutorialCopy::-webkit-scrollbar-track {
+  background: #dfcfaf;
+  border-radius: 999px;
+}
+.pauseTutorialCopy::-webkit-scrollbar-thumb {
+  background: #75543f;
+  border-radius: 999px;
+}
+.pauseTutorialCopy::-webkit-scrollbar-thumb:hover {
+  background: #4e3123;
 }
 .pauseTutorialCopy > span {
   color: #947342;
@@ -2156,6 +2230,7 @@ canvas {
   }
   .pauseTutorialCard {
     grid-template-columns: 1fr;
+    grid-template-rows: auto minmax(0, 1fr);
     min-height: 0;
   }
   .pauseTutorialShot {

@@ -47,6 +47,48 @@ const WALKING_TUTORIAL = [
   { kicker: "第一章・基本操作", title: "聲音設定", text: "總音量、音效與音樂大小可在系統選單調整；每次設定操作都會顯示提示。", keys: ["系統選單／聲音"], image: "/assets/tutorial/walking-3.png", alt: "調整遊戲音量設定" },
 ];
 
+// 2026-09-01 Zeppelin 回報：教學卡片文字如果寫太長，卡片會被撐高，
+// 把下面的返回鍵／頁碼／圓點 footer 擠出面板，嚴重時甚至擠出畫面
+// 外。與其要求以後每次寫教學文案都手動控制長度、手動拆頁，這裡在
+// 載入時自動依中文／全形句尾標點斷句，超過門檻就切成好幾張卡片
+// (同一組 kicker／title／keys／image，只有文字跟著切開)，卡片高度
+// 因此維持一致，footer 永遠留在原位。真的還是切不夠(例如單一句子本身
+// 就超長)則交給 style.css 的 .pauseTutorialCopy 內部捲軸兜底。
+const TUTORIAL_CARD_TEXT_LIMIT = 56;
+
+function splitTutorialText(text: string, limit: number): string[] {
+  if (text.length <= limit) return [text];
+  const sentences = text.match(/[^。！？；]+[。！？；]?/g) ?? [text];
+  const chunks: string[] = [];
+  let current = "";
+  for (const sentence of sentences) {
+    if (current && (current + sentence).length > limit) {
+      chunks.push(current);
+      current = sentence;
+    } else {
+      current += sentence;
+    }
+    while (current.length > limit * 1.6) {
+      chunks.push(current.slice(0, limit));
+      current = current.slice(limit);
+    }
+  }
+  if (current) chunks.push(current);
+  return chunks.length > 1 ? chunks : [text];
+}
+
+type TutorialPage = (typeof WALKING_TUTORIAL)[number];
+
+const TUTORIAL_PAGES: TutorialPage[] = WALKING_TUTORIAL.flatMap((page) => {
+  const parts = splitTutorialText(page.text, TUTORIAL_CARD_TEXT_LIMIT);
+  if (parts.length <= 1) return [page];
+  return parts.map((text, index) => ({
+    ...page,
+    text,
+    title: `${page.title}（${index + 1}／${parts.length}）`,
+  }));
+});
+
 function byId<T extends HTMLElement>(id: string): T {
   const element = document.getElementById(id);
   if (!element) throw new Error(`[pause-menu] Missing #${id}`);
@@ -95,11 +137,11 @@ export function initPauseMenu() {
   let lastTutorialScroll = 0;
 
   function renderTutorialPage() {
-    const page = WALKING_TUTORIAL[tutorialPage];
+    const page = TUTORIAL_PAGES[tutorialPage];
     tutorialCardKicker.textContent = translateText(page.kicker);
     tutorialCardTitle.textContent = translateText(page.title);
     tutorialCardText.textContent = translateText(page.text);
-    tutorialPageNumber.textContent = `${tutorialPage + 1} / ${WALKING_TUTORIAL.length}`;
+    tutorialPageNumber.textContent = `${tutorialPage + 1} / ${TUTORIAL_PAGES.length}`;
     tutorialKeys.replaceChildren(...page.keys.map((label) => {
       const key = document.createElement("kbd");
       key.textContent = translateText(label);
@@ -118,7 +160,7 @@ export function initPauseMenu() {
       tutorialImageFallback.hidden = false;
     };
     tutorialImage.src = page.image;
-    tutorialDots.replaceChildren(...WALKING_TUTORIAL.map((_, index) => {
+    tutorialDots.replaceChildren(...TUTORIAL_PAGES.map((_, index) => {
       const dot = document.createElement("button");
       dot.type = "button";
       dot.className = "pauseTutorialDot" + (index === tutorialPage ? " active" : "");
@@ -132,7 +174,7 @@ export function initPauseMenu() {
   }
 
   function changeTutorialPage(direction: number) {
-    tutorialPage = (tutorialPage + direction + WALKING_TUTORIAL.length) % WALKING_TUTORIAL.length;
+    tutorialPage = (tutorialPage + direction + TUTORIAL_PAGES.length) % TUTORIAL_PAGES.length;
     renderTutorialPage();
   }
 
