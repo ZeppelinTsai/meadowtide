@@ -108,7 +108,10 @@ const stoveTargetObject = new THREE.Object3D();
 let markerTimer = 0,
   highlight: THREE.BoxHelper | null = null,
   highlightTimer = 0;
-const CONTINUOUS_PRIMARY_ACTIONS = new Set(["plant", "wood", "stone"]);
+// 2026-09-01：採花動作 id 是 "flower"（跟 wood/stone 平行但不同 id，見
+// targetForFlower()），原本沒補進這張表，跟砍柴/採石不同——按住互動鍵
+// 沒辦法連續採花，只能一次次重新按。補進來讓採集手感跟木材/石頭一致。
+const CONTINUOUS_PRIMARY_ACTIONS = new Set(["plant", "wood", "stone", "flower"]);
 let continuousPrimaryHeld = false,
   continuousLastTriggerKey = "";
 

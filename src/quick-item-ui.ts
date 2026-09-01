@@ -16,6 +16,15 @@ const ITEM_ROWS = [
   [
     "wood",
     "stone",
+    // 2026-09-01：野花五物種原本沒加進這張表，玩家身上只有花、沒有其他
+    // 已列表物品時 rows() 全部回傳空陣列，root.hidden 判斷式的 `!item`
+    // 直接把整個快捷背包膠囊藏起來——不是花的採集邏輯壞了，是這裡漏列。
+    // 比照木材/石頭放進同一列(都是野外採集資源)，不用另開新列。
+    "wildDaisy",
+    "redPoppy",
+    "dandelion",
+    "blueDayflower",
+    "pinkWoodSorrel",
     "copper",
     "silver",
     "gold",
@@ -38,6 +47,11 @@ const SYMBOLS: Record<string, string> = {
   oysters: "貝",
   wood: "木",
   stone: "石",
+  wildDaisy: "雛",
+  redPoppy: "罌",
+  dandelion: "蒲",
+  blueDayflower: "露",
+  pinkWoodSorrel: "酢",
   copper: "銅",
   silver: "銀",
   gold: "金",

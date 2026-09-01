@@ -67,6 +67,12 @@
 - **蒲公英放大**：`makeDandelionHead()` 的花瓣從 `pointedPetalGeometry(0.05, 0.009)` 放大到 `(0.07, 0.013)`，基部離心距離從 `0.006` 放大到 `0.009`，其餘四個物種比例不受影響。
 - **蒲公英花叢收緊**：`makeFlowerCluster()` 新增 `CLUSTER_SPREAD` 這張 per-species 表（跟 `inventory-system.ts` 的 `BAG_ITEM_TARGET_LONG_EDGE`/`HELD_ITEM_SCALE_MULTIPLIER` 同一種「`Record<id, number>` + 預設值」寫法），蒲公英是 `0.55`（花頭彼此散開的半徑乘 0.55，看起來更像一叢擠在一起的蒲公英），其他物種預設 `1`（維持原本的散開程度）。
 
+## 2026-09-01 第三輪：修掉快捷背包看不到花的 bug、粉紅酢漿草放大描邊
+
+- **快捷背包(左下膠囊)整個消失是真的 bug，不是花系統本身壞了**：`quick-item-ui.ts` 的 `ITEM_ROWS` 是一張寫死的 item id 白名單，`rows()` 只回傳「在白名單裡而且 `itemAmount() > 0`」的項目；`render()` 裡 `root.hidden = ... || !item`，`item` 是目前選取列的第一個可用項目。五個野花物種當初漏加進 `ITEM_ROWS`——如果玩家身上只有花、沒有其他白名單內的既有物品，`rows()` 全部回傳空陣列、`item` 是 `null`，整個快捷背包膠囊就跟著藏起來，不是野花採集邏輯本身出錯。修法：五個物種加進跟木材/石頭同一列（`SYMBOLS` 也補了對應單字，正常情況下會被 `inventoryItemThumbnail()` 的實體模型縮圖蓋掉，只是找不到縮圖時的文字備援）。
+- **順手補上的一致性修正**：採花的情境互動動作 id 是 `"flower"`（`context-interaction-ui.ts` 的 `targetForFlower()`），原本沒有列進 `CONTINUOUS_PRIMARY_ACTIONS`（跟 `"wood"`/`"stone"` 平行），導致採花沒辦法比照砍柴/採石按住連續採、只能一次次重按——這次一併補上，沒有另外要求，是查 bug 時順便發現的手感落差。
+- **粉紅酢漿草放大＋描邊**：跟蒲公英同一輪反饋，葉片/花瓣一起放大（`heartLeafGeometry(0.045→0.058)`、`pointedPetalGeometry(0.04,0.024)→(0.055,0.033)`），花瓣是淺粉色、可能在雪地一樣不夠明顯，一併套用白雛菊那套 `radialPetalWithOutline()` 描邊，其他三個物種沒有動。
+
 ## 三個「被程式碼現況解決」的規格書開放問題
 
 規格書留了幾個問題請實作者依現況判斷，這裡照實記錄，之後系統升級時要重新考慮：

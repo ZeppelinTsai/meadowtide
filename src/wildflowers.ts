@@ -283,10 +283,13 @@ function makePinkWoodSorrelHead(): THREE.Group {
     flatShading: true,
     side: THREE.DoubleSide,
   });
-  const leafGeo = heartLeafGeometry(0.045);
+  // 2026-09-01：跟蒲公英同一輪反饋，粉紅酢漿草原尺寸也偏小，葉片/花瓣
+  // 一起放大；花瓣是淺粉色，跟白雛菊一樣可能在雪地融進背景，一併加上
+  // 描邊(radialPetalWithOutline)。
+  const leafGeo = heartLeafGeometry(0.058);
   for (let i = 0; i < 3; i++) {
     const angle = (i / 3) * Math.PI * 2;
-    leaves.add(radialPart(leafGeo, leafMat, angle, 0.28, 0.006));
+    leaves.add(radialPart(leafGeo, leafMat, angle, 0.28, 0.008));
   }
 
   const flowerHeight = 0.13;
@@ -302,10 +305,10 @@ function makePinkWoodSorrelHead(): THREE.Group {
     flatShading: true,
     side: THREE.DoubleSide,
   });
-  const petalGeo = pointedPetalGeometry(0.04, 0.024);
+  const petalGeo = pointedPetalGeometry(0.055, 0.033);
   for (let i = 0; i < 5; i++) {
     const angle = (i / 5) * Math.PI * 2;
-    head.add(radialPart(petalGeo, petalMat, angle, 0.15, 0.008));
+    head.add(radialPetalWithOutline(petalGeo, petalMat, angle, 0.15, 0.011));
   }
   const center = new THREE.Mesh(
     new THREE.SphereGeometry(0.01, 6, 4),
