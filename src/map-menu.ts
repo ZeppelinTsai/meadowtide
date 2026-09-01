@@ -3,6 +3,7 @@ import { gameState } from "./game-state";
 import { isInventoryOpen, setInventoryOpen } from "./inventory-ui";
 import { setTimePauseSource } from "./time-pause";
 import { loadMap } from "./build-map";
+import { isPrologueCookingTutorialActive } from "./prologue";
 
 const overlay = document.getElementById("mapOverlay") as HTMLDivElement;
 const closeButton = document.getElementById("mapClose") as HTMLButtonElement;
@@ -28,7 +29,13 @@ function setMapOpen(next: boolean) {
 }
 
 function travelFromMap(mapId: keyof typeof MAP_DESTINATIONS) {
-  if (!open || !gameState.player || gameState.cutsceneActive) return;
+  if (
+    !open ||
+    !gameState.player ||
+    gameState.cutsceneActive ||
+    isPrologueCookingTutorialActive()
+  )
+    return;
   const destination = MAP_DESTINATIONS[mapId];
   setMapOpen(false);
   loadMap(mapId, destination, () => {

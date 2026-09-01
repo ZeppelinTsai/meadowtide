@@ -47,6 +47,7 @@ import {
   updatePrologueGameplayGate,
   isPrologueFarmingActive,
   isPrologueFishingTutorialActive,
+  isPrologueCookingTutorialActive,
   isPrologueSeekingRod,
   isPrologueMayorFollowing,
   reportPrologueFishingFailure,
@@ -862,7 +863,8 @@ export function animate(now) {
       if (
         !gameState.cutsceneActive &&
         !isPrologueFarmingActive() &&
-        !isPrologueFishingTutorialActive()
+        !isPrologueFishingTutorialActive() &&
+        !isPrologueCookingTutorialActive()
       ) {
         events
           .filter(

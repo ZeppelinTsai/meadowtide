@@ -707,6 +707,10 @@ export function isPrologueSeekingRod(): boolean {
   return stage === "seekingRod";
 }
 
+export function isPrologueCookingTutorialActive(): boolean {
+  return stage === "cookingTutorial";
+}
+
 export function isPrologueFishingTutorialActive(): boolean {
   return stage === "fishingTutorial";
 }
@@ -756,8 +760,13 @@ export function reportPrologueCookingSuccess() {
   );
 }
 
+function holdPrologueBlackScreen(durationMs = 900) {
+  return new Promise<void>((resolve) => window.setTimeout(resolve, durationMs));
+}
+
 async function finishPrologueWithTransition() {
   await showLoadingScreen();
+  await holdPrologueBlackScreen();
   const mayor = npcs.find((npc) => npc.id === "mayor");
   if (mayor) mayor.mesh.visible = false;
   finishPrologue();
@@ -846,6 +855,7 @@ export function startPrologueFishingSequence() {
   };
   showDialogSequence(PROLOGUE_SCRIPT.fishing.slice(1, warehouseIndex), async () => {
     await showLoadingScreen();
+    await holdPrologueBlackScreen();
     showDialogSequence(
       PROLOGUE_SCRIPT.fishing.slice(warehouseIndex + 1),
       finishFishingDialogue,
@@ -1214,10 +1224,11 @@ export function updatePrologueGameplayGate() {
   if (
     stage !== "farmingFree" &&
     stage !== "seekingRod" &&
-    stage !== "fishingTutorial"
+    stage !== "fishingTutorial" &&
+    stage !== "cookingTutorial"
   ) return;
   lockPrologueDateTime();
-  if (stage === "seekingRod" || stage === "fishingTutorial") return;
+  if (stage !== "farmingFree") return;
   const plantedCount = tutorialCropCount();
   if (plantedCount < 9) {
     // 舊版可能把種子消耗在教學區外；補回缺口，避免存檔永久軟鎖。

@@ -235,3 +235,7 @@ function bowWorldPoint(localPoint: THREE.Vector3): THREE.Vector3 {
 ## 演出期間 HUD
 
 主迴圈依 `gameState.cutsceneActive` 切換 `body.cutscene-presentation`。所有事件演出期間隱藏遊戲 HUD 與右上快捷卡，只保留演出所需的對話、選項與轉場；事件結束後自動恢復。
+
+## 料理教學封鎖與序章黑幕
+
+料理教學自由操作期間仍屬序章：每幀鎖定序章日期時間，房屋出口 touch event 與地圖選單快速傳送皆不得執行；只有成功完成任一道教學料理並跑完結尾對話後才解除。村長歡迎主角後須補上返回鎮上的告別句，再進黑幕。船長前往倉庫取釣竿與村長離開牧場小屋兩段黑幕各至少完整停留 900ms；延長只作用於這兩段，不修改共用 loading-screen 的全域轉場速度。

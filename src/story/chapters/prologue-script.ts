@@ -289,5 +289,6 @@ export const PROLOGUE_SCRIPT: Record<string, DialogueLine[]> = {
     mayor("「最後，這張島嶼地圖交給你。按下 M 或 View 就能查看地圖。」"),
     "[村長將島嶼地圖交給主角]",
     mayor("「那麼，歡迎來到島上，牧場主。」"),
+    mayor("「那麼，我先回鎮上了。有什麼事，再來找我吧。」"),
   ],
 };
