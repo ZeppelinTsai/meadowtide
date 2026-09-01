@@ -212,15 +212,18 @@ body.cutscene-presentation #hud {
    錨點，不會因為每句台詞長短不同而跳動）。名牌跟立繪都用 position:
    absolute 疊在 #dialog 外面，#dialog 本身是 position:fixed，剛好也是
    absolute 子元素的定位基準，不用額外包一層容器。 */
-/* 2026-09-01 Zeppelin 要求：字體大小要跟著對話框「自己的高度」走
-   (=對話框高度的一半)，不能是寫死的 px——原本 32px 在小螢幕看起來
-   還好，但錄影用的大螢幕上 #dialog 的 30vh 會被撐得很高，字級卻還是
-   原本那個 32px，比例上就顯得很小。用 CSS Container Query 的
-   cqh(容器高度的 1%)直接把字體綁定 #dialog 的實際渲染高度，不管視窗
-   多大、對話框最後算出來是幾 px 高，字永遠等比例縮放，不用另外寫
-   一堆 breakpoint 去對應不同解析度。container-type:size 建立查詢
-   容器；不支援 cqh 的瀏覽器會直接忽略那行，退回原本的 px 當
-   fallback。 */
+/* 2026-09-01 Zeppelin 要求：字體大小要跟著對話框「自己的高度」走，
+   不能是寫死的 px——原本 32px 在小螢幕看起來還好，但錄影用的大螢幕上
+   #dialog 的 30vh 會被撐得很高，字級卻還是原本那個 32px，比例上就顯得
+   很小。用 CSS Container Query 的 cqh(容器高度的 1%)直接把字體綁定
+   #dialog 的實際渲染高度。container-type:size 建立查詢容器；不支援
+   cqh 的瀏覽器會直接忽略那行，退回原本的 px 當 fallback。
+   最早直接用「對話框高度的一半」(50cqh)反而太大——單行字就快塞滿整個
+   框，兩行台詞會直接爆版還跟名牌重疊(2026-09-01 Zeppelin 回報截圖)。
+   改成用 calc 反推：扣掉框上下 padding(18px+20px，抓 40px 抓一點緩衝)
+   剩下的內容高度，除以「兩行文字所需高度」(line-height 1.7 × 2 行 ≈
+   3.6)，這樣不管 #dialog 最後算出來是幾 px 高，兩行字都保證塞得進去、
+   還留一點餘裕，不用再靠猜一個固定百分比。 */
 #dialog {
   position: fixed;
   bottom: 30px;
@@ -256,8 +259,8 @@ body.cutscene-presentation #hud {
   z-index: 2;
   white-space: pre-wrap;
   line-height: 1.7;
-  /* 對話框高度的一半——見上面 #dialog 的 container-type 說明。 */
-  font-size: 50cqh;
+  /* 保證兩行——見上面 #dialog 的 container-type 說明。 */
+  font-size: calc((100cqh - 40px) / 3.6);
 }
 #dialogName {
   position: absolute;
@@ -268,10 +271,10 @@ body.cutscene-presentation #hud {
   border-radius: 6px;
   padding: 6px 20px;
   font-size: 28px;
-  /* 跟 #dialogText 同一套邏輯等比例縮放(原本 28px／32px ≈ 0.875 倍，
-     換算成容器高度百分比就是 44cqh)，名牌字級才不會在大螢幕上跟對話
-     內文的比例跑掉。 */
-  font-size: 44cqh;
+  /* 跟 #dialogText 同一套公式等比例縮放(原本 28px／32px ≈ 0.875 倍，
+     除數改成 3.6／0.875 ≈ 4.11)，名牌字級才不會在大螢幕上跟對話內文
+     的比例跑掉。 */
+  font-size: calc((100cqh - 40px) / 4.11);
   color: #f5c542;
   display: none;
   z-index: 3;
@@ -319,9 +322,9 @@ body.cutscene-presentation #hud {
   right: 18px;
   bottom: 8px;
   font-size: 24px;
-  /* 原本 24px／32px = 0.75 倍，換算成 38cqh，跟內文/名牌一起等比例
-     縮放。 */
-  font-size: 38cqh;
+  /* 原本 24px／32px = 0.75 倍，除數改成 3.6／0.75 = 4.8，跟內文/名牌
+     一起等比例縮放。 */
+  font-size: calc((100cqh - 40px) / 4.8);
   color: rgba(255, 255, 255, 0.5);
   z-index: 2;
 }
