@@ -18,6 +18,10 @@ import {
 import { getRelationship } from "./affection";
 import { storyState } from "./story/story-state";
 import type { ToolId } from "./tool-catalog";
+import {
+  type FlowerSpeciesId,
+  flowerSpeciesLabel,
+} from "./wildflowers";
 export { TOOL_DEFINITIONS, type ToolId } from "./tool-catalog";
 export { MAX_EXTREME_WEATHER_PER_SEASON } from "./weather-schedule";
 
@@ -227,6 +231,17 @@ export const inventory = {
   } as Record<string, number>,
   wood: 10,
   stone: 5,
+  // 野花——各物種獨立計數，跟 pearls 用同一種「id -> 數量」表寫法，
+  // 避免 5 個相似欄位各自散開重複邏輯。999 堆疊上限只是設計意圖，
+  // 這個專案目前所有資源都沒有實際的堆疊上限檢查(wood/stone/mushrooms
+  // 等都一樣)，這裡刻意保持一致，不要為花單獨造一套上限機制。
+  wildflowers: {
+    wildDaisy: 0,
+    redPoppy: 0,
+    dandelion: 0,
+    blueDayflower: 0,
+    pinkWoodSorrel: 0,
+  } as Record<FlowerSpeciesId, number>,
   oysters: 0,
   pearls: {
     white: 0,
@@ -798,23 +813,51 @@ export function settleFeederConsumption() {
 // 玩家預設已經拿到斧頭，兩種資源現階段都用同一把斧頭簡化採集，之後
 // 「採礦(鐘乳石洞跟山洞)」是完全不同的系統，不是這裡的石頭採集點升級。
 // ==============================================================
-export type GatherKind = "wood" | "stone";
+export type GatherKind = "wood" | "stone" | "flower";
 export const GATHER_YIELD_MIN = 3,
   GATHER_YIELD_MAX = 5;
 export interface GatherNode {
   id: string;
   kind: GatherKind;
   map: "livingArea" | "mountain";
-  zone: "mountainSide" | "foot" | "waist";
+  // summit(山區平台3)目前只有野花會用到，wood/stone 仍然只在
+  // mountainSide/foot/waist 產生，見 refreshGatherNodes() 內分開的兩段迴圈。
+  zone: "mountainSide" | "foot" | "waist" | "summit";
   x: number;
   z: number;
   collected: boolean;
   // 序章荒廢農田固定障礙：跨刷新時段保留，直到玩家親自清除。
   persistent?: boolean;
+  // 野花節點專用：哪個物種。wood/stone 節點不會有這個欄位。
+  species?: FlowerSpeciesId;
 }
 export const WOOD_NODES: GatherNode[] = [];
 export const STONE_NODES: GatherNode[] = [];
+export const FLOWER_NODES: GatherNode[] = [];
 export const GATHER_NODES_PER_KIND = 3;
+
+// 野花——每區允許的物種池與每次刷新的節點數，對應規格書的密度表：
+// 生活區山腳(高密度)/山區平台1(中密度)/山區平台2(中密度)各 3 節點，
+// 山區平台3(中/低密度，藍露草唯一產地)2 節點。每個節點的物種在刷新時
+// 從對應池子隨機挑一個，不是固定配置。
+const FLOWER_ZONE_SPECIES: Record<
+  "mountainSide" | "foot" | "waist" | "summit",
+  FlowerSpeciesId[]
+> = {
+  mountainSide: ["wildDaisy", "dandelion"],
+  foot: ["wildDaisy", "pinkWoodSorrel"],
+  waist: ["dandelion", "redPoppy", "pinkWoodSorrel"],
+  summit: ["blueDayflower", "redPoppy"],
+};
+const FLOWER_NODES_PER_ZONE: Record<
+  "mountainSide" | "foot" | "waist" | "summit",
+  number
+> = {
+  mountainSide: 3,
+  foot: 3,
+  waist: 3,
+  summit: 2,
+};
 
 export function getGatherSpawnSlot(
   day = gameState.currentDay,
@@ -884,6 +927,8 @@ export function refreshGatherNodes(force = false) {
   );
   WOOD_NODES.splice(0, WOOD_NODES.length, ...persistentWood);
   STONE_NODES.splice(0, STONE_NODES.length, ...persistentStone);
+  // 野花節點目前沒有 persistent 用例，直接整批清空重灑。
+  FLOWER_NODES.length = 0;
   const usedByMap = new Map<string, { x: number; z: number }[]>();
   [...persistentWood, ...persistentStone].forEach((node) => {
     const used = usedByMap.get(node.map) || [];
@@ -918,10 +963,56 @@ export function refreshGatherNodes(force = false) {
       }
     }
   }
+  // 野花節點——沿用同一套刷新時段與候選格演算法(gatherCandidates 已經
+  // 用 LAYOUT.mountain[zone]/plazas[zone] 通用處理任何區域，summit 不用
+  // 額外改)，額外納入 summit(山區平台3)，讓 wood/stone 不使用的這塊區域
+  // 至少有野花(尤其是藍露草)可採。每個節點的物種在這裡隨機從
+  // FLOWER_ZONE_SPECIES[zone] 挑一個。
+  const flowerZones: ("mountainSide" | "foot" | "waist" | "summit")[] = [
+    "mountainSide",
+    "foot",
+    "waist",
+    "summit",
+  ];
+  for (const zone of flowerZones) {
+    const map = zone === "mountainSide" ? "livingArea" : "mountain";
+    const used = usedByMap.get(map) || [];
+    usedByMap.set(map, used);
+    const candidates = shuffled(gatherCandidates(zone));
+    const speciesPool = FLOWER_ZONE_SPECIES[zone];
+    const count = FLOWER_NODES_PER_ZONE[zone];
+    for (let index = 0; index < count; index++) {
+      const pickIndex = candidates.findIndex((cell) =>
+        used.every(
+          (taken) =>
+            Math.abs(taken.x - cell.x) + Math.abs(taken.z - cell.z) >= 2,
+        ),
+      );
+      if (pickIndex < 0)
+        throw new Error(`採集點候選格不足：${zone}/flower`);
+      const [cell] = candidates.splice(pickIndex, 1);
+      used.push(cell);
+      const species =
+        speciesPool[Math.floor(Math.random() * speciesPool.length)];
+      FLOWER_NODES.push({
+        id: `${zone}-flower-${index}`,
+        kind: "flower",
+        map,
+        zone,
+        species,
+        ...cell,
+        collected: false,
+      });
+    }
+  }
   return true;
 }
 
-export function harvestGatherNode(kind: GatherKind, x: number, z: number) {
+export function harvestGatherNode(
+  kind: Exclude<GatherKind, "flower">,
+  x: number,
+  z: number,
+) {
   if (!hasTool("dualAxe")) return 0;
   const label = kind === "wood" ? "木材" : "石頭";
   const node = (kind === "wood" ? WOOD_NODES : STONE_NODES).find(
@@ -939,6 +1030,35 @@ export function harvestGatherNode(kind: GatherKind, x: number, z: number) {
     kind: "success",
     title: kind === "wood" ? "揮斧砍柴" : "揮斧敲石",
     text: `${label} ×${amount}`,
+    count: amount,
+    until: gameState.elapsed + 2.6,
+  };
+  return amount;
+}
+
+// 野花採集——跟 harvestGatherNode 同一套判定/回饋模式，但工具是鐮刀
+// (跟牧場割草共用同一把)，且產量寫回 inventory.wildflowers[物種]，不是
+// 單一計數欄位，所以獨立成一個函式，不硬塞進 harvestGatherNode 的
+// wood/stone 二選一邏輯裡。
+export function harvestFlowerNode(x: number, z: number) {
+  if (!hasTool("sickle")) return 0;
+  const node = FLOWER_NODES.find(
+    (candidate) =>
+      candidate.x === x &&
+      candidate.z === z &&
+      !candidate.collected &&
+      candidate.species,
+  );
+  if (!node || !node.species) return 0;
+  const amount =
+    GATHER_YIELD_MIN +
+    Math.floor(Math.random() * (GATHER_YIELD_MAX - GATHER_YIELD_MIN + 1));
+  inventory.wildflowers[node.species] += amount;
+  node.collected = true;
+  gameState.harvestFeedback = {
+    kind: "success",
+    title: "採花",
+    text: `${flowerSpeciesLabel(node.species)} ×${amount}`,
     count: amount,
     until: gameState.elapsed + 2.6,
   };

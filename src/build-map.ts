@@ -75,6 +75,7 @@ import {
   thresholdMarkerMeshes,
   thresholdMarkersVisible,
   gatherNodeMeshes,
+  flowerNodeMeshes,
   oreNodeMeshes,
   celestialSparkleMaterials,
   southIndoorWallMeshes,
@@ -197,10 +198,12 @@ import {
   getActiveOysterRackLayouts,
   WOOD_NODES,
   STONE_NODES,
+  FLOWER_NODES,
   FEEDER_VISUAL,
   isPointInsideFeeder,
   refreshGatherNodes,
 } from "./game-state";
+import { makeFlowerCluster } from "./wildflowers";
 
 // 地圖底板，可選「星空穿透」寫法：transparent+opacity:1+depthWrite:false，
 // 不是只關掉 depthWrite。純關 depthWrite（保留 opaque）會讓地板完全不擋深度，
@@ -265,6 +268,7 @@ export function buildMap(mapName) {
   mountainSeasonalMaterials.length = 0;
   thresholdMarkerMeshes.length = 0;
   gatherNodeMeshes.length = 0;
+  flowerNodeMeshes.length = 0;
   oreNodeMeshes.length = 0;
   celestialSparkleMaterials.length = 0;
   southIndoorWallMeshes.length = 0;
@@ -2485,6 +2489,16 @@ export function buildMap(mapName) {
         gameState.mapGroup.add(pile);
         gatherNodeMeshes.push({ group: pile, nodeId: n.id, map: "mountain" });
       });
+      // 野花節點——跟木材/石頭同一套模式，額外涵蓋 summit(山區平台3)，
+      // 讓 wood/stone 沒在用的這塊區域至少有野花可採(尤其是藍露草)。
+      FLOWER_NODES.filter((n) => n.map === "mountain").forEach((n) => {
+        if (!n.species) return;
+        const cluster = makeFlowerCluster(n.species, n.x, n.z);
+        cluster.position.y = mountainGroundY(n.x, n.z);
+        cluster.visible = !n.collected;
+        gameState.mapGroup.add(cluster);
+        flowerNodeMeshes.push({ group: cluster, nodeId: n.id, map: "mountain" });
+      });
     }
   }
 
@@ -3590,6 +3604,14 @@ export function buildMap(mapName) {
       pile.visible = !n.collected;
       plateauGroup.add(pile);
       gatherNodeMeshes.push({ group: pile, nodeId: n.id, map: "livingArea" });
+    });
+    // 野花節點——生活區山腳(mountainSide)，跟木材/石頭同一套模式。
+    FLOWER_NODES.filter((n) => n.map === "livingArea").forEach((n) => {
+      if (!n.species) return;
+      const cluster = makeFlowerCluster(n.species, n.x, n.z);
+      cluster.visible = !n.collected;
+      plateauGroup.add(cluster);
+      flowerNodeMeshes.push({ group: cluster, nodeId: n.id, map: "livingArea" });
     });
 
     // 行道樹右側正式分成上下兩區：上方聚會／個人放鬆，下方小花園。

@@ -698,6 +698,9 @@ canvas {
 .inventory-slot-dish .inventory-icon {
   background: #9b6749;
 }
+.inventory-slot-flower .inventory-icon {
+  background: #c96a95;
+}
 .inventory-item-label {
   color: #ded8c9;
   font-size: 18px;

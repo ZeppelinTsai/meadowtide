@@ -29,7 +29,9 @@ import {
   pastureDepletedTiles,
   WOOD_NODES,
   STONE_NODES,
+  FLOWER_NODES,
   harvestGatherNode,
+  harvestFlowerNode,
   refreshGatherNodes,
   RECIPES,
 } from "./game-state";
@@ -163,6 +165,7 @@ import {
 } from "./scene-sky";
 import {
   gatherNodeMeshes,
+  flowerNodeMeshes,
   oreNodeMeshes,
   setThresholdMarkersVisible,
 } from "./scene-registries";
@@ -353,6 +356,7 @@ export function saveGame(slot = "default") {
     gatherSpawnSlot: gameState.gatherSpawnSlot,
     woodNodes: JSON.parse(JSON.stringify(WOOD_NODES)),
     stoneNodes: JSON.parse(JSON.stringify(STONE_NODES)),
+    flowerNodes: JSON.parse(JSON.stringify(FLOWER_NODES)),
     // 洞窟樓層+礦石節點——不像 woodNodes/stoneNodes 有「刷新時段」欄位，
     // 單純存目前樓層跟該層的採集狀態；讀檔時只還原資料，實際地磚/模型
     // 由 loadMap() 的 regenerateMineFloor() 保險呼叫重新生成(見
@@ -533,6 +537,14 @@ export function loadGame(
     gameState.gatherSpawnSlot = Number(data.gatherSpawnSlot);
     WOOD_NODES.splice(0, WOOD_NODES.length, ...data.woodNodes);
     STONE_NODES.splice(0, STONE_NODES.length, ...data.stoneNodes);
+    if (Array.isArray(data.flowerNodes)) {
+      FLOWER_NODES.splice(0, FLOWER_NODES.length, ...data.flowerNodes);
+    } else {
+      // 野花系統上線前的舊存檔沒有這個欄位——強制整批重灑一次(木材/
+      // 石頭/野花)，比只補野花、木石維持舊座標簡單，也是一次性的遷移
+      // 成本，之後每個刷新時段都會照常運作。
+      refreshGatherNodes(true);
+    }
   } else {
     refreshGatherNodes(true);
   }
@@ -1200,6 +1212,33 @@ addEventListener("keydown", (e) => {
             duration: 0.6,
           });
         }
+      }
+      return;
+    }
+  }
+
+  // 野花節點——跟木材/石頭同一種鄰接判定，但用鐮刀不是斧頭，產量寫進
+  // inventory.wildflowers[物種](見 harvestFlowerNode())。鐮刀目前沒有
+  // 專屬採集音效/飛散演出可用，先不比照木材/石頭加一套，等有素材再補。
+  if (
+    (gameState.currentMapName === "mountain" ||
+      gameState.currentMapName === "livingArea") &&
+    hasTool("sickle")
+  ) {
+    const { x: flx, z: flz } = gameState.playerGridPos;
+    const flowerNode = FLOWER_NODES.find(
+      (n) =>
+        n.map === gameState.currentMapName &&
+        !n.collected &&
+        Math.abs(n.x - flx) + Math.abs(n.z - flz) <= 1,
+    );
+    if (flowerNode) {
+      const granted = harvestFlowerNode(flowerNode.x, flowerNode.z);
+      if (granted > 0) {
+        const meshEntry = flowerNodeMeshes.find(
+          (entry) => entry.nodeId === flowerNode.id,
+        );
+        if (meshEntry) meshEntry.group.visible = false;
       }
       return;
     }

@@ -15,6 +15,10 @@ import {
   makeWoodPile,
   makeOreNode,
 } from "./props";
+import {
+  makeFlowerSpecimen,
+  isFlowerSpeciesId,
+} from "./wildflowers";
 import { ORE_TIERS } from "./mine";
 import { showUiToast } from "./ui-toast";
 import {
@@ -43,6 +47,11 @@ const BAG_ITEM_TARGET_LONG_EDGE: Record<string, number> = {
   oysters: 1.8,
   wood: 1.2,
   stone: 1.25,
+  wildDaisy: 0.85,
+  redPoppy: 0.85,
+  dandelion: 0.85,
+  blueDayflower: 0.85,
+  pinkWoodSorrel: 0.85,
 };
 
 const HELD_ITEM_SCALE_MULTIPLIER: Record<string, number> = {
@@ -53,6 +62,11 @@ const HELD_ITEM_SCALE_MULTIPLIER: Record<string, number> = {
   oysters: 1.08,
   wood: 1.0,
   stone: 1.0,
+  wildDaisy: 0.9,
+  redPoppy: 0.9,
+  dandelion: 0.9,
+  blueDayflower: 0.9,
+  pinkWoodSorrel: 0.9,
 };
 
 function bagDisplayTargetLongEdge(itemId: string) {
@@ -108,6 +122,7 @@ export function itemAmount(itemId: string): number {
   if (itemId === "oysters") return inventory.oysters;
   if (itemId === "wood") return inventory.wood;
   if (itemId === "stone") return inventory.stone;
+  if (isFlowerSpeciesId(itemId)) return inventory.wildflowers[itemId] ?? 0;
   if (itemId === "copper") return inventory.copper;
   if (itemId === "silver") return inventory.silver;
   if (itemId === "gold") return inventory.gold;
@@ -142,6 +157,11 @@ function changeItemAmount(itemId: string, delta: number) {
     inventory.wood = Math.max(0, inventory.wood + delta);
   else if (itemId === "stone")
     inventory.stone = Math.max(0, inventory.stone + delta);
+  else if (isFlowerSpeciesId(itemId))
+    inventory.wildflowers[itemId] = Math.max(
+      0,
+      (inventory.wildflowers[itemId] ?? 0) + delta,
+    );
   else if (itemId === "copper")
     inventory.copper = Math.max(0, inventory.copper + delta);
   else if (itemId === "silver")
@@ -195,6 +215,7 @@ export function moveItemToStorageAmount(
   else if (itemId === "oysters") inventory.oysters = bagAmount;
   else if (itemId === "wood") inventory.wood = bagAmount;
   else if (itemId === "stone") inventory.stone = bagAmount;
+  else if (isFlowerSpeciesId(itemId)) inventory.wildflowers[itemId] = bagAmount;
   else if (itemId === "copper") inventory.copper = bagAmount;
   else if (itemId === "silver") inventory.silver = bagAmount;
   else if (itemId === "gold") inventory.gold = bagAmount;
@@ -245,6 +266,7 @@ export function moveItemFromStorageAmount(
   else if (itemId === "oysters") inventory.oysters = bagAmount;
   else if (itemId === "wood") inventory.wood = bagAmount;
   else if (itemId === "stone") inventory.stone = bagAmount;
+  else if (isFlowerSpeciesId(itemId)) inventory.wildflowers[itemId] = bagAmount;
   else if (itemId === "copper") inventory.copper = bagAmount;
   else if (itemId === "silver") inventory.silver = bagAmount;
   else if (itemId === "gold") inventory.gold = bagAmount;
@@ -385,6 +407,11 @@ export function makeInventoryItemVisual(itemId: string): THREE.Object3D {
   if (itemId === "stone")
     return normalizeItemDisplayModel(
       makeStonePile(0, 0),
+      bagDisplayTargetLongEdge(itemId),
+    );
+  if (isFlowerSpeciesId(itemId))
+    return normalizeItemDisplayModel(
+      makeFlowerSpecimen(itemId),
       bagDisplayTargetLongEdge(itemId),
     );
   const ore = ORE_TIERS.find((tier) => tier.kind === itemId);

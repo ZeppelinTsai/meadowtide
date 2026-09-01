@@ -20,8 +20,10 @@ import {
   pastureGrassStageAt,
   WOOD_NODES,
   STONE_NODES,
+  FLOWER_NODES,
   isPlantingAllowedAt,
 } from "./game-state";
+import { flowerSpeciesLabel } from "./wildflowers";
 import { animals, npcs } from "./npc-runtime";
 import { renderer, camera, scene } from "./scene-sky";
 import {
@@ -45,6 +47,7 @@ import {
 } from "./player-navigation";
 import {
   gatherNodeMeshes,
+  flowerNodeMeshes,
   fishingWaterMeshes,
   oreNodeMeshes,
 } from "./scene-registries";
@@ -204,6 +207,23 @@ function targetForGather(nodeId: string): WorldTarget | null {
     ],
     getPosition: () => (node.collected ? null : { x: node.x, z: node.z }),
     isValid: () => hasTool("dualAxe") && !node.collected && entry.group.visible,
+  };
+}
+function targetForFlower(nodeId: string): WorldTarget | null {
+  if (!hasTool("sickle")) return null;
+  const entry = flowerNodeMeshes.find(
+    (e) => e.nodeId === nodeId && e.map === gameState.currentMapName,
+  );
+  const node = FLOWER_NODES.find((n) => n.id === nodeId);
+  if (!entry || !node || node.collected || !node.species) return null;
+  return {
+    id: "flower:" + nodeId,
+    object: entry.group,
+    radius: 1.2,
+    actions: [legacyAction("flower", `\u63a1\u96c6${flowerSpeciesLabel(node.species)}`)],
+    getPosition: () => (node.collected ? null : { x: node.x, z: node.z }),
+    isValid: () =>
+      hasTool("sickle") && !node.collected && entry.group.visible,
   };
 }
 function targetForOre(nodeId: string): WorldTarget | null {
@@ -402,6 +422,10 @@ function allTargets() {
     const t = targetForGather(e.nodeId);
     if (t) list.push(t);
   });
+  flowerNodeMeshes.forEach((e) => {
+    const t = targetForFlower(e.nodeId);
+    if (t) list.push(t);
+  });
   oreNodeMeshes.forEach((e) => {
     const t = targetForOre(e.nodeId);
     if (t) list.push(t);
@@ -432,6 +456,8 @@ function refreshSelectedTarget(target: WorldTarget) {
   if (target.id.startsWith("npc:")) return targetForNpc(target.id.slice(4));
   if (target.id.startsWith("gather:"))
     return targetForGather(target.id.slice(7));
+  if (target.id.startsWith("flower:"))
+    return targetForFlower(target.id.slice(7));
   if (target.id.startsWith("ore:")) return targetForOre(target.id.slice(4));
   if (target.id.startsWith("pasture:")) return targetForPasture();
   const position = target.getPosition();

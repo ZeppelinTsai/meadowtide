@@ -12,6 +12,7 @@ import {
   isOysterRackReady,
   WOOD_NODES,
   STONE_NODES,
+  FLOWER_NODES,
   settlePastureGrazing,
   settleFeederConsumption,
   pastureGrassStageAt,
@@ -145,6 +146,7 @@ import {
   fishSchool,
   pastureGrassBlades,
   gatherNodeMeshes,
+  flowerNodeMeshes,
   celestialSparkleMaterials,
   EAST_SEA_WAVE,
   NORTH_SEA_WAVE,
@@ -823,6 +825,19 @@ export function animate(now) {
   const gatherNodes = [...WOOD_NODES, ...STONE_NODES];
   gatherNodeMeshes.forEach((entry) => {
     const node = gatherNodes.find((candidate) => candidate.id === entry.nodeId);
+    if (!node) {
+      entry.group.visible = false;
+      return;
+    }
+    entry.group.position.set(
+      node.x,
+      entry.map === "mountain" ? mountainGroundY(node.x, node.z) : 0,
+      node.z,
+    );
+    entry.group.visible = !node.collected;
+  });
+  flowerNodeMeshes.forEach((entry) => {
+    const node = FLOWER_NODES.find((candidate) => candidate.id === entry.nodeId);
     if (!node) {
       entry.group.visible = false;
       return;

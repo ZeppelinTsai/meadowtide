@@ -171,6 +171,7 @@
 - 正式劇情永久 ID、registry、條件、runner、v7 存檔與稽核工具 → `docs/decisions/story-system.md`
 - NPC 名稱三階段揭露、共用顯示入口與 v10 存檔 → `docs/decisions/npc-name-reveal.md`
 - 智慧型情境互動、動物三動作、E/R/F 與 Nintendo/Xbox 映射、點擊尋路 → `docs/decisions/context-interaction-and-navigation.md`
+- 野花採集系統(5 物種、山區 summit 平台首次啟用、鐮刀採集) `wildflowers.ts` → `docs/decisions/wildflower-gathering-system.md`
 
 ## 正式劇情資料規則
 

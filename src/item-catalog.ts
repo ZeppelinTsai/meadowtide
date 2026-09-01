@@ -10,6 +10,11 @@ export type InventoryItemId =
   | "oysters"
   | "wood"
   | "stone"
+  | "wildDaisy"
+  | "redPoppy"
+  | "dandelion"
+  | "blueDayflower"
+  | "pinkWoodSorrel"
   | "copper"
   | "silver"
   | "gold"
@@ -43,6 +48,13 @@ export const BASIC_ITEMS: readonly ItemDefinition[] = [
   { id: "oysters", label: "牡蠣", edible: true },
   { id: "wood", label: "木材", edible: false },
   { id: "stone", label: "石材", edible: false },
+  // 野花——5 個物種各自獨立 item id，未來顏料/染色系統直接對應這裡，
+  // 見 docs/decisions/wildflower-gathering-system.md。
+  { id: "wildDaisy", label: "白雛菊", edible: false },
+  { id: "redPoppy", label: "紅罌粟花", edible: false },
+  { id: "dandelion", label: "蒲公英", edible: false },
+  { id: "blueDayflower", label: "藍露草", edible: false },
+  { id: "pinkWoodSorrel", label: "粉紅酢漿草", edible: false },
   { id: "copper", label: "銅礦", edible: false },
   { id: "silver", label: "銀礦", edible: false },
   { id: "gold", label: "金礦", edible: false },

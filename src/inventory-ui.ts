@@ -25,6 +25,7 @@ import {
 import { getNpcDisplayName } from "./npc-name-reveal";
 import { makeToolModel } from "./tool-models";
 import { PEARL_DEFINITIONS } from "./pearl-system";
+import { FLOWER_SPECIES } from "./wildflowers";
 
 type InventoryTab = "bag" | "storage" | "tools" | "animals" | "villagers";
 type InventoryEntry = {
@@ -52,6 +53,11 @@ const INVENTORY_DESCRIPTIONS: Record<string, string> = {
   gold: "洞窟中取得的金礦。",
   starCrystal: "帶有星光的稀有晶礦。",
   godCrystal: "蘊含特殊力量的珍貴晶礦。",
+  wildDaisy: "山腳與山區平台常見的白色小花。",
+  redPoppy: "鮮紅醒目的野生罌粟花。",
+  dandelion: "黃色花瓣密集的蒲公英。",
+  blueDayflower: "只在山區高處看得到的藍色野花。",
+  pinkWoodSorrel: "帶心形葉片的粉紅酢漿草花。",
 };
 
 function entryDescription(item: InventoryEntry) {
@@ -305,6 +311,17 @@ function inventoryEntries(): InventoryEntry[] {
       symbol: "珠",
       model: () => makeInventoryItemVisual("pearl-" + pearl.id),
       description: pearl.label + "，從牡蠣架採收時低機率取得。",
+    });
+  });
+  FLOWER_SPECIES.forEach((species) => {
+    entries.push({
+      id: species.id,
+      tab: "bag",
+      label: species.label,
+      amount: inventory.wildflowers[species.id],
+      tone: "flower",
+      symbol: "花",
+      model: () => makeInventoryItemVisual(species.id),
     });
   });
   const recipeNames = new Map(

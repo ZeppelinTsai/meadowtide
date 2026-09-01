@@ -18,6 +18,16 @@ export const waterSkyUnderlayMaterials: import("three").MeshStandardMaterial[] =
         nodeId: string;
         map: "livingArea" | "mountain";
       }[] = [];
+      // 野花叢生節點——跟 gatherNodeMeshes 同一套模式(buildMap() 重建時
+      // 清空重登記)，獨立一份陣列而不是塞進 gatherNodeMeshes，因為
+      // context-interaction-ui.ts 對 gatherNodeMeshes 的既有迭代直接綁定
+      // targetForGather()(只認得 wood/stone)，混進來會需要另外分流判斷，
+      // 不如比照 oreNodeMeshes 開一份平行登記表乾淨。
+      export const flowerNodeMeshes: {
+        group: import("three").Group;
+        nodeId: string;
+        map: "livingArea" | "mountain";
+      }[] = [];
       // 鐘乳石洞窟礦石節點——跟 gatherNodeMeshes 同一套模式，buildMap()
       // 重建這個地圖時清空重登記；礦石是「換樓層才重灑」不是「按時段
       // 刷新」，所以不需要 gatherNodeMeshes 那種原地搬動邏輯，採完直接
