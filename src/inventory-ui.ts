@@ -342,7 +342,14 @@ function renderModelThumbnail(item: InventoryEntry) {
   const size = bounds.getSize(new THREE.Vector3());
   const longestEdge = Math.max(size.x, size.y, size.z, 0.01);
   const thumbnailScale = INVENTORY_THUMBNAIL_LONG_EDGE / longestEdge;
-  model.scale.setScalar(thumbnailScale);
+  // 這裡要跟 makeInventoryItemVisual() 裡已經套用的每項目標長邊縮放
+  // (bagDisplayTargetLongEdge) 疊乘，不能用 setScalar 直接蓋掉——蓋掉的話
+  // 最終縮放只剩「原始模型尺寸 × 2.8/該項目目標值」，跟前一輪正規化完全
+  // 脫鉤，牡蠣/木材/石材這類原始尺寸偏小或形狀扁平的道具就會算出離譜的
+  // 縮放結果(過大或過小),縮圖大小因此各自為政、大小不一。改成 multiply
+  // 讓兩輪正規化正確疊乘，最終每個項目的最長邊都精準落在
+  // INVENTORY_THUMBNAIL_LONG_EDGE，縮圖大小才會真正統一。
+  model.scale.multiplyScalar(thumbnailScale);
   model.position.sub(center.multiplyScalar(thumbnailScale));
   scene.add(model);
 
