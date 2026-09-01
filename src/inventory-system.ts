@@ -31,6 +31,38 @@ import {
 let visualOwner: THREE.Object3D | null = null;
 let heldVisual: THREE.Object3D | null = null;
 let renderedItemId: string | null = null;
+
+const BAG_ITEM_TARGET_LONG_EDGE: Record<string, number> = {
+  default: 1.1,
+  radishSeeds: 1.9,
+  potatoSeeds: 1.9,
+  tomatoSeeds: 1.9,
+  fish: 1.9,
+  harvested: 1.9,
+  mushroom: 1.3,
+  oysters: 1.8,
+  wood: 1.2,
+  stone: 1.25,
+};
+
+const HELD_ITEM_SCALE_MULTIPLIER: Record<string, number> = {
+  default: 1,
+  fish: 1.2,
+  harvested: 1.12,
+  mushroom: 1.08,
+  oysters: 1.08,
+  wood: 1.0,
+  stone: 1.0,
+};
+
+function bagDisplayTargetLongEdge(itemId: string) {
+  return BAG_ITEM_TARGET_LONG_EDGE[itemId] ?? BAG_ITEM_TARGET_LONG_EDGE.default;
+}
+
+function heldItemScaleMultiplier(itemId: string) {
+  return HELD_ITEM_SCALE_MULTIPLIER[itemId] ?? HELD_ITEM_SCALE_MULTIPLIER.default;
+}
+
 function makeHeldFishVisual() {
   const fish = makeFishProp(1.4);
   fish.scale.setScalar(0.45);
@@ -306,9 +338,16 @@ export function makeInventoryItemVisual(itemId: string): THREE.Object3D {
       : itemId.includes("tomato")
         ? "tomato"
         : "radish";
-    return normalizeItemDisplayModel(makeSeedPouch(0xe9d6a5, cropType), 0.9);
+    return normalizeItemDisplayModel(
+      makeSeedPouch(0xe9d6a5, cropType),
+      bagDisplayTargetLongEdge(itemId),
+    );
   }
-  if (itemId === "harvested") return normalizeItemDisplayModel(makeCropMesh(2), 0.8);
+  if (itemId === "harvested")
+    return normalizeItemDisplayModel(
+      makeCropMesh(2),
+      bagDisplayTargetLongEdge(itemId),
+    );
   if (itemId === "mushroom") {
     const group = new THREE.Group();
     const stem = new THREE.Mesh(
@@ -323,32 +362,48 @@ export function makeInventoryItemVisual(itemId: string): THREE.Object3D {
     cap.scale.y = 0.5;
     cap.position.y = 0.34;
     group.add(stem, cap);
-    return normalizeItemDisplayModel(group, 0.7);
+    return normalizeItemDisplayModel(group, bagDisplayTargetLongEdge(itemId));
   }
   if (itemId === "fish") {
     const fish = makeFishProp(1.4);
     fish.scale.setScalar(0.45);
     fish.rotation.x = Math.PI / 2;
-    return normalizeItemDisplayModel(fish, 0.82);
+    return normalizeItemDisplayModel(fish, bagDisplayTargetLongEdge(itemId));
   }
-  if (itemId === "oysters") return normalizeItemDisplayModel(makeOysterProp(), 0.82);
-  if (itemId === "wood") return normalizeItemDisplayModel(makeWoodPile(0, 0), 0.78);
-  if (itemId === "stone") return normalizeItemDisplayModel(makeStonePile(0, 0), 0.8);
+  if (itemId === "oysters")
+    return normalizeItemDisplayModel(
+      makeOysterProp(),
+      bagDisplayTargetLongEdge(itemId),
+    );
+  if (itemId === "wood")
+    return normalizeItemDisplayModel(
+      makeWoodPile(0, 0),
+      bagDisplayTargetLongEdge(itemId),
+    );
+  if (itemId === "stone")
+    return normalizeItemDisplayModel(
+      makeStonePile(0, 0),
+      bagDisplayTargetLongEdge(itemId),
+    );
   const ore = ORE_TIERS.find((tier) => tier.kind === itemId);
-  if (ore) return normalizeItemDisplayModel(makeOreNode(0, 0, ore.color, ore.accentColor, 0.62), 0.8);
+  if (ore)
+    return normalizeItemDisplayModel(
+      makeOreNode(0, 0, ore.color, ore.accentColor, 0.62),
+      bagDisplayTargetLongEdge(itemId),
+    );
   if (itemId.startsWith("pearl-"))
     return normalizeItemDisplayModel(
       makePearlProp(
         itemId.slice(6) as import("./pearl-system").PearlRarity,
       ),
-      0.8,
+      bagDisplayTargetLongEdge(itemId),
     );
   return normalizeItemDisplayModel(
     new THREE.Mesh(
       new THREE.BoxGeometry(0.12, 0.12, 0.12),
       new THREE.MeshStandardMaterial({ color: 0xead4a8, flatShading: true }),
     ),
-    0.7,
+    bagDisplayTargetLongEdge(itemId),
   );
 }
 
@@ -423,12 +478,13 @@ export function syncHeldItemVisual() {
   const bounds = new THREE.Box3().setFromObject(heldVisual);
   const size = bounds.getSize(new THREE.Vector3());
   const center = bounds.getCenter(new THREE.Vector3());
-  const scale = HELD_ITEM_WORLD_SIZE / Math.max(size.x, 0.01);
-  heldVisual.scale.multiplyScalar(scale);
+  const baseScale = HELD_ITEM_WORLD_SIZE / Math.max(size.x, 0.01);
+  const heldScale = baseScale * heldItemScaleMultiplier(effectiveId);
+  heldVisual.scale.multiplyScalar(heldScale);
   heldVisual.position.set(
-    HELD_ITEM_POSITION.x - center.x * scale,
-    HELD_ITEM_POSITION.y - center.y * scale,
-    HELD_ITEM_POSITION.z - center.z * scale,
+    HELD_ITEM_POSITION.x - center.x * heldScale,
+    HELD_ITEM_POSITION.y - center.y * heldScale,
+    HELD_ITEM_POSITION.z - center.z * heldScale,
   );
   player.add(heldVisual);
 }

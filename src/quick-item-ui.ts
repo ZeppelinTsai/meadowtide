@@ -110,7 +110,8 @@ function moveWithinRow(direction: -1 | 1) {
   const row = availableRows[selectedRow];
   if (!row?.length) return;
   selectedIndex = (selectedIndex + direction + row.length) % row.length;
-  takeOutItem(row[selectedIndex]);
+  const itemId = row[selectedIndex];
+  if (itemId) takeOutItem(itemId);
 }
 
 function moveToNextRow() {
@@ -120,7 +121,8 @@ function moveToNextRow() {
     if (!availableRows[nextRow].length) continue;
     selectedRow = nextRow;
     selectedIndex = 0;
-    takeOutItem(availableRows[nextRow][0]);
+    const itemId = availableRows[nextRow][0];
+    if (itemId) takeOutItem(itemId);
     return;
   }
 }
@@ -139,11 +141,33 @@ function handleDirection(direction: QuickDirection) {
     gameState.fishingState !== "idle"
   )
     return;
+
   if (!inventory.heldItemId) {
-    const itemId = selectedItemId();
-    if (itemId) takeOutItem(itemId);
-    return;
+    const availableRows = normalizeSelection();
+    const row = availableRows[selectedRow];
+    if (!row?.length) return;
+
+    if (direction === "left") {
+      selectedIndex = (selectedIndex - 1 + row.length) % row.length;
+      const target = row[selectedIndex];
+      if (target) takeOutItem(target);
+      return;
+    }
+    if (direction === "right") {
+      selectedIndex = (selectedIndex + 1) % row.length;
+      const target = row[selectedIndex];
+      if (target) takeOutItem(target);
+      return;
+    }
+    if (direction === "up") {
+      moveToNextRow();
+      return;
+    }
+    if (direction === "down") {
+      return;
+    }
   }
+
   syncSelectionToHeldItem();
   if (direction === "left") moveWithinRow(-1);
   else if (direction === "right") moveWithinRow(1);

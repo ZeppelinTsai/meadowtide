@@ -605,8 +605,8 @@ canvas {
 .inventory-icon {
   position: relative;
   display: grid;
-  width: 54px;
-  height: 54px;
+  width: 68px;
+  height: 68px;
   place-items: center;
   margin-bottom: 10px;
   color: #fff6dc;
@@ -825,7 +825,7 @@ canvas {
   height: 100%;
   object-fit: contain;
   border-radius: inherit;
-  transform: scale(1.08);
+  transform: scale(1.22);
 }
 .inventory-item-label {
   grid-column: 1 / -1;
