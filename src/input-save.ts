@@ -445,7 +445,15 @@ export function loadGame(
     black: Math.max(0, Number(data.inventory?.pearls?.black) || 0),
     gold: Math.max(0, Number(data.inventory?.pearls?.gold) || 0),
   };
-  inventory.storage = Object.fromEntries(
+  // 舊存檔沒有 wildflowers；Object.assign 之後不能讓這個新欄位維持
+  // undefined，否則快捷背包重繪在讀取花物品數量時會中斷，連膠囊也不再顯示。
+  inventory.wildflowers = {
+    wildDaisy: Math.max(0, Number(data.inventory?.wildflowers?.wildDaisy) || 0),
+    redPoppy: Math.max(0, Number(data.inventory?.wildflowers?.redPoppy) || 0),
+    dandelion: Math.max(0, Number(data.inventory?.wildflowers?.dandelion) || 0),
+    blueDayflower: Math.max(0, Number(data.inventory?.wildflowers?.blueDayflower) || 0),
+    pinkWoodSorrel: Math.max(0, Number(data.inventory?.wildflowers?.pinkWoodSorrel) || 0),
+  };  inventory.storage = Object.fromEntries(
     Object.entries(data.inventory?.storage || {}).flatMap(([itemId, amount]) => {
       const safeAmount = Math.max(0, Math.floor(Number(amount) || 0));
       return safeAmount > 0 ? [[itemId, safeAmount]] : [];
