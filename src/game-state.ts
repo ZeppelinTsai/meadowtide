@@ -1,10 +1,6 @@
 import * as THREE from "three";
 import { hash2 } from "./utils";
-import {
-  LAYOUT,
-  MAPS,
-  MOUNTAIN_GATE_BLOCKER,
-} from "./layout-maps";
+import { LAYOUT, MAPS, MOUNTAIN_GATE_BLOCKER } from "./layout-maps";
 import { npcs, hasPastureGrassAt } from "./npc-runtime";
 import { isNearFishingWater } from "./fishing-water";
 import { syncFarmVisuals } from "./farm-visuals";
@@ -518,13 +514,23 @@ export function plantSeed(x: number, z: number) {
   const heldSeedId = inventory.heldItemId;
   const cropType = cropTypeForSeedItem(heldSeedId);
   if (!heldSeedId || !cropType) return;
-  const seedCount = heldSeedId === "potatoSeeds" ? inventory.potatoSeeds : heldSeedId === "tomatoSeeds" ? inventory.tomatoSeeds : inventory.seeds;
+  const seedCount =
+    heldSeedId === "potatoSeeds"
+      ? inventory.potatoSeeds
+      : heldSeedId === "tomatoSeeds"
+        ? inventory.tomatoSeeds
+        : inventory.seeds;
   if (seedCount <= 0) return;
   cropState[key] = { stage: 0, plantedDay: gameState.currentDay, cropType };
   if (heldSeedId === "potatoSeeds") inventory.potatoSeeds--;
   else if (heldSeedId === "tomatoSeeds") inventory.tomatoSeeds--;
   else inventory.seeds--;
-  const remaining = heldSeedId === "potatoSeeds" ? inventory.potatoSeeds : heldSeedId === "tomatoSeeds" ? inventory.tomatoSeeds : inventory.seeds;
+  const remaining =
+    heldSeedId === "potatoSeeds"
+      ? inventory.potatoSeeds
+      : heldSeedId === "tomatoSeeds"
+        ? inventory.tomatoSeeds
+        : inventory.seeds;
   if (remaining <= 0) inventory.heldItemId = null;
   nearAnyNpc();
   syncFarmVisuals();
@@ -563,9 +569,27 @@ export function growCropsForNewDay() {
 // 這才是「站不上去/採不到」的真正原因，不是判定寫錯。把最靠海這格
 // 也一起算進採集點，兩格都能觸發，不用逼玩家往回退一步才踩得中。
 export const OYSTER_RACK_LAYOUTS = [
-  { visual: { x: 46, z: 14 }, interactionTiles: [[44, 14], [45, 14]] },
-  { visual: { x: 46, z: 16 }, interactionTiles: [[44, 16], [45, 16]] },
-  { visual: { x: 46, z: 18 }, interactionTiles: [[44, 18], [45, 18]] },
+  {
+    visual: { x: 46, z: 14 },
+    interactionTiles: [
+      [44, 14],
+      [45, 14],
+    ],
+  },
+  {
+    visual: { x: 46, z: 16 },
+    interactionTiles: [
+      [44, 16],
+      [45, 16],
+    ],
+  },
+  {
+    visual: { x: 46, z: 18 },
+    interactionTiles: [
+      [44, 18],
+      [45, 18],
+    ],
+  },
 ] as const;
 export const OYSTER_RACK_VISUAL = OYSTER_RACK_LAYOUTS[0].visual;
 export const OYSTER_RACK_TILES = OYSTER_RACK_LAYOUTS[0].interactionTiles;
@@ -590,7 +614,9 @@ export function getActiveOysterRackLayouts() {
 
 function oysterRackLayoutAt(x: number, z: number) {
   return getActiveOysterRackLayouts().find((layout) =>
-    layout.interactionTiles.some(([tileX, tileZ]) => tileX === x && tileZ === z),
+    layout.interactionTiles.some(
+      ([tileX, tileZ]) => tileX === x && tileZ === z,
+    ),
   );
 }
 
@@ -758,7 +784,8 @@ export function settlePastureGrazing(day = gameState.currentDay) {
 
 // 17:00 只有當天沒吃到外草時才消耗一單位；動物數量不影響消耗量。
 export function settleFeederConsumption() {
-  if (!gameState.ownedAnimals?.length || gameState.feederUnits <= 0) return false;
+  if (!gameState.ownedAnimals?.length || gameState.feederUnits <= 0)
+    return false;
   gameState.feederUnits -= 1;
   return true;
 }
@@ -923,11 +950,7 @@ refreshGatherNodes();
 // 料理系統：食譜 ID 永久保存，來源可由 NPC、書架或事件解鎖。
 // 材料可來自背包與倉庫；來源偏好只影響扣除順序，總量不足時不可料理。
 // ==============================================================
-export type CookingIngredientId =
-  | "harvested"
-  | "mushroom"
-  | "fish"
-  | "oysters";
+export type CookingIngredientId = "harvested" | "mushroom" | "fish" | "oysters";
 
 export interface Recipe {
   id: string;
@@ -939,8 +962,18 @@ export interface Recipe {
 export const RECIPES: Recipe[] = [
   { id: "grilledVeggie", name: "烤蔬菜", tier: "普通", cost: { harvested: 2 } },
   { id: "seafoodSoup", name: "海鮮湯", tier: "普通", cost: { fish: 2 } },
-  { id: "mushroomSkewer", name: "烤蘑菇串", tier: "普通", cost: { mushroom: 2 } },
-  { id: "garlicGreens", name: "蒜炒野菜", tier: "喜歡", cost: { harvested: 3 } },
+  {
+    id: "mushroomSkewer",
+    name: "烤蘑菇串",
+    tier: "普通",
+    cost: { mushroom: 2 },
+  },
+  {
+    id: "garlicGreens",
+    name: "蒜炒野菜",
+    tier: "喜歡",
+    cost: { harvested: 3 },
+  },
   { id: "bakedOyster", name: "奶油烤牡蠣", tier: "喜歡", cost: { oysters: 2 } },
   {
     id: "islandPlatter",
@@ -977,9 +1010,7 @@ export function learnRecipes(recipeIds: string[]) {
 }
 
 export function canAffordRecipe(recipe: Recipe) {
-  return (
-    Object.entries(recipe.cost) as [CookingIngredientId, number][]
-  ).every(
+  return (Object.entries(recipe.cost) as [CookingIngredientId, number][]).every(
     ([id, amount]) =>
       bagIngredientAmount(id) + (inventory.storage[id] || 0) >= amount,
   );
@@ -997,21 +1028,21 @@ export function cookRecipe(
   )
     return null;
 
-  (
-    Object.entries(recipe.cost) as [CookingIngredientId, number][]
-  ).forEach(([id, required]) => {
-    const preferStorage = preferences[id] === "storage";
-    const bag = bagIngredientAmount(id);
-    const stored = Math.max(0, inventory.storage[id] || 0);
-    const fromStorage = preferStorage
-      ? Math.min(stored, required)
-      : Math.max(0, required - bag);
-    const fromBag = required - fromStorage;
-    setBagIngredientAmount(id, bag - fromBag);
-    const nextStored = stored - fromStorage;
-    if (nextStored > 0) inventory.storage[id] = nextStored;
-    else delete inventory.storage[id];
-  });
+  (Object.entries(recipe.cost) as [CookingIngredientId, number][]).forEach(
+    ([id, required]) => {
+      const preferStorage = preferences[id] === "storage";
+      const bag = bagIngredientAmount(id);
+      const stored = Math.max(0, inventory.storage[id] || 0);
+      const fromStorage = preferStorage
+        ? Math.min(stored, required)
+        : Math.max(0, required - bag);
+      const fromBag = required - fromStorage;
+      setBagIngredientAmount(id, bag - fromBag);
+      const nextStored = stored - fromStorage;
+      if (nextStored > 0) inventory.storage[id] = nextStored;
+      else delete inventory.storage[id];
+    },
+  );
 
   inventory.dishes[recipe.id] = (inventory.dishes[recipe.id] || 0) + 1;
   gameState.harvestFeedback = {
@@ -1028,8 +1059,6 @@ export function cookMeal(): Recipe | null {
   const recipe = RECIPES.filter(
     (item) =>
       inventory.learnedRecipes.includes(item.id) && canAffordRecipe(item),
-  ).sort(
-    (a, b) => RECIPE_TIER_RANK[b.tier] - RECIPE_TIER_RANK[a.tier],
-  )[0];
+  ).sort((a, b) => RECIPE_TIER_RANK[b.tier] - RECIPE_TIER_RANK[a.tier])[0];
   return recipe ? cookRecipe(recipe.id) : null;
 }

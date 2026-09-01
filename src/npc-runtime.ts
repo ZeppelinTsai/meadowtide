@@ -66,12 +66,6 @@ export const BARN_DOOR = {
   x: LAYOUT.barn.doorX,
   z: LAYOUT.barn.z + LAYOUT.barn.d,
 };
-// 動物不能從小屋東側沿 z=0 直接切向門口；先退到門前右下方的空地，
-// 再轉向門口，避免大型動物卡在 (24, 0)。座標仍由 LAYOUT.barn 推導。
-export const BARN_RETURN_APPROACH = {
-  x: LAYOUT.barn.x + LAYOUT.barn.w + 1,
-  z: BARN_DOOR.z + 2,
-};
 export function hasPastureGrassAt(x, z) {
   if (
     x < PASTURE.minX ||
@@ -176,6 +170,9 @@ export const animals = animalDefs.map((def, i) => {
     routeCurve: 0,
     prevBend: 0,
     stuckSeconds: 0,
-    returningViaApproach: true,
+    // 返舍路徑：進入 animalsShouldBeHome 時用 aStar() 算一次到穀倉門口
+    // 的格路徑（見 game-loop.ts），取代舊版寫死中繼點 BARN_RETURN_APPROACH。
+    homePath: null as { x: number; z: number }[] | null,
+    homePathIndex: 0,
   };
 });

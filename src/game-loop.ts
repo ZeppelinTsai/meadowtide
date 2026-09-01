@@ -75,7 +75,6 @@ import {
   npcs,
   animals,
   BARN_DOOR,
-  BARN_RETURN_APPROACH,
   randomPasturePoint,
   outsideCols,
   outsideRows,
@@ -1160,6 +1159,7 @@ export function animate(now) {
         a.mesh.position.z = z;
         a.target = chooseSafeAnimalTarget(a);
         a.routeTarget = null;
+        a.homePath = null;
         return;
       }
     }
@@ -1183,6 +1183,7 @@ export function animate(now) {
       a.mesh.position.set(BARN_DOOR.x, 0, BARN_DOOR.z);
       a.target = null;
       a.routeTarget = null;
+      a.homePath = null;
       a.wanderState = "resting";
       animateAnimalWalk(a, false, gameState.elapsed);
       return;
@@ -1190,45 +1191,64 @@ export function animate(now) {
 
     if (animalsShouldBeHome) {
       if (a.state === "out") {
-        // 17:00 後不管原本是否正在休息，都立即往穀倉移動。
+        // 17:00 後不管原本是否正在休息，都立即往穀倉移動。與其用寫死的
+        // 中繼點硬轉一段（舊版 BARN_RETURN_APPROACH，一律先繞去
+        // (barn.x+w+1, doorZ+2) 才轉向門口），改成跟村民 NPC 排程移動
+        // 同一套 aStar()：以動物當下格子為起點、穀倉門口為終點算一次
+        // 最短路徑，路徑本身就會繞開小屋牆面/柵欄，不需要動物已經站在
+        // 門口附近時還被迫多繞一趟。
         a.wanderState = "walking";
-        if (
-          a.returningViaApproach &&
-          Math.hypot(
-            BARN_RETURN_APPROACH.x - a.mesh.position.x,
-            BARN_RETURN_APPROACH.z - a.mesh.position.z,
-          ) < 0.35
-        ) {
-          a.returningViaApproach = false;
-        }
-        const returnTarget = a.returningViaApproach
-          ? BARN_RETURN_APPROACH
-          : BARN_DOOR;
-        const dx = returnTarget.x - a.mesh.position.x,
-          dz = returnTarget.z - a.mesh.position.z;
-        const dist = Math.hypot(dx, dz);
-        if (dist > 0.12) {
-          const step = Math.min(dist, a.speed * dt);
-          moving = moveAnimalWithCollision(
-            a,
-            a.mesh.position.x + (dx / dist) * step,
-            a.mesh.position.z + (dz / dist) * step,
+        if (!a.homePath) {
+          const startGrid = {
+            x: Math.round(a.mesh.position.x),
+            z: Math.round(a.mesh.position.z),
+          };
+          const path = aStar(
+            startGrid,
+            { x: BARN_DOOR.x, z: BARN_DOOR.z },
+            outsideCols,
+            outsideRows,
+            (x, z) => !isAnimalPositionSafe(a, x, z),
           );
-          // 動物模型的頭朝本地 +X，不是跟角色一樣朝 -Z，所以要多轉 -90°
-          a.mesh.rotation.y = Math.atan2(dx, dz) - Math.PI / 2;
-
-          // 可選：卡住太久也提早進備援（例如連續多幀沒前進）
-          // 若之後要加強，可在 animal 物件上加 stuckFrames / lastX lastZ 計數
+          a.homePath =
+            path && path.length ? path : [{ x: BARN_DOOR.x, z: BARN_DOOR.z }];
+          a.homePathIndex =
+            a.homePath[0] &&
+            a.homePath[0].x === startGrid.x &&
+            a.homePath[0].z === startGrid.z
+              ? 1
+              : 0;
+        }
+        if (a.homePathIndex < a.homePath.length) {
+          const wp = a.homePath[a.homePathIndex];
+          const dx = wp.x - a.mesh.position.x,
+            dz = wp.z - a.mesh.position.z;
+          const dist = Math.hypot(dx, dz);
+          if (dist > 0.12) {
+            const step = Math.min(dist, a.speed * dt);
+            moving = moveAnimalWithCollision(
+              a,
+              a.mesh.position.x + (dx / dist) * step,
+              a.mesh.position.z + (dz / dist) * step,
+            );
+            // 動物模型的頭朝本地 +X，不是跟角色一樣朝 -Z，所以要多轉 -90°
+            a.mesh.rotation.y = Math.atan2(dx, dz) - Math.PI / 2;
+          } else {
+            a.homePathIndex++;
+          }
         } else {
           a.state = "in";
           a.mesh.visible = false;
+          a.homePath = null;
+          a.homePathIndex = 0;
         }
       }
     } else if (a.state === "in") {
       a.state = "out";
       a.mesh.visible = true;
       a.mesh.position.set(BARN_DOOR.x, 0, BARN_DOOR.z);
-      a.returningViaApproach = true;
+      a.homePath = null;
+      a.homePathIndex = 0;
       a.target = chooseSafeAnimalTarget(a);
       a.wanderState = "walking";
       a.restUntil = 0;
@@ -1312,6 +1332,7 @@ export function animate(now) {
           a.mesh.position.set(BARN_DOOR.x, 0, BARN_DOOR.z);
           a.target = null;
           a.routeTarget = null;
+          a.homePath = null;
         } else {
           const rescue = randomPasturePoint((x, z) =>
             isAnimalPositionSafe(a, x, z),
