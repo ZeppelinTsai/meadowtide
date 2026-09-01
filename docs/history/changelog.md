@@ -859,3 +859,28 @@ Zeppelin 回報：上岸前(立起貼船頭)扶手方向對了，但靠岸後(�
 球心。保留原有季節、時間、月相、天氣透明度與地形遮蔽判定。npm run
 build、npm run test:first-person、npm run test:weather 均通過；本機
 瀏覽器自動目測因 Windows deny-read ACL 無法啟動，仍需進遊戲實看一次。
+
+## 冬季街道看不出積雪：地面色太接近灰，不是缺判斷（2026-09-01，GitHub Copilot 執行）
+
+Zeppelin 回報冬天截圖裡街道、港口地面沒有「積雪感」，看起來只是天空
+在下雪、地面還是原本的灰色。這輪（由 GitHub Copilot 在同一份 repo 上
+排查，非本次 Claude session）對照 `game-clock.ts`、`props-nature.ts`
+（`updateSeasonalGroundColors()` 一帶）、`weather-schedule.ts` 三個檔案
+後確認：季節/天氣判斷邏輯本身沒有缺漏——`getSeasonGrassTone()`
+（`game-state.ts`）在 `snowWeather || seasonIndex === 3` 時本來就會走
+專屬分支，問題出在這個分支給的地面色數值本身太淡、非直射光下容易讀成
+灰底而不是雪白。
+
+修法：把該分支的地面色改成更接近純白、粗糙度更低的數值——目前程式碼
+是 `{ ground: 0xf7f9fc, roughness: 0.62 }`，跟 `SEASON_GRASS_TONES.winter`
+（`0xe8eef2`／`roughness: 0.82`，非下雪的一般冬天日子用這個較柔和的色）
+分開一組更亮更「有光澤感」的雪色，讓下雪天／整個冬季地表跟港口、城鎮
+地板一起變白，不再只有天空層看得出下雪。
+
+`npm run build` 已跑過並成功（`✓ built in 7.87s`）。這是純視覺調色，
+沒有動判斷邏輯，理論上風險低，但實際「白得夠不夠」仍要 Zeppelin 進遊戲
+看一次冬天/雪天畫面才能確認。
+
+附註：這輪排查時發現 repo 底下有一個殘留的 `.git/index.lock`（本次
+session 沒有刪除檔案的權限，沒有清掉），如果之後 `git` 指令卡住或
+Copilot／終端機回報鎖檔錯誤，先確認這個檔案還在不在。

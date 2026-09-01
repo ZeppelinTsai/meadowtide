@@ -366,6 +366,79 @@ export function makeCropMesh(stage, cropType: "radish" | "potato" | "tomato" = "
     g.add(stem, leaf);
     return g;
   }
+  // 成熟株(stage >= 2)依 cropType 分開造型——這裡之前不管三種作物種了
+  // 什麼，一律長成同一叢番茄，farm-visuals.ts 傳進來的 cropType 形同虛設；
+  // 2026-09-01 Zeppelin 要求補上蘿蔔／馬鈴薯專屬外觀時才發現。三顆共用
+  // stage 0/1(幼苗/發芽)的通用造型，只有成熟株才分岔，跟真實作物一樣——
+  // 幼苗階段本來就看不太出差異，不用提早分岔。
+  if (cropType === "radish") {
+    const g = new THREE.Group();
+    const bulb = new THREE.Mesh(
+      new THREE.SphereGeometry(0.075, 8, 6),
+      new THREE.MeshStandardMaterial({ color: 0xf4d7b7, flatShading: true }),
+    );
+    bulb.scale.set(1, 1.3, 1);
+    bulb.position.y = 0.09;
+    g.add(bulb);
+    const stem = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.015, 0.02, 0.14, 5),
+      new THREE.MeshStandardMaterial({ color: 0x3f9142 }),
+    );
+    stem.position.y = 0.21;
+    g.add(stem);
+    const leafMat = new THREE.MeshStandardMaterial({
+      color: 0x5fae4a,
+      flatShading: true,
+    });
+    for (let i = 0; i < 5; i++) {
+      const leaf = new THREE.Mesh(new THREE.IcosahedronGeometry(0.045, 0), leafMat);
+      const a = (i / 5) * Math.PI * 2;
+      leaf.position.set(Math.cos(a) * 0.04, 0.27, Math.sin(a) * 0.04);
+      leaf.scale.set(1, 0.6, 1.4);
+      g.add(leaf);
+    }
+    return g;
+  }
+  if (cropType === "potato") {
+    const g = new THREE.Group();
+    const tuber = new THREE.Mesh(
+      new THREE.SphereGeometry(0.08, 8, 6),
+      new THREE.MeshStandardMaterial({ color: 0xb47b52, flatShading: true }),
+    );
+    tuber.scale.set(1.25, 0.85, 1.05);
+    tuber.position.y = 0.075;
+    g.add(tuber);
+    const bumpMat = new THREE.MeshStandardMaterial({
+      color: 0xc98f62,
+      flatShading: true,
+    });
+    [
+      [-0.04, -0.01],
+      [0.03, 0.02],
+    ].forEach(([x, z]) => {
+      const bump = new THREE.Mesh(new THREE.SphereGeometry(0.02, 6, 5), bumpMat);
+      bump.position.set(x, 0.11, z);
+      g.add(bump);
+    });
+    const stem = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.015, 0.02, 0.12, 5),
+      new THREE.MeshStandardMaterial({ color: 0x3f9142 }),
+    );
+    stem.position.y = 0.19;
+    g.add(stem);
+    const sproutMat = new THREE.MeshStandardMaterial({
+      color: 0x5b9d46,
+      flatShading: true,
+    });
+    [-1, 1].forEach((side) => {
+      const leaf = new THREE.Mesh(new THREE.IcosahedronGeometry(0.035, 0), sproutMat);
+      leaf.position.set(side * 0.035, 0.24, 0);
+      leaf.scale.set(1, 0.6, 1.3);
+      g.add(leaf);
+    });
+    return g;
+  }
+  // tomato（既有造型，改成明確分支，不再是「其他情況一律用這個」的預設）
   const g = new THREE.Group();
   const stem = new THREE.Mesh(
     new THREE.CylinderGeometry(0.02, 0.03, 0.26, 5),
@@ -584,109 +657,14 @@ export function makeAnimal(type, seed = 0) {
   return g;
 }
 
-function drawSeedStickerCrop(
-  ctx: CanvasRenderingContext2D,
-  cropType: "radish" | "potato" | "tomato",
-) {
-  const cx = 128;
-  const cy = 128;
-
-  ctx.save();
-  ctx.translate(cx, cy);
-
-  ctx.fillStyle = "rgba(255, 248, 232, 0.95)";
-  ctx.beginPath();
-  ctx.roundRect(-110, -110, 220, 220, 28);
-  ctx.fill();
-
-  ctx.lineWidth = 8;
-  ctx.strokeStyle = "rgba(105, 70, 41, 0.78)";
-  ctx.stroke();
-
-  if (cropType === "radish") {
-    ctx.fillStyle = "#f4d7b7";
-    ctx.beginPath();
-    ctx.ellipse(0, 25, 82, 36, 0, 0, Math.PI * 2);
-    ctx.fill();
-
-    ctx.fillStyle = "#f7eee1";
-    ctx.beginPath();
-    ctx.ellipse(0, 16, 62, 30, 0, 0, Math.PI * 2);
-    ctx.fill();
-
-    ctx.fillStyle = "#67a94b";
-    for (let i = 0; i < 6; i++) {
-      const angle = (-Math.PI / 2) + (i / 6) * Math.PI;
-      const x = Math.cos(angle) * 52;
-      const y = Math.sin(angle) * 18 - 52;
-      ctx.save();
-      ctx.translate(x, y);
-      ctx.rotate(angle * 0.8);
-      ctx.beginPath();
-      ctx.ellipse(0, 0, 26, 10, 0, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.restore();
-    }
-
-    ctx.fillStyle = "#4d8d39";
-    ctx.fillRect(-6, -62, 12, 48);
-  } else if (cropType === "potato") {
-    ctx.fillStyle = "#b47b52";
-    ctx.beginPath();
-    ctx.ellipse(0, 10, 82, 54, 0.25, 0, Math.PI * 2);
-    ctx.fill();
-
-    ctx.fillStyle = "#c98f62";
-    ctx.beginPath();
-    ctx.ellipse(-32, -8, 16, 14, 0, 0, Math.PI * 2);
-    ctx.ellipse(0, -18, 18, 16, 0, 0, Math.PI * 2);
-    ctx.ellipse(28, -4, 18, 14, 0, 0, Math.PI * 2);
-    ctx.fill();
-
-    ctx.fillStyle = "#52270b";
-    ctx.fillRect(-6, -60, 12, 52);
-    ctx.fillStyle = "#5b9d46";
-    ctx.beginPath();
-    ctx.moveTo(-18, -58);
-    ctx.quadraticCurveTo(-24, -74, -8, -78);
-    ctx.quadraticCurveTo(0, -68, -6, -58);
-    ctx.fill();
-    ctx.beginPath();
-    ctx.moveTo(18, -60);
-    ctx.quadraticCurveTo(24, -76, 8, -80);
-    ctx.quadraticCurveTo(0, -68, 6, -60);
-    ctx.fill();
-  } else {
-    ctx.fillStyle = "#d84d3e";
-    ctx.beginPath();
-    ctx.ellipse(-26, 10, 38, 44, -0.3, 0, Math.PI * 2);
-    ctx.ellipse(28, 12, 34, 40, 0.25, 0, Math.PI * 2);
-    ctx.ellipse(0, -12, 38, 42, 0, 0, Math.PI * 2);
-    ctx.fill();
-
-    ctx.fillStyle = "#5a9a45";
-    ctx.beginPath();
-    ctx.moveTo(-18, -28);
-    ctx.quadraticCurveTo(-28, -62, -6, -62);
-    ctx.quadraticCurveTo(4, -46, -18, -28);
-    ctx.fill();
-    ctx.beginPath();
-    ctx.moveTo(24, -26);
-    ctx.quadraticCurveTo(32, -60, 10, -62);
-    ctx.quadraticCurveTo(2, -46, 24, -26);
-    ctx.fill();
-
-    ctx.fillStyle = "#4e8a20";
-    ctx.fillRect(-6, -56, 12, 42);
-    ctx.fillStyle = "#3d7c1d";
-    ctx.fillRect(-2, -12, 4, 34);
-  }
-
-  ctx.restore();
-}
-
+// 種子袋原本用一張畫著蘿蔔/馬鈴薯/番茄圖案的 canvas 貼紙(平面)當「牌子」，
+// 平面永遠只有一個面看得到圖案，握持/縮圖/地圖三個情境各自的相機角度不同，
+// 需要各自校正貼紙面向，跳來跳去、越校越亂。2026-09-01 Zeppelin 要求改成
+// 真正的立體作物模型，直接放棄整張 drawSeedStickerCrop() canvas 繪圖(見
+// docs/decisions/crop-models.md)：立體模型從大多數角度都認得出形狀，不需要
+// 再為了「哪個面朝哪個相機」反覆調整旋轉角度。
 export function makeSeedPouch(
-  labelColor = 0xe9d6a5,
+  _labelColor = 0xe9d6a5,
   cropType: "radish" | "potato" | "tomato" = "radish",
 ) {
   const g = new THREE.Group();
@@ -701,39 +679,12 @@ export function makeSeedPouch(
   bag.position.y = 0.14;
   g.add(bag);
 
-  const canvas = document.createElement("canvas");
-  canvas.width = 256;
-  canvas.height = 256;
-  const ctx = canvas.getContext("2d");
-  if (ctx) {
-    drawSeedStickerCrop(ctx, cropType);
-  }
-
-  const texture = new THREE.CanvasTexture(canvas);
-  texture.needsUpdate = true;
-
-  const sticker = new THREE.Mesh(
-    new THREE.PlaneGeometry(0.24, 0.2),
-    new THREE.MeshStandardMaterial({
-      map: texture,
-      transparent: true,
-      alphaTest: 0.02,
-      metalness: 0,
-      roughness: 1,
-      side: THREE.DoubleSide,
-    }),
-  );
-  sticker.position.set(0, 0.15, 0.11);
-  sticker.rotation.y = Math.PI;
-  g.add(sticker);
-
-  const label = new THREE.Mesh(
-    new THREE.BoxGeometry(0.12, 0.075, 0.012),
-    new THREE.MeshStandardMaterial({ color: labelColor, flatShading: true }),
-  );
-  label.position.set(0, 0.15, 0.118);
-  label.visible = false;
-  g.add(label);
+  // 跟 farm-visuals.ts 種在農地裡的成熟作物共用同一顆 makeCropMesh()，
+  // 縮小放在袋口——單一資料源，之後改造型兩邊會一起變，不用維護兩份。
+  const crop = makeCropMesh(2, cropType);
+  crop.scale.setScalar(0.55);
+  crop.position.y = 0.2;
+  g.add(crop);
   return g;
 }
 

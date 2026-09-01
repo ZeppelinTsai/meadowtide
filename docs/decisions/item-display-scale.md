@@ -89,21 +89,34 @@ Zeppelin 截圖回報「過大了」——農作物、蘑菇這類偏垂直的�
 改成 `1.6`(可視範圍的 80%，四周留邊)，Zeppelin 實機確認「可以了」，這輪
 確定收斂。
 
-## 尚未處理：「背包的轉向不對」
+## 「背包的轉向不對」：實際是縮圖/快捷列的貼紙角度，不是手持（2026-09-01 補完，修正過一次方向）
 
-沒有找到明確對應的 bug。目前只有 `fish` 在 `makeInventoryItemVisual()` 裡
-有客製旋轉(`fish.rotation.x = Math.PI / 2`，把原本站立的魚放平)，
-wood/stone/oysters 等「地面道具」沒有任何客製旋轉，直接沿用原始建模朝向。
-懷疑這些道具原始建模是照著「放在地上、玩家從遊戲固定俯視角看」的角度做的，
-搬進縮圖/手持共用的固定 3/4 俯角相機(`camera.position.set(2.2, 1.8, 3.2)`)
-時可能不是最佳角度，看起來「轉向不對」或「扁掉」。
+Zeppelin 補了截圖跟具體情境，第一輪誤判成手持(拿出來握在手上)的種子袋
+(`makeSeedPouch()`)角度不對，把 45° 疊加改進了
+`syncHeldItemVisual()`(`inventory-system.ts`)——結果 Zeppelin 回報這樣反而
+把原本正常的手持模型轉錯了，真正要調的是「資訊模式」/「資訊包」，也就是
+`inventory-ui.ts` 的縮圖快取(`renderModelThumbnail()`)。這個快取是「物品」
+分頁格狀清單**跟** `quick-item-ui.ts` 快捷列圖示**共用的唯一畫面來源**
+(`inventoryItemThumbnail()`)，兩處用的是同一張 `toDataURL()` 產出的 PNG，
+不是各自獨立渲染——縮圖相機是固定角度的正交相機
+(`camera.position.set(2.2, 1.8, 3.2)`)，跟手持模型所在的真實 3D 遊戲鏡頭
+是完全不同的兩顆相機、兩份獨立模型實例，同一顆模型不轉，在兩邊相機下角度
+觀感自然不一樣，不能套同一個修法。
 
-這輪沒有動——這台機器這次遇到反覆的 EPERM 檔案鎖定(`npm run build`、
-`npm run dev`、甚至 `rm -rf node_modules/.vite` 都被擋，可能是防毒軟體或
-OneDrive 之類的即時同步在鎖檔)，沒辦法真的把 dev server 跑起來截圖驗證，
-不想在沒看到畫面的情況下亂猜角度數字，猜錯反而可能讓觀感更差。等 Zeppelin
-自己畫面確認「轉向不對」具體長怎樣(哪個道具、哪個情境：背包縮圖／手持)，
-再對症下藥比較穩。
+已改回：`syncHeldItemVisual()` 的種子額外旋轉整段移除，手持角度回到原樣。
+改為在 `renderModelThumbnail()` 裡，`item.model()` 建出模型後、量測
+bounding box 之前，針對 `item.id.endsWith("Seeds")` 疊加
+`model.rotation.y += Math.PI / 4`——因為縮圖跟快捷列共用同一份快取，這裡
+改一處，「物品」分頁格狀清單跟快捷列圖示會同時修正。
+
+同一輪 Zeppelin 也回報握持道具「有點浮空」，`HELD_ITEM_POSITION.y` 從
+`0.62` 降到 `0.56`(`held-item-pose.ts`)——這個沒有被上面那次誤判牽連，
+維持降低後的數值。這個是全域手持位置常數，所有道具握持時都會跟著降低，
+不是只有種子。
+
+wood/stone/oysters 等地面道具「原始建模朝向搬進握持/縮圖情境可能不是最佳
+角度」這個技術債本身還沒動，等 Zeppelin 之後回報具體哪個道具看起來不對
+再處理。
 
 ## 驗證
 
