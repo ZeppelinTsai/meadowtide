@@ -19,7 +19,7 @@
 花瓣/葉片都是 `THREE.Shape` + bezier 曲線描邊、`ShapeGeometry` 拉出的扁平幾何，用 `radialPart()` 這個共用工具沿花心/莖頂放射狀排列（角度決定方位、局部 X 軸旋轉決定花瓣攤平/上翹角度）。跟 `weather-particles.ts` 畫花瓣貼圖用的 bezier 技巧同一種思路，只是這裡直接做成 3D 幾何而不是 canvas 貼圖。
 
 - `makeFlowerSpecimen(species)`：單朵花頭，用於背包/手持展示。
-- `makeFlowerCluster(species, x, z, seed?)`：採集點的叢生模型，同一物種 2~4 朵花頭聚在一起（跟 `props-decor.ts` 的 `makeGardenBed()` 用 `makeFlower()` 堆花叢是同一種做法，只是這裡花本身是專屬幾何）。
+- `makeFlowerCluster(species, x, z, seed?)`：採集點的叢生模型，同一物種 2~4 朵花頭聚在一起（跟 `props-decor.ts` 的 `makeGardenBed()` 用 `makeFlower()` 堆花叢是同一種做法，只是這裡花本身是專屬幾何）。**2026-09-01 更新**：花頭幾何原本照真花比例做，第一版實機測試（跟 `makeWoodPile()`/`makeStonePile()` 放一起比）小到幾乎看不見，比照兩者各自用 `group.scale.setScalar(1.35/1.4)` 放大整叢的做法，`makeFlowerCluster()` 也加了 `CLUSTER_SCALE = 2.6` 套在整個叢生 `group` 上（倍率比木材/石頭大很多，因為花頭本身幾何遠比原木/岩塊小），只放大最終叢，不動個別花頭的幾何比例/輪廓，五個物種的可辨識輪廓不受影響。
 
 ## 採集點資料 —— 跟木材/石頭共用同一套骨架
 
@@ -37,12 +37,11 @@
 |---|---|---|---|---|
 | 生活區山腳 | `LAYOUT.livingArea.gatherZone`（zone=`mountainSide`） | 高密度 | 3 | 白雛菊、蒲公英 |
 | 山區平台1 | `LAYOUT.mountain.foot` | 中密度 | 3 | 白雛菊、粉紅酢漿草 |
-| 山區平台2 | `LAYOUT.mountain.waist` | 中密度 | 3 | 蒲公英、紅罌粟花、粉紅酢漿草 |
-| 山區平台3(最高) | `LAYOUT.mountain.summit` | 中/低密度 | 2 | 藍露草、紅罌粟花 |
+| 山區平台2 | `LAYOUT.mountain.waist` | 中密度 | 3 | 蒲公英、紅罌粟花、粉紅酢漿草、藍露草 |
 
-每個節點的物種在每次刷新時從對應池子隨機挑一個（`FLOWER_ZONE_SPECIES`/`FLOWER_NODES_PER_ZONE`，都是 `game-state.ts` 內未匯出的模組常數，只給 `refreshGatherNodes()` 自己用），不是固定配置——這樣同一區域每半日刷新看到的花不會永遠一樣，也符合規格書估的「全採一輪約 36~60 個/日」量級，沒有另外精算到個位數。
+每個節點的物種在每次刷新時從對應池子隨機挑一個（`FLOWER_ZONE_SPECIES`/`FLOWER_NODES_PER_ZONE`，都是 `game-state.ts` 內未匯出的模組常數，只給 `refreshGatherNodes()` 自己用），不是固定配置。
 
-**`summit`（山區平台3）是這次新啟用的區域**：`gatherCandidates()`/`GatherNode["zone"]` 原本就有 `LAYOUT.mountain.summit`/`LAYOUT.mountain.plazas.summit` 的資料，但木材/石頭的 `refreshGatherNodes()` 迴圈只走 `["mountainSide", "foot", "waist"]`，從來沒真正用過。野花的迴圈額外加入 `"summit"`，讓藍露草照規格書的設計意圖「從山下能看到一點藍色」真正落地——這是這個系統唯一新增使用的地圖區域，木材/石頭的採集邏輯完全沒有變動行為。
+**2026-09-01 更新：`summit`（山區平台3）最終沒有採用**。原本是這次新啟用的區域（`LAYOUT.mountain.summit`/`plazas.summit` 資料本來就在，只是木材/石頭從沒真正用過），但 Zeppelin 實測發現山頂已經有神社/鳥居/長椅/觀景台等地標物件（`build-map.ts` 的 `summitShrine`/`summitTorii`/`bench`），野花叢會被這些東西擋到、看不清楚，決定乾脆不在 summit 放。藍露草原本是 summit 唯一產地，改併進山區平台2（`waist`）的物種池，出現範圍最終跟木材/石頭完全一致（`mountainSide`/`foot`/`waist` 三區，沒有新增地圖區域）。`GatherNode["zone"]` 型別也拿掉了 `"summit"`，`gatherCandidates()`/`LAYOUT.mountain.summit` 本身沒有動，之後真的要用 summit 放別的東西不受影響。
 
 ## 採集/工具/UI 掛點
 

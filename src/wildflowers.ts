@@ -301,6 +301,12 @@ export function makeFlowerSpecimen(species: FlowerSpeciesId): THREE.Group {
 // 採集點叢生模型——同一物種 2~4 朵花頭聚在一起，跟
 // props-decor.ts 的 makeGardenBed() 用 makeFlower() 堆花叢是同一種做法，
 // 只是這裡每個物種都是專屬幾何而不是共用一顆球花再換色。
+// 2026-09-01：原始花頭幾何是照真花比例做的，單獨放大地圖上完全不明顯，
+// Zeppelin 反饋要跟 makeWoodPile()/makeStonePile()(props-decor.ts，各自
+// 用 group.scale.setScalar(1.35/1.4) 放大)一樣顯眼——這裡用同樣手法對
+// 整叢套一個更大的倍率(花頭本身幾何遠比原木/岩塊小，所以倍率也大得多)，
+// 只放大最終叢生 group，不動個別花頭的幾何比例/輪廓。
+const CLUSTER_SCALE = 2.6;
 export function makeFlowerCluster(
   species: FlowerSpeciesId,
   x: number,
@@ -319,6 +325,7 @@ export function makeFlowerCluster(
     head.scale.setScalar(scale);
     group.add(head);
   }
+  group.scale.setScalar(CLUSTER_SCALE);
   group.position.set(x, 0, z);
   return group;
 }

@@ -820,9 +820,7 @@ export interface GatherNode {
   id: string;
   kind: GatherKind;
   map: "livingArea" | "mountain";
-  // summit(山區平台3)目前只有野花會用到，wood/stone 仍然只在
-  // mountainSide/foot/waist 產生，見 refreshGatherNodes() 內分開的兩段迴圈。
-  zone: "mountainSide" | "foot" | "waist" | "summit";
+  zone: "mountainSide" | "foot" | "waist";
   x: number;
   z: number;
   collected: boolean;
@@ -837,26 +835,23 @@ export const FLOWER_NODES: GatherNode[] = [];
 export const GATHER_NODES_PER_KIND = 3;
 
 // 野花——每區允許的物種池與每次刷新的節點數，對應規格書的密度表：
-// 生活區山腳(高密度)/山區平台1(中密度)/山區平台2(中密度)各 3 節點，
-// 山區平台3(中/低密度，藍露草唯一產地)2 節點。每個節點的物種在刷新時
-// 從對應池子隨機挑一個，不是固定配置。
+// 生活區山腳(高密度)/山區平台1(中密度)/山區平台2(中密度)各 3 節點。
+// 2026-09-01 拿掉 summit(山頂已經有神社/鳥居/長椅等地標，Zeppelin 反饋
+// 野花節點會被擋到，乾脆不放)：藍露草原本是 summit 唯一產地，改併進
+// waist(山區平台2)的物種池，跟紅罌粟花一起、不單獨開新區。每個節點的
+// 物種在刷新時從對應池子隨機挑一個，不是固定配置。
 const FLOWER_ZONE_SPECIES: Record<
-  "mountainSide" | "foot" | "waist" | "summit",
+  "mountainSide" | "foot" | "waist",
   FlowerSpeciesId[]
 > = {
   mountainSide: ["wildDaisy", "dandelion"],
   foot: ["wildDaisy", "pinkWoodSorrel"],
-  waist: ["dandelion", "redPoppy", "pinkWoodSorrel"],
-  summit: ["blueDayflower", "redPoppy"],
+  waist: ["dandelion", "redPoppy", "pinkWoodSorrel", "blueDayflower"],
 };
-const FLOWER_NODES_PER_ZONE: Record<
-  "mountainSide" | "foot" | "waist" | "summit",
-  number
-> = {
+const FLOWER_NODES_PER_ZONE: Record<"mountainSide" | "foot" | "waist", number> = {
   mountainSide: 3,
   foot: 3,
   waist: 3,
-  summit: 2,
 };
 
 export function getGatherSpawnSlot(
@@ -963,16 +958,13 @@ export function refreshGatherNodes(force = false) {
       }
     }
   }
-  // 野花節點——沿用同一套刷新時段與候選格演算法(gatherCandidates 已經
-  // 用 LAYOUT.mountain[zone]/plazas[zone] 通用處理任何區域，summit 不用
-  // 額外改)，額外納入 summit(山區平台3)，讓 wood/stone 不使用的這塊區域
-  // 至少有野花(尤其是藍露草)可採。每個節點的物種在這裡隨機從
-  // FLOWER_ZONE_SPECIES[zone] 挑一個。
-  const flowerZones: ("mountainSide" | "foot" | "waist" | "summit")[] = [
+  // 野花節點——沿用同一套刷新時段與候選格演算法、跟木材/石頭完全
+  // 相同的三個區域(mountainSide/foot/waist)，出現範圍不額外擴大。每個
+  // 節點的物種在這裡隨機從 FLOWER_ZONE_SPECIES[zone] 挑一個。
+  const flowerZones: ("mountainSide" | "foot" | "waist")[] = [
     "mountainSide",
     "foot",
     "waist",
-    "summit",
   ];
   for (const zone of flowerZones) {
     const map = zone === "mountainSide" ? "livingArea" : "mountain";

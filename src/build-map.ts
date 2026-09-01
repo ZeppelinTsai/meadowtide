@@ -2489,8 +2489,8 @@ export function buildMap(mapName) {
         gameState.mapGroup.add(pile);
         gatherNodeMeshes.push({ group: pile, nodeId: n.id, map: "mountain" });
       });
-      // 野花節點——跟木材/石頭同一套模式，額外涵蓋 summit(山區平台3)，
-      // 讓 wood/stone 沒在用的這塊區域至少有野花可採(尤其是藍露草)。
+      // 野花節點——跟木材/石頭同一套模式、同一批區域(不含 summit，山頂
+      // 已經有神社/鳥居等地標，花叢會被擋到，2026-09-01 決定不放)。
       FLOWER_NODES.filter((n) => n.map === "mountain").forEach((n) => {
         if (!n.species) return;
         const cluster = makeFlowerCluster(n.species, n.x, n.z);
