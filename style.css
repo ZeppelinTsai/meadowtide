@@ -1880,7 +1880,7 @@ canvas {
   color: #f5dfb0;
 }
 .inventory-content-menu button {
-  min-width: min(360px, 80%);
+  min-width: min(360px, 100%);
   padding: 12px 22px;
   border: 2px solid rgba(226, 198, 139, 0.65);
   border-radius: 9px;
@@ -2123,14 +2123,6 @@ canvas {
   background: #efc979;
 }
 
-.inventory-quantity-label {
-  color: #5b3d28;
-  font-size: 18px;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-}
-
 .inventory-quantity-picker {
   display: grid;
   grid-template-columns: 62px 100px 62px;
@@ -2158,7 +2150,7 @@ canvas {
 
 .inventory-quantity-arrow {
   width: 62px;
-  height: 52px;
+  height: 100%;
   border-radius: 10px;
   display: grid;
   place-items: center;

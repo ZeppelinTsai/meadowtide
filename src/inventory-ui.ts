@@ -434,11 +434,6 @@ function openTransferAmountMenu(
   heading.textContent = translateText(item.label);
   contentMenu.appendChild(heading);
 
-  const quantityLabel = document.createElement("div");
-  quantityLabel.textContent = itemTab === "storage" ? "轉出數量" : "轉入數量";
-  quantityLabel.className = "inventory-quantity-label";
-  contentMenu.appendChild(quantityLabel);
-
   let selectedAmount = Math.max(1, Math.min(available, available));
   let quantityDisplay: HTMLButtonElement | null = null;
 
@@ -514,7 +509,7 @@ function openTransferAmountMenu(
     buildArrow("up", 10, "▲ 10"),
     buildArrow("left", -1, "◀ 1"),
     quantityDisplay,
-    buildArrow("right", 1, "1 ▶"),
+    buildArrow("right", 1, "▶ 1"),
     buildArrow("down", -10, "▼ 10"),
   );
   contentMenu.appendChild(quantityPicker);
