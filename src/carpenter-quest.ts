@@ -1,4 +1,9 @@
-import { gameState, inventory, isNightTime } from "./game-state";
+import {
+  gameState,
+  inventory,
+  isNightTime,
+  TIME_CONFIG,
+} from "./game-state";
 import {
   carpenterQuest,
   CARPENTER_MATERIALS,
@@ -74,9 +79,17 @@ export function startCarpenterDockScene() {
     ]);
   }, 400);
 }
+export function canStartCarpenterDockScene() {
+  const hour = gameState.currentPhase * TIME_CONFIG.gameHoursPerDay;
+  return gameState.currentDay === 1 && hour >= 8 && hour < 8.5;
+}
+
 export function handleCarpenterDockTouch() {
   if (dialogQueue.length) return; // 對話播放中不要被重新觸發打斷
-  if (carpenterQuest.stage === "not_started") startCarpenterDockScene();
+  if (carpenterQuest.stage === "not_started") {
+    if (!canStartCarpenterDockScene()) return;
+    startCarpenterDockScene();
+  }
 }
 export function tryStartCarpenterConstruction() {
   if (!carpenterHasMaterials()) {
