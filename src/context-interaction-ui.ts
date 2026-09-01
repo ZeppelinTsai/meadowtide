@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { chooseInteractionTarget, promptFor, type ContextAction, type InteractionCandidate, type InteractionSlot } from "./context-interaction";
+import { chooseInteractionTarget, promptFor, shouldRepeatContinuousPrimaryAction, type ContextAction, type InteractionCandidate, type InteractionSlot } from "./context-interaction";
 import { actionsForAnimal, dropCarriedAnimal, getCarriedAnimalId } from "./animal-interactions";
 import { gameState, cropState, hasTool, inventory, pastureGrassStageAt, WOOD_NODES, STONE_NODES, isPlantingAllowedAt } from "./game-state";
 import { animals, npcs } from "./npc-runtime";
@@ -38,7 +38,7 @@ const heldItemTargetObject=new THREE.Object3D();
 const stoveTargetObject=new THREE.Object3D();
 let markerTimer=0, highlight:THREE.BoxHelper|null=null, highlightTimer=0;
 const CONTINUOUS_PRIMARY_ACTIONS = new Set(["plant", "wood", "stone"]);
-let continuousPrimaryHeld=false, continuousGridKey="";
+let continuousPrimaryHeld=false, continuousLastTriggerKey="";
 
 function blocked(allowActiveFishing=false){return !gameState.player || gameState.titlePresentationActive || gameState.cutsceneActive || isCameraAdjustModeActive() || isInventoryOpen() || dialogQueue.length>0 || Boolean(activeChoice) || (!allowActiveFishing&&gameState.fishingState!=="idle");}
 function contains(root:THREE.Object3D,obj:THREE.Object3D){let current:THREE.Object3D|null=obj;while(current){if(current===root)return true;current=current.parent;}return false;}
@@ -149,7 +149,25 @@ function runLegacySecondaryInteraction(){bypassLegacySecondary=true;window.dispa
 export function consumeLegacySecondaryBypass(){const value=bypassLegacySecondary;bypassLegacySecondary=false;return value;}
 export function refreshShortcutLabels(){const layout=getEffectiveControllerLayout(),info=document.querySelector<HTMLElement>("#quickInfoMenuBtn small"),map=document.querySelector<HTMLElement>("#quickMapMenuBtn small");if(info)info.textContent=layout==="nintendo"?"Q / -":"Q / View";if(map)map.textContent="M / L3";if(root)root.dataset.signature="";}
 function handleWorldClick(clientX:number,clientY:number){if(isFirstPersonModeActive()){if(!blocked(true))dispatchPrimaryInteraction();return;}if(blocked())return;updateRay(clientX,clientY);const target=targetFromRay();if(target){selectedTarget=target;pointedId=target.id;approach(target,target.actions[0]);return;}const waterHit=waterHitFromRay();if(waterHit){selectedTarget=null;approachWater(waterHit.water,waterHit.point);return;}groundPlane.constant=-gameState.player.position.y;const hit=new THREE.Vector3();if(raycaster.ray.intersectPlane(groundPlane,hit)){selectedTarget=null;requestPlayerNavigation({x:hit.x,z:hit.z});}}
-function runContinuousPrimary(){if(!continuousPrimaryHeld||blocked())return;const gridKey=`${gameState.currentMapName}:${gameState.playerGridPos.x},${gameState.playerGridPos.z}`;if(gridKey===continuousGridKey)return;continuousGridKey=gridKey;const target=chooseTarget(),action=target?.actions.find(candidate=>candidate.slot==="primary"&&CONTINUOUS_PRIMARY_ACTIONS.has(candidate.id)),position=target?.getPosition();if(!target||!action||!position)return;const dx=position.x-gameState.player.position.x,dz=position.z-gameState.player.position.z;if(Math.hypot(dx,dz)<=target.radius+0.2){gameState.player.rotation.y=Math.atan2(-dx,-dz);gameState.ePressed=false;action.execute();selectedTarget=null;}}
+function runContinuousPrimary(){
+  if(!continuousPrimaryHeld||blocked())return;
+  const target=chooseTarget();
+  if(!target)return;
+  const action=target.actions.find(candidate=>candidate.slot==="primary"&&CONTINUOUS_PRIMARY_ACTIONS.has(candidate.id));
+  if(!action)return;
+  const position=target.getPosition();
+  if(!position)return;
+  const dx=position.x-gameState.player.position.x,dz=position.z-gameState.player.position.z;
+  const distance=Math.hypot(dx,dz);
+  if(distance>target.radius+0.5)return;
+  const triggerKey=`${target.id}@${Math.round(position.x)},${Math.round(position.z)}`;
+  if(!shouldRepeatContinuousPrimaryAction(target.id,distance,target.radius,continuousLastTriggerKey,triggerKey))return;
+  continuousLastTriggerKey=triggerKey;
+  gameState.player.rotation.y=Math.atan2(-dx,-dz);
+  gameState.ePressed=false;
+  action.execute();
+  selectedTarget=null;
+}
 function frame(){if(highlight&&performance.now()>highlightTimer){scene.remove(highlight);highlight.geometry.dispose(); (highlight.material as THREE.Material).dispose();highlight=null;}if(destinationMarker.visible&&performance.now()>markerTimer)destinationMarker.visible=false;runContinuousPrimary();render();requestAnimationFrame(frame);}
 export function initContextInteraction(){
   ensureRoot();refreshShortcutLabels();onInputPresentationChanged(refreshShortcutLabels);addEventListener("controller-layout-changed",refreshShortcutLabels);addEventListener("keydown",markKeyboardMouseInput);addEventListener("pointerdown",markKeyboardMouseInput);
@@ -159,11 +177,11 @@ export function initContextInteraction(){
   renderer.domElement.addEventListener("pointercancel",event=>{activePointers.delete(event.pointerId);down=null;});renderer.domElement.addEventListener("pointerleave",()=>{pointedId=null;});
   onNavigationDestinationChanged(destination=>{if(!destination){destinationMarker.visible=false;return;}destinationMarker.position.set(destination.x,gameState.player?.position.y+0.04||0.04,destination.z);destinationMarker.visible=true;markerTimer=performance.now()+1400;});
   addEventListener("keydown",event=>{if(["w","a","s","d","arrowup","arrowdown","arrowleft","arrowright"].includes(event.key.toLowerCase())){selectedTarget=null;cancelPlayerNavigation();}});
-  addEventListener("keydown",event=>{if(event.key.toLowerCase()!=="e"||event.repeat)return;continuousPrimaryHeld=true;continuousGridKey=`${gameState.currentMapName}:${gameState.playerGridPos.x},${gameState.playerGridPos.z}`;});
-  addEventListener("keyup",event=>{if(event.key.toLowerCase()==="e")continuousPrimaryHeld=false;});
-  renderer.domElement.addEventListener("pointerdown",event=>{if(event.button!==0)return;continuousPrimaryHeld=true;continuousGridKey=`${gameState.currentMapName}:${gameState.playerGridPos.x},${gameState.playerGridPos.z}`;});
-  addEventListener("pointerup",event=>{if(event.button===0)continuousPrimaryHeld=false;});
-  addEventListener("blur",()=>{continuousPrimaryHeld=false;});
+  addEventListener("keydown",event=>{if(event.key.toLowerCase()!=="e"||event.repeat)return;continuousPrimaryHeld=true;continuousLastTriggerKey="";});
+  addEventListener("keyup",event=>{if(event.key.toLowerCase()==="e")continuousPrimaryHeld=false;continuousLastTriggerKey="";});
+  renderer.domElement.addEventListener("pointerdown",event=>{if(event.button!==0)return;continuousPrimaryHeld=true;continuousLastTriggerKey="";});
+  addEventListener("pointerup",event=>{if(event.button===0){continuousPrimaryHeld=false;continuousLastTriggerKey="";}});
+  addEventListener("blur",()=>{continuousPrimaryHeld=false;continuousLastTriggerKey="";});
   addEventListener("contextmenu",event=>{if(!getCarriedAnimalId()||blocked())return;event.preventDefault();event.stopImmediatePropagation();dropCarriedAnimal();});
   requestAnimationFrame(frame);
 }

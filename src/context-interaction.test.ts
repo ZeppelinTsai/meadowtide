@@ -5,6 +5,7 @@ import {
   gamepadPromptFor,
   isPrimaryInteractionKey,
   promptFor,
+  shouldRepeatContinuousPrimaryAction,
   type InteractionCandidate,
   type InteractionSlot,
 } from "./context-interaction";
@@ -70,4 +71,37 @@ test("E, Enter, and Space share the primary keyboard action", () => {
   assert.equal(isPrimaryInteractionKey(" "), true);
   assert.equal(isPrimaryInteractionKey("Spacebar"), true);
   assert.equal(isPrimaryInteractionKey("r"), false);
+});
+
+test("連續主動作只在接近有效目標且換到新目標時重複觸發", () => {
+  assert.equal(
+    shouldRepeatContinuousPrimaryAction(
+      "soil:1,2",
+      0.2,
+      0.8,
+      null,
+      "soil:1,2@1,2",
+    ),
+    true,
+  );
+  assert.equal(
+    shouldRepeatContinuousPrimaryAction(
+      "soil:1,2",
+      0.2,
+      0.8,
+      "soil:1,2@1,2",
+      "soil:1,2@1,2",
+    ),
+    false,
+  );
+  assert.equal(
+    shouldRepeatContinuousPrimaryAction(
+      "soil:2,2",
+      1.5,
+      0.8,
+      null,
+      "soil:2,2@2,2",
+    ),
+    false,
+  );
 });

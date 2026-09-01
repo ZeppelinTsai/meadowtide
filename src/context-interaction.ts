@@ -81,3 +81,16 @@ export function chooseInteractionTarget(
   }
   return best;
 }
+
+export function shouldRepeatContinuousPrimaryAction(
+  targetId: string | null,
+  distance: number,
+  radius: number,
+  lastTriggerKey: string | null,
+  triggerKey: string,
+): boolean {
+  if (!targetId) return false;
+  if (!triggerKey) return false;
+  if (distance > radius + 0.5) return false;
+  return lastTriggerKey !== triggerKey;
+}
