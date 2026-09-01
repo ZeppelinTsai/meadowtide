@@ -262,9 +262,15 @@ body.cutscene-presentation #hud {
   /* 保證兩行——見上面 #dialog 的 container-type 說明。 */
   font-size: calc((100cqh - 40px) / 3.6);
 }
+/* 2026-09-01 Zeppelin 要求：名牌底部要平貼在對話框正上方——原本用
+   top:-50px 是寫死的位移量，跟名牌自己的高度(padding+字級，現在字級
+   還是 cqh 動態算的)完全脫鉤，字級一變高名牌就往下沉，蓋到對話框上緣
+   甚至疊進對話框裡面。改成 bottom:100%，不管名牌實際多高，底邊永遠
+   精準貼齊 #dialog 的頂邊(絕對定位語意本來就是「離父層底邊 100%」＝
+   「貼齊父層頂邊」)，不用再猜一個數字。 */
 #dialogName {
   position: absolute;
-  top: -50px;
+  bottom: 100%;
   left: 18px;
   background: rgba(15, 15, 20, 0.92);
   border: 2px solid #f5c542;
@@ -347,7 +353,6 @@ body.cutscene-presentation #hud {
     padding: 14px 20px 16px;
   }
   #dialogName {
-    top: -40px;
     left: 12px;
     padding: 5px 14px;
   }
