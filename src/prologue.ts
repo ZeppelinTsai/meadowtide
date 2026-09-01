@@ -14,6 +14,7 @@ import {
   mountainGroundY,
   oldVillageGroundY,
   portGroundY,
+  portSouthBeachEndZ,
   FARMLAND_TILES,
 } from "./layout-maps";
 import { showChoice, showDialogSequence } from "./dialogue";
@@ -683,7 +684,11 @@ export function exportPrologueSaveState(): PrologueSaveState | null {
   return stage === "seekingRod" ? { checkpoint: "seekingRod" } : null;
 }
 
-export function restorePrologueSaveState(value: unknown) {
+export function restorePrologueSaveState(
+  value: unknown,
+  loadMap?: PrologueMapLoader,
+) {
+  if (loadMap) prologueMapLoader = loadMap;
   if (
     value &&
     typeof value === "object" &&
@@ -713,6 +718,21 @@ export function isPrologueCookingTutorialActive(): boolean {
 
 export function isPrologueFishingTutorialActive(): boolean {
   return stage === "fishingTutorial";
+}
+
+export function canUsePrologueFishingSpot(
+  x = gameState.playerGridPos.x,
+  z = gameState.playerGridPos.z,
+): boolean {
+  if (stage !== "fishingTutorial") return true;
+  const beach = LAYOUT.port.southBeach;
+  return (
+    gameState.currentMapName === "port" &&
+    x >= beach.x &&
+    x < beach.x + beach.width &&
+    z >= beach.z &&
+    z <= portSouthBeachEndZ(Math.round(x))
+  );
 }
 
 export function isPrologueMayorFollowing(): boolean {
@@ -1205,8 +1225,8 @@ export function startPrologueScene(
 
 // 開發用：跳過存檔判斷、無條件從頭重播一次，方便邊看畫面邊調參數。
 // 只能在已經站在港口地圖時使用——見 input-save.ts 的 F8。
-export function previewPrologue() {
-  startPrologueScene({ force: true });
+export function previewPrologue(loadMap?: PrologueMapLoader) {
+  startPrologueScene({ force: true, loadMap });
 }
 
 // 2026-08-26 Zeppelin 反饋「鎖定鏡頭在船身上」——外海／靠岸這幾個

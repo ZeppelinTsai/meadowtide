@@ -239,3 +239,7 @@ function bowWorldPoint(localPoint: THREE.Vector3): THREE.Vector3 {
 ## 料理教學封鎖與序章黑幕
 
 料理教學自由操作期間仍屬序章：每幀鎖定序章日期時間，房屋出口 touch event 與地圖選單快速傳送皆不得執行；只有成功完成任一道教學料理並跑完結尾對話後才解除。村長歡迎主角後須補上返回鎮上的告別句，再進黑幕。船長前往倉庫取釣竿與村長離開牧場小屋兩段黑幕各至少完整停留 900ms；延長只作用於這兩段，不修改共用 loading-screen 的全域轉場速度。
+
+### 釣魚教學沙灘限制與轉場注入
+
+序章 fishingTutorial 雖沿用一般 nearWater 判定，但開始拋竿還必須位於 LAYOUT.port.southBeach 的實際鋸齒岸線範圍；鍵盤互動、情境膠囊與點擊水面尋路必須共用 canUsePrologueFishingSpot()，避免南碼頭等非沙灘岸邊也能完成教學。正式新遊戲、F8 預覽與 seekingRod 存檔還原都必須重新注入同一個 loadMap 函式，否則成功釣魚後無法轉場回 house。

@@ -19,7 +19,7 @@ import { FARMLAND_TILES, MAPS } from "./layout-maps";
 import { cycleHeldItem, eatItem, inventoryItem, itemAmount, stowHeldItem } from "./inventory-system";
 import { canGiveDailyGift, giveHeldItemToNpc } from "./gift-system";
 import { cropTypeForSeedItem } from "./item-catalog";
-import { canUsePrologueKitchen } from "./prologue";
+import { canUsePrologueFishingSpot, canUsePrologueKitchen } from "./prologue";
 
 type WorldTarget = {
   id: string; object: THREE.Object3D; radius: number; actions: ContextAction[];
@@ -58,8 +58,8 @@ function targetForStove():WorldTarget|null{
 function targetForFishing():WorldTarget|null{
   if(!gameState.player||!hasTool("fishingRod"))return null;
   const active=gameState.fishingState!=="idle";
-  if(!active&&!isNearFishingWater(gameState.currentMapName,gameState.player.position.x,gameState.player.position.z))return null;
-  return{id:active?"fishing-active":"fishing-nearby",object:fishingTargetObject,radius:0.1,actions:active?[{id:"fish-cancel",label:"取消釣魚",slot:"secondary",prompt:"右鍵",execute:()=>window.dispatchEvent(new KeyboardEvent("keydown",{key:"r"}))}]:[legacyAction("fish","釣魚")],getPosition:()=>gameState.player?{x:gameState.player.position.x,z:gameState.player.position.z}:null,isValid:()=>Boolean(gameState.player)&&hasTool("fishingRod")&&(active?gameState.fishingState!=="idle":gameState.fishingState==="idle"&&isNearFishingWater(gameState.currentMapName,gameState.player.position.x,gameState.player.position.z))}}
+  if(!active&&(!canUsePrologueFishingSpot()||!isNearFishingWater(gameState.currentMapName,gameState.player.position.x,gameState.player.position.z)))return null;
+  return{id:active?"fishing-active":"fishing-nearby",object:fishingTargetObject,radius:0.1,actions:active?[{id:"fish-cancel",label:"取消釣魚",slot:"secondary",prompt:"右鍵",execute:()=>window.dispatchEvent(new KeyboardEvent("keydown",{key:"r"}))}]:[legacyAction("fish","釣魚")],getPosition:()=>gameState.player?{x:gameState.player.position.x,z:gameState.player.position.z}:null,isValid:()=>Boolean(gameState.player)&&hasTool("fishingRod")&&(active?gameState.fishingState!=="idle":gameState.fishingState==="idle"&&canUsePrologueFishingSpot()&&isNearFishingWater(gameState.currentMapName,gameState.player.position.x,gameState.player.position.z))}}
 function targetForFarm(x:number,z:number,object:THREE.Object3D=farmGroup):WorldTarget|null{
   if(gameState.currentMapName!=="livingArea")return null;
   if(!FARMLAND_TILES.some(([fx,fz])=>fx===x&&fz===z))return null;
@@ -134,6 +134,7 @@ function waterHitFromRay(){
 function approachWater(water:THREE.Object3D,point:{x:number;z:number}){
   const shore=findReachablePlayerDestination(point);
   if(!shore||!isNearFishingWater(gameState.currentMapName,shore.x,shore.z)){showUiToast("無法釣魚","無法走到可釣魚的岸邊。");return false;}
+  if(!canUsePrologueFishingSpot(shore.x,shore.z)){showUiToast("釣魚教學","請到港口南邊的沙灘水邊練習釣魚。");return false;}
   const execute=()=>{const dx=point.x-gameState.player.position.x,dz=point.z-gameState.player.position.z;gameState.player.rotation.y=Math.atan2(-dx,-dz);runLegacyPrimaryInteraction();};
   if(Math.hypot(shore.x-gameState.player.position.x,shore.z-gameState.player.position.z)<=0.35){execute();return true;}
   return requestPlayerNavigation(shore,{id:"fishing-water",radius:0.35,getPosition:()=>shore,isValid:()=>fishingWaterMeshes.includes(water)&&Boolean(water.parent),execute});

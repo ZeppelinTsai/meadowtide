@@ -81,6 +81,7 @@ import {
   canUsePrologueKitchen,
   exportPrologueSaveState,
   isPrologueFishingTutorialActive,
+  canUsePrologueFishingSpot,
   previewPrologue,
   reportPrologueFishingFailure,
   reportPrologueFishingSuccess,
@@ -383,7 +384,7 @@ export function loadGame(
   const data = JSON.parse(raw);
   // v6 以前没有 story 栏位；restore 会补齐默认值，不让旧存档失效。
   restoreStoryState(data.story);
-  restorePrologueSaveState(data.prologue);
+  restorePrologueSaveState(data.prologue, loadMap);
   restoreNpcNameRevealState(
     data.npcNameRevealStages,
     legacyKnownNpcIds(data),
@@ -617,7 +618,7 @@ addEventListener("keydown", (event) => {
     if (gameState.currentMapName !== "port") {
       console.warn("[序幕預覽] 請先走到港口地圖再按 F8 重播開場");
     } else {
-      previewPrologue();
+      previewPrologue(loadMap);
     }
   } else if (event.key === "F4") {
     // 鏡頭調整模式(cutscene-camera.ts)——開發用，方向鍵平移鏡頭焦點、
@@ -1242,6 +1243,10 @@ addEventListener("keydown", (e) => {
 
   if (nearWater()) {
     if (gameState.fishingState === "idle") {
+      if (!canUsePrologueFishingSpot()) {
+        showUiToast("釣魚教學", "請到港口南邊的沙灘水邊練習釣魚。");
+        return;
+      }
       playRandomSfx(FISH_CAST_SFX);
       gameState.fishingState = "casting";
       gameState.fishingTimer = 0;
