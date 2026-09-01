@@ -1854,10 +1854,14 @@ canvas {
   z-index: 90;
   display: none;
   place-items: center;
-  padding: 5vh 5vw;
   box-sizing: border-box;
+  /* 面板本身已經是標準的 display:grid + place-items:center，數學上
+     絕對置中(padding 5vh/5vw 上下左右對稱)。這裡原本的聚光暈是
+     「circle at 50% 42%」——亮點刻意偏在中心「上面」，視覺上會讓正中央
+     的面板看起來像是坐在暗處，感覺往下沉。改成正中央(50% 50%)，讓暈光
+     跟面板的視覺重心對齊。 */
   background:
-    radial-gradient(circle at 50% 42%, rgba(44, 63, 55, 0.34), transparent 55%),
+    radial-gradient(circle at 50% 50%, rgba(44, 63, 55, 0.34), transparent 55%),
     rgba(7, 12, 16, 0.76);
   backdrop-filter: blur(3px);
 }
@@ -1916,7 +1920,7 @@ canvas {
 #pauseSaveSlotsPanel,
 #pauseLoadSlotsPanel,
 #pauseSystemPanel {
-  max-height: 86vh;
+  max-height: 95vh;
   width: min(720px, 90vw);
   box-sizing: border-box;
 }
@@ -1930,7 +1934,7 @@ canvas {
 
 .pauseTutorialStep {
   width: min(900px, 90vw);
-  max-height: 86vh;
+  max-height: 95vh;
   box-sizing: border-box;
 }
 .pauseTutorialLead {
@@ -2005,12 +2009,14 @@ canvas {
   font-variant-numeric: tabular-nums;
   color: #79684e;
   font-size: 18px;
+  justify-self: end;
 }
 .pauseTutorialCardsFooter {
   width: 100%;
-  display: flex;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
   align-items: center;
-  justify-content: space-between;
+  gap: 12px;
   margin-top: 4px;
 }
 .pauseTutorialIconBtn,
@@ -2114,6 +2120,8 @@ canvas {
 }
 .pauseTutorialDots {
   display: flex;
+  justify-content: center;
+  justify-self: center;
   gap: 8px;
 }
 .pauseTutorialDot {
