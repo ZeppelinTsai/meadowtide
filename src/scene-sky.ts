@@ -191,6 +191,8 @@ import {
       scene.add(firstPersonSkyAnchor);
 
       // 架空北緯 8°海島的四季星空：四季合計涵蓋大部分南北天代表星群。
+      export const MILKY_WAY_DENSE_STAR_COUNT = 2880;
+      export const MILKY_WAY_MIST_COUNT = 1560;
       export const SEASON_STAR_CONFIGS = [
         { count: 1440, color: 0xe8f4ff }, // 春：柔和
         { count: 2100, color: 0xddeaff }, // 夏：銀河最密
@@ -268,7 +270,7 @@ import {
         }
         // 夏季額外加入一道斜跨天空的銀河密集星帶。
         if (seasonIndex === 1) {
-          for (let i = 0; i < 960; i++) {
+          for (let i = 0; i < MILKY_WAY_DENSE_STAR_COUNT; i++) {
             const t = hash2(i * 4.3, 12.7);
             const spread = (hash2(i * 8.1, 2.6) - 0.5) * 0.22;
             const p = starSkyPoint(
@@ -303,7 +305,7 @@ import {
         let milkyWayMaterial = null;
         if (seasonIndex === 1) {
           const mistPositions = [];
-          for (let i = 0; i < 1560; i++) {
+          for (let i = 0; i < MILKY_WAY_MIST_COUNT; i++) {
             const t = hash2(i * 4.71, 17.2);
             const spread =
               (hash2(i * 7.13, 5.8) + hash2(i * 2.37, 23.1) - 1) * 0.12;
