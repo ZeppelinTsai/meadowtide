@@ -60,7 +60,9 @@ function bagDisplayTargetLongEdge(itemId: string) {
 }
 
 function heldItemScaleMultiplier(itemId: string) {
-  return HELD_ITEM_SCALE_MULTIPLIER[itemId] ?? HELD_ITEM_SCALE_MULTIPLIER.default;
+  return (
+    HELD_ITEM_SCALE_MULTIPLIER[itemId] ?? HELD_ITEM_SCALE_MULTIPLIER.default
+  );
 }
 
 function makeHeldFishVisual() {
@@ -393,9 +395,7 @@ export function makeInventoryItemVisual(itemId: string): THREE.Object3D {
     );
   if (itemId.startsWith("pearl-"))
     return normalizeItemDisplayModel(
-      makePearlProp(
-        itemId.slice(6) as import("./pearl-system").PearlRarity,
-      ),
+      makePearlProp(itemId.slice(6) as import("./pearl-system").PearlRarity),
       bagDisplayTargetLongEdge(itemId),
     );
   return normalizeItemDisplayModel(

@@ -64,7 +64,9 @@ root.innerHTML = `
 `;
 document.body.appendChild(root);
 
-const currentButton = root.querySelector<HTMLButtonElement>(".quick-item-current")!;
+const currentButton = root.querySelector<HTMLButtonElement>(
+  ".quick-item-current",
+)!;
 const symbolElement = root.querySelector<HTMLElement>(".quick-item-symbol")!;
 const countElement = root.querySelector<HTMLElement>(".quick-item-count")!;
 
@@ -175,11 +177,13 @@ function handleDirection(direction: QuickDirection) {
   else stowHeldItem();
 }
 
-root.querySelectorAll<HTMLButtonElement>("[data-direction]").forEach((button) => {
-  button.addEventListener("click", () => {
-    handleDirection(button.dataset.direction as QuickDirection);
+root
+  .querySelectorAll<HTMLButtonElement>("[data-direction]")
+  .forEach((button) => {
+    button.addEventListener("click", () => {
+      handleDirection(button.dataset.direction as QuickDirection);
+    });
   });
-});
 currentButton.addEventListener("click", takeOrStowCurrent);
 
 addEventListener("quick-item-direction", (event) => {
@@ -190,7 +194,8 @@ function render() {
   if (inventory.heldItemId) syncSelectionToHeldItem();
   const itemId = selectedItemId();
   const item = itemId ? inventoryItem(itemId) : null;
-  const titlePresentation = document.body.classList.contains("title-presentation");
+  const titlePresentation =
+    document.body.classList.contains("title-presentation");
   const hudSuppressed =
     document.body.classList.contains("cutscene-presentation") ||
     Boolean(document.querySelector('[data-game-menu="open"], .game-menu.open'));
@@ -206,7 +211,8 @@ function render() {
   ].join("|");
   if (signature !== lastSignature) {
     lastSignature = signature;
-    root.hidden = titlePresentation || hudSuppressed || !gameState.player || !item;
+    root.hidden =
+      titlePresentation || hudSuppressed || !gameState.player || !item;
     root.classList.toggle("holding", Boolean(inventory.heldItemId));
     symbolElement.replaceChildren();
     const thumbnail = itemId ? inventoryItemThumbnail(itemId) : null;
