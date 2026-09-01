@@ -1,4 +1,9 @@
 import { npcs } from "./npc-runtime";
+import {
+  responsiveWebpUrl,
+  CG_RESPONSIVE_WIDTHS,
+  PORTRAIT_RESPONSIVE_WIDTHS,
+} from "./responsive-images";
 import { gameState } from "./game-state";
 import { translateText } from "./i18n";
 import { showComicCue, shouldDisplayDialogText } from "./comic-cue";
@@ -54,20 +59,29 @@ export function setDialogPortrait(speakerId) {
   // 比例現在就看得出來；真的立繪載入成功後蓋掉佔位框，失敗就留著佔位框。
   dialogPortraitEl.style.display = "none";
   dialogPortraitPlaceholderEl.style.display = "none";
-  const img = new Image();
-  img.onload = () => {
+  const applyPortrait = (src: string) => {
     if (currentPortraitId !== speakerId) return;
-    dialogPortraitEl.src = img.src;
+    dialogPortraitEl.src = src;
     dialogPortraitEl.dataset.portraitId = speakerId;
     if (currentCgId) return;
     dialogPortraitEl.style.display = "block";
     dialogPortraitPlaceholderEl.style.display = "none";
   };
-  img.onerror = () => {
-    if (currentPortraitId !== speakerId) return;
-    dialogPortraitEl.style.display = "none"; // 圖檔不存在時維持空白，不打斷對話
+  // 先試響應式 WebP 版本，找不到（還沒跑 assets:webp，或這個角色本來
+  // 就沒有 WebP 版本）就自動退回原始 PNG，兩層都找不到才是真的沒圖。
+  const loadOriginalPng = () => {
+    const pngImg = new Image();
+    pngImg.onload = () => applyPortrait(pngImg.src);
+    pngImg.onerror = () => {
+      if (currentPortraitId !== speakerId) return;
+      dialogPortraitEl.style.display = "none"; // 圖檔不存在時維持空白，不打斷對話
+    };
+    pngImg.src = `/assets/portraits/${speakerId}.png`;
   };
-  img.src = `/assets/portraits/${speakerId}.png`;
+  const webpImg = new Image();
+  webpImg.onload = () => applyPortrait(webpImg.src);
+  webpImg.onerror = loadOriginalPng;
+  webpImg.src = responsiveWebpUrl("/assets/portraits", speakerId, PORTRAIT_RESPONSIVE_WIDTHS);
 }
 export function setDialogCg(cgId) {
   if (cgId === currentCgId) return; // 沒變化，不用重新觸發淡入淡出
@@ -80,20 +94,28 @@ export function setDialogCg(cgId) {
     return;
   }
   currentCgId = cgId;
-  const img = new Image();
-  img.onload = () => {
+  const applyCg = (src: string) => {
     if (currentCgId !== cgId) return; // 載入期間對話已經跳到別行，放棄套用
-    cgImgEl.src = img.src;
+    cgImgEl.src = src;
     cgOverlayEl.style.display = "block";
     requestAnimationFrame(() => {
       cgOverlayEl.style.opacity = "1";
     });
   };
-  img.onerror = () => {
-    console.warn(`[CG] 找不到 CG 圖檔，維持原本畫面：${cgId}`);
-    if (currentCgId === cgId) currentCgId = null;
+  // 同一套「WebP 優先，找不到退回原始 PNG」邏輯，見上面 setDialogPortrait。
+  const loadOriginalPng = () => {
+    const pngImg = new Image();
+    pngImg.onload = () => applyCg(pngImg.src);
+    pngImg.onerror = () => {
+      console.warn(`[CG] 找不到 CG 圖檔，維持原本畫面：${cgId}`);
+      if (currentCgId === cgId) currentCgId = null;
+    };
+    pngImg.src = `/assets/cg/${cgId}.png`;
   };
-  img.src = `/assets/cg/${cgId}.png`;
+  const webpImg = new Image();
+  webpImg.onload = () => applyCg(webpImg.src);
+  webpImg.onerror = loadOriginalPng;
+  webpImg.src = responsiveWebpUrl("/assets/cg", cgId, CG_RESPONSIVE_WIDTHS);
 }
 // 對話行可以是純字串(沿用舊格式，沒有立繪/名牌)，也可以是
 // {text, speaker?, name?, cg?} 物件——speaker 對應立繪檔名，name 是

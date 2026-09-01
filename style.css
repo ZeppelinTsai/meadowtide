@@ -1457,12 +1457,26 @@ canvas {
 .systemSettings {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  width: min(360px, 82vw);
+  gap: 16px;
+  width: min(420px, 86vw);
   margin-bottom: 10px;
 }
 .systemSettings > .titleMenuBtn {
   width: 100% !important;
+}
+.systemSettingGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.systemSettingGroupTitle {
+  margin: 0;
+  padding-bottom: 6px;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: #8a5a2b;
+  border-bottom: 1px solid rgba(78, 49, 35, 0.28);
 }
 .systemSettingRow {
   display: grid;
@@ -1472,16 +1486,142 @@ canvas {
   min-height: 42px;
   text-align: left;
 }
-.systemSettingRow input,
-.systemSettingRow select {
+.systemSettingLabel {
+  color: #4a3427;
+}
+.systemSettingRow input {
   min-width: 0;
 }
-.systemSettingRow output {
+.systemSettingValue {
   text-align: right;
   font-variant-numeric: tabular-nums;
+  color: #4a3427;
 }
-.systemSettingSelect {
+
+/* 音量滑桿：換掉瀏覽器預設的藍色原生滑桿，改用跟快捷欄／背包同一套
+   奶油底、金棕邊框配色，「系統」頁才不會看起來像沒套過樣式的原生表單
+   (使用者回報的「還是原本 html 元件」正是指這個)。 */
+.systemSettingRow input[type="range"] {
+  appearance: none;
+  -webkit-appearance: none;
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(78, 49, 35, 0.2);
+}
+.systemSettingRow input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #f2b84b;
+  border: 2px solid #8a5a2b;
+  cursor: pointer;
+  box-shadow: 0 2px 0 rgba(104, 69, 39, 0.55);
+}
+.systemSettingRow input[type="range"]::-moz-range-track {
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(78, 49, 35, 0.2);
+}
+.systemSettingRow input[type="range"]::-moz-range-thumb {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #f2b84b;
+  border: 2px solid #8a5a2b;
+  cursor: pointer;
+}
+.systemSettingRow input[type="range"]:focus-visible {
+  outline: 3px solid #f2b84b;
+  outline-offset: 4px;
+}
+
+/* 語言／控制器配置／視窗解析度：原本是原生 <select>，手把幾乎按不動
+   (A 鍵打開的是作業系統層級的下拉彈窗，搖桿合成事件進不去)。改成單一
+   可 focus 的「‹ 目前值 ›」控制項——方向鍵/搖桿左右直接切換選項(跟
+   下面音量滑桿的左右鍵行為一致，見 gamepad-input.ts)，滑鼠點左半邊/
+   右半邊也能切換，完全不需要另外開一個彈出選單。 */
+.systemSettingCycle {
   grid-template-columns: minmax(88px, auto) minmax(0, 1fr);
+}
+.systemSettingCycleControl {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-height: 42px;
+  padding: 0 14px;
+  border: 1px solid rgba(78, 49, 35, 0.5);
+  border-radius: 8px;
+  background: #fbf3e2;
+  color: #4a3427;
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.15s ease;
+}
+.systemSettingCycleControl:hover {
+  background: #f2d08c;
+}
+.systemSettingCycleControl:focus-visible {
+  outline: 3px solid #f2b84b;
+  outline-offset: 2px;
+}
+.systemSettingCycleArrow {
+  font-size: 18px;
+  line-height: 1;
+  color: #8a5a2b;
+}
+.systemSettingCycleValue {
+  flex: 1;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 全螢幕／全部靜音：從一整顆寫著「全螢幕：關」的滿版按鈕，改成跟其他
+   設定列一致的「標籤 + 開關」排版，不再是一顆突兀的巨大按鈕。 */
+.systemSettingToggle {
+  grid-template-columns: minmax(88px, auto) auto auto;
+  justify-content: start;
+}
+.systemSettingSwitch {
+  position: relative;
+  width: 48px;
+  height: 26px;
+  padding: 0;
+  border: 1px solid rgba(78, 49, 35, 0.5);
+  border-radius: 999px;
+  background: rgba(78, 49, 35, 0.2);
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+.systemSettingSwitch.is-on {
+  background: #6fa06a;
+  border-color: #4a7548;
+}
+.systemSettingSwitchKnob {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #fbf3e2;
+  box-shadow: 0 2px 0 rgba(104, 69, 39, 0.45);
+  transition: left 0.15s ease;
+}
+.systemSettingSwitch.is-on .systemSettingSwitchKnob {
+  left: 24px;
+}
+.systemSettingSwitch:focus-visible {
+  outline: 3px solid #f2b84b;
+  outline-offset: 2px;
+}
+.systemSettingSwitchState {
+  margin-left: 10px;
+  color: #4a3427;
 }
 
 /* 讀取遊戲的 9 格存檔清單——跟 .titleMenuBtn 同一套白底黑框風格，但要

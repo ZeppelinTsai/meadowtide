@@ -463,18 +463,39 @@ Phase A 補上一條平行的手寫路徑：**JSON 事件檔案**，用文字編
   自動抓到對應顯示名（村長是名字揭露狀態機、木匠是 `npc-defs.ts` 的
   `name` 欄位），跟現有 TS 事件行為一致，不用重新發明。
 
-### 載入機制（為什麼分兩條路徑）
+### 載入機制——第一版做法真的壞了，實測才抓到
 
-`src/story/chapters/json-events.ts` 用 Vite 的 `import.meta.glob()` 在
-建置期把整個 `data/` 資料夾打包進來，`story-registry.ts` 把這批事件併
-進 `STORY_EVENTS`——這段只在瀏覽器/Vite 環境有效（`npm run dev`／
-`npm run build` 都算）。`import.meta.glob` 是 Vite 專屬語法，
-`scripts/story-audit.ts` 是用 `tsx` 直接跑（不經過 Vite）的獨立腳本，
-呼叫不到這個 API（實測過，直接呼叫會噴 `TypeError`）。處理方式：
-`json-events.ts` 自己先 `typeof` 檢查再呼叫，避免在 tsx 底下噴錯，
-`scripts/story-audit.ts` 改用 `node:fs` 另外直接讀同一個資料夾驗證——
-兩條路徑分開實作，但驗證的是同一批檔案，`npm run story-audit` 現在會
-分別印出 TS／JSON 事件數量方便對帳。
+第一版 `src/story/chapters/json-events.ts` 用 Vite 的
+`import.meta.glob()` 自動掃 `data/` 資料夾，`npm run story-audit`
+（Node/tsx 環境）呼叫不到這個 API 會直接 `TypeError`，所以包了一層
+`typeof (import.meta as any).glob === "function"` 判斷再呼叫，想說這樣
+tsx 底下安全跳過、Vite 底下正常運作。`tsc`／`test:story`／
+`story-audit` 全部綠燈，看起來沒問題。
+
+**結果 Zeppelin 實際在遊戲裡按 F10，console 印出「找不到
+dev.carpenter_dock_intro_draft」。** 查下去才發現：`import.meta.glob`
+不是一般的 runtime API，是 Vite 建置期的語法巨集——只有
+`import.meta.glob(...)` 這個呼叫式**原封不動**寫在原始碼裡，Vite 的
+靜態分析才認得出來去做轉換；一旦像我這樣先把它指派給一個變數
+(`const globFn = (import.meta as any).glob`) 再另外呼叫
+(`globFn(...)`)，Vite 完全認不出這是 glob 呼叫，不會做任何轉換，實際
+在瀏覽器裡 `STORY_EVENTS` 永遠是空的——這個問題**tsc/audit/單元測試
+三層全部檢查不出來**，因為它們檢查的是型別跟資料結構對不對，不是
+「Vite 建置期巨集有沒有正確觸發」，這正是這輪唯一一次「自動化檢查全
+過、真的玩才發現壞掉」的案例，比 Phase 1 的黑幕時長問題更隱蔽。
+
+修法：改成**明確 import**——`json-events.ts` 直接
+`import carpenterDockIntroDraft from "./data/carpenter-dock-intro-draft.
+json"`，靠 `tsconfig.json` 本來就開著的 `resolveJsonModule`。這種寫法
+在 Vite（瀏覽器）跟 tsx（`scripts/story-audit.ts`）底下是同一套原生
+ESM JSON import 語意，行為保證一致，不用再靠任何建置工具才懂的巨集。
+`scripts/story-audit.ts` 因此也能簡化回最初的樣子（`STORY_EVENTS`
+本身就含 JSON 事件了，不用另外用 `node:fs` 讀一次資料夾驗證）。
+
+代價：新增 JSON 事件檔案時，除了在 `data/` 底下放檔案，還要回
+`json-events.ts` 補一行 import＋加進陣列——不是「丟進資料夾就自動生
+效」。換到的是「兩個執行環境保證行為一致」，這次事故說明這個代價
+值得付。
 
 ### 實測草稿：`dev.carpenter_dock_intro_draft`
 

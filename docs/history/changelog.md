@@ -2,6 +2,54 @@
 
 > 這份是從 `AGENTS.md` 搬過來的逐輪除錯／功能建置紀錄，照時間順序排列，純粹是稽核軌跡（誰在什麼時候回報了什麼、怎麼查出根因、怎麼修的），**不是**還在生效的規則或架構文件——那些留在 `AGENTS.md`（硬規則/驗證命令）跟 `docs/decisions/`（仍然有效的架構決策）。要找「這個系統現在長怎樣」看 `docs/decisions/`；要找「這個 bug 當初是怎麼一路查出來的」才翻這份。
 
+## 響應式圖片資源擴大到 CG，exe 匯出前自動提醒（2026-09-01）
+
+Zeppelin 原則：「圖片資源都要對」。世界地圖底圖本來就有一套響應式
+WebP 機制（寫死在 index.html 的 `<picture><source srcset>`），這輪把
+同樣的精神套用到 CG（之後立繪也會比照辦理，見
+`docs/decisions/responsive-images.md`）：CG／立繪的檔名是執行期才決定
+的，沒辦法預先寫死 HTML，改成 `src/responsive-images.ts` 的
+`responsiveWebpUrl()` 依目前視窗寬度在 JS 裡組網址，`dialogue.ts` 的
+`setDialogPortrait()`／`setDialogCg()` 先試 WebP、`onerror` 自動退回
+原始 PNG，兩層都找不到才是真的沒圖（維持既有容錯精神不變）。
+
+`scripts/export-responsive-images.py` 加了 `--input-dir` 批次模式（整
+個資料夾底下每個 PNG 各自輸出一組，不用一張一張跑），新增
+`npm run assets:webp:cg` 跑 CG 資料夾。`scripts/check-responsive-
+images.ts` 也從只認世界地圖底圖那一種「單一固定檔案」擴充成同時支援
+「整個資料夾」模式，`npm run build:win` 打包前會一起檢查兩者。
+
+立繪的程式碼（常數、WebP-優先邏輯）已經一起寫好，但沒有批次執行，
+因為 `public/assets/portraits/` 資料夾目前混了不少測試/重複檔案，值得
+先清一輪再處理，這個順序留給 Zeppelin 決定。
+
+## event-system Phase A：JSON 手寫事件格式，F10 實測抓到 import.meta.glob 的坑（2026-09-01）
+
+Phase 1 驗證完正式系統值得投資之後，Zeppelin 提出更根本的需求：不是
+要agent寫得更快，是要在「agent 用不了」的情況下自己也能生一個事件。
+補上 JSON 手寫事件路徑（`src/story/chapters/data/*.json`），對話/選項
+文字改用 `text`／`text_en`／`text_ja` 扁平語言後綴欄位（不用先去
+`i18n.ts` 登記 key），跟既有 `textKey` 走 TS 事件那條路並存。詳細設計
+見 `docs/decisions/event-system.md`「Phase A」。
+
+拿 Zeppelin 重寫的木匠碼頭初登場台詞（更直接、不寒暄，一上來先處理
+「木板要塌了」的危險）當第一份真實測試內容，寫成
+`carpenter-dock-intro-draft.json`，`tsc`／`test:story`（14 個測試）／
+`story-audit` 全過，加了 F10 熱鍵可以在遊戲裡單獨播放（跟 F9 一樣
+manual 觸發，不影響正式 `carpenter-quest.ts` 流程）。
+
+第一版用 Vite 的 `import.meta.glob()` 自動掃資料夾，為了讓
+`scripts/story-audit.ts`（用 tsx 直接跑，沒有這個 API）不噴錯，包了一
+層 `typeof` 判斷再呼叫——結果 Zeppelin 實際按 F10 測試，console 印出
+「找不到 dev.carpenter_dock_intro_draft」。查出來是 `import.meta.glob`
+必須原封不動寫成一個呼叫式才會被 Vite 的建置期巨集轉換，包一層變數
+再呼叫會讓 Vite 完全認不出來，導致瀏覽器裡 `STORY_EVENTS` 永遠是空
+的——`tsc`／`story-audit`／`test:story` 三層自動化檢查完全抓不到這個
+問題，是這輪唯一一次「檢查全過，真的玩才發現壞掉」的案例。改成明確
+`import x from "./data/x.json"`（`resolveJsonModule` 本來就開著）後
+Vite／tsx 兩個環境行為一致，`scripts/story-audit.ts` 也因此能簡化回
+最初不用 `node:fs` 額外讀一次資料夾的版本。
+
 ## event-system Phase 1：第一份真正接線的 StoryRuntimeBindings，F9 概念驗證（2026-09-01）
 
 跟 Zeppelin／GPT 討論後定案的做法：不直接 migrate 序章或木匠，先寫一個
@@ -927,3 +975,26 @@ Zeppelin 回報冬天截圖裡街道、港口地面沒有「積雪感」，看�
 附註：這輪排查時發現 repo 底下有一個殘留的 `.git/index.lock`（本次
 session 沒有刪除檔案的權限，沒有清掉），如果之後 `git` 指令卡住或
 Copilot／終端機回報鎖檔錯誤，先確認這個檔案還在不在。
+
+## CG 響應式圖片首次真素材驗證，順手修掉 check-responsive-images.ts 的誤報（2026-09-01）
+
+上一輪只是把 CG 的 WebP-優先載入邏輯接好，沒有真的圖可以測。這輪塞了
+第一張真的 CG（`public/assets/cg/030.png`，歐文/木匠特寫）進去，接上
+`dev.carpenter_dock_intro_draft`（F10 觸發的 Phase A JSON 草稿事件）
+最後一句對白的 `cg` 欄位，跑 `npm run assets:webp:cg` 實際產出
+`030-1280.webp`／`030-1600.webp`（來源只有 1672px 寬，`1920` 這個
+tier 依「不放大」規則被正確跳過）。
+
+跑 `npx tsx scripts/check-responsive-images.ts` 時發現這支腳本不知道
+python 腳本「來源不夠寬就跳過」這條規則，把被正常跳過的
+`030-1920.webp` 誤判成「忘記匯出」印警告。修法：`checkOne()` 現在會讀
+來源 PNG 檔頭（PNG IHDR chunk，8 bytes 簽章 + width 在 offset 16，
+不需要裝 Pillow）拿到實際寬度，先濾掉比來源寬的 tier 再檢查缺檔，跟
+python 腳本的規則對齊。
+
+`tsc --noEmit`／`test:story`（14 tests）／`story-audit`／
+`check-responsive-images.ts` 全過。詳見
+`docs/decisions/responsive-images.md`。**還缺**：Zeppelin 進遊戲按
+F10 親眼確認 WebP CG 實際載入正常（不是退回 PNG、沒有裁切變形）——
+跟前幾輪 F9/F10 一樣，這種「Vite/瀏覽器實際載入路徑對不對」的問題，
+自動化檢查測不出來，只能真的玩一次。

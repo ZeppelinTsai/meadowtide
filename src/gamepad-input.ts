@@ -211,6 +211,19 @@ export function pollGamepad() {
           const next = Number(focused.value) + (key === "right" ? step : -step);
           focused.value = String(Math.max(Number(focused.min), Math.min(Number(focused.max), next)));
           focused.dispatchEvent(new Event("input", { bubbles: true }));
+        } else if (
+          (key === "left" || key === "right") &&
+          focused instanceof HTMLElement &&
+          focused.dataset.cycleControl === "true"
+        ) {
+          // 系統設定的語言／控制器配置／視窗解析度「‹ 目前值 ›」控制項
+          // (system-settings-ui.ts)：跟上面的 range 滑桿同一招，直接對
+          // 目前 focus 的元素丟自訂事件改值，不透過 window 合成鍵盤事件
+          // ——因為原生 <select> 已經證實搖桿完全按不動，同樣道理，光丟
+          // 合成 keydown 也叫不動這顆自訂元件，必須直接對它 dispatch。
+          focused.dispatchEvent(
+            new CustomEvent("cycle-step", { detail: key === "right" ? 1 : -1 }),
+          );
         } else {
           dispatchKey("keydown", "Arrow" + key[0].toUpperCase() + key.slice(1));
         }
@@ -223,13 +236,14 @@ export function pollGamepad() {
     if (confirmButton && !prevUiConfirm) {
       const focused = document.activeElement;
       const root = getActiveUiRoot();
-      if (
-        root &&
-        focused instanceof HTMLElement &&
-        root.contains(focused) &&
-        focused.matches("button:not(:disabled), a[href], [role=tab]")
-      ) {
-        focused.click();
+      if (root && focused instanceof HTMLElement && root.contains(focused)) {
+        // 已經有東西被 focus 住(滑桿、cycle 控制項…)時，A 鍵只在焦點是
+        // button/連結/分頁時才觸發 click——避免像之前那樣，隨便按 A
+        // 都把焦點彈回第一個項目(下面 focusFirstUiElement 那個分支，
+        // 本來是設計給「畫面上完全沒有東西被 focus」的情境用的)。
+        if (focused.matches("button:not(:disabled), a[href], [role=tab]")) {
+          focused.click();
+        }
       } else if (!focusFirstUiElement()) {
         // 標題 splash 沒有可聚焦項目，仍需用按鍵事件進入主選單。
         document.dispatchEvent(

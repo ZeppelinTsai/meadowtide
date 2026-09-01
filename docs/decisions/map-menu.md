@@ -8,6 +8,13 @@
 480/960/1440px WebP 響應式版本，PNG 只作 fallback。更新 PNG 後執行
 npm run assets:webp，不得手工分別修改輸出尺寸。
 
+2026-09-01 補：`npm run build:win`（exe 匯出）現在會在打包前自動跑
+`scripts/check-responsive-images.ts`，檢查 world-map.png 有沒有對應的
+三個 WebP 版本、版本有沒有比來源 PNG 舊——有問題會印出警告跟該跑的指令
+（不會擋 build，純提醒）。world-map.png 還沒放圖片素材時這個檢查會安靜
+跳過，不會誤報。這套機制之後也用在 CG／立繪上，完整說明見
+`docs/decisions/responsive-images.md`。
+
 四個地點按鈕會透過既有 loadMap() 傳送，並統一讓主角朝下：山區 (14,53)、
 生活區 (21,20)、舊村 (125,10)、港口 (5,14)。座標或地圖資料調整後必須
 重新驗證這四格仍在範圍內且可走。
