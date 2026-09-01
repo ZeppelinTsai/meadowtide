@@ -107,7 +107,15 @@ function getItemsPerPage() {
   return columns * rows;
 }
 const modelIconCache = new Map<string, string>();
-const INVENTORY_THUMBNAIL_LONG_EDGE = 2.8;
+// 2026-09-01：疊乘 bug 修好之後 Zeppelin 回報縮圖「過大了」——
+// 相機是 OrthographicCamera(-1,1,1,-1,...)，可視範圍只有 2 個世界單位
+// 寬/高，原本的 2.8 比可視範圍本身還大，之前是被那個 setScalar bug
+// 意外「救」到(大多數道具因為 bug 反而縮得比 2.8 小，剛好沒溢出)，
+// 疊乘修好、道具真正精準縮到 2.8 之後，垂直向的道具(農作物、蘑菇)
+// 就會頂到甚至超出畫面上下緣。改成 1.6，讓最長邊落在可視範圍的 80%，
+// 四周留一點邊界。這個數字還沒經過 Zeppelin 實機畫面確認，只是先給
+// 一個安全值，如果還是不合適請再回報實際大小(太大/太小/哪個道具)。
+const INVENTORY_THUMBNAIL_LONG_EDGE = 1.6;
 let thumbnailRenderer: THREE.WebGLRenderer | null = null;
 
 function getThumbnailRenderer() {
