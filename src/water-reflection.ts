@@ -3,6 +3,7 @@ import { renderer, scene } from "./scene-sky";
 import { waterSurfaceMaterials } from "./scene-registries";
 import { gameState } from "./game-state";
 import { npcGroup, animalGroup } from "./npc-runtime";
+import { weatherEffectGroup } from "./weather-particles";
 
 const WATER_PLANE_Y = 0.1;
 const REFLECTION_WIDTH = 1024;
@@ -174,13 +175,17 @@ export function updatePlanarWaterReflection(
   const mirror = updateMirrorCamera(activeCamera);
   const hidden: Array<{ object: THREE.Object3D; visible: boolean }> = [];
 
-  // Hide ground, buildings, characters, and animals during the reflection pass
-  // so only the sky dome, stars, clouds, and celestial atmosphere are reflected.
+  // Hide ground, buildings, characters, animals, and transient weather particles
+  // during the reflection pass so only the sky dome, stars, clouds, and celestial
+  // atmosphere remain reflected. This deliberately excludes spring petals,
+  // autumn leaves, snow, and other airborne effects that look noisy and expensive
+  // when they are mirrored onto lakes and seas.
   const reflectionExcludeGroups = [
     gameState.mapGroup,
     npcGroup,
     animalGroup,
     gameState.player,
+    weatherEffectGroup,
   ].filter(Boolean) as THREE.Object3D[];
 
   reflectionExcludeGroups.forEach((group) => {
