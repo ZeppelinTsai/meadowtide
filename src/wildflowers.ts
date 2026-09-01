@@ -107,6 +107,41 @@ function radialPart(
   return holder;
 }
 
+// 白雛菊花瓣是白色，在沙地/淺色地面(尤其冬天雪地)幾乎融進背景——只有
+// 這個物種需要額外疊一層稍微放大、深色的描邊網格：跟填色網格共用同一個
+// holder/同一個變換，只是整體放大一圈，`polygonOffset` 把它推到填色
+// 網格「後面」一點點避免 z-fighting，讓白色花瓣在淺色地面上還能看出
+// 輪廓。其他四個物種目前配色跟地面對比夠，不需要這層。
+const PETAL_OUTLINE_MAT = new THREE.MeshBasicMaterial({
+  color: 0x3a3128,
+  side: THREE.DoubleSide,
+  polygonOffset: true,
+  polygonOffsetFactor: 1,
+  polygonOffsetUnits: 1,
+});
+function radialPetalWithOutline(
+  geometry: THREE.BufferGeometry,
+  material: THREE.Material,
+  angle: number,
+  tilt: number,
+  radius = 0,
+  outlineScale = 1.3,
+) {
+  const holder = new THREE.Group();
+  holder.rotation.y = angle;
+  const outline = new THREE.Mesh(geometry, PETAL_OUTLINE_MAT);
+  outline.rotation.x = -Math.PI / 2 + tilt;
+  outline.position.z = -radius;
+  outline.scale.setScalar(outlineScale);
+  holder.add(outline);
+  const part = new THREE.Mesh(geometry, material);
+  part.rotation.x = -Math.PI / 2 + tilt;
+  part.position.z = -radius;
+  part.castShadow = true;
+  holder.add(part);
+  return holder;
+}
+
 // --------------------------------------------------------------
 // 白雛菊——黃色花心圓盤 + 細長白色花瓣，扁平放射狀。
 // --------------------------------------------------------------
@@ -127,7 +162,7 @@ function makeWildDaisyHead(): THREE.Group {
   const petalCount = 9;
   for (let i = 0; i < petalCount; i++) {
     const angle = (i / petalCount) * Math.PI * 2;
-    head.add(radialPart(petalGeo, petalMat, angle, 0.1, 0.015));
+    head.add(radialPetalWithOutline(petalGeo, petalMat, angle, 0.1, 0.015));
   }
   const center = new THREE.Mesh(
     new THREE.SphereGeometry(0.026, 8, 5),
@@ -184,11 +219,13 @@ function makeDandelionHead(): THREE.Group {
     flatShading: true,
     side: THREE.DoubleSide,
   });
-  const petalGeo = pointedPetalGeometry(0.05, 0.009);
+  // 2026-09-01：原尺寸實機測試太不明顯，Zeppelin 反饋「黃花需要大一點」，
+  // 花瓣加長加寬、基部離心距離跟著放大，其餘四個物種的比例不受影響。
+  const petalGeo = pointedPetalGeometry(0.07, 0.013);
   const petalCount = 22;
   for (let i = 0; i < petalCount; i++) {
     const angle = (i / petalCount) * Math.PI * 2 + hash2(i, 3.1) * 0.2;
-    head.add(radialPart(petalGeo, petalMat, angle, 0.32, 0.006));
+    head.add(radialPart(petalGeo, petalMat, angle, 0.32, 0.009));
   }
   return g;
 }
@@ -307,6 +344,11 @@ export function makeFlowerSpecimen(species: FlowerSpeciesId): THREE.Group {
 // 整叢套一個更大的倍率(花頭本身幾何遠比原木/岩塊小，所以倍率也大得多)，
 // 只放大最終叢生 group，不動個別花頭的幾何比例/輪廓。
 const CLUSTER_SCALE = 2.6;
+// 每個節點裡花頭彼此散開的半徑倍率——目前只有蒲公英需要收緊(Zeppelin
+// 反饋「黃花花叢擠一點」)，其他物種維持預設 1(不縮不放)。
+const CLUSTER_SPREAD: Partial<Record<FlowerSpeciesId, number>> = {
+  dandelion: 0.55,
+};
 export function makeFlowerCluster(
   species: FlowerSpeciesId,
   x: number,
@@ -315,10 +357,11 @@ export function makeFlowerCluster(
 ): THREE.Group {
   const group = new THREE.Group();
   const headCount = 2 + Math.floor(hash2(seed, seed * 2.3) * 3); // 2~4
+  const spread = CLUSTER_SPREAD[species] ?? 1;
   for (let i = 0; i < headCount; i++) {
     const head = makeFlowerHead(species);
     const a = hash2(seed + i * 1.9, i * 2.7) * Math.PI * 2;
-    const r = 0.05 + hash2(i * 1.3, seed * 1.7 + i) * 0.15;
+    const r = (0.05 + hash2(i * 1.3, seed * 1.7 + i) * 0.15) * spread;
     head.position.set(Math.cos(a) * r, 0, Math.sin(a) * r);
     head.rotation.y = hash2(seed * 3.3 + i, i * 4.1) * Math.PI * 2;
     const scale = 0.85 + hash2(i * 2.1, seed * 0.7) * 0.3;

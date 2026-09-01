@@ -61,6 +61,12 @@
   - `makeInventoryItemVisual()`：`isFlowerSpeciesId(itemId)` 時回傳 `makeFlowerSpecimen(itemId)` 正規化後的單朵花模型。
 - `inventory-ui.ts`：背包格子清單（`inventoryEntries()`）比照 `PEARL_DEFINITIONS.forEach(...)` 的寫法加一段 `FLOWER_SPECIES.forEach(...)`，`tone: "flower"`（`style.css` 新增 `.inventory-slot-flower` 一條規則，粉色底），倉庫頁籤沿用同一份 entries、靠 `storedItemAmount()` 篩選，沒有另外維護第二份清單。
 
+## 2026-09-01 第二輪實機調整：白雛菊描邊、蒲公英放大收緊
+
+- **白雛菊描邊**：白色花瓣在沙地／淺色地面（尤其冬天雪地）幾乎融進背景。`wildflowers.ts` 新增 `radialPetalWithOutline()`（跟共用的 `radialPart()`平行，只有白雛菊用），同一個 holder 裡疊一層放大 1.3 倍、深色（`0x3a3128`）、`polygonOffset` 推到填色網格後面的描邊網格，避免 z-fighting。其他四個物種配色跟地面對比夠，沒有套這層。
+- **蒲公英放大**：`makeDandelionHead()` 的花瓣從 `pointedPetalGeometry(0.05, 0.009)` 放大到 `(0.07, 0.013)`，基部離心距離從 `0.006` 放大到 `0.009`，其餘四個物種比例不受影響。
+- **蒲公英花叢收緊**：`makeFlowerCluster()` 新增 `CLUSTER_SPREAD` 這張 per-species 表（跟 `inventory-system.ts` 的 `BAG_ITEM_TARGET_LONG_EDGE`/`HELD_ITEM_SCALE_MULTIPLIER` 同一種「`Record<id, number>` + 預設值」寫法），蒲公英是 `0.55`（花頭彼此散開的半徑乘 0.55，看起來更像一叢擠在一起的蒲公英），其他物種預設 `1`（維持原本的散開程度）。
+
 ## 三個「被程式碼現況解決」的規格書開放問題
 
 規格書留了幾個問題請實作者依現況判斷，這裡照實記錄，之後系統升級時要重新考慮：
