@@ -309,6 +309,12 @@ export function mapleAutumnColor(seed: number) {
     .offsetHSL(0, 0, (seed - 0.5) * 0.06);
 }
 export function getSeasonGrassTone(seasonIndex = gameState.currentSeason) {
+  const snowWeather =
+    gameState.currentWeather === "snow" ||
+    gameState.currentWeather === "blizzard";
+  if (snowWeather || seasonIndex === 3) {
+    return Object.freeze({ ground: 0xf7f9fc, roughness: 0.62 });
+  }
   const key = TIME_CONFIG.seasons[
     seasonIndex
   ] as keyof typeof SEASON_GRASS_TONES;
