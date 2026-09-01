@@ -1402,19 +1402,53 @@ canvas {
 .titleMenuBtn {
   font-family: inherit;
   font-size: 18px;
-  padding: 12px 18px;
-  border: 1px solid #2b2b2b;
-  border-radius: 6px;
-  background: #f3f7ee;
-  color: #2b2b2b;
+  font-weight: 600;
+  padding: 14px 20px;
+  border: 1px solid rgba(78, 49, 35, 0.55);
+  border-radius: 10px;
+  background: linear-gradient(180deg, #fdf6e6 0%, #f0e0bd 100%);
+  color: #4a3427;
   cursor: pointer;
+  box-shadow:
+    0 3px 0 rgba(104, 69, 39, 0.35),
+    0 6px 14px rgba(0, 0, 0, 0.18);
   transition:
     background 0.15s ease,
-    color 0.15s ease;
+    color 0.15s ease,
+    transform 0.1s ease,
+    box-shadow 0.15s ease;
 }
-.titleMenuBtn:hover {
-  background: #2b2b2b;
-  color: #fff;
+.titleMenuBtn:hover:not(:disabled) {
+  background: linear-gradient(180deg, #f8e3a8 0%, #eec674 100%);
+  color: #3a2418;
+  transform: translateY(-1px);
+  box-shadow:
+    0 4px 0 rgba(104, 69, 39, 0.4),
+    0 9px 18px rgba(0, 0, 0, 0.22);
+}
+.titleMenuBtn:active:not(:disabled) {
+  transform: translateY(2px);
+  box-shadow:
+    0 1px 0 rgba(104, 69, 39, 0.35),
+    0 3px 8px rgba(0, 0, 0, 0.16);
+}
+/* 結束遊戲——同一顆 .titleMenuBtn，但故意調得比較素、比較不搶眼，跟
+   「開始新遊戲」「返回畫面」這類常按的主要動作拉開一點視覺份量差異。 */
+#titleQuitBtn,
+#pauseQuitBtn {
+  background: linear-gradient(180deg, #f2ece0 0%, #ded2b8 100%);
+  color: #6b5a46;
+  box-shadow:
+    0 3px 0 rgba(104, 69, 39, 0.22),
+    0 6px 14px rgba(0, 0, 0, 0.14);
+}
+#titleQuitBtn:hover:not(:disabled),
+#pauseQuitBtn:hover:not(:disabled) {
+  background: linear-gradient(180deg, #e7ddc8 0%, #d3c4a0 100%);
+  color: #4a3427;
+  box-shadow:
+    0 4px 0 rgba(104, 69, 39, 0.28),
+    0 9px 18px rgba(0, 0, 0, 0.18);
 }
 .titleMenuBtn:focus,
 .titleSlotBtn:focus,
@@ -1839,8 +1873,11 @@ canvas {
   padding: 28px 32px;
   background: #f3e7ce;
   color: #2b2b2b;
-  border-radius: 10px;
+  border: 4px solid rgba(78, 49, 35, 0.85);
+  border-radius: 14px;
+  box-shadow: 0 18px 54px rgba(0, 0, 0, 0.45);
   min-width: 260px;
+  box-sizing: border-box;
 }
 #pauseMenu[data-step="menu"] #pauseMenuPanel,
 #pauseMenu[data-step="saveSlots"] #pauseSaveSlotsPanel,
@@ -1898,7 +1935,7 @@ canvas {
 }
 .pauseTutorialLead {
   margin: -10px 0 12px;
-  color: #777;
+  color: #8a6a3f;
 }
 .pauseTutorialList {
   width: min(560px, 100%);
@@ -1914,23 +1951,39 @@ canvas {
   gap: 14px;
   padding: 16px 18px;
   color: #2b2b2b;
-  background: #f6f3eb;
+  background: linear-gradient(180deg, #fbf5e7 0%, #f6efdc 100%);
   border: 1px solid #d7c8a8;
-  border-radius: 10px;
+  border-radius: 12px;
+  box-shadow: 0 3px 8px rgba(78, 49, 35, 0.12);
   font: inherit;
   text-align: left;
   cursor: pointer;
+  transition:
+    border-color 0.15s ease,
+    background 0.15s ease,
+    box-shadow 0.15s ease,
+    transform 0.1s ease;
 }
 .pauseTutorialTopic:hover,
 .pauseTutorialTopic:focus-visible {
   border-color: #947342;
-  background: #fffaf0;
+  background: linear-gradient(180deg, #fffaf0 0%, #fbeecb 100%);
+  box-shadow: 0 6px 16px rgba(78, 49, 35, 0.2);
+  transform: translateY(-1px);
   outline: none;
 }
 .pauseTutorialTopicNumber {
-  color: #947342;
-  font-size: 18px;
-  letter-spacing: 0.12em;
+  display: grid;
+  place-items: center;
+  justify-self: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: #f2b84b;
+  color: #4a3427;
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
 }
 .pauseTutorialTopic strong,
 .pauseTutorialTopic small {
@@ -1943,25 +1996,22 @@ canvas {
   margin-top: 3px;
   color: #777;
 }
-.pauseTutorialCardsHeader {
-  width: 100%;
-  display: grid;
-  grid-template-columns: 48px 1fr auto;
-  align-items: center;
-  text-align: left;
-}
-.pauseTutorialCardsHeader h2 {
-  margin: 2px 0 0;
-  font-size: 25px;
-}
-.pauseTutorialEyebrow {
-  color: #947342;
-  font-size: 18px;
-  letter-spacing: 0.18em;
-}
+/* 原本這裡是 .pauseTutorialCardsHeader(返回鍵＋「玩法教學／行走」
+   標題＋頁碼)——「行走」是寫死在 HTML 裡的文字，不管翻到第幾頁都不會
+   跟著換，跟卡片本身正確顯示的章節／標題(pauseTutorialCardKicker／
+   CardTitle)重複又對不上，還多佔一整排高度，是小螢幕版面擠不下的原因
+   之一。整組 header 拿掉，返回鍵跟頁碼改放進面板最下面的 footer。 */
 .pauseTutorialPageNumber {
   font-variant-numeric: tabular-nums;
   color: #79684e;
+  font-size: 18px;
+}
+.pauseTutorialCardsFooter {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 4px;
 }
 .pauseTutorialIconBtn,
 .pauseTutorialArrow {
