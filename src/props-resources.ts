@@ -584,7 +584,111 @@ export function makeAnimal(type, seed = 0) {
   return g;
 }
 
-export function makeSeedPouch(labelColor = 0xe9d6a5) {
+function drawSeedStickerCrop(
+  ctx: CanvasRenderingContext2D,
+  cropType: "radish" | "potato" | "tomato",
+) {
+  const cx = 128;
+  const cy = 128;
+
+  ctx.save();
+  ctx.translate(cx, cy);
+
+  ctx.fillStyle = "rgba(255, 248, 232, 0.95)";
+  ctx.beginPath();
+  ctx.roundRect(-110, -110, 220, 220, 28);
+  ctx.fill();
+
+  ctx.lineWidth = 8;
+  ctx.strokeStyle = "rgba(105, 70, 41, 0.78)";
+  ctx.stroke();
+
+  if (cropType === "radish") {
+    ctx.fillStyle = "#f4d7b7";
+    ctx.beginPath();
+    ctx.ellipse(0, 25, 82, 36, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = "#f7eee1";
+    ctx.beginPath();
+    ctx.ellipse(0, 16, 62, 30, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = "#67a94b";
+    for (let i = 0; i < 6; i++) {
+      const angle = (-Math.PI / 2) + (i / 6) * Math.PI;
+      const x = Math.cos(angle) * 52;
+      const y = Math.sin(angle) * 18 - 52;
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.rotate(angle * 0.8);
+      ctx.beginPath();
+      ctx.ellipse(0, 0, 26, 10, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+
+    ctx.fillStyle = "#4d8d39";
+    ctx.fillRect(-6, -62, 12, 48);
+  } else if (cropType === "potato") {
+    ctx.fillStyle = "#b47b52";
+    ctx.beginPath();
+    ctx.ellipse(0, 10, 82, 54, 0.25, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = "#c98f62";
+    ctx.beginPath();
+    ctx.ellipse(-32, -8, 16, 14, 0, 0, Math.PI * 2);
+    ctx.ellipse(0, -18, 18, 16, 0, 0, Math.PI * 2);
+    ctx.ellipse(28, -4, 18, 14, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = "#52270b";
+    ctx.fillRect(-6, -60, 12, 52);
+    ctx.fillStyle = "#5b9d46";
+    ctx.beginPath();
+    ctx.moveTo(-18, -58);
+    ctx.quadraticCurveTo(-24, -74, -8, -78);
+    ctx.quadraticCurveTo(0, -68, -6, -58);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(18, -60);
+    ctx.quadraticCurveTo(24, -76, 8, -80);
+    ctx.quadraticCurveTo(0, -68, 6, -60);
+    ctx.fill();
+  } else {
+    ctx.fillStyle = "#d84d3e";
+    ctx.beginPath();
+    ctx.ellipse(-26, 10, 38, 44, -0.3, 0, Math.PI * 2);
+    ctx.ellipse(28, 12, 34, 40, 0.25, 0, Math.PI * 2);
+    ctx.ellipse(0, -12, 38, 42, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = "#5a9a45";
+    ctx.beginPath();
+    ctx.moveTo(-18, -28);
+    ctx.quadraticCurveTo(-28, -62, -6, -62);
+    ctx.quadraticCurveTo(4, -46, -18, -28);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(24, -26);
+    ctx.quadraticCurveTo(32, -60, 10, -62);
+    ctx.quadraticCurveTo(2, -46, 24, -26);
+    ctx.fill();
+
+    ctx.fillStyle = "#4e8a20";
+    ctx.fillRect(-6, -56, 12, 42);
+    ctx.fillStyle = "#3d7c1d";
+    ctx.fillRect(-2, -12, 4, 34);
+  }
+
+  ctx.restore();
+}
+
+export function makeSeedPouch(
+  labelColor = 0xe9d6a5,
+  cropType: "radish" | "potato" | "tomato" = "radish",
+) {
   const g = new THREE.Group();
   const bag = new THREE.Mesh(
     new THREE.SphereGeometry(0.14, 8, 6),
@@ -596,11 +700,39 @@ export function makeSeedPouch(labelColor = 0xe9d6a5) {
   bag.scale.set(1, 0.8, 1);
   bag.position.y = 0.14;
   g.add(bag);
+
+  const canvas = document.createElement("canvas");
+  canvas.width = 256;
+  canvas.height = 256;
+  const ctx = canvas.getContext("2d");
+  if (ctx) {
+    drawSeedStickerCrop(ctx, cropType);
+  }
+
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.needsUpdate = true;
+
+  const sticker = new THREE.Mesh(
+    new THREE.PlaneGeometry(0.24, 0.2),
+    new THREE.MeshStandardMaterial({
+      map: texture,
+      transparent: true,
+      alphaTest: 0.02,
+      metalness: 0,
+      roughness: 1,
+      side: THREE.DoubleSide,
+    }),
+  );
+  sticker.position.set(0, 0.15, 0.11);
+  sticker.rotation.y = Math.PI;
+  g.add(sticker);
+
   const label = new THREE.Mesh(
     new THREE.BoxGeometry(0.12, 0.075, 0.012),
     new THREE.MeshStandardMaterial({ color: labelColor, flatShading: true }),
   );
-  label.position.set(0, 0.15, -0.128);
+  label.position.set(0, 0.15, 0.118);
+  label.visible = false;
   g.add(label);
   return g;
 }
@@ -630,6 +762,7 @@ export function makeBobber() {
 
 export function makeOysterProp() {
   const group = new THREE.Group();
+  group.scale.setScalar(1.35);
   const shellMaterial = new THREE.MeshStandardMaterial({
     color: 0x8f897d,
     flatShading: true,
@@ -764,6 +897,7 @@ export function startFishRoute(f, now) {
 
 export function makeOreNode(x, z, color, accentColor, colorSeed) {
   const group = new THREE.Group();
+  group.scale.setScalar(1.3);
   const baseColor = new THREE.Color(color);
   baseColor.offsetHSL((colorSeed - 0.5) * 0.06, 0, (colorSeed - 0.5) * 0.16);
   const rockMat = new THREE.MeshStandardMaterial({

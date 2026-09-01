@@ -80,6 +80,27 @@ export function canHarvestAnimal(id: string) {
   );
 }
 
+export function getAnimalInteractionStatus(id: string) {
+  const animal = animalFor(id);
+  if (!animal) return null;
+
+  const record = recordFor(id);
+  return {
+    id: animal.id,
+    type: animal.type,
+    name: animalName(animal.type),
+    lastPettedDay: record.lastPettedDay,
+    lastBrushedDay: record.lastBrushedDay,
+    lastHarvestDay: record.lastHarvestDay,
+    lastProductionFeedDay: record.lastProductionFeedDay,
+    isPetToday: record.lastPettedDay === gameState.currentDay,
+    isBrushedToday: record.lastBrushedDay === gameState.currentDay,
+    isHarvestedToday: record.lastHarvestDay === gameState.currentDay,
+    isFedToday: record.lastProductionFeedDay === gameState.currentDay,
+    canHarvest: canHarvestAnimal(id),
+  };
+}
+
 export function petAnimal(id: string) {
   const animal = animalFor(id);
   if (!animal) return;

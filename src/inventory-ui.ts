@@ -8,6 +8,7 @@ import {
 } from "./game-state";
 import { setTimePauseSource } from "./time-pause";
 import { getDisplayedStars, getRelationship } from "./affection";
+import { getAnimalInteractionStatus } from "./animal-interactions";
 import { getLocale, translateText } from "./i18n";
 import {
   eatItem,
@@ -105,7 +106,7 @@ function getItemsPerPage() {
   return columns * rows;
 }
 const modelIconCache = new Map<string, string>();
-const INVENTORY_THUMBNAIL_LONG_EDGE = 1.05;
+const INVENTORY_THUMBNAIL_LONG_EDGE = 1.65;
 let thumbnailRenderer: THREE.WebGLRenderer | null = null;
 
 function getThumbnailRenderer() {
@@ -774,7 +775,33 @@ function renderTools() {
   });
 }
 
-function renderRelationships() {
+function makeRelationshipIcon(kind: "npc" | "animal" | "pet" | "feed" | "brush" | "harvest") {
+  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  svg.setAttribute("viewBox", "0 0 24 24");
+  svg.setAttribute("aria-hidden", "true");
+  svg.classList.add("relationship-icon");
+
+  const pathMap: Record<typeof kind, string> = {
+    npc: "M12 12c2.2 0 4-1.8 4-4S14.2 4 12 4 8 5.8 8 8s1.8 4 4 4Zm-6 8c.7-2.8 3.2-4.8 6-4.8s5.3 2 6 4.8",
+    animal: "M7 16.5V7.5h10v9M9 10.5h6M9 13.5h6M8 19.5h8M6 7.5l-2-2m14 2l2-2",
+    pet: "M8 11.5c-1.2 0-2.2 1-2.2 2.2S6.8 16 8 16s2.2-1 2.2-2.2-1-2.3-2.2-2.3Zm8 0c-1.2 0-2.2 1-2.2 2.2S14.8 16 16 16s2.2-1 2.2-2.2-1-2.3-2.2-2.3ZM11.5 9.2c-.8 0-1.5.7-1.5 1.5S10.7 12.2 11.5 12.2 13 11.5 13 10.7 12.3 9.2 11.5 9.2Z M8 6.5c.8 0 1.5-.7 1.5-1.5S8.8 3.5 8 3.5 6.5 4.2 6.5 5 7.2 6.5 8 6.5Zm8 0c.8 0 1.5-.7 1.5-1.5S16.8 3.5 16 3.5 14.5 4.2 14.5 5 15.2 6.5 16 6.5Z",
+    feed: "M4 10.5h16M6.5 9V7.5c0-1.1.9-2 2-2h6.8c1.1 0 2 .9 2 2V9M5.5 10.5v7.5h13v-7.5M9 13.5h6",
+    brush: "M6 17.5 14.5 9l2.5 2.5L8.5 20l-2.5-2.5Zm9-10 2.5-2.5 2.5 2.5-2.5 2.5-2.5-2.5Z",
+    harvest: "M7.5 18.5V8.5h9v10M10 5.5h4M12 5.5V3.5M9 12.5h6M9 15.5h6",
+  };
+
+  const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+  path.setAttribute("d", pathMap[kind]);
+  path.setAttribute("fill", "none");
+  path.setAttribute("stroke", "currentColor");
+  path.setAttribute("stroke-width", "1.4");
+  path.setAttribute("stroke-linecap", "round");
+  path.setAttribute("stroke-linejoin", "round");
+  svg.appendChild(path);
+  return svg;
+}
+
+function renderNpcRelationships() {
   const relationships = [{ id: "mayor" }, { id: "carpenter" }];
   relationships.forEach(({ id }) => {
     const relationship = getRelationship(id);
@@ -807,6 +834,128 @@ function renderRelationships() {
     card.addEventListener("click", describeRelationship);
     grid.appendChild(card);
   });
+}
+
+function renderAnimalRelationships() {
+  const ownedAnimals = (gameState.ownedAnimals ?? [])
+    .map((animalId) => getAnimalInteractionStatus(animalId))
+    .filter((animal): animal is NonNullable<typeof animal> => Boolean(animal));
+
+  if (!ownedAnimals.length) {
+    const empty = document.createElement("div");
+    empty.className = "inventory-empty";
+    empty.textContent = translateText("目前還沒有飼養動物");
+    grid.appendChild(empty);
+    return;
+  }
+
+  ownedAnimals.forEach((animal) => {
+    const card = document.createElement("div");
+    card.className = "menu-info-card animal-relationship-card";
+
+    const header = document.createElement("div");
+    header.className = "animal-relationship-header";
+    const badge = document.createElement("span");
+    badge.className = "relationship-animal-badge";
+    badge.appendChild(makeRelationshipIcon("animal"));
+    const title = document.createElement("h3");
+    title.textContent =
+      animal.type === "cow"
+        ? "牛"
+        : animal.type === "sheep"
+          ? "羊"
+          : "雞";
+
+    header.append(badge, title);
+
+    const statusRow = document.createElement("div");
+    statusRow.className = "animal-status-row";
+
+    const actions = [
+      { key: "pet", label: "撫摸", done: animal.isPetToday, icon: "pet" },
+      { key: "feed", label: "餵食", done: animal.isFedToday, icon: "feed" },
+      { key: "brush", label: "刷毛", done: animal.isBrushedToday, icon: "brush", hidden: animal.type === "chicken" },
+      { key: "harvest", label: "收成", done: animal.isHarvestedToday, icon: "harvest", hidden: animal.type === "chicken" },
+    ].filter((action) => !action.hidden);
+
+    actions.forEach((action) => {
+      const item = document.createElement("span");
+      item.className = "animal-status-item" + (action.done ? " done" : "");
+      item.title = `${action.label}${action.done ? "：今天已完成" : "：尚未完成"}`;
+      item.appendChild(makeRelationshipIcon(action.icon as "pet" | "feed" | "brush" | "harvest"));
+      const label = document.createElement("small");
+      label.textContent = action.done ? "已" : "待";
+      item.appendChild(label);
+      statusRow.appendChild(item);
+    });
+
+    const meta = document.createElement("span");
+    meta.className = "animal-relationship-meta";
+    const todayText = [
+      animal.isPetToday ? "撫摸" : "",
+      animal.isFedToday ? "餵食" : "",
+      animal.type !== "chicken" && animal.isBrushedToday ? "刷毛" : "",
+      animal.type !== "chicken" && animal.isHarvestedToday ? "收成" : "",
+    ].filter(Boolean);
+    meta.textContent = todayText.length ? todayText.join(" · ") : "今日互動待完成";
+
+    card.append(header, statusRow, meta);
+    grid.appendChild(card);
+  });
+}
+
+function renderRelationships() {
+  const layout = document.createElement("div");
+  layout.className = "relationship-layout";
+
+  const sidebar = document.createElement("div");
+  sidebar.className = "relationship-sidebar";
+
+  const modes = [
+    { id: "npc", label: "NPC", icon: makeRelationshipIcon("npc") },
+    { id: "animal", label: "動物", icon: makeRelationshipIcon("animal") },
+  ] as const;
+
+  let activeMode: "npc" | "animal" = "npc";
+
+  const updateMode = (nextMode: "npc" | "animal") => {
+    activeMode = nextMode;
+    sidebar.querySelectorAll<HTMLButtonElement>("button").forEach((button) => {
+      const selected = button.dataset.relationMode === nextMode;
+      button.classList.toggle("active", selected);
+      button.setAttribute("aria-pressed", String(selected));
+    });
+    grid.innerHTML = "";
+    const content = document.createElement("div");
+    content.className = "relationship-content";
+    if (nextMode === "npc") {
+      renderNpcRelationships();
+    } else {
+      renderAnimalRelationships();
+    }
+  };
+
+  modes.forEach(({ id, label, icon }) => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "relationship-mode-button";
+    button.dataset.relationMode = id;
+    button.setAttribute("aria-pressed", String(id === "npc"));
+    button.appendChild(icon.cloneNode(true));
+    const text = document.createElement("span");
+    text.textContent = label;
+    button.appendChild(text);
+    button.addEventListener("click", () => updateMode(id));
+    sidebar.appendChild(button);
+  });
+
+  layout.appendChild(sidebar);
+  const content = document.createElement("div");
+  content.className = "relationship-content";
+  layout.appendChild(content);
+  grid.appendChild(layout);
+
+  updateMode("npc");
 }
 
 export function isInventoryOpen() {

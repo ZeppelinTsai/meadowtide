@@ -490,6 +490,7 @@ export function makeConstructionSign(x, z) {
 
 export function makeWoodPile(x, z) {
   const group = new THREE.Group();
+  group.scale.setScalar(1.35);
   const barkMat = new THREE.MeshStandardMaterial({
     color: 0x6b4a30,
     flatShading: true,
@@ -545,6 +546,7 @@ export function makeWoodPile(x, z) {
 
 export function makeStonePile(x, z) {
   const group = new THREE.Group();
+  group.scale.setScalar(1.4);
   const rockMat = new THREE.MeshStandardMaterial({
     color: 0x8a8a86,
     flatShading: true,

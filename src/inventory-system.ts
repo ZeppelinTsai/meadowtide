@@ -37,6 +37,20 @@ function makeHeldFishVisual() {
   fish.rotation.z = Math.PI / 2;
   return fish;
 }
+
+function normalizeItemDisplayModel(
+  model: THREE.Object3D,
+  targetLongEdge = 0.9,
+): THREE.Object3D {
+  const bounds = new THREE.Box3().setFromObject(model);
+  const size = bounds.getSize(new THREE.Vector3());
+  const longestEdge = Math.max(size.x, size.y, size.z, 0.01);
+  const scale = targetLongEdge / longestEdge;
+  model.scale.multiplyScalar(scale);
+  const offset = bounds.getCenter(new THREE.Vector3());
+  model.position.sub(offset.multiplyScalar(scale));
+  return model;
+}
 export function allInventoryItems(): ItemDefinition[] {
   const dishes = Object.keys(inventory.dishes).map((recipeId) => ({
     id: `dish-${recipeId}` as InventoryItemId,
@@ -287,14 +301,14 @@ export function stowHeldItem(): boolean {
 
 export function makeInventoryItemVisual(itemId: string): THREE.Object3D {
   if (itemId.endsWith("Seeds")) {
-    const colors: Record<string, number> = {
-      radishSeeds: 0xe9d6a5,
-      potatoSeeds: 0xc99b5b,
-      tomatoSeeds: 0xd96955,
-    };
-    return makeSeedPouch();
+    const cropType = itemId.includes("potato")
+      ? "potato"
+      : itemId.includes("tomato")
+        ? "tomato"
+        : "radish";
+    return normalizeItemDisplayModel(makeSeedPouch(0xe9d6a5, cropType), 0.9);
   }
-  if (itemId === "harvested") return makeCropMesh(2);
+  if (itemId === "harvested") return normalizeItemDisplayModel(makeCropMesh(2), 0.8);
   if (itemId === "mushroom") {
     const group = new THREE.Group();
     const stem = new THREE.Mesh(
@@ -309,26 +323,32 @@ export function makeInventoryItemVisual(itemId: string): THREE.Object3D {
     cap.scale.y = 0.5;
     cap.position.y = 0.34;
     group.add(stem, cap);
-    return group;
+    return normalizeItemDisplayModel(group, 0.7);
   }
   if (itemId === "fish") {
     const fish = makeFishProp(1.4);
     fish.scale.setScalar(0.45);
     fish.rotation.x = Math.PI / 2;
-    return fish;
+    return normalizeItemDisplayModel(fish, 0.82);
   }
-  if (itemId === "oysters") return makeOysterProp();
-  if (itemId === "wood") return makeWoodPile(0, 0);
-  if (itemId === "stone") return makeStonePile(0, 0);
+  if (itemId === "oysters") return normalizeItemDisplayModel(makeOysterProp(), 0.82);
+  if (itemId === "wood") return normalizeItemDisplayModel(makeWoodPile(0, 0), 0.78);
+  if (itemId === "stone") return normalizeItemDisplayModel(makeStonePile(0, 0), 0.8);
   const ore = ORE_TIERS.find((tier) => tier.kind === itemId);
-  if (ore) return makeOreNode(0, 0, ore.color, ore.accentColor, 0.62);
+  if (ore) return normalizeItemDisplayModel(makeOreNode(0, 0, ore.color, ore.accentColor, 0.62), 0.8);
   if (itemId.startsWith("pearl-"))
-    return makePearlProp(
-      itemId.slice(6) as import("./pearl-system").PearlRarity,
+    return normalizeItemDisplayModel(
+      makePearlProp(
+        itemId.slice(6) as import("./pearl-system").PearlRarity,
+      ),
+      0.8,
     );
-  return new THREE.Mesh(
-    new THREE.BoxGeometry(0.12, 0.12, 0.12),
-    new THREE.MeshStandardMaterial({ color: 0xead4a8, flatShading: true }),
+  return normalizeItemDisplayModel(
+    new THREE.Mesh(
+      new THREE.BoxGeometry(0.12, 0.12, 0.12),
+      new THREE.MeshStandardMaterial({ color: 0xead4a8, flatShading: true }),
+    ),
+    0.7,
   );
 }
 
@@ -399,6 +419,7 @@ export function syncHeldItemVisual() {
   if (!player || !effectiveId) return;
   heldVisual = makeInventoryItemVisual(effectiveId);
   heldVisual.name = "heldInventoryItem";
+  heldVisual.rotation.y = Math.PI;
   const bounds = new THREE.Box3().setFromObject(heldVisual);
   const size = bounds.getSize(new THREE.Vector3());
   const center = bounds.getCenter(new THREE.Vector3());
