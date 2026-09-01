@@ -50,6 +50,7 @@ export function itemAmount(itemId: string): number {
   if (itemId === "potatoSeeds") return inventory.potatoSeeds;
   if (itemId === "tomatoSeeds") return inventory.tomatoSeeds;
   if (itemId === "harvested") return inventory.harvested;
+  if (itemId === "mushroom") return inventory.mushrooms;
   if (itemId === "fish") return inventory.fish;
   if (itemId === "oysters") return inventory.oysters;
   if (itemId === "wood") return inventory.wood;
@@ -74,6 +75,8 @@ function changeItemAmount(itemId: string, delta: number) {
     inventory.tomatoSeeds = Math.max(0, inventory.tomatoSeeds + delta);
   else if (itemId === "harvested")
     inventory.harvested = Math.max(0, inventory.harvested + delta);
+  else if (itemId === "mushroom")
+    inventory.mushrooms = Math.max(0, inventory.mushrooms + delta);
   else if (itemId === "fish")
     inventory.fish = Math.max(0, inventory.fish + delta);
   else if (itemId === "oysters")
@@ -201,6 +204,22 @@ export function makeInventoryItemVisual(itemId: string): THREE.Object3D {
     return makeSeedPouch();
   }
   if (itemId === "harvested") return makeCropMesh(2);
+  if (itemId === "mushroom") {
+    const group = new THREE.Group();
+    const stem = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.07, 0.1, 0.3, 8),
+      new THREE.MeshStandardMaterial({ color: 0xead9b7, flatShading: true }),
+    );
+    stem.position.y = 0.15;
+    const cap = new THREE.Mesh(
+      new THREE.SphereGeometry(0.2, 8, 5),
+      new THREE.MeshStandardMaterial({ color: 0xb66f58, flatShading: true }),
+    );
+    cap.scale.y = 0.5;
+    cap.position.y = 0.34;
+    group.add(stem, cap);
+    return group;
+  }
   if (itemId === "fish") {
     const fish = makeFishProp(1.4);
     fish.scale.setScalar(0.45);

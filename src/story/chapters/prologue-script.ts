@@ -274,7 +274,8 @@ export const PROLOGUE_SCRIPT: Record<string, DialogueLine[]> = {
   ],
   fishingSuccess: [mayor("「釣到魚了呢！那我們回牧場小屋去吧。」")],
   cooking: [
-    mayor("「接下來是料理。爐灶就在屋子的右上角，走近調查就能做菜。」"),
+    mayor("「接下來是料理。我先教你烤蔬菜、海鮮湯和烤蘑菇串三道食譜。」"),
+    mayor("「爐灶就在屋子的右上角，走近調查後，挑其中任何一道做出來就好。」"),
     mayor(
       "「廚房現在只有最基本的炊具，能做的料理還不多。先試著做一份料理吧。」",
     ),

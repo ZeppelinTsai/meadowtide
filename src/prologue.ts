@@ -4,6 +4,7 @@ import {
   dayLength,
   gameState,
   inventory,
+  learnRecipes,
   STONE_NODES,
   WOOD_NODES,
 } from "./game-state";
@@ -189,6 +190,7 @@ function resetPrologueStartingItems() {
   inventory.tomatoSeeds = 0;
   inventory.heldItemId = null;
   inventory.harvested = 0;
+  inventory.mushrooms = 0;
   inventory.fish = 0;
   inventory.wood = 0;
   inventory.stone = 0;
@@ -209,6 +211,7 @@ function resetPrologueStartingItems() {
   });
   inventory.dishes = {};
   inventory.storage = {};
+  inventory.learnedRecipes = [];
   Object.keys(cropState).forEach((key) => delete cropState[key]);
 }
 // 2026-08-26 第六輪反饋「主角剛落地是陷進碼頭的」——查出來的真正原因：
@@ -785,6 +788,7 @@ async function returnToFarmHouseAfterFishing() {
     showDialogSequence(
       PROLOGUE_SCRIPT.cooking.slice(0, cookingCompleteIndex),
       () => {
+        learnRecipes(["grilledVeggie", "seafoodSoup", "mushroomSkewer"]);
         beginStage("cookingTutorial");
         gameState.cutsceneActive = false;
         lockPrologueDateTime();
@@ -861,7 +865,8 @@ function showHouseSequence() {
       [{ label: "在蘿蔔成熟以前，我要吃什麼？", value: "food" }],
       () => {
         inventory.fish += 3;
-        inventory.harvested += 6;
+        inventory.harvested += 3;
+        inventory.mushrooms += 3;
         showDialogSequence(
           PROLOGUE_SCRIPT.house.slice(choiceIndex + 1),
           () => {

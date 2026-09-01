@@ -5,6 +5,7 @@ export type InventoryItemId =
   | "potatoSeeds"
   | "tomatoSeeds"
   | "harvested"
+  | "mushroom"
   | "fish"
   | "oysters"
   | "wood"
@@ -37,6 +38,7 @@ export const SEED_ITEMS: readonly ItemDefinition[] = [
 export const BASIC_ITEMS: readonly ItemDefinition[] = [
   ...SEED_ITEMS,
   { id: "harvested", label: "農作物", edible: true },
+  { id: "mushroom", label: "蘑菇", edible: true },
   { id: "fish", label: "魚", edible: true },
   { id: "oysters", label: "牡蠣", edible: true },
   { id: "wood", label: "木材", edible: false },

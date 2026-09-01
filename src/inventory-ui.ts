@@ -142,6 +142,7 @@ function inventoryEntries(): InventoryEntry[] {
     { id: "potatoSeeds", tab: "bag", label: "馬鈴薯種子", amount: inventory.potatoSeeds, tone: "gold", symbol: "薯", model: () => makeInventoryItemVisual("potatoSeeds") },
     { id: "tomatoSeeds", tab: "bag", label: "番茄種子", amount: inventory.tomatoSeeds, tone: "red", symbol: "番", model: () => makeInventoryItemVisual("tomatoSeeds") },
     { id: "harvested", tab: "bag", label: "農作物", amount: inventory.harvested, tone: "gold", symbol: "穗", model: () => makeInventoryItemVisual("harvested") },
+    { id: "mushroom", tab: "bag", label: "蘑菇", amount: inventory.mushrooms, tone: "red", symbol: "菇", model: () => makeInventoryItemVisual("mushroom") },
     { id: "fish", tab: "bag", label: "魚", amount: inventory.fish, tone: "blue", symbol: "魚", model: () => makeInventoryItemVisual("fish") },
     { id: "oysters", tab: "bag", label: "牡蠣", amount: inventory.oysters, tone: "pearl", symbol: "貝", model: () => makeInventoryItemVisual("oysters") },
     { id: "wood", tab: "bag", label: "木材", amount: inventory.wood, tone: "wood", symbol: "木", model: () => makeInventoryItemVisual("wood") },

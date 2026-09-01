@@ -278,6 +278,8 @@ export function initTitleScreen() {
     inventory.pearls.black = 0;
     inventory.pearls.gold = 0;
     inventory.storage = {};
+    inventory.mushrooms = 0;
+    inventory.learnedRecipes = [];
     inventory.tools.wateringCan = true;
     inventory.tools.hoe = true;
     inventory.tools.dualAxe = true;

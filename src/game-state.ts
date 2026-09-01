@@ -210,6 +210,7 @@ export const inventory = {
   tomatoSeeds: 1,
   heldItemId: null as string | null,
   harvested: 0,
+  mushrooms: 0,
   fish: 0,
   // 2026-08-26 釣魚 QTE：各魚階累積捕獲數——inventory.fish 這個舊欄位
   // 繼續當「魚的總數」維持跟 chef-quest.ts 既有消耗邏輯相容(不用改任何
@@ -247,6 +248,8 @@ export const inventory = {
   dishes: {} as Record<string, number>,
   // 倉庫沿用物品 id，數量為 0 的項目不保存也不顯示。
   storage: {} as Record<string, number>,
+  // 永久 recipe id；新遊戲預設不會料理，只能製作已由事件、NPC 或書架解鎖的食譜。
+  learnedRecipes: [] as string[],
 };
 
 export function hasTool(toolId: ToolId) {
@@ -907,28 +910,27 @@ export function harvestGatherNode(kind: GatherKind, x: number, z: number) {
 refreshGatherNodes();
 
 // ==============================================================
-// 通用料理系統——房子廚房的爐台前按 E 直接開煮，不做選單：自動挑目前
-// 食材做得出、等級最高的那一道，跟採集/牡蠣「靠近按 E 就決定結果」是
-// 同一套互動慣例。等級(普通/喜歡/最愛)沿用 task.md 好感度禮物的同一套
-// 詞彙，之後要把煮好的成品拿去當贈禮用，不用再另外設計一套料理品質
-// 稱呼。食材只吃得到已經有型別的資源(收成/魚/牡蠣)，作物種類還沒分
-// 型，所以先不分蔬菜/肉類這種更細的食譜條件。
+// 料理系統：食譜 ID 永久保存，來源可由 NPC、書架或事件解鎖。
+// 材料可來自背包與倉庫；來源偏好只影響扣除順序，總量不足時不可料理。
 // ==============================================================
+export type CookingIngredientId =
+  | "harvested"
+  | "mushroom"
+  | "fish"
+  | "oysters";
+
 export interface Recipe {
   id: string;
   name: string;
   tier: "普通" | "喜歡" | "最愛";
-  cost: Partial<Record<"harvested" | "fish" | "oysters", number>>;
+  cost: Partial<Record<CookingIngredientId, number>>;
 }
+
 export const RECIPES: Recipe[] = [
   { id: "grilledVeggie", name: "烤蔬菜", tier: "普通", cost: { harvested: 2 } },
   { id: "seafoodSoup", name: "海鮮湯", tier: "普通", cost: { fish: 2 } },
-  {
-    id: "garlicGreens",
-    name: "蒜炒野菜",
-    tier: "喜歡",
-    cost: { harvested: 3 },
-  },
+  { id: "mushroomSkewer", name: "烤蘑菇串", tier: "普通", cost: { mushroom: 2 } },
+  { id: "garlicGreens", name: "蒜炒野菜", tier: "喜歡", cost: { harvested: 3 } },
   { id: "bakedOyster", name: "奶油烤牡蠣", tier: "喜歡", cost: { oysters: 2 } },
   {
     id: "islandPlatter",
@@ -937,43 +939,70 @@ export const RECIPES: Recipe[] = [
     cost: { fish: 2, oysters: 1, harvested: 1 },
   },
 ];
+
 const RECIPE_TIER_RANK: Record<Recipe["tier"], number> = {
   最愛: 2,
   喜歡: 1,
   普通: 0,
 };
 
-function canAffordRecipe(recipe: Recipe) {
+export type CookingSourcePreference = Partial<
+  Record<CookingIngredientId, "bag" | "storage">
+>;
+
+const bagIngredientAmount = (id: CookingIngredientId) =>
+  id === "mushroom" ? inventory.mushrooms : inventory[id];
+
+const setBagIngredientAmount = (id: CookingIngredientId, amount: number) => {
+  if (id === "mushroom") inventory.mushrooms = amount;
+  else inventory[id] = amount;
+};
+
+export function learnRecipes(recipeIds: string[]) {
+  const known = new Set(inventory.learnedRecipes);
+  recipeIds.forEach((id) => {
+    if (RECIPES.some((recipe) => recipe.id === id)) known.add(id);
+  });
+  inventory.learnedRecipes = [...known];
+}
+
+export function canAffordRecipe(recipe: Recipe) {
   return (
-    Object.entries(recipe.cost) as [keyof typeof recipe.cost, number][]
+    Object.entries(recipe.cost) as [CookingIngredientId, number][]
   ).every(
-    ([key, amount]) =>
-      inventory[key as "harvested" | "fish" | "oysters"] >= amount,
+    ([id, amount]) =>
+      bagIngredientAmount(id) + (inventory.storage[id] || 0) >= amount,
   );
 }
 
-// 爐台前按 E 呼叫——食材做得出的食譜裡挑等級最高的那個，同等級照
-// RECIPES 陣列順序(陣列本身已經照「越晚出現越講究」排好)挑第一個；
-// 一道都做不出來就回傳 null，並丟出提示今天食材不夠。
-export function cookMeal(): Recipe | null {
-  const affordable = RECIPES.filter(canAffordRecipe).sort(
-    (a, b) => RECIPE_TIER_RANK[b.tier] - RECIPE_TIER_RANK[a.tier],
-  );
-  const recipe = affordable[0];
-  if (!recipe) {
-    gameState.harvestFeedback = {
-      kind: "empty",
-      title: "廚房",
-      text: "食材不夠，煮不出任何一道菜",
-      until: gameState.elapsed + 2.6,
-    };
+export function cookRecipe(
+  recipeId: string,
+  preferences: CookingSourcePreference = {},
+): Recipe | null {
+  const recipe = RECIPES.find((candidate) => candidate.id === recipeId);
+  if (
+    !recipe ||
+    !inventory.learnedRecipes.includes(recipe.id) ||
+    !canAffordRecipe(recipe)
+  )
     return null;
-  }
+
   (
-    Object.entries(recipe.cost) as ["harvested" | "fish" | "oysters", number][]
-  ).forEach(([key, amount]) => {
-    inventory[key] -= amount;
+    Object.entries(recipe.cost) as [CookingIngredientId, number][]
+  ).forEach(([id, required]) => {
+    const preferStorage = preferences[id] === "storage";
+    const bag = bagIngredientAmount(id);
+    const stored = Math.max(0, inventory.storage[id] || 0);
+    const fromStorage = preferStorage
+      ? Math.min(stored, required)
+      : Math.max(0, required - bag);
+    const fromBag = required - fromStorage;
+    setBagIngredientAmount(id, bag - fromBag);
+    const nextStored = stored - fromStorage;
+    if (nextStored > 0) inventory.storage[id] = nextStored;
+    else delete inventory.storage[id];
   });
+
   inventory.dishes[recipe.id] = (inventory.dishes[recipe.id] || 0) + 1;
   gameState.harvestFeedback = {
     kind: "success",
@@ -982,4 +1011,15 @@ export function cookMeal(): Recipe | null {
     until: gameState.elapsed + 2.6,
   };
   return recipe;
+}
+
+// 舊呼叫點相容：只從已解鎖且材料足夠的食譜自動挑選。
+export function cookMeal(): Recipe | null {
+  const recipe = RECIPES.filter(
+    (item) =>
+      inventory.learnedRecipes.includes(item.id) && canAffordRecipe(item),
+  ).sort(
+    (a, b) => RECIPE_TIER_RANK[b.tier] - RECIPE_TIER_RANK[a.tier],
+  )[0];
+  return recipe ? cookRecipe(recipe.id) : null;
 }

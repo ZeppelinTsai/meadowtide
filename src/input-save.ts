@@ -31,7 +31,7 @@ import {
   STONE_NODES,
   harvestGatherNode,
   refreshGatherNodes,
-  cookMeal,
+  RECIPES,
 } from "./game-state";
 import { updateGameClock, updateSeasonAndDate } from "./game-clock";
 import { getLocale, translateText } from "./i18n";
@@ -84,9 +84,9 @@ import {
   previewPrologue,
   reportPrologueFishingFailure,
   reportPrologueFishingSuccess,
-  reportPrologueCookingSuccess,
   restorePrologueSaveState,
 } from "./prologue";
+import { openCookingMenu } from "./cooking-ui";
 import {
   isFirstPersonModeActive,
   recordFirstPersonCameraShot,
@@ -298,7 +298,7 @@ export function getSaveSlotSummaries(): SaveSlotSummary[] {
 export function saveGame(slot = "default") {
   npcs.forEach((npc) => getRelationship(npc.id));
   const data = {
-    version: 15,
+    version: 16,
     savedAt: Date.now(),
     playerProfile: {
       name: gameState.playerName,
@@ -414,6 +414,12 @@ export function loadGame(
     shears: typeof savedTools?.shears === "boolean" ? savedTools.shears : true,
     brush: typeof savedTools?.brush === "boolean" ? savedTools.brush : true,
   };
+  inventory.mushrooms = Math.max(0, Math.floor(Number(data.inventory?.mushrooms) || 0));
+  inventory.learnedRecipes = Array.isArray(data.inventory?.learnedRecipes)
+    ? data.inventory.learnedRecipes.filter((id: unknown): id is string =>
+        typeof id === "string" && RECIPES.some((recipe) => recipe.id === id),
+      )
+    : [];
   inventory.pearls = {
     white: Math.max(0, Number(data.inventory?.pearls?.white) || 0),
     pink: Math.max(0, Number(data.inventory?.pearls?.pink) || 0),
@@ -1229,8 +1235,7 @@ addEventListener("keydown", (e) => {
     );
     if (stove && Math.abs(stove.x - hx) + Math.abs(stove.z - hz) <= 1) {
       if (!canUsePrologueKitchen()) return;
-      const meal = cookMeal();
-      if (meal) reportPrologueCookingSuccess();
+      openCookingMenu();
       return;
     }
   }
