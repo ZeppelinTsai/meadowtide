@@ -1865,7 +1865,7 @@ canvas {
   gap: 14px;
   width: min(560px, calc(100vw - 32px));
   padding: 28px;
-  background: rgba(20, 30, 37, 0.92);
+  background: rgba(16, 24, 31, 0.94);
   border: 3px solid rgba(236, 201, 125, 0.9);
   border-radius: 18px;
   box-shadow: 0 26px 46px rgba(0, 0, 0, 0.38);
@@ -1895,56 +1895,6 @@ canvas {
   background: #a77b43;
   outline: 3px solid #f4d68e;
   outline-offset: 2px;
-}
-.inventory-quantity-label {
-  font-size: 18px;
-  color: #f5dfb0;
-}
-.inventory-quantity-picker {
-  display: grid;
-  grid-template-columns: 92px 92px 92px;
-  grid-template-rows: 52px 92px 52px;
-  grid-template-areas:
-    ". up ."
-    "left display right"
-    ". down .";
-  gap: 8px;
-  align-items: center;
-  justify-items: center;
-  width: min(310px, 100%);
-}
-.inventory-quantity-arrow,
-.inventory-quantity-display {
-  display: grid;
-  place-items: center;
-  width: 100%;
-  height: 100%;
-  padding: 0;
-  border: 2px solid rgba(226, 198, 139, 0.65);
-  border-radius: 12px;
-  background: rgba(252, 240, 213, 0.88);
-  color: #573b27;
-  font: inherit;
-  font-weight: 800;
-  box-shadow: 0 3px 0 rgba(104, 69, 39, 0.72);
-}
-.inventory-quantity-arrow {
-  min-width: 0;
-  font-size: 18px;
-}
-.inventory-quantity-up { grid-area: up; }
-.inventory-quantity-left { grid-area: left; }
-.inventory-quantity-right { grid-area: right; }
-.inventory-quantity-down { grid-area: down; }
-.inventory-quantity-display {
-  grid-area: display;
-  min-width: 0;
-  font-size: 42px;
-  line-height: 1;
-  background: rgba(242, 219, 175, 0.96);
-}
-.inventory-confirm-quantity {
-  min-width: min(300px, 72%);
 }
 /* 右下快捷背包：十字鍵與滑鼠共用同一組方向動作。 */
 #quickItemHud {
@@ -2171,6 +2121,78 @@ canvas {
 #inventoryPanel .inventory-content-menu button:focus-visible {
   color: #3f291c;
   background: #efc979;
+}
+
+.inventory-quantity-label {
+  color: #5b3d28;
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.inventory-quantity-picker {
+  display: grid;
+  grid-template-columns: 52px 86px 52px;
+  grid-template-rows: 42px 86px 42px;
+  grid-template-areas:
+    ". up ."
+    "left display right"
+    ". down .";
+  gap: 8px;
+  align-items: center;
+  justify-items: center;
+  margin-top: 8px;
+}
+
+.inventory-quantity-arrow,
+.inventory-quantity-display {
+  color: #573b27;
+  background: rgba(252, 240, 213, 0.92);
+  border: 2px solid #c99b50;
+  box-shadow: 0 3px 0 rgba(104, 69, 39, 0.72);
+  font: inherit;
+  font-size: 18px;
+  cursor: pointer;
+}
+
+.inventory-quantity-arrow {
+  width: 52px;
+  height: 42px;
+  border-radius: 10px;
+}
+
+.inventory-quantity-arrow:hover,
+.inventory-quantity-arrow:focus-visible,
+.inventory-quantity-display:hover,
+.inventory-quantity-display:focus-visible {
+  color: #4a3427;
+  background: #f2d08c;
+  outline: 3px solid rgba(255, 240, 190, 0.45);
+  outline-offset: 2px;
+}
+
+.inventory-quantity-up { grid-area: up; }
+.inventory-quantity-left { grid-area: left; }
+.inventory-quantity-right { grid-area: right; }
+.inventory-quantity-down { grid-area: down; }
+
+.inventory-quantity-display {
+  grid-area: display;
+  display: grid;
+  place-items: center;
+  width: 86px;
+  height: 86px;
+  border-radius: 16px;
+  font-size: 32px;
+  font-weight: 800;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.inventory-confirm-quantity {
+  min-width: 220px;
+  font-size: 18px;
 }
 
 /* 料理選單只沿用資訊選單的奶油米色配色；流程與資訊分頁彼此獨立。 */

@@ -1,5 +1,11 @@
 import * as THREE from "three";
-import { gameState, hasTool, inventory, RECIPES, TOOL_DEFINITIONS } from "./game-state";
+import {
+  gameState,
+  hasTool,
+  inventory,
+  RECIPES,
+  TOOL_DEFINITIONS,
+} from "./game-state";
 import { setTimePauseSource } from "./time-pause";
 import { getDisplayedStars, getRelationship } from "./affection";
 import { getLocale, translateText } from "./i18n";
@@ -61,13 +67,17 @@ const TABS: { id: InventoryTab; label: string }[] = [
 
 const overlay = document.getElementById("inventoryOverlay") as HTMLDivElement;
 const grid = document.getElementById("inventoryGrid") as HTMLDivElement;
-const closeButton = document.getElementById("inventoryClose") as HTMLButtonElement;
+const closeButton = document.getElementById(
+  "inventoryClose",
+) as HTMLButtonElement;
 const tabList = document.getElementById("inventoryTabs") as HTMLDivElement;
 const tabButtons = Array.from(
   tabList.querySelectorAll<HTMLButtonElement>('[role="tab"]'),
 );
 const panel = document.getElementById("inventoryPanel") as HTMLElement;
-const descriptionFooter = document.getElementById("inventoryDescription") as HTMLParagraphElement;
+const descriptionFooter = document.getElementById(
+  "inventoryDescription",
+) as HTMLParagraphElement;
 const contentMenu = document.createElement("div");
 contentMenu.id = "inventoryContentMenu";
 contentMenu.className = "inventory-content-menu";
@@ -83,9 +93,15 @@ const pageByTab: Record<"bag" | "storage", number> = { bag: 0, storage: 0 };
 function getItemsPerPage() {
   const minimumCardWidth = innerWidth <= 620 ? 88 : 128;
   const gridWidth = grid.clientWidth || Math.min(900, innerWidth * 0.9) - 48;
-  const columns = Math.max(1, Math.floor((gridWidth + 12) / (minimumCardWidth + 12)));
+  const columns = Math.max(
+    1,
+    Math.floor((gridWidth + 12) / (minimumCardWidth + 12)),
+  );
   const availableGridHeight = innerHeight * 0.84 - 250;
-  const rows = Math.max(1, Math.min(5, Math.floor((availableGridHeight + 12) / 138)));
+  const rows = Math.max(
+    1,
+    Math.min(5, Math.floor((availableGridHeight + 12) / 138)),
+  );
   return columns * rows;
 }
 const modelIconCache = new Map<string, string>();
@@ -120,7 +136,9 @@ function disposeThumbnailModel(model: THREE.Object3D) {
 
 function showEntryDescription(label?: string, description?: string) {
   descriptionFooter.textContent = label
-    ? translateText(label) + "｜" + translateText(description || "尚無詳細說明。")
+    ? translateText(label) +
+      "｜" +
+      translateText(description || "尚無詳細說明。")
     : translateText("選擇項目以查看說明。");
 }
 
@@ -140,20 +158,132 @@ function selectInfoCard(
 }
 function inventoryEntries(): InventoryEntry[] {
   const entries: InventoryEntry[] = [
-    { id: "radishSeeds", tab: "bag", label: "蘿蔔種子", amount: inventory.seeds, tone: "green", symbol: "蘿", model: () => makeInventoryItemVisual("radishSeeds") },
-    { id: "potatoSeeds", tab: "bag", label: "馬鈴薯種子", amount: inventory.potatoSeeds, tone: "gold", symbol: "薯", model: () => makeInventoryItemVisual("potatoSeeds") },
-    { id: "tomatoSeeds", tab: "bag", label: "番茄種子", amount: inventory.tomatoSeeds, tone: "red", symbol: "番", model: () => makeInventoryItemVisual("tomatoSeeds") },
-    { id: "harvested", tab: "bag", label: "農作物", amount: inventory.harvested, tone: "gold", symbol: "穗", model: () => makeInventoryItemVisual("harvested") },
-    { id: "mushroom", tab: "bag", label: "蘑菇", amount: inventory.mushrooms, tone: "red", symbol: "菇", model: () => makeInventoryItemVisual("mushroom") },
-    { id: "fish", tab: "bag", label: "魚", amount: inventory.fish, tone: "blue", symbol: "魚", model: () => makeInventoryItemVisual("fish") },
-    { id: "oysters", tab: "bag", label: "牡蠣", amount: inventory.oysters, tone: "pearl", symbol: "貝", model: () => makeInventoryItemVisual("oysters") },
-    { id: "wood", tab: "bag", label: "木材", amount: inventory.wood, tone: "wood", symbol: "木", model: () => makeInventoryItemVisual("wood") },
-    { id: "stone", tab: "bag", label: "石材", amount: inventory.stone, tone: "stone", symbol: "石", model: () => makeInventoryItemVisual("stone") },
-    { id: "copper", tab: "bag", label: "銅礦", amount: inventory.copper, tone: "copper", symbol: "銅", model: () => makeInventoryItemVisual("copper") },
-    { id: "silver", tab: "bag", label: "銀礦", amount: inventory.silver, tone: "silver", symbol: "銀", model: () => makeInventoryItemVisual("silver") },
-    { id: "gold", tab: "bag", label: "金礦", amount: inventory.gold, tone: "gold", symbol: "金", model: () => makeInventoryItemVisual("gold") },
-    { id: "starCrystal", tab: "bag", label: "星晶", amount: inventory.starCrystal, tone: "star", symbol: "星", model: () => makeInventoryItemVisual("starCrystal") },
-    { id: "godCrystal", tab: "bag", label: "神晶", amount: inventory.godCrystal, tone: "god", symbol: "神", model: () => makeInventoryItemVisual("godCrystal") },
+    {
+      id: "radishSeeds",
+      tab: "bag",
+      label: "蘿蔔種子",
+      amount: inventory.seeds,
+      tone: "green",
+      symbol: "蘿",
+      model: () => makeInventoryItemVisual("radishSeeds"),
+    },
+    {
+      id: "potatoSeeds",
+      tab: "bag",
+      label: "馬鈴薯種子",
+      amount: inventory.potatoSeeds,
+      tone: "gold",
+      symbol: "薯",
+      model: () => makeInventoryItemVisual("potatoSeeds"),
+    },
+    {
+      id: "tomatoSeeds",
+      tab: "bag",
+      label: "番茄種子",
+      amount: inventory.tomatoSeeds,
+      tone: "red",
+      symbol: "番",
+      model: () => makeInventoryItemVisual("tomatoSeeds"),
+    },
+    {
+      id: "harvested",
+      tab: "bag",
+      label: "農作物",
+      amount: inventory.harvested,
+      tone: "gold",
+      symbol: "穗",
+      model: () => makeInventoryItemVisual("harvested"),
+    },
+    {
+      id: "mushroom",
+      tab: "bag",
+      label: "蘑菇",
+      amount: inventory.mushrooms,
+      tone: "red",
+      symbol: "菇",
+      model: () => makeInventoryItemVisual("mushroom"),
+    },
+    {
+      id: "fish",
+      tab: "bag",
+      label: "魚",
+      amount: inventory.fish,
+      tone: "blue",
+      symbol: "魚",
+      model: () => makeInventoryItemVisual("fish"),
+    },
+    {
+      id: "oysters",
+      tab: "bag",
+      label: "牡蠣",
+      amount: inventory.oysters,
+      tone: "pearl",
+      symbol: "貝",
+      model: () => makeInventoryItemVisual("oysters"),
+    },
+    {
+      id: "wood",
+      tab: "bag",
+      label: "木材",
+      amount: inventory.wood,
+      tone: "wood",
+      symbol: "木",
+      model: () => makeInventoryItemVisual("wood"),
+    },
+    {
+      id: "stone",
+      tab: "bag",
+      label: "石材",
+      amount: inventory.stone,
+      tone: "stone",
+      symbol: "石",
+      model: () => makeInventoryItemVisual("stone"),
+    },
+    {
+      id: "copper",
+      tab: "bag",
+      label: "銅礦",
+      amount: inventory.copper,
+      tone: "copper",
+      symbol: "銅",
+      model: () => makeInventoryItemVisual("copper"),
+    },
+    {
+      id: "silver",
+      tab: "bag",
+      label: "銀礦",
+      amount: inventory.silver,
+      tone: "silver",
+      symbol: "銀",
+      model: () => makeInventoryItemVisual("silver"),
+    },
+    {
+      id: "gold",
+      tab: "bag",
+      label: "金礦",
+      amount: inventory.gold,
+      tone: "gold",
+      symbol: "金",
+      model: () => makeInventoryItemVisual("gold"),
+    },
+    {
+      id: "starCrystal",
+      tab: "bag",
+      label: "星晶",
+      amount: inventory.starCrystal,
+      tone: "star",
+      symbol: "星",
+      model: () => makeInventoryItemVisual("starCrystal"),
+    },
+    {
+      id: "godCrystal",
+      tab: "bag",
+      label: "神晶",
+      amount: inventory.godCrystal,
+      tone: "god",
+      symbol: "神",
+      model: () => makeInventoryItemVisual("godCrystal"),
+    },
   ];
   PEARL_DEFINITIONS.forEach((pearl) => {
     entries.push({
@@ -167,7 +297,9 @@ function inventoryEntries(): InventoryEntry[] {
       description: pearl.label + "，從牡蠣架採收時低機率取得。",
     });
   });
-  const recipeNames = new Map(RECIPES.map((recipe) => [recipe.id, recipe.name]));
+  const recipeNames = new Map(
+    RECIPES.map((recipe) => [recipe.id, recipe.name]),
+  );
   const dishIds = new Set([
     ...RECIPES.map((recipe) => recipe.id),
     ...Object.keys(inventory.dishes),
@@ -266,8 +398,8 @@ function closeItemContentMenu(restoreFocus = true) {
   contextReturnCard = null;
   contentMenu.hidden = true;
   contentMenu.innerHTML = "";
-  if (contentMenu.parentNode && contentMenu.parentNode !== document.body) {
-    document.body.appendChild(contentMenu);
+  if (panel.contains(contentMenu) === false) {
+    panel.appendChild(contentMenu);
   }
   if (restoreFocus && open && returnCard?.isConnected) returnCard.focus();
 }
@@ -280,6 +412,124 @@ function makeActionButton(label: string, action: () => void) {
   return button;
 }
 
+function openTransferAmountMenu(
+  itemId: string,
+  itemTab: "bag" | "storage",
+  returnCard?: HTMLButtonElement,
+) {
+  contextReturnCard = returnCard ?? null;
+  const item = inventoryItem(itemId);
+  const available =
+    itemTab === "storage" ? storedItemAmount(itemId) : itemAmount(itemId);
+  if (!item || available <= 0) return;
+
+  contextItemId = itemId;
+  contentMenu.innerHTML = "";
+  if (contentMenu.parentNode !== document.body) {
+    document.body.appendChild(contentMenu);
+  }
+  contentMenu.hidden = false;
+
+  const heading = document.createElement("h3");
+  heading.textContent = translateText(item.label);
+  contentMenu.appendChild(heading);
+
+  const quantityLabel = document.createElement("div");
+  quantityLabel.textContent = itemTab === "storage" ? "轉出數量" : "轉入數量";
+  quantityLabel.className = "inventory-quantity-label";
+  contentMenu.appendChild(quantityLabel);
+
+  let selectedAmount = Math.max(1, Math.min(available, available));
+  let quantityDisplay: HTMLButtonElement | null = null;
+
+  const updateQuantity = (delta: number) => {
+    selectedAmount = Math.max(1, Math.min(available, selectedAmount + delta));
+    if (quantityDisplay) {
+      quantityDisplay.textContent = `${selectedAmount}`;
+      quantityDisplay.setAttribute(
+        "aria-label",
+        `${translateText(item.label)}，${selectedAmount} 個`,
+      );
+    }
+    const confirm = contentMenu.querySelector<HTMLButtonElement>(
+      ".inventory-confirm-quantity",
+    );
+    if (confirm) confirm.textContent = `確認轉移 ${selectedAmount} 個`;
+  };
+
+  const quantityPicker = document.createElement("div");
+  quantityPicker.className = "inventory-quantity-picker";
+
+  const buildArrow = (
+    direction: "up" | "down" | "left" | "right",
+    step: number,
+    label: string,
+  ) => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = `inventory-quantity-arrow inventory-quantity-${direction}`;
+    button.textContent = label;
+    button.setAttribute(
+      "aria-label",
+      `${direction === "up" ? "增加" : direction === "down" ? "減少" : direction === "left" ? "減少" : "增加"} ${Math.abs(step)} 個`,
+    );
+    button.addEventListener("click", () => updateQuantity(step));
+    return button;
+  };
+
+  quantityDisplay = document.createElement("button");
+  quantityDisplay.type = "button";
+  quantityDisplay.className = "inventory-quantity-display";
+  quantityDisplay.textContent = String(selectedAmount);
+  quantityDisplay.setAttribute(
+    "aria-label",
+    `${translateText(item.label)}，${selectedAmount} 個`,
+  );
+  quantityDisplay.tabIndex = 0;
+  quantityDisplay.addEventListener("keydown", (event) => {
+    if (event.key === "ArrowLeft") {
+      event.preventDefault();
+      updateQuantity(-1);
+    }
+    if (event.key === "ArrowRight") {
+      event.preventDefault();
+      updateQuantity(1);
+    }
+    if (event.key === "ArrowUp") {
+      event.preventDefault();
+      updateQuantity(10);
+    }
+    if (event.key === "ArrowDown") {
+      event.preventDefault();
+      updateQuantity(-10);
+    }
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      closeItemContentMenu(false);
+      transferSelectedItem(itemId, itemTab, selectedAmount);
+    }
+  });
+
+  quantityPicker.append(
+    buildArrow("up", 10, "▲ 10"),
+    buildArrow("left", -1, "◀ 1"),
+    quantityDisplay,
+    buildArrow("right", 1, "1 ▶"),
+    buildArrow("down", -10, "▼ 10"),
+  );
+  contentMenu.appendChild(quantityPicker);
+
+  const confirm = makeActionButton(`確認轉移 ${selectedAmount} 個`, () => {
+    closeItemContentMenu(false);
+    transferSelectedItem(itemId, itemTab, selectedAmount);
+  });
+  confirm.classList.add("inventory-confirm-quantity");
+  contentMenu.appendChild(confirm);
+
+  contentMenu.appendChild(makeActionButton("取消", closeItemContentMenu));
+  confirm.focus();
+}
+
 function openItemContentMenu(
   itemId: string,
   itemTab: "bag" | "storage",
@@ -287,10 +537,10 @@ function openItemContentMenu(
 ) {
   contextReturnCard = returnCard ?? null;
   const item = inventoryItem(itemId);
-  const available = itemTab === "storage"
-    ? storedItemAmount(itemId)
-    : itemAmount(itemId);
+  const available =
+    itemTab === "storage" ? storedItemAmount(itemId) : itemAmount(itemId);
   if (!item || available <= 0) return;
+
   contextItemId = itemId;
   contentMenu.innerHTML = "";
   if (contentMenu.parentNode !== document.body) {
@@ -300,111 +550,46 @@ function openItemContentMenu(
   const heading = document.createElement("h3");
   heading.textContent = translateText(item.label);
   contentMenu.appendChild(heading);
+
   if (itemTab === "bag") {
     const take = makeActionButton("拿出", () => {
       if (takeOutItem(itemId)) setInventoryOpen(false);
     });
     contentMenu.appendChild(take);
     if (item.edible) {
-      contentMenu.appendChild(makeActionButton("食用", () => {
-        eatItem(itemId);
-        closeItemContentMenu(false);
-        renderInventory(true);
-      }));
+      contentMenu.appendChild(
+        makeActionButton("食用", () => {
+          eatItem(itemId);
+          closeItemContentMenu(false);
+          renderInventory(true);
+        }),
+      );
     }
   }
 
-  let selectedAmount = Math.min(1, available);
-  let quantityDisplay: HTMLButtonElement | null = null;
-  const quantityLabel = document.createElement("div");
-  quantityLabel.textContent = itemTab === "storage" ? "轉出數量" : "轉入數量";
-  quantityLabel.className = "inventory-quantity-label";
-
-  const updateQuantity = (delta: number) => {
-    selectedAmount = Math.max(1, Math.min(available, selectedAmount + delta));
-    if (quantityDisplay) {
-      quantityDisplay.textContent = `${selectedAmount}`;
-      quantityDisplay.setAttribute("aria-label", `${translateText(item.label)}，${selectedAmount} 個`);
+  const transferLabel = itemTab === "storage" ? "放入背包" : "放入倉庫";
+  const transferAction = () => {
+    if (available > 1) {
+      openTransferAmountMenu(itemId, itemTab, returnCard);
+      return;
     }
-    const confirm = contentMenu.querySelector<HTMLButtonElement>(".inventory-confirm-quantity");
-    if (confirm) confirm.textContent = `確認轉移 ${selectedAmount} 個`;
+    closeItemContentMenu(false);
+    transferSelectedItem(itemId, itemTab);
   };
-
-  const quantityPicker = document.createElement("div");
-  quantityPicker.className = "inventory-quantity-picker";
-
-  const buildArrow = (direction: "up" | "down" | "left" | "right", step: number, label: string) => {
-    const button = document.createElement("button");
-    button.type = "button";
-    button.className = `inventory-quantity-arrow inventory-quantity-${direction}`;
-    button.textContent = label;
-    button.setAttribute("aria-label", `${direction === "up" ? "增加" : direction === "down" ? "減少" : direction === "left" ? "減少" : "增加"} ${Math.abs(step)} 個`);
-    button.addEventListener("click", () => updateQuantity(step));
-    return button;
-  };
-
-  quantityDisplay = document.createElement("button");
-  quantityDisplay.type = "button";
-  quantityDisplay.className = "inventory-quantity-display";
-  quantityDisplay.textContent = String(selectedAmount);
-  quantityDisplay.setAttribute("aria-label", `${translateText(item.label)}，${selectedAmount} 個`);
-  quantityDisplay.tabIndex = 0;
-  quantityDisplay.addEventListener("keydown", (event) => {
-    if (event.key === "ArrowLeft") { event.preventDefault(); updateQuantity(-1); }
-    if (event.key === "ArrowRight") { event.preventDefault(); updateQuantity(1); }
-    if (event.key === "ArrowUp") { event.preventDefault(); updateQuantity(10); }
-    if (event.key === "ArrowDown") { event.preventDefault(); updateQuantity(-10); }
-    if (event.key === "Enter" || event.key === " ") {
-      event.preventDefault();
-      closeItemContentMenu(false);
-      transferSelectedItem(itemId, itemTab, selectedAmount);
-    }
-  });
-
-  if (available > 1) {
-    contentMenu.appendChild(quantityLabel);
-    quantityPicker.append(
-      buildArrow("up", 10, "▲ 10"),
-      buildArrow("left", -1, "◀ 1"),
-      quantityDisplay,
-      buildArrow("right", 1, "1 ▶"),
-      buildArrow("down", -10, "▼ 10"),
-    );
-    contentMenu.appendChild(quantityPicker);
-    const confirm = makeActionButton(
-      `確認轉移 ${selectedAmount} 個`,
-      () => {
-        closeItemContentMenu(false);
-        transferSelectedItem(itemId, itemTab, selectedAmount);
-      },
-    );
-    confirm.classList.add("inventory-confirm-quantity");
-    contentMenu.appendChild(confirm);
-  } else {
-    contentMenu.appendChild(makeActionButton(
-      itemTab === "storage" ? "放入背包" : "放入倉庫",
-      () => {
-        closeItemContentMenu(false);
-        transferSelectedItem(itemId, itemTab);
-      },
-    ));
-  }
-
+  contentMenu.appendChild(makeActionButton(transferLabel, transferAction));
   contentMenu.appendChild(makeActionButton("取消", closeItemContentMenu));
-  if (available > 1) {
-    const confirmButton = Array.from(contentMenu.querySelectorAll<HTMLButtonElement>("button")).find(
-      (button) => button.textContent?.includes("確認轉移"),
-    );
-    confirmButton?.focus();
-  } else {
-    (contentMenu.querySelector("button") as HTMLButtonElement | null)?.focus();
-  }
+  (contentMenu.querySelector("button") as HTMLButtonElement | null)?.focus();
 }
 
-function transferSelectedItem(itemId: string, activeId: InventoryTab, amount = 1) {
-  const moved = activeId === "storage"
-    ? moveItemFromStorageAmount(itemId, amount)
-    : moveItemToStorageAmount(itemId, amount);
+function transferSelectedItem(
+  itemId: string,
+  activeId: InventoryTab,
+  amount = 1,
+) {
+  const moved =
+    activeId === "storage"
+      ? moveItemFromStorageAmount(itemId, amount)
+      : moveItemToStorageAmount(itemId, amount);
   if (moved) renderInventory(true);
 }
 
@@ -414,21 +599,37 @@ function changeItemPage(activeId: "bag" | "storage", direction: -1 | 1) {
   );
   const itemsPerPage = getItemsPerPage();
   const pageCount = Math.max(1, Math.ceil(entries.length / itemsPerPage));
-  pageByTab[activeId] = (pageByTab[activeId] + direction + pageCount) % pageCount;
+  pageByTab[activeId] =
+    (pageByTab[activeId] + direction + pageCount) % pageCount;
   renderInventory(true);
 }
 
-function renderPager(activeId: "bag" | "storage", page: number, pageCount: number) {
+function renderPager(
+  activeId: "bag" | "storage",
+  page: number,
+  pageCount: number,
+) {
   const pager = document.createElement("div");
   pager.className = "inventory-pager";
   const transfer = makeActionButton(
     activeId === "storage" ? "X　放入背包" : "X　放入倉庫",
     () => {
-      if (contextItemId) transferSelectedItem(contextItemId, activeId);
+      if (!contextItemId) return;
+      const amount =
+        activeId === "storage"
+          ? storedItemAmount(contextItemId)
+          : itemAmount(contextItemId);
+      if (amount > 1) {
+        openTransferAmountMenu(contextItemId, activeId);
+        return;
+      }
+      transferSelectedItem(contextItemId, activeId);
     },
   );
   transfer.classList.add("inventory-transfer-button");
-  const previous = makeActionButton("← 上一頁", () => changeItemPage(activeId, -1));
+  const previous = makeActionButton("← 上一頁", () =>
+    changeItemPage(activeId, -1),
+  );
   previous.disabled = pageCount <= 1;
   const indicator = document.createElement("span");
   indicator.textContent = `${page + 1} / ${pageCount}`;
@@ -443,7 +644,10 @@ export function renderInventory(focusFirstCard = false) {
   grid.innerHTML = "";
   showEntryDescription();
   const activeId = TABS[activeTabIndex].id;
-  grid.classList.toggle("inventory-grid-info", activeId === "relationships" || activeId === "tools");
+  grid.classList.toggle(
+    "inventory-grid-info",
+    activeId === "relationships" || activeId === "tools",
+  );
   if (activeId === "tools") {
     renderTools();
     return;
@@ -461,7 +665,10 @@ export function renderInventory(focusFirstCard = false) {
     }))
     .filter((item) => item.amount > 0);
   const itemsPerPage = getItemsPerPage();
-  const pageCount = Math.max(1, Math.ceil(visibleEntries.length / itemsPerPage));
+  const pageCount = Math.max(
+    1,
+    Math.ceil(visibleEntries.length / itemsPerPage),
+  );
   pageByTab[itemTab] = Math.min(pageByTab[itemTab], pageCount - 1);
   const page = pageByTab[itemTab];
   const pageEntries = visibleEntries.slice(
@@ -484,7 +691,10 @@ export function renderInventory(focusFirstCard = false) {
     slot.type = "button";
     slot.className = "inventory-slot inventory-slot-" + item.tone;
     slot.dataset.itemId = item.id;
-    slot.setAttribute("aria-label", `${translateText(item.label)} ×${item.amount}`);
+    slot.setAttribute(
+      "aria-label",
+      `${translateText(item.label)} ×${item.amount}`,
+    );
 
     const icon = document.createElement("div");
     icon.className = "inventory-icon";
@@ -592,7 +802,11 @@ function renderRelationships() {
       selectInfoCard(
         card,
         getNpcDisplayName(id),
-        "目前關係為 " + getDisplayedStars(id) + " 星，共 " + relationship.points + " 點。",
+        "目前關係為 " +
+          getDisplayedStars(id) +
+          " 星，共 " +
+          relationship.points +
+          " 點。",
       );
     card.addEventListener("focus", describeRelationship);
     card.addEventListener("click", describeRelationship);
@@ -659,10 +873,14 @@ addEventListener("keydown", (event) => {
       event.preventDefault();
       event.stopImmediatePropagation();
       const buttons = Array.from(
-        contentMenu.querySelectorAll<HTMLButtonElement>("button:not(:disabled)"),
+        contentMenu.querySelectorAll<HTMLButtonElement>(
+          "button:not(:disabled)",
+        ),
       );
       if (!buttons.length) return;
-      const current = buttons.indexOf(document.activeElement as HTMLButtonElement);
+      const current = buttons.indexOf(
+        document.activeElement as HTMLButtonElement,
+      );
       const backwards =
         event.key === "ArrowUp" ||
         event.key === "ArrowLeft" ||
@@ -685,12 +903,23 @@ addEventListener("keydown", (event) => {
     changeItemPage(activeId, event.key === "PageDown" ? 1 : -1);
     return;
   }
-  if (key === "x" && contentMenu.hidden && (activeId === "bag" || activeId === "storage")) {
+  if (
+    key === "x" &&
+    contentMenu.hidden &&
+    (activeId === "bag" || activeId === "storage")
+  ) {
     const focused = document.activeElement;
-    const itemId = focused instanceof HTMLButtonElement ? focused.dataset.itemId : undefined;
+    const itemId =
+      focused instanceof HTMLButtonElement ? focused.dataset.itemId : undefined;
     if (itemId) {
       event.preventDefault();
-      transferSelectedItem(itemId, activeId);
+      const amount =
+        activeId === "storage" ? storedItemAmount(itemId) : itemAmount(itemId);
+      if (amount > 1) {
+        openTransferAmountMenu(itemId, activeId, focused as HTMLButtonElement);
+      } else {
+        transferSelectedItem(itemId, activeId);
+      }
     }
     return;
   }
@@ -717,7 +946,11 @@ addEventListener("focusin", (event) => {
   if (!open || contentMenu.hidden) return;
   const target = event.target;
   if (target instanceof Node && contentMenu.contains(target)) return;
-  (contentMenu.querySelector("button:not(:disabled)") as HTMLButtonElement | null)?.focus();
+  (
+    contentMenu.querySelector(
+      "button:not(:disabled)",
+    ) as HTMLButtonElement | null
+  )?.focus();
 });
 
 closeButton.addEventListener("click", () => setInventoryOpen(false));

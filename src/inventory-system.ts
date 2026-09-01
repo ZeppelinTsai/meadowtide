@@ -266,44 +266,7 @@ export function stowHeldItem(): boolean {
   return true;
 }
 
-function makeRadishDisplayModel() {
-  const group = new THREE.Group();
-  const root = new THREE.Mesh(
-    new THREE.SphereGeometry(0.18, 10, 8),
-    new THREE.MeshStandardMaterial({ color: 0xf0c38c, flatShading: true }),
-  );
-  root.scale.set(1.0, 0.72, 1.0);
-  root.position.y = 0.08;
-  group.add(root);
-
-  const top = new THREE.Mesh(
-    new THREE.SphereGeometry(0.14, 10, 8),
-    new THREE.MeshStandardMaterial({ color: 0x5cae4a, flatShading: true }),
-  );
-  top.scale.set(1.25, 0.5, 1.25);
-  top.position.y = 0.2;
-  group.add(top);
-
-  for (let i = 0; i < 5; i++) {
-    const leaf = new THREE.Mesh(
-      new THREE.SphereGeometry(0.08, 7, 6),
-      new THREE.MeshStandardMaterial({ color: 0x6cbf57, flatShading: true }),
-    );
-    const angle = (i / 5) * Math.PI * 2;
-    leaf.scale.set(1.5, 0.45, 0.75);
-    leaf.position.set(Math.cos(angle) * 0.12, 0.25, Math.sin(angle) * 0.12);
-    leaf.rotation.z = Math.cos(angle) * 0.8;
-    leaf.rotation.x = Math.sin(angle) * 0.8;
-    group.add(leaf);
-  }
-
-  return group;
-}
-
 export function makeInventoryItemVisual(itemId: string): THREE.Object3D {
-  if (itemId === "radishSeeds" || itemId === "harvested") {
-    return makeRadishDisplayModel();
-  }
   if (itemId.endsWith("Seeds")) {
     const colors: Record<string, number> = {
       radishSeeds: 0xe9d6a5,
@@ -312,6 +275,7 @@ export function makeInventoryItemVisual(itemId: string): THREE.Object3D {
     };
     return makeSeedPouch();
   }
+  if (itemId === "harvested") return makeCropMesh(2);
   if (itemId === "mushroom") {
     const group = new THREE.Group();
     const stem = new THREE.Mesh(

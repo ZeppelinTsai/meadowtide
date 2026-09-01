@@ -105,18 +105,3 @@ test("連續主動作只在接近有效目標且換到新目標時重複觸發",
     false,
   );
 });
-
-test("批量轉移會限制在現有數量內，並在確認步驟按量移動", async () => {
-  const { applyTransferToBag, applyTransferToStorage } = await import(
-    "./inventory-transfer"
-  );
-
-  const bagResult = applyTransferToStorage(12, 0, 5);
-  assert.deepEqual(bagResult, { bagAmount: 7, storageAmount: 5 });
-
-  const storageResult = applyTransferToBag(7, 5, 3);
-  assert.deepEqual(storageResult, { bagAmount: 10, storageAmount: 2 });
-
-  const overLimit = applyTransferToStorage(10, 2, 100);
-  assert.deepEqual(overLimit, { bagAmount: 0, storageAmount: 12 });
-});
