@@ -470,31 +470,112 @@ export function addDefaultHumanoidSmile(
       
 // 露比——橘紅側髮、畫漬外套與工具配件的藝術家低模。
 export function makeArtist() {
-  const group: any = makeHumanoid({ skin: 0xd89a6b, shirt: 0x25232a, hair: 0xb9572b });
+  const group: any = new THREE.Group();
+  const parts: any = {};
   const mat = (color: number) => new THREE.MeshStandardMaterial({ color, flatShading: true });
-  const jacket = mat(0xe5d5b8), paint = mat(0x4f8b8b), leather = mat(0x51351f), brass = mat(0xb98232);
+  const skinMat = mat(0xd89a6b), hairMat = mat(0xb95428), darkHairMat = mat(0x71301f);
+  const tankMat = mat(0x29272d), shirtMat = mat(0xe1d1b5), trouserMat = mat(0x56344f);
+  const tealMat = mat(0x316f72), leatherMat = mat(0x49301f), brassMat = mat(0xb78332);
+  const paintMats = [mat(0xc5683d), mat(0x4f8e8a), mat(0x77609a), mat(0xc79a4d)];
+
+  const pelvis = new THREE.Mesh(new THREE.CylinderGeometry(0.21, 0.23, 0.16, 8), trouserMat);
+  pelvis.position.y = 0.49; group.add(pelvis);
+  const torso = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.205, 0.4, 8), tankMat);
+  torso.position.y = 0.75; torso.castShadow = true; group.add(torso);
+
+  // 敞開的米色工作襯衫，前方留出黑色背心。
   for (const side of [-1, 1]) {
-    const panel = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.42, 0.1), jacket);
-    panel.position.set(side * 0.13, 0.72, 0.02); panel.rotation.z = side * -0.08; group.add(panel);
+    const panel = new THREE.Mesh(new THREE.BoxGeometry(0.145, 0.43, 0.075), shirtMat);
+    panel.position.set(side * 0.14, 0.75, 0.015); panel.rotation.z = side * -0.07;
+    panel.castShadow = true; group.add(panel);
+    const collar = new THREE.Mesh(new THREE.BoxGeometry(0.095, 0.095, 0.025), shirtMat);
+    collar.position.set(side * 0.075, 0.94, -0.105); collar.rotation.z = side * 0.55;
+    group.add(collar);
   }
-  for (const [x, y, color] of [[-0.12, 0.78, 0xb9572b], [0.12, 0.68, 0x4f8b8b], [-0.1, 0.61, 0xc28a43]]) {
-    const spot = new THREE.Mesh(new THREE.SphereGeometry(0.035, 6, 4), mat(color));
-    spot.scale.set(1.4, 0.65, 0.25); spot.position.set(x, y, -0.09); group.add(spot);
+  for (let i = 0; i < 9; i++) {
+    const spot = new THREE.Mesh(new THREE.SphereGeometry(0.018 + (i % 3) * 0.006, 5, 4), paintMats[i % paintMats.length]);
+    spot.scale.set(1.5, 0.75, 0.25);
+    spot.position.set((i % 2 ? 1 : -1) * (0.105 + (i % 3) * 0.025), 0.59 + (i % 5) * 0.075, -0.075);
+    group.add(spot);
   }
-  for (let i = 0; i < 5; i++) {
-    const curl = new THREE.Mesh(new THREE.SphereGeometry(0.105, 7, 5), mat(0xb9572b));
-    curl.scale.set(0.8, 1.25, 0.65); curl.position.set(-0.16 - (i % 2) * 0.035, 0.82 - i * 0.075, -0.02); group.add(curl);
+
+  const belt = new THREE.Mesh(new THREE.CylinderGeometry(0.225, 0.225, 0.065, 8), leatherMat);
+  belt.position.y = 0.51; group.add(belt);
+  const buckle = new THREE.Mesh(new THREE.TorusGeometry(0.045, 0.012, 5, 8), brassMat);
+  buckle.position.set(0, 0.51, -0.225); buckle.rotation.x = Math.PI / 2; group.add(buckle);
+  const pouch = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.2, 0.07), tealMat);
+  pouch.position.set(0.19, 0.34, -0.08); pouch.rotation.z = -0.08; group.add(pouch);
+
+  function makeLeg(side: number) {
+    const pivot = new THREE.Group(); pivot.position.set(side * 0.105, 0.44, 0);
+    const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.105, 0.085, 0.42, 7), trouserMat);
+    leg.position.y = -0.21; leg.castShadow = true; pivot.add(leg);
+    const cuff = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.09, 0.075, 7), trouserMat);
+    cuff.position.y = -0.405; pivot.add(cuff);
+    const boot = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.18, 0.23), tealMat);
+    boot.position.set(0, -0.5, -0.035); boot.castShadow = true; pivot.add(boot);
+    const sole = new THREE.Mesh(new THREE.BoxGeometry(0.17, 0.035, 0.25), leatherMat);
+    sole.position.set(0, -0.59, -0.04); pivot.add(sole);
+    group.add(pivot); return pivot;
   }
-  const palette = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.12, 0.025), paint);
-  palette.position.set(0.3, 0.34, -0.08); palette.rotation.z = -0.35; group.add(palette);
+  parts.legL = makeLeg(-1); parts.legR = makeLeg(1);
+
+  function makeArm(side: number) {
+    const pivot = new THREE.Group(); pivot.position.set(side * 0.235, 0.88, 0);
+    const sleeve = new THREE.Mesh(new THREE.CylinderGeometry(0.072, 0.062, 0.22, 7), shirtMat);
+    sleeve.position.y = -0.11; sleeve.castShadow = true; pivot.add(sleeve);
+    const forearm = new THREE.Mesh(new THREE.CylinderGeometry(0.048, 0.042, 0.22, 7), skinMat);
+    forearm.position.y = -0.315; pivot.add(forearm);
+    const hand = new THREE.Mesh(new THREE.SphereGeometry(0.055, 7, 5), skinMat);
+    hand.scale.set(0.85, 1.15, 0.75); hand.position.y = -0.44; pivot.add(hand);
+    group.add(pivot); return pivot;
+  }
+  parts.armL = makeArm(-1); parts.armR = makeArm(1);
+
+  const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.065, 0.075, 0.12, 7), skinMat);
+  neck.position.y = 1.0; group.add(neck);
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.205, 10, 8), skinMat);
+  head.scale.set(0.93, 1.08, 0.92); head.position.y = 1.16; head.castShadow = true; group.add(head);
+  const nose = new THREE.Mesh(new THREE.ConeGeometry(0.027, 0.065, 6), skinMat);
+  nose.rotation.x = Math.PI / 2; nose.position.set(0, 1.145, -0.195); group.add(nose);
+  for (const side of [-1, 1]) {
+    const eye = new THREE.Mesh(new THREE.SphereGeometry(0.018, 6, 4), mat(0x31251f));
+    eye.scale.set(1, 0.65, 0.4); eye.position.set(side * 0.071, 1.19, -0.19); group.add(eye);
+    const brow = new THREE.Mesh(new THREE.BoxGeometry(0.065, 0.014, 0.012), darkHairMat);
+    brow.position.set(side * 0.072, 1.225, -0.19); brow.rotation.z = side * -0.12; group.add(brow);
+  }
+  addDefaultHumanoidSmile(group, 1.115, -0.195, 0x854b3c);
+
+  // 右側剃短、左側蓬鬆的橘紅不對稱髮型。
+  const hairCap = new THREE.Mesh(new THREE.SphereGeometry(0.215, 9, 7, 0, Math.PI * 2, 0, Math.PI * 0.62), hairMat);
+  hairCap.scale.set(1.03, 0.8, 1.02); hairCap.position.set(0, 1.24, 0.015); group.add(hairCap);
+  const shavedSide = new THREE.Mesh(new THREE.SphereGeometry(0.205, 8, 6), darkHairMat);
+  shavedSide.scale.set(0.16, 0.72, 0.82); shavedSide.position.set(0.18, 1.2, 0.015); group.add(shavedSide);
+  for (let i = 0; i < 9; i++) {
+    const curl = new THREE.Mesh(new THREE.TorusGeometry(0.065 + (i % 2) * 0.012, 0.025, 5, 8, Math.PI * 1.35), hairMat);
+    curl.rotation.set(Math.PI / 2, (i % 3) * 0.45, -0.5 + (i % 2) * 0.8);
+    curl.position.set(-0.105 - (i % 3) * 0.045, 1.3 - Math.floor(i / 3) * 0.095, -0.01 + (i % 2) * 0.08);
+    group.add(curl);
+  }
   for (let i = 0; i < 3; i++) {
-    const brush = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, 0.34, 5), leather);
-    brush.position.set(-0.27 + i * 0.07, 0.18, -0.05); brush.rotation.z = -0.25 + i * 0.12; group.add(brush);
-    const tip = new THREE.Mesh(new THREE.ConeGeometry(0.025, 0.08, 5), brass);
-    tip.position.set(brush.position.x, 0.36, -0.05); tip.rotation.z = brush.rotation.z; group.add(tip);
+    const shaveLine = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.012, 0.012), hairMat);
+    shaveLine.position.set(0.19, 1.25 - i * 0.045, -0.075); shaveLine.rotation.z = -0.35; group.add(shaveLine);
   }
+
+  // 畫筆握在左手，腰包保留為第二個明顯職業輪廓。
+  for (let i = 0; i < 3; i++) {
+    const brush = new THREE.Mesh(new THREE.CylinderGeometry(0.009, 0.009, 0.32 + i * 0.025, 5), leatherMat);
+    brush.position.set(-0.26 + i * 0.025, 0.39, -0.04); brush.rotation.z = -0.18 + i * 0.08; group.add(brush);
+    const bristle = new THREE.Mesh(new THREE.ConeGeometry(0.018, 0.065, 5), paintMats[i]);
+    bristle.position.set(-0.26 + i * 0.025, 0.565 + i * 0.01, -0.04); bristle.rotation.z = brush.rotation.z; group.add(bristle);
+  }
+
+  group.parts = parts;
+  group.scale.setScalar(humanoidScale(1.381));
   return group;
-}export function makeCaptain() {
+}
+
+export function makeCaptain() {
         const group: any = new THREE.Group();
         const parts: any = {};
         const mat = (color) => new THREE.MeshStandardMaterial({ color, flatShading: true });

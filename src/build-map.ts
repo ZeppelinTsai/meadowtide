@@ -3860,7 +3860,8 @@ export function buildMap(mapName) {
   gameState.currentMapName = mapName;
   npcGroup.position.y = 0;
   npcs.forEach((npc) => {
-    if (npc.id === "chef") {
+    if (npc.id === "chef" || npc.id === "artist") {
+      // 藝術家要等正式登島／招募事件解鎖；換圖不可把初始隱藏覆蓋掉。
       npc.mesh.visible = false;
     } else if (npc.id === "carpenter") {
       npc.mesh.visible =

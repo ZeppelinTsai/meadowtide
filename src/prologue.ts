@@ -1218,6 +1218,8 @@ export function startPrologueScene(
       // 表示不是這個原因，要再往下查。
       const carpenter = npcs.find((n) => n.id === "carpenter");
       if (carpenter) carpenter.mesh.visible = false;
+      const artist = npcs.find((n) => n.id === "artist");
+      if (artist) artist.mesh.visible = false;
       gameState.player.position.copy(bowWorldPoint(PLAYER_BOW_LOCAL));
       gameState.player.visible = true;
       gameState.isMoving = false;
