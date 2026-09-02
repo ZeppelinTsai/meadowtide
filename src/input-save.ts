@@ -125,6 +125,7 @@ import {
   activeChoice,
   handleChoiceDigitKey,
   advanceChoicePage,
+  resolveChoice,
 } from "./dialogue";
 import { loadMap, isBlocked, events, syncPlayerAppearance } from "./build-map";
 import { isInventoryOpen } from "./inventory-ui";
@@ -882,7 +883,22 @@ addEventListener("keydown", (event) => {
   if (event.key.toLowerCase() === "f" && !event.repeat && !event.ctrlKey && !event.metaKey && executeContextInteraction("tertiary")) event.preventDefault();
 });
 
-addEventListener("keydown", (e) => {
+addEventListener("pointerdown", (event) => {
+  if (!event.isPrimary || event.button !== 2 || !activeChoice) return;
+  event.preventDefault();
+  event.stopPropagation();
+  resolveChoice("__cancel__");
+}, true);
+addEventListener("contextmenu", (event) => {
+  if (!activeChoice) return;
+  event.preventDefault();
+  event.stopPropagation();
+}, true);addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && activeChoice) {
+    e.preventDefault();
+    resolveChoice("__cancel__");
+    return;
+  }
   if (handleChoiceDigitKey(e.key)) {
     e.preventDefault();
     return;
@@ -1432,7 +1448,9 @@ addEventListener("keydown", (e) => {
       if (hour < 18) {
         options.unshift({ label: "休息到今天傍晚六點", value: "evening" });
       }
+      options.push({ label: "取消", value: "__cancel__" });
       showChoice("要休息到什麼時候？", options, (value) => {
+        if (value === "__cancel__") return;
         const currentDayStart = Math.floor(gameState.elapsed / dayLength) * dayLength;
         const target =
           value === "evening"
