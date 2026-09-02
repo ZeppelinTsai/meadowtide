@@ -453,7 +453,18 @@ function gatheredStone() {
 function renderGatherObjective() {
   const el = document.getElementById("dayTwoObjective");
   if (!el) return;
-  if (dayTwoMorningEvent.phase !== "gathering") {
+  // 2026-09-02 反饋：任務提示框跟立繪同一塊區域，採集教學那三句對話
+  // 期間 phase 其實已經先切成 "gathering"(見 updateDayTwoWalkFollowers()
+  // 每幀輪詢那段)，導致提示框在對話還沒關掉、立繪還在畫面上時就先跳
+  // 出來蓋住臉，看起來像馬賽克。改成也一併檢查對話框/演出狀態，跟
+  // Zeppelin 要的「自由活動開始再顯示」對齊——這裡本來就是每幀輪詢
+  // 呼叫(phase==="gathering" 時)，不用另外加呼叫點，對話一關掉、
+  // cutsceneActive 一放開，下一幀自然就會顯示出來。
+  if (
+    dayTwoMorningEvent.phase !== "gathering" ||
+    dialogQueue.length > 0 ||
+    gameState.cutsceneActive
+  ) {
     el.style.display = "none";
     return;
   }
