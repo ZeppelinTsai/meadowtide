@@ -1,9 +1,9 @@
 import * as THREE from "three";
 import { hash2 } from "./utils";
-import { LAYOUT, MAPS, MOUNTAIN_GATE_BLOCKER } from "./layout-maps";
+import { LAYOUT, MAPS, MOUNTAIN_GATE_BLOCKER, FLOWER_BED_TILES } from "./layout-maps";
 import { npcs, hasPastureGrassAt } from "./npc-runtime";
 import { isNearFishingWater } from "./fishing-water";
-import { syncFarmVisuals } from "./farm-visuals";
+import { syncFarmVisuals, syncFlowerBedVisuals } from "./farm-visuals";
 import { createWeatherSchedule } from "./weather-schedule";
 import { getScaledBuildingBounds } from "./building-scale";
 import { cropTypeForSeedItem } from "./item-catalog";
@@ -21,6 +21,7 @@ import type { ToolId } from "./tool-catalog";
 import {
   type FlowerSpeciesId,
   flowerSpeciesLabel,
+  isFlowerSpeciesId,
 } from "./wildflowers";
 import {
   type MushroomSpeciesId,
@@ -577,6 +578,64 @@ export function harvestCrop(x: number, z: number) {
 export function growCropsForNewDay() {
   Object.values(cropState).forEach((c) => {
     c.stage = Math.min(2, gameState.currentDay - c.plantedDay);
+  });
+}
+
+// ==============================================================
+// 花田——資料結構/流程完全照抄上面 cropState/plantSeed/harvestCrop/
+// growCropsForNewDay 那一套，差別只在每格記的是「玩家種下去的當下手上
+// 拿的是哪種花」(species)，不是固定單一作物種類；沒有獨立的「種子」
+// item，種的就是採來的花本身，跟劇本(day2-morning-event.ts 的露比事件)
+// 「拿著花可以種、沒拿著可以收」對得上，收成直接退回同物種的花，
+// 不用每次都爬山採，也是露比那句「我可能會常去找你」的機制對應。
+// 固定 6 格座標見 layout-maps.ts 的 FLOWER_BED_TILES；沒有額外的
+// 翻土/工具門檻，跟農地一樣直接種。
+// ==============================================================
+export const flowerBedState: Record<
+  string,
+  { stage: number; plantedDay: number; species: FlowerSpeciesId }
+> = {};
+
+export function isFlowerBedTile(x: number, z: number) {
+  return FLOWER_BED_TILES.some(([fx, fz]) => fx === x && fz === z);
+}
+
+export function plantFlowerBed(x: number, z: number) {
+  if (!isFlowerBedTile(x, z)) return;
+  const key = `${x},${z}`;
+  if (flowerBedState[key]) return;
+  const heldItemId = inventory.heldItemId;
+  if (!heldItemId || !isFlowerSpeciesId(heldItemId)) return;
+  if ((inventory.wildflowers[heldItemId] ?? 0) <= 0) return;
+  flowerBedState[key] = {
+    stage: 0,
+    plantedDay: gameState.currentDay,
+    species: heldItemId,
+  };
+  inventory.wildflowers[heldItemId] = Math.max(
+    0,
+    (inventory.wildflowers[heldItemId] ?? 0) - 1,
+  );
+  if ((inventory.wildflowers[heldItemId] ?? 0) <= 0)
+    inventory.heldItemId = null;
+  nearAnyNpc();
+  syncFlowerBedVisuals();
+}
+
+export function harvestFlowerBed(x: number, z: number) {
+  const key = `${x},${z}`;
+  const bed = flowerBedState[key];
+  if (!bed || bed.stage < 2) return;
+  delete flowerBedState[key];
+  inventory.wildflowers[bed.species] =
+    (inventory.wildflowers[bed.species] ?? 0) + 1;
+  nearAnyNpc();
+  syncFlowerBedVisuals();
+}
+
+export function growFlowerBedForNewDay() {
+  Object.values(flowerBedState).forEach((bed) => {
+    bed.stage = Math.min(2, gameState.currentDay - bed.plantedDay);
   });
 }
 

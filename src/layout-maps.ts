@@ -2179,6 +2179,24 @@ for (let bc = 0; bc < FARM_ORIGIN.columns; bc++) {
   repaintRegion(MAPS.livingArea.tiles, "farm-paths", farmPathCells, 5);
 }
 
+// ==============================================================
+// 1.56) 花田——露比事件結尾埋的伏筆(「牧場不是有空地嗎？」)現在接上：
+//    直接沿用小花園(LAYOUT.garden)那塊地當圍籬範圍，原本 6 個純裝飾
+//    花圃(makeSmallGarden())位置留給這裡的 6 格真正可種/可收的花圃
+//    取代，草坪/碎石步道/鳥浴盆維持不變。跟 FARMLAND_TILES 同一套
+//    「固定座標清單 + xxxState 物件」寫法，只是花的物種不像作物只有
+//    一種——每格種的是玩家手上當時拿的哪種花，見 game-state.ts 的
+//    flowerBedState/plantFlowerBed()。
+// ==============================================================
+export const FLOWER_BED_TILES: Array<[number, number]> = [
+  [2, 2],
+  [4, 2],
+  [6, 2],
+  [2, 5],
+  [4, 5],
+  [6, 5],
+].map(([dx, dz]) => [LAYOUT.garden.x + dx, LAYOUT.garden.z + dz]);
+
 // 湖再放大一輪，往「房子左上」拉：原本 5×4(20格)，現在 6×6(36格)。
 // 講清楚空間上的硬限制：房子在 x=5~7，西邊到地圖邊界(山區背景開始的
 // 地方)只有大概 5~6 格寬，9 格寬真的放不下，除非房子搬家或地圖再往

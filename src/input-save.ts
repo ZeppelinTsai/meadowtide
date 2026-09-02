@@ -17,6 +17,10 @@ import {
   nearWater,
   plantSeed,
   harvestCrop,
+  flowerBedState,
+  plantFlowerBed,
+  harvestFlowerBed,
+  growFlowerBedForNewDay,
   CAST_ANIM_DURATION,
   isOysterRackInteractionTile,
   setOysterRackSlots,
@@ -75,6 +79,7 @@ import {
 import {
   carpenterQuest,
   FARMLAND_TILES,
+  FLOWER_BED_TILES,
   chefQuest,
   artistQuest,
   REST_CHAIR,
@@ -142,7 +147,7 @@ import {
   makeChipDebris,
   makeOreChipDebris,
 } from "./props";
-import { syncFarmVisuals } from "./farm-visuals";
+import { syncFarmVisuals, syncFlowerBedVisuals } from "./farm-visuals";
 import {
   exportRelationships,
   getRelationship,
@@ -349,6 +354,7 @@ export function saveGame(slot = "default") {
     ownedAnimals: [...(gameState.ownedAnimals || [])],
     animalInteractions: exportAnimalInteractionState(),
     crops: JSON.parse(JSON.stringify(cropState)),
+    flowers: JSON.parse(JSON.stringify(flowerBedState)),
     npcMemory: npcs.map((npc) => ({ id: npc.id, memory: npc.memory })),
     relationships: exportRelationships(),
     story: exportStoryState(),
@@ -504,6 +510,8 @@ export function loadGame(
   Object.assign(pastureDepletedTiles, data.pastureDepletedTiles || {});
   Object.keys(cropState).forEach((key) => delete cropState[key]);
   Object.assign(cropState, data.crops || {});
+  Object.keys(flowerBedState).forEach((key) => delete flowerBedState[key]);
+  Object.assign(flowerBedState, data.flowers || {});
   (data.npcMemory || []).forEach((savedNpc) => {
     const npc = npcs.find((candidate) => candidate.id === savedNpc.id);
     if (npc) npc.memory = savedNpc.memory;
@@ -621,6 +629,8 @@ export function loadGame(
     updateSeasonalGroundColors();
     growCropsForNewDay();
     syncFarmVisuals();
+    growFlowerBedForNewDay();
+    syncFlowerBedVisuals();
     clearMeteors();
     scheduleNextMeteor(true);
     updateHud();
@@ -1569,6 +1579,15 @@ addEventListener("keydown", (e) => {
     const key = `${x},${z}`;
     if (cropState[key] && cropState[key].stage >= 2) harvestCrop(x, z);
     else if (!cropState[key]) plantSeed(x, z);
+  }
+  const onFlowerBed = FLOWER_BED_TILES.some(
+    ([fx, fz]) => fx === x && fz === z,
+  );
+  if (onFlowerBed) {
+    const key = `${x},${z}`;
+    if (flowerBedState[key] && flowerBedState[key].stage >= 2)
+      harvestFlowerBed(x, z);
+    else if (!flowerBedState[key]) plantFlowerBed(x, z);
   }
 });
 addEventListener("keyup", (e) => {

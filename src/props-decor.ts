@@ -435,14 +435,13 @@ export function makeSmallGarden(area) {
   path.position.set((area.width - 1) / 2, 0.045, (area.height - 1) / 2);
   path.receiveShadow = true;
   g.add(path);
-  [
-    [1.2, 1.3],
-    [3.25, 1.3],
-    [5.3, 1.3],
-    [1.2, 4.8],
-    [3.25, 4.8],
-    [5.3, 4.8],
-  ].forEach(([bx, bz], i) => g.add(makeGardenBed(bx, bz, 20 + i)));
+  // 2026-09-03：這裡原本用 makeGardenBed() 畫 6 叢純裝飾、不會變化的
+  // 花圃——露比事件接上花田系統後，同一塊地(LAYOUT.garden)改由
+  // flowerBedGroup(farm-visuals.ts)畫真正可種/可收的 6 格，跟這裡的
+  // 裝飾花叢座標幾乎重疊，留著會變成兩層花疊在一起，所以拿掉。
+  // makeGardenBed() 函式本身留著沒刪，之後如果想在別處放純裝飾花圃
+  // 還能直接用。草坪/碎石步道/鳥浴盆維持不變，圍籬由 build-map.ts
+  // 呼叫 makeFence() 另外補上。
 
   // 小型鳥浴盆／花園焦點。
   const stoneMat = new THREE.MeshStandardMaterial({

@@ -23,8 +23,9 @@ import {
   FLOWER_NODES,
   MUSHROOM_NODES,
   isPlantingAllowedAt,
+  flowerBedState,
 } from "./game-state";
-import { flowerSpeciesLabel } from "./wildflowers";
+import { flowerSpeciesLabel, isFlowerSpeciesId } from "./wildflowers";
 import { mushroomSpeciesLabel } from "./mushrooms";
 import { animals, npcs } from "./npc-runtime";
 import { renderer, camera, scene } from "./scene-sky";
@@ -57,8 +58,8 @@ import {
 import { MOUNTAIN_ORE_NODES, ORE_NODES } from "./mine";
 import { isNearFishingWater } from "./fishing-water";
 import { showUiToast } from "./ui-toast";
-import { farmGroup } from "./farm-visuals";
-import { FARMLAND_TILES, MAPS } from "./layout-maps";
+import { farmGroup, flowerBedGroup } from "./farm-visuals";
+import { FARMLAND_TILES, FLOWER_BED_TILES, MAPS } from "./layout-maps";
 import {
   cycleHeldItem,
   eatItem,
@@ -114,7 +115,7 @@ let markerTimer = 0,
 // 2026-09-01：採花動作 id 是 "flower"（跟 wood/stone 平行但不同 id，見
 // targetForFlower()），原本沒補進這張表，跟砍柴/採石不同——按住互動鍵
 // 沒辦法連續採花，只能一次次重新按。補進來讓採集手感跟木材/石頭一致。
-const CONTINUOUS_PRIMARY_ACTIONS = new Set(["plant", "wood", "stone", "flower", "mushroom"]);
+const CONTINUOUS_PRIMARY_ACTIONS = new Set(["plant", "wood", "stone", "flower", "mushroom", "plantFlower"]);
 let continuousPrimaryHeld = false,
   continuousLastTriggerKey = "";
 
@@ -423,6 +424,47 @@ function targetForFarm(
     };
   return null;
 }
+
+// 花田——結構照抄 targetForFarm()，差在「種什麼」不是看座標對應哪個
+// cropType，而是看玩家手上當下拿著哪個花物種(isFlowerSpeciesId)；
+// 成熟判定/收成 prompt 完全一樣，只是 action id 換成 plantFlower/
+// harvestFlower，避免跟野花採集節點既有的 "flower" id 撞在一起
+// (targetForFlower())。沒有 isPlantingAllowedAt() 那層地形擋路檢查——
+// 6 格固定花圃本來就不會被木材/石頭節點蓋到。
+function targetForFlowerBed(
+  x: number,
+  z: number,
+  object: THREE.Object3D = flowerBedGroup,
+): WorldTarget | null {
+  if (gameState.currentMapName !== "livingArea") return null;
+  if (!FLOWER_BED_TILES.some(([fx, fz]) => fx === x && fz === z)) return null;
+  const bed = flowerBedState[`${x},${z}`];
+  if (bed?.stage >= 2)
+    return {
+      id: `flowerbed:${x},${z}`,
+      object,
+      radius: 0.8,
+      actions: [legacyAction("harvestFlower", "\u6536\u6210")],
+      getPosition: () => ({ x, z }),
+      isValid: () => Boolean(flowerBedState[`${x},${z}`]?.stage >= 2),
+    };
+  if (bed) return null;
+  const heldItemId = inventory.heldItemId;
+  if (heldItemId && isFlowerSpeciesId(heldItemId) && itemAmount(heldItemId) > 0)
+    return {
+      id: `flowersoil:${x},${z}`,
+      object,
+      radius: 0.8,
+      actions: [legacyAction("plantFlower", "\u7a2e\u82b1")],
+      getPosition: () => ({ x, z }),
+      isValid: () =>
+        !flowerBedState[`${x},${z}`] &&
+        inventory.heldItemId === heldItemId &&
+        itemAmount(heldItemId) > 0,
+    };
+  return null;
+}
+
 function allTargets() {
   const list: WorldTarget[] = [];
   if (getCarriedAnimalId()) {
@@ -471,6 +513,10 @@ function allTargets() {
     const t = targetForFarm(x, z);
     if (t) list.push(t);
   });
+  FLOWER_BED_TILES.forEach(([x, z]) => {
+    const t = targetForFlowerBed(x, z);
+    if (t) list.push(t);
+  });
   const fishing = targetForFishing();
   if (fishing) list.push(fishing);
   return list;
@@ -491,6 +537,16 @@ function refreshSelectedTarget(target: WorldTarget) {
     return targetForMushroom(target.id.slice(9));
   if (target.id.startsWith("ore:")) return targetForOre(target.id.slice(4));
   if (target.id.startsWith("pasture:")) return targetForPasture();
+  if (target.id.startsWith("flowerbed:"))
+    return targetForFlowerBed(
+      ...(target.id.slice(10).split(",").map(Number) as [number, number]),
+      target.object,
+    );
+  if (target.id.startsWith("flowersoil:"))
+    return targetForFlowerBed(
+      ...(target.id.slice(11).split(",").map(Number) as [number, number]),
+      target.object,
+    );
   const position = target.getPosition();
   return position
     ? targetForFarm(
@@ -624,6 +680,14 @@ function targetFromRay() {
       const x = Math.round(hit.point.x),
         z = Math.round(hit.point.z);
       return targetForFarm(x, z, hit.object) || target;
+    }
+    if (
+      target?.id.startsWith("flowersoil:") ||
+      target?.id.startsWith("flowerbed:")
+    ) {
+      const x = Math.round(hit.point.x),
+        z = Math.round(hit.point.z);
+      return targetForFlowerBed(x, z, hit.object) || target;
     }
     return target || null;
   }

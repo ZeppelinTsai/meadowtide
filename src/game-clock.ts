@@ -1,7 +1,7 @@
-import { gameState, dayLength, getSeasonIndex, rollWeatherForSeason, SEASON_NAMES, WEATHER_NAMES, growCropsForNewDay } from "./game-state";
+import { gameState, dayLength, getSeasonIndex, rollWeatherForSeason, SEASON_NAMES, WEATHER_NAMES, growCropsForNewDay, growFlowerBedForNewDay } from "./game-state";
 import { carpenterQuest, CARPENTER_CONSTRUCTION_DAYS, chefQuest, CHEF_RENOVATION_DAYS } from "./layout-maps";
 import { updateAvenueTreeColors, updateSeasonalTreeColors, updateSeasonalGroundColors } from "./props";
-import { syncFarmVisuals } from "./farm-visuals";
+import { syncFarmVisuals, syncFlowerBedVisuals } from "./farm-visuals";
 import { scheduleNextMeteor } from "./scene-sky";
 import { isWorldTimePaused } from "./time-pause";
 import {
@@ -96,9 +96,11 @@ export function beginNewDay(day) {
           for (let day = oldDay + 1; day <= gameState.currentDay; day++) {
             beginNewDay(day);
             growCropsForNewDay();
+            growFlowerBedForNewDay();
           }
           gameState.prevDay = gameState.currentDay;
           syncFarmVisuals();
+          syncFlowerBedVisuals();
           scheduleNextMeteor(true);
         }
         if (crossedAutosaveMark(oldElapsed, gameState.elapsed)) {

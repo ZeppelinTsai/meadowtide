@@ -357,6 +357,30 @@ const CLUSTER_SCALE = 2.6;
 const CLUSTER_SPREAD: Partial<Record<FlowerSpeciesId, number>> = {
   dandelion: 0.55,
 };
+// 花田專用——生長階段跟 props-resources.ts 的 makeCropMesh(stage,
+// cropType) 同一套三階段(0 幼苗/1 半成熟/2 成熟)，但成熟株直接借用
+// 上面 makeFlowerCluster()，不用另外畫一套花的幾何；半成熟只是把整叢
+// 縮小，不換造型，肉眼還是看得出物種顏色。不吃 x/z，跟 makeCropMesh
+// 一樣把定位留給呼叫端(farm-visuals.ts 的 syncFlowerBedVisuals())。
+export function makeFlowerBedMesh(
+  stage: number,
+  species: FlowerSpeciesId,
+): THREE.Group {
+  if (stage <= 0) {
+    const g = new THREE.Group();
+    const sprout = new THREE.Mesh(
+      new THREE.ConeGeometry(0.03, 0.07, 5),
+      new THREE.MeshStandardMaterial({ color: 0x5fae4a, flatShading: true }),
+    );
+    sprout.position.y = 0.06;
+    g.add(sprout);
+    return g;
+  }
+  const cluster = makeFlowerCluster(species, 0, 0);
+  if (stage === 1) cluster.scale.multiplyScalar(0.5);
+  return cluster;
+}
+
 export function makeFlowerCluster(
   species: FlowerSpeciesId,
   x: number,

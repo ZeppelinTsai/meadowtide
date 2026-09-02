@@ -195,7 +195,7 @@ import {
   makeCelestialSpiralStaircase,
   makeCelestialSparkles,
 } from "./props";
-import { syncFarmVisuals } from "./farm-visuals";
+import { syncFarmVisuals, syncFlowerBedVisuals } from "./farm-visuals";
 import { createTransitionEvents, type TransitionLink } from "./map-transitions";
 import { getNpcNameStage } from "./npc-name-reveal";
 import {
@@ -3639,8 +3639,21 @@ export function buildMap(mapName) {
     });
 
     // 行道樹右側正式分成上下兩區：上方聚會／個人放鬆，下方小花園。
+    // 2026-09-03：露比事件結尾那句「牧場不是有空地嗎？」正式接上——
+    // makeSmallGarden() 原本的 6 個純裝飾花圃已經拿掉(見 props-decor.ts
+    // 的說明)，改由 flowerBedGroup(farm-visuals.ts)畫真正可種/可收的
+    // 花圃；這裡只補一圈圍籬圈住同一塊地，草坪/碎石步道/鳥浴盆維持
+    // makeSmallGarden() 原樣。
     plateauGroup.add(makeRestArea(LAYOUT.restArea));
     plateauGroup.add(makeSmallGarden(LAYOUT.garden));
+    plateauGroup.add(
+      makeFence(
+        LAYOUT.garden.x,
+        LAYOUT.garden.x + LAYOUT.garden.width - 1,
+        LAYOUT.garden.z,
+        LAYOUT.garden.z + LAYOUT.garden.height - 1,
+      ),
+    );
 
     // 海堤入口左右各一盞路燈，燈頭朝向道路中央。
     const lampX = LAYOUT.coast.rampX - 1.15;
@@ -3888,6 +3901,7 @@ export function buildMap(mapName) {
   animalGroup.visible =
     mapName === "livingArea" && (gameState.ownedAnimals?.length ?? 0) > 0;
   syncFarmVisuals();
+  syncFlowerBedVisuals();
 }
 
 export function syncPlayerAppearance() {
