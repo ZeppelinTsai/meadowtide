@@ -180,6 +180,7 @@ export const PROLOGUE_SCRIPT: Record<string, DialogueLine[]> = {
     mayor("「剩下的地方，就交給你按照自己的步調慢慢整理吧。」"),
 
     mayor("「先按下右下的種子圖示，把種子拿出來。」"),
+    mayor("「按上下則可以切換物品。」"),
     mayor("「站在田地上按下 E，就能播種。來，把這九格都種滿看看。」"),
 
     PROLOGUE_MARKERS.farmingComplete,
@@ -360,9 +361,6 @@ export const PROLOGUE_SCRIPT: Record<string, DialogueLine[]> = {
     mayor("「這一週應該還會有幾個人來到島上。有人抵達時，我會去牧場通知你。」"),
     mayor("「最後，這張島嶼地圖交給你。按下 M 或 View 就能查看地圖。」"),
     "[村長將島嶼地圖交給主角]",
-    mayor(
-      "「還有，使用滑鼠滾輪或右蘑菇頭上下，就能拉近或拉遠鏡頭。試著調整到自己看得最舒服的距離吧。」",
-    ),
     mayor("「那麼，歡迎來到島上，牧場主。」"),
     mayor("「好了，我先回鎮上了。有什麼事，再來找我吧。」"),
   ],
