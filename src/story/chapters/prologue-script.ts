@@ -27,7 +27,8 @@ const artist = (
   speaker: "artist",
   name: "露比",
   revealNameAfter,
-});const captain = (
+});
+const captain = (
   text: string,
   revealNameAfter?: { npcId: string; stage: 1 | 2 },
 ): DialogueLine => ({
@@ -151,7 +152,9 @@ export const PROLOGUE_SCRIPT: Record<string, DialogueLine[]> = {
     ),
     PROLOGUE_MARKERS.movementTutorialStart,
     mayor("「先教你基本的行走。用 W／A／S／D 或方向鍵，就能控制自己的移動。」"),
-    mayor("「滑鼠滾輪可以拉近或拉遠鏡頭；手把則使用右蘑菇頭上下，調整到你看得舒服的距離吧。」"),
+    mayor("「滑鼠滾輪可以拉近或拉遠鏡頭；"),
+    mayor("「手把則使用右蘑菇頭上下，調整到你看得舒服的距離吧。」"),
+    mayor("「那麼，跟我來吧。」"),
     PROLOGUE_MARKERS.movementTutorialEnd,
   ],
   farming: [
@@ -162,7 +165,9 @@ export const PROLOGUE_SCRIPT: Record<string, DialogueLine[]> = {
     PROLOGUE_MARKERS.lookAtAbandonedFarm,
 
     mayorReactingToPlayer(PROLOGUE_MARKERS.whyOnlyPlot, "?"),
+    mayor("「嗯？你問為什麼只有這片田是乾淨的？」"),
     cue("[村長短暫停頓]", "mayor", "..."),
+
     mayor("「……前一位牧場主人離開以後，這裡就一直沒有人正式接手。」"),
 
     mayor("「我偶爾會過來整理一下，不過人上了年紀，清理這些東西比想像中累。」"),
@@ -282,7 +287,10 @@ export const PROLOGUE_SCRIPT: Record<string, DialogueLine[]> = {
     carpenter("「嗯。」"),
     captain("「行李都還在我手上。」"),
     "[歐文抬頭，這才想起自己是來報到的]",
-    carpenter("「……抱歉。我是歐文，今天剛到的木匠。」", { npcId: "carpenter", stage: 1 }),
+    carpenter("「……抱歉。我是歐文，今天剛到的木匠。」", {
+      npcId: "carpenter",
+      stage: 1,
+    }),
     carpenter("「聽說島上有不少房子需要修。現在看來，可能不只房子。」"),
     artist("「……他一直都是這樣嗎？」"),
     mayor("「我也是第一次見他……」"),
@@ -298,7 +306,8 @@ export const PROLOGUE_SCRIPT: Record<string, DialogueLine[]> = {
     carpenter("「要換掉。」"),
     artist("「我也知道。」"),
     mayor("「……總之，我們先去看看你們住的地方吧。」"),
-  ],  fishing: [
+  ],
+  fishing: [
     "[兩人回到港口]",
     captain("「嗯？新來的牧場主，這麼快就遇到麻煩了？」"),
     mayor("「是我的問題。我忘了替人家準備釣竿，你這裡還有備用的嗎？」"),
