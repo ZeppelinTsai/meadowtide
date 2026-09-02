@@ -30,7 +30,12 @@ import {
 } from "./first-person-camera";
 
 type TitleStep =
-  "splash" | "menu" | "profileName" | "appearance" | "system" | "loadSlots";
+  | "splash"
+  | "menu"
+  | "profileName"
+  | "appearance"
+  | "system"
+  | "loadSlots";
 
 type TitlePeriod = "day" | "afternoon" | "night";
 type TitleScenePreset = {
@@ -39,20 +44,16 @@ type TitleScenePreset = {
   camera: PresentationCameraState;
 };
 
-// 可擴充的時段展示範本；日期、季節、天氣與精確時刻仍優先讀取存檔。
 export const TITLE_SCENE_PRESETS: readonly TitleScenePreset[] = [
   {
     period: "day",
     startHour: 6,
     camera: {
-      // 2026-09-04 Zeppelin 用第一人稱鏡頭記錄工具重新抓的開頭構圖，
-      // positionY 額外 +3(1.37→4.37，Zeppelin 要求)。三個時段(day/
-      // afternoon/night)原本就共用同一組鏡頭數字，這次比照沿用。
-      positionX: 19.28,
-      positionY: 1.37 + 3,
-      positionZ: 3.41,
-      yaw: -0.821,
-      pitch: -0.009,
+      positionX: 18.27,
+      positionY: 2.38,
+      positionZ: 8.01,
+      yaw: -7.276,
+      pitch: 0.103,
       fov: 65,
     },
   },
@@ -60,12 +61,11 @@ export const TITLE_SCENE_PRESETS: readonly TitleScenePreset[] = [
     period: "afternoon",
     startHour: 12,
     camera: {
-      // 同上一組(day)，三個時段共用同一組鏡頭數字。
-      positionX: 19.28,
-      positionY: 1.37 + 3,
-      positionZ: 3.41,
-      yaw: -0.821,
-      pitch: -0.009,
+      positionX: 18.27,
+      positionY: 2.38,
+      positionZ: 8.01,
+      yaw: -7.276,
+      pitch: 0.103,
       fov: 65,
     },
   },
@@ -73,17 +73,15 @@ export const TITLE_SCENE_PRESETS: readonly TitleScenePreset[] = [
     period: "night",
     startHour: 18,
     camera: {
-      // 同上一組(day)，三個時段共用同一組鏡頭數字。
-      positionX: 19.28,
-      positionY: 1.37 + 3,
-      positionZ: 3.41,
-      yaw: -0.821,
-      pitch: -0.009,
+      positionX: 18.27,
+      positionY: 2.38,
+      positionZ: 8.01,
+      yaw: -7.276,
+      pitch: 0.103,
       fov: 65,
     },
   },
 ];
-
 function getTitleScenePreset(hour: number) {
   if (hour >= 18 || hour < 6) return TITLE_SCENE_PRESETS[2];
   if (hour >= 12) return TITLE_SCENE_PRESETS[1];
@@ -365,7 +363,8 @@ export function initTitleScreen() {
       return;
     }
     if (step !== "menu" && step !== "loadSlots") return;
-    if (event.shiftKey || event.ctrlKey || event.altKey || event.metaKey) return;
+    if (event.shiftKey || event.ctrlKey || event.altKey || event.metaKey)
+      return;
     const slot = saveSlotForDigitCode(event.code);
     if (slot === null) return;
     const summary = getSaveSlotSummaries().find(
