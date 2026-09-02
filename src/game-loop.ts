@@ -962,13 +962,20 @@ export function animate(now) {
       n.mesh.visible = true;
       n.mesh.position.x = DAY_TWO_MORNING_ARRIVAL.mayor.x;
       n.mesh.position.z = DAY_TWO_MORNING_ARRIVAL.mayor.z;
+      n.mesh.rotation.y = 0; // 面朝上(-Z)，見 day2-morning-event.ts 同一條公式註解
+      // 2026-09-02 修正：animateWalk() 對「原地不動」的情況會把
+      // position.y 整個覆蓋成微小的待機彈跳量(見 humanoid.ts
+      // animateWalk 的 moving=false 分支，不是疊加)，所以地形高度
+      // 一定要在呼叫 animateWalk() 之後再設，順序跟上面
+      // isPrologueMayorFollowing、下面 escort trail 那兩段完全一樣。
+      // 原本寫反了，導致村長固定站位時整個人半沉進地板——這輪
+      // Zeppelin 回報「村長出現在地面底下」就是這裡。
+      animateWalk(n.mesh, false, gameState.elapsed);
       n.mesh.position.y = characterGroundY(
         "livingArea",
         DAY_TWO_MORNING_ARRIVAL.mayor.x,
         DAY_TWO_MORNING_ARRIVAL.mayor.z,
       );
-      n.mesh.rotation.y = 0; // 面朝上(-Z)，見 day2-morning-event.ts 同一條公式註解
-      animateWalk(n.mesh, false, gameState.elapsed);
       return;
     }
     if (isPrologueMayorFollowing() && n.id === "mayor") {
