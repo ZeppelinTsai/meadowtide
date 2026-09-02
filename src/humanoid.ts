@@ -467,7 +467,34 @@ export function addDefaultHumanoidSmile(
       // 手臂 pivot 的初始 rotation.z/y 就能做到，animateWalk() 只動
       // rotation.x，不會洗掉這裡設的姿勢。腰間掛一捆盤起來的麻繩，
       // 純裝飾道具，不是真的握在手裡。
-      export function makeCaptain() {
+      
+// 露比——橘紅側髮、畫漬外套與工具配件的藝術家低模。
+export function makeArtist() {
+  const group: any = makeHumanoid({ skin: 0xd89a6b, shirt: 0x25232a, hair: 0xb9572b });
+  const mat = (color: number) => new THREE.MeshStandardMaterial({ color, flatShading: true });
+  const jacket = mat(0xe5d5b8), paint = mat(0x4f8b8b), leather = mat(0x51351f), brass = mat(0xb98232);
+  for (const side of [-1, 1]) {
+    const panel = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.42, 0.1), jacket);
+    panel.position.set(side * 0.13, 0.72, 0.02); panel.rotation.z = side * -0.08; group.add(panel);
+  }
+  for (const [x, y, color] of [[-0.12, 0.78, 0xb9572b], [0.12, 0.68, 0x4f8b8b], [-0.1, 0.61, 0xc28a43]]) {
+    const spot = new THREE.Mesh(new THREE.SphereGeometry(0.035, 6, 4), mat(color));
+    spot.scale.set(1.4, 0.65, 0.25); spot.position.set(x, y, -0.09); group.add(spot);
+  }
+  for (let i = 0; i < 5; i++) {
+    const curl = new THREE.Mesh(new THREE.SphereGeometry(0.105, 7, 5), mat(0xb9572b));
+    curl.scale.set(0.8, 1.25, 0.65); curl.position.set(-0.16 - (i % 2) * 0.035, 0.82 - i * 0.075, -0.02); group.add(curl);
+  }
+  const palette = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.12, 0.025), paint);
+  palette.position.set(0.3, 0.34, -0.08); palette.rotation.z = -0.35; group.add(palette);
+  for (let i = 0; i < 3; i++) {
+    const brush = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, 0.34, 5), leather);
+    brush.position.set(-0.27 + i * 0.07, 0.18, -0.05); brush.rotation.z = -0.25 + i * 0.12; group.add(brush);
+    const tip = new THREE.Mesh(new THREE.ConeGeometry(0.025, 0.08, 5), brass);
+    tip.position.set(brush.position.x, 0.36, -0.05); tip.rotation.z = brush.rotation.z; group.add(tip);
+  }
+  return group;
+}export function makeCaptain() {
         const group: any = new THREE.Group();
         const parts: any = {};
         const mat = (color) => new THREE.MeshStandardMaterial({ color, flatShading: true });

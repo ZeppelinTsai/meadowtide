@@ -118,6 +118,20 @@ export const npcDefs = [
       { t: 0.9, ...pos(CAPTAIN_STAND_X, CAPTAIN_STAND_Z) },
     ],
   },
+  {
+    id: "artist",
+    map: "oldVillage",
+    name: "藝術家",
+    shirt: 0xe6d6b8,
+    hair: 0xb9572b,
+    home: { x: LAYOUT.oldVillage.plaza.x + 12, z: LAYOUT.oldVillage.plaza.z + 7 },
+    schedule: [
+      { t: 0.25, ...pos(LAYOUT.oldVillage.plaza.x + 12, LAYOUT.oldVillage.plaza.z + 7) },
+      { t: 0.45, ...pos(LAYOUT.oldVillage.plaza.x + 10, LAYOUT.oldVillage.plaza.z + 9) },
+      { t: 0.7, ...pos(LAYOUT.oldVillage.plaza.x + 14, LAYOUT.oldVillage.plaza.z + 8) },
+      { t: 0.92, ...pos(LAYOUT.oldVillage.plaza.x + 12, LAYOUT.oldVillage.plaza.z + 7) },
+    ],
+  },
 ];
 export function getScheduleTarget(schedule, phase) {
   let target = schedule[schedule.length - 1];
