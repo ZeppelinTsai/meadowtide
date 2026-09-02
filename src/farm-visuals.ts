@@ -42,7 +42,15 @@ export function syncFlowerBedVisuals() {
   }
   flowerBedGroup.visible = true;
   FLOWER_BED_TILES.forEach(([x, z]) => {
-    flowerBedGroup.add(makeSoil(x, z));
+    // makeSoil() 原本是給沒有草坪蓋在上面的普通農地用的，y=0.01；這裡
+    // 疊在 makeSmallGarden() 那片整片草坪(props-decor.ts，草坪頂面約
+    // y=0.038)上面，太低會被草坪蓋住整個看不到土——2026-09-04 實機
+    // 回報「花田被砍光光」，查出來就是這個。改成 0.045，跟同一個函式
+    // 裡碎石步道(0.045)、makeGardenBed() 舊裝飾花圃的土(0.02，頂面
+    // 0.045)同一個高度，是這個場景既有、已驗證會露出來的數字。
+    const soil = makeSoil(x, z);
+    soil.position.y = 0.045;
+    flowerBedGroup.add(soil);
     const bed = flowerBedState[`${x},${z}`];
     if (bed) {
       const mesh = makeFlowerBedMesh(bed.stage, bed.species);
