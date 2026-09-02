@@ -556,6 +556,7 @@ function beginStage(next: Stage) {
 // 把狀態收乾淨——這時候真正的序章早就結束了，回到 "done" 沒有副作用。
 export function endExternalGuidedWalk() {
   guidedWalkZoom = null;
+  useGuideZoom = false;
   externalGuidedWalk = false;
   beginStage("done");
 }

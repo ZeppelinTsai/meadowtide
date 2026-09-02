@@ -402,6 +402,9 @@ function finishVillageHouseTour() {
 }
 
 function beginMountainRoute() {
+  // 探房演出結束後解除固定站位，讓既有 carpenter escort trail 接手
+  // 村長與歐文跟隨主角前往山區。
+  releaseHold();
   inventory.tools.dualAxe = true;
   gameState.harvestFeedback = {
     kind: "success",
