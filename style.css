@@ -414,6 +414,22 @@ body.cutscene-presentation #hud {
   color: #f5c542;
   border-color: #f5c542;
 }
+/* 大螢幕比照對話 UI 放大。以同頁三個選項為基準控制列高與間距，
+   確保三列仍能完整放在對話框上方。 */
+@media (min-width: 1280px) and (min-height: 800px) {
+  #dialogChoices {
+    gap: clamp(15px, 1.2vh, 22px);
+  }
+  .dialogChoiceBtn {
+    font-size: clamp(28px, 3.4vh, 48px);
+    line-height: 1.25;
+    padding: clamp(14px, 1.4vh, 24px) 32px;
+  }
+  .dialogChoiceNextBtn {
+    font-size: clamp(20px, 2vh, 30px);
+    padding: clamp(8px, 0.8vh, 14px) 24px;
+  }
+}
 /* CG 全螢幕層：只有少數關鍵劇情節點會用到，平常對話走 #dialogPortrait
    的中小立繪、3D 世界維持可見。淡入淡出用 opacity transition，不要
    生硬切換；z-index 蓋過 3D 畫布但在對話框(15)之下，文字仍讀得到。 */
