@@ -132,6 +132,10 @@ export function startDayTwoMorningEvent() {
   dayTwoMorningEvent.triggered = true;
   dayTwoMorningEvent.due = false;
   dayTwoMorningEvent.phase = "port";
+  // 家門口與港口都是不可操作的事件演出：沿用 game-loop.ts 的
+  // cutscene-presentation，隱藏地圖／資訊／選單與快捷操作 UI。
+  // beginMountainRoute() 交還自由行走時會再解除。
+  gameState.cutsceneActive = true;
   setTimePauseSource("guidedGameplay", true);
   loadMap("livingArea", DAY_TWO_MORNING_ARRIVAL.player, () => {
     // 模型鼻子朝本地 -Z，rotation.y = atan2(dx,dz)+π 是全專案統一公式
