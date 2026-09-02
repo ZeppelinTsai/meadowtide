@@ -1,24 +1,30 @@
 import { gameState, TIME_CONFIG, dayLength } from "./game-state";
-import { DAY_TWO_MORNING_ARRIVAL } from "./layout-maps";
+import {
+  DAY_TWO_MORNING_ARRIVAL,
+  DAY_TWO_PORT_ARRIVAL,
+  carpenterQuest,
+  portGroundY,
+} from "./layout-maps";
 import { npcGroup, npcs } from "./npc-runtime";
 import { loadMap } from "./build-map";
 import { groundY } from "./scene-sky";
-import { dialogQueue } from "./dialogue";
+import { dialogQueue, showDialogSequence } from "./dialogue";
+import type { ComicCueKind } from "./comic-cue";
 
 // ==============================================================
-// 第二天早上「村長在家門口等你」——Zeppelin 2026-09-02「試試看」提出的
-// 第一版強制觸發演出，用來驗證「日期+時段強制觸發、跨圖傳送＋朝向、NPC
-// 固定站位＋朝向、黑幕轉場」這組組合怎麼寫。見
-// docs/decisions/day-two-morning-event.md。
+// 第二天早上劇本——Zeppelin 2026-09-02 給的完整版：村長來敲門 → 一起去
+// 港口接歐文(木匠)＋露比(藝術家) → （下一輪）去舊城鎮選屋、上山學採集、
+// 回來修繕。見 docs/decisions/day-two-morning-event.md。
 //
-// 刻意跟 carpenter-quest.ts 的 canStartCarpenterDockScene()（同樣是
-// day===1 && hour 8:00-8:30，但那邊要玩家走到碼頭「觸碰」才觸發）完全
-// 分開、各自獨立觸發——這是目前唯一兩個共用同一個日期+時段窗口的事件，
-// 要不要合併成一段連續演出（例如「村長來敲門 → 一起走去碼頭」）是還沒
-// 拍板的敘事決定，通輪先各自獨立，不要互相干擾或搶著觸發。
+// 這一版正式取代兩件事：
+// 1. 舊的「試試看」佔位演出（只有黑幕轉場+站位，沒有台詞）。
+// 2. carpenter-quest.ts 的碼頭觸碰事件（startCarpenterDockScene 等）——
+//    兩套本來都卡在 day===1 && hour∈[8,8.5)，現在合併我村長強制帶隊去
+//    港口這一場，碼頭觸碰點還留著但 carpenterQuest.stage 一路推進到
+//    "moved_in" 後就永遠是 no-op，不用另外刪 events 表。
 //
-// 2026-09-02 第二輪：Zeppelin 反饋「避免強制事件被跳過」——睡覺(或 N
-// 鍵快轉)一次跳好幾小時是單一幀內的瞬間賦值(見 game-clock.ts
+// 2026-09-02 第二輪：Zeppelin 反饋「避免弶制事件被跳過」——睡覺(或 N
+// 鍵快轉)一次跳好幾小時是單一幀內瞬間賦值(見 game-clock.ts
 // updateGameClock() 的說明)，如果剛好整段跳過 [8:00, 8:30) 這個窗口
 // （例如在第二天 06:00～08:00 之間又睡了一次「休息到今天傍晚六點」），
 // 下面 canStartDayTwoMorningEvent() 這種只看「現在這一刻是否落在窗口
@@ -32,7 +38,21 @@ import { dialogQueue } from "./dialogue";
 // startDayTwoMorningEvent()，避免在不恰當的畫面狀態下硬插一段跨圖傳送。
 // ==============================================================
 
-export const dayTwoMorningEvent = { triggered: false, holding: false, due: false };
+export const dayTwoMorningEvent = {
+  triggered: false,
+  // holding=true 期間，game-loop.ts 的 NPC 排程迴圈會整段跳過日常
+  // 行程表/escort 機制，改用 holdPositions 裡的固定座標——見該檔案
+  // 「dayTwoMorningEvent.holding」那段。holdMap 限制「只在這張地圖上
+  // 生效」，避免玩家用存讀檔等手段換了地圖後，held 的 NPC 詭異地卡在
+  // 舊地圖座標不放。
+  holding: false,
+  holdMap: null as string | null,
+  holdPositions: null as Record<
+    string,
+    { x: number; z: number; rotY: number }
+  > | null,
+  due: false,
+};
 
 // 窗口本身用絕對 elapsed 表示（day===1、hour∈[8,8.5)），跟
 // game-clock.ts 的 crossedAutosaveMark() 用同一種算法，讓
@@ -53,6 +73,41 @@ export function canStartDayTwoMorningEvent(): boolean {
   return gameState.currentDay === 1 && hour >= 8 && hour < 8.5;
 }
 
+// ------ 對話行 helper：跟 prologue-script.ts 同一套 speaker/name 慣例，
+// 這裡不走 i18n（day2-morning-event.ts 是獨立劇本檔，不是序章章節），
+// 直接放繁中字串，跟 carpenter-quest.ts 的寫法一致。------
+const mayor = (text: string) => ({ text, speaker: "mayor", name: "村長" });
+const carpenter = (text: string) => ({
+  text,
+  speaker: "carpenter",
+  name: "歐文",
+});
+const artist = (text: string, revealNameAfter?: { npcId: string; stage: 1 | 2 }) => ({
+  text,
+  speaker: "artist",
+  name: "露比",
+  revealNameAfter,
+});
+const captain = (text: string) => ({ text, speaker: "captain", name: "船長" });
+const cue = (text: string, actorId: string, kind: ComicCueKind) => ({
+  text,
+  comicCue: { actorId, kind },
+});
+
+function holdNpcsAt(
+  map: string,
+  positions: Record<string, { x: number; z: number; rotY: number }>,
+) {
+  dayTwoMorningEvent.holding = true;
+  dayTwoMorningEvent.holdMap = map;
+  dayTwoMorningEvent.holdPositions = positions;
+}
+function releaseHold() {
+  dayTwoMorningEvent.holding = false;
+  dayTwoMorningEvent.holdMap = null;
+  dayTwoMorningEvent.holdPositions = null;
+}
+
 export function startDayTwoMorningEvent() {
   dayTwoMorningEvent.triggered = true;
   dayTwoMorningEvent.due = false;
@@ -61,23 +116,164 @@ export function startDayTwoMorningEvent() {
     // （見 game-loop.ts NPC 走位那段同一條註解）。面朝下(+Z，dx=0,dz=1)
     // 就是 atan2(0,1)+π = π。
     gameState.player.rotation.y = Math.PI;
-    const mayor = npcs.find((n) => n.id === "mayor");
-    if (mayor) {
+    const mayorNpc = npcs.find((n) => n.id === "mayor");
+    if (mayorNpc) {
       npcGroup.visible = true;
-      mayor.mesh.visible = true;
-      mayor.mesh.position.set(
+      mayorNpc.mesh.visible = true;
+      mayorNpc.mesh.position.set(
         DAY_TWO_MORNING_ARRIVAL.mayor.x,
         groundY(DAY_TWO_MORNING_ARRIVAL.mayor.x, DAY_TWO_MORNING_ARRIVAL.mayor.z),
         DAY_TWO_MORNING_ARRIVAL.mayor.z,
       );
       // 面朝上(-Z，dx=0,dz=-1)：atan2(0,-1)+π = 0，跟玩家隔一格面對面。
-      mayor.mesh.rotation.y = 0;
-      mayor.path = null;
-      mayor.lastTargetKey = null;
+      mayorNpc.mesh.rotation.y = 0;
+      mayorNpc.path = null;
+      mayorNpc.lastTargetKey = null;
     }
-    // holding=true 之後交給 game-loop.ts 的 NPC 排程迴圈接手固定站位
-    // （見該檔案「dayTwoMorningEvent.holding」那段）——不然村長下一幀
-    // 就會被日常行程表(getScheduleTarget)重新接管、直接走掉。
-    dayTwoMorningEvent.holding = true;
+    holdNpcsAt("livingArea", {
+      mayor: {
+        x: DAY_TWO_MORNING_ARRIVAL.mayor.x,
+        z: DAY_TWO_MORNING_ARRIVAL.mayor.z,
+        rotY: 0,
+      },
+    });
+    showDialogSequence(
+      [
+        mayor("「早安。」"),
+        mayor("「今天有兩位新居民要搬來島上。」"),
+        mayor("「一位是木匠，另一位是藝術家。」"),
+        mayor("「船差不多要到了，我們一起去港口接他們吧。」"),
+        "[村長進入同行狀態]",
+      ],
+      startPortArrivalScene,
+    );
   });
+}
+
+// 村長「進入同行狀態」在這場戲裡不是要玩家重走一次已經走過的路——
+// Zeppelin 原話：「接著可以直接黑屏，不必再讓玩家重走一次已經走過的
+// 路」。所以這裡不啟用 escort 機制，直接黑屏傳送到港口，抵達後才是
+// 玩家真正看得到、有意義的一場戲。
+function startPortArrivalScene() {
+  loadMap("port", DAY_TWO_PORT_ARRIVAL.player, () => {
+    gameState.player.rotation.y = 0; // 面朝上(-Z)看著剛靠岸的船
+    const mayorNpc = npcs.find((n) => n.id === "mayor");
+    const carpenterNpc = npcs.find((n) => n.id === "carpenter");
+    const artistNpc = npcs.find((n) => n.id === "artist");
+    const y = gameState.player.position.y;
+    // 村長跟主角一起走過來，疊在主角腳下（跟 carpenter-quest.ts 舊版
+    // startCarpenterDockScene() 同一招：起點座標不重要，下一幀就會被
+    // holdPositions 覆寫到正確站位，這裡只是避免第一幀出現在原地）。
+    if (mayorNpc) {
+      npcGroup.visible = true;
+      mayorNpc.mesh.visible = true;
+      mayorNpc.mesh.position.set(
+        DAY_TWO_PORT_ARRIVAL.player.x,
+        y,
+        DAY_TWO_PORT_ARRIVAL.player.z,
+      );
+      mayorNpc.path = null;
+      mayorNpc.lastTargetKey = null;
+    }
+    // 歐文／露比這時候才第一次在 livingArea 以外「登場」——直接開
+    // visible，不用等 carpenterQuest.stage 或任何既有旗標（那些是舊
+    // 流程用的，這輪已經合併掉，見檔案開頭說明）。
+    if (carpenterNpc) {
+      carpenterNpc.mesh.visible = true;
+      carpenterNpc.mesh.position.set(
+        DAY_TWO_PORT_ARRIVAL.carpenter.x,
+        portGroundY(DAY_TWO_PORT_ARRIVAL.carpenter.x, DAY_TWO_PORT_ARRIVAL.carpenter.z),
+        DAY_TWO_PORT_ARRIVAL.carpenter.z,
+      );
+      carpenterNpc.path = null;
+      carpenterNpc.lastTargetKey = null;
+    }
+    if (artistNpc) {
+      artistNpc.mesh.visible = true;
+      artistNpc.mesh.position.set(
+        DAY_TWO_PORT_ARRIVAL.artist.x,
+        portGroundY(DAY_TWO_PORT_ARRIVAL.artist.x, DAY_TWO_PORT_ARRIVAL.artist.z),
+        DAY_TWO_PORT_ARRIVAL.artist.z,
+      );
+      artistNpc.path = null;
+      artistNpc.lastTargetKey = null;
+    }
+    holdNpcsAt("port", {
+      mayor: { x: DAY_TWO_PORT_ARRIVAL.player.x, z: DAY_TWO_PORT_ARRIVAL.player.z, rotY: 0 },
+      carpenter: {
+        x: DAY_TWO_PORT_ARRIVAL.carpenter.x,
+        z: DAY_TWO_PORT_ARRIVAL.carpenter.z,
+        rotY: Math.PI,
+      },
+      artist: {
+        x: DAY_TWO_PORT_ARRIVAL.artist.x,
+        z: DAY_TWO_PORT_ARRIVAL.artist.z,
+        rotY: Math.PI,
+      },
+      // 船長留在自己碼頭邊的日常站位就好，不用特別釘住——這裡先不放
+      // captain 進 holdPositions，讓他照原本的行程表小範圍走動。
+    });
+    showDialogSequence(
+      [
+        "[船靠岸]",
+        "[歐文背著工具包走下船]",
+        "[船長正在把歐文的行李搬下來]",
+        "[另一名背著畫具的陌生女子跟著下船]",
+        mayor("「歡迎來到島上。」"),
+        mayor("「你們就是今天抵達的歐文和……」"),
+        "[歐文忽然停下][低頭][蹲下來敲了敲腳邊的木板]",
+        mayor("「……歐文？」"),
+        carpenter("「別踩這裡。」"),
+        cue("[主角頭上「！」]", "player", "!"),
+        carpenter("「這塊木板裡面已經腐掉了。」"),
+        carpenter("「再拖一個月，誰踩上去誰就下海。」"),
+        mayor("「咦？有這麼嚴重嗎？」"),
+        mayor("「我前幾天經過時還好好的……」"),
+        carpenter("「表面看不出來才危險。」"),
+        "[歐文沿著木板看了一圈]",
+        carpenter("「旁邊這兩塊也要換。」"),
+        carpenter("「底下的支撐最好一起檢查。」"),
+        captain("「你才剛下船吧。」"),
+        carpenter("「嗯。」"),
+        captain("「行李都還在我手上。」"),
+        "[歐文抬頭][這才像突然想起自己是來報到的]",
+        carpenter("「……抱歉。」"),
+        carpenter("「我是歐文。」"),
+        carpenter("「今天剛到的木匠。」"),
+        "[歐文正式登場]",
+        carpenter("「聽說島上有不少房子需要修。」"),
+        carpenter("「現在看來，可能不只房子。」"),
+        artist("「……他一直都是這樣嗎？」"),
+        mayor("「我也是第一次見他……」"),
+        captain("「至少不用擔心他找不到工作。」"),
+        mayor("「差點忘了。」"),
+        mayor("「那妳就是另一位申請來島上的藝術家吧？」"),
+        artist("「嗯。」"),
+        artist("「我是露比，請多指教。」", { npcId: "artist", stage: 1 }),
+        "[藝術家正式登場]",
+        artist("「不過我覺得這裡挺漂亮的。」"),
+        carpenter("「這裡？」"),
+        artist("「木頭被海風吹成這種顏色，很好看。」"),
+        carpenter("「……那是劣化。」"),
+        artist("「我知道。」"),
+        carpenter("「要換掉。」"),
+        artist("「我也知道。」"),
+        mayor("「……總之，我們先去看看你們住的地方吧。」"),
+      ],
+      onPortArrivalSceneComplete,
+    );
+  });
+}
+
+// 港口戲結束——接下來(下一輪)是去舊城鎮選屋，改用 carpenterQuest.stage
+// 既有的 "escorting" 狀態機交給既有的 escort trail 機制（見
+// game-loop.ts isCarpenterEscortActor／build-map.ts loadMap 換圖時的
+// 自動重新定位那段）接手「跟隨模式」，不用另外寫一套跟隨邏輯。這裡先
+// 釋放 holdPositions（歐文/村長改交給 escort 機制、露比回她自己原本的
+// 日常排程——她的登場戲到此結束，後續劇情這輪還沒寫）。
+function onPortArrivalSceneComplete() {
+  releaseHold();
+  carpenterQuest.stage = "escorting";
+  // TODO(下一輪)：舊城鎮選屋 + 上山採集教學 + 回房修繕，Zeppelin 給的
+  // 完整劇本後半段，還沒接上。
 }

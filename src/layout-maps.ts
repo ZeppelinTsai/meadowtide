@@ -2292,11 +2292,33 @@ for (let z = HOUSE_ROAD_START_Z; z < MAPS.livingArea.tiles.length; z++) {
 // 第二天早上「村長在家門口等你」事件（day2-morning-event.ts）的定位點：
 // 玩家門前這條路已經有 HOUSE_ROAD_X/HOUSE_ROAD_START_Z 這組現成的「家門口」
 // 座標，直接沿用，不要另外寫死一組容易跟著房子搬家脫鉤的數字——之後房子
-// 位置改了，這裡跟著自動更新。村長固定站在玩家傳送點正南一格(z+1)，兩人
-// 隔一格面對面。
+// 位置改了，這裡跟著自動更新。
+// 2026-09-02 第二輪：Zeppelin 給的完整劇本把玩家/村長各往南挪一格
+// （(21,17)/(21,18) 改成 (21,18)/(21,19)），一樣沿用 HOUSE_ROAD_X／
+// HOUSE_ROAD_START_Z 推導，不寫死新數字。
 export const DAY_TWO_MORNING_ARRIVAL = {
-  player: { x: HOUSE_ROAD_X, z: HOUSE_ROAD_START_Z },
-  mayor: { x: HOUSE_ROAD_X, z: HOUSE_ROAD_START_Z + 1 },
+  player: { x: HOUSE_ROAD_X, z: HOUSE_ROAD_START_Z + 1 },
+  mayor: { x: HOUSE_ROAD_X, z: HOUSE_ROAD_START_Z + 2 },
+};
+
+// 第二天早上劇本第二段——港口迎接歐文(木匠)＋露比(藝術家)登島。玩家/
+// 村長的落點沿用既有的 LAYOUT.port.carpenterMeet 觸發區（原本木匠碼頭
+// 事件用的同一塊區域，中心點 (3,21)，南移一格站在區域內＝(3,22)，跟
+// Zeppelin 給的座標吻合，不是巧合、是同一塊地方），歐文/露比在旁邊代表
+// 剛下船，沒有精確的「跳板落地點」資料可推導，用小 offset 站在主角右側。
+export const DAY_TWO_PORT_ARRIVAL = {
+  player: {
+    x: LAYOUT.port.carpenterMeet.x,
+    z: LAYOUT.port.carpenterMeet.z + 1,
+  },
+  carpenter: {
+    x: LAYOUT.port.carpenterMeet.x + 1,
+    z: LAYOUT.port.carpenterMeet.z + 2,
+  },
+  artist: {
+    x: LAYOUT.port.carpenterMeet.x + 2,
+    z: LAYOUT.port.carpenterMeet.z + 2,
+  },
 };
 
 // 主屋門前道路往西分支；接近農田的北側入口向北加寬兩格，形成三格深的入口。

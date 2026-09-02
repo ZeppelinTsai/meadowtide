@@ -205,7 +205,13 @@ export const inventory = {
   tools: {
     wateringCan: true,
     hoe: true,
-    dualAxe: true,
+    // 2026-09-02 Zeppelin 決定：斧頭不再一開始就有，改成第二天早上
+    // 劇本裡歐文送給玩家的劇情道具（見 day2-morning-event.ts，授予
+    // 這一步還沒接上，下一輪山區採集教學那段才會真正呼叫）。這裡跟
+    // resetPrologueStartingItems()（prologue.ts）的既有行為對齊——
+    // 序章一開始就會把所有工具整組清成 false，這個靜態預設值本來就
+    // 只在跳過序章之類的邊界情況才真的生效，改成 false 讓兩邊一致。
+    dualAxe: false,
     sickle: true,
     fishingRod: true,
     milker: false,

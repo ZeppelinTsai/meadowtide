@@ -283,7 +283,9 @@ export function initTitleScreen() {
     inventory.learnedRecipes = [];
     inventory.tools.wateringCan = true;
     inventory.tools.hoe = true;
-    inventory.tools.dualAxe = true;
+    // 2026-09-02：斧頭改成第二天早上劇本裡歐文送的劇情道具，新遊戲
+    // 不再直接給——見 game-state.ts 那組預設值同一則說明。
+    inventory.tools.dualAxe = false;
     inventory.tools.sickle = true;
     inventory.tools.fishingRod = true;
     inventory.tools.milker = false;

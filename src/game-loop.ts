@@ -64,7 +64,6 @@ import {
   MAPS,
   carpenterQuest,
   CARPENTER_EVENT_WAIT_POS,
-  DAY_TWO_MORNING_ARRIVAL,
   SOUTHERNMOST_AVENUE_TREE_Z,
   aStar,
   portGroundY,
@@ -949,33 +948,39 @@ export function animate(now) {
       n.mesh.visible = false;
       return;
     }
-    // 第二天早上村長固定站在家門口等玩家：holding 為真時整段接管，不
-    // 讓下面的日常行程表(getScheduleTarget)把她重新排走。跟
-    // isCarpenterWaitingAtHouse 那段（更下面）是同一種「固定站位」寫
-    // 法，差別是這裡不用等 carpenterQuest 的 stage，直接看
-    // dayTwoMorningEvent.holding。
+    // 第二天早上劇本——村長在家門口等玩家、之後港口迎接歐文/露比，
+    // 都是同一組「固定站位」機制：holdPositions 有這個 npc id 的
+    // entry、而且目前地圖跟 holdMap 相符，就整段接管，不讓下面的日常
+    // 行程表(getScheduleTarget)/escort 機制把它重新接手。原本只認
+    // 「mayor + livingArea」寫死一組，2026-09-02 第二輪劇本擴充成
+    // 港口三人同時固定站位後，改成看 day2-morning-event.ts 自己維護的
+    // 那份表，站位資料/朝向都由呼叫端決定，這裡只負責套用。跟
+    // isCarpenterWaitingAtHouse 那段（更下面）是同一種「固定站位」
+    // 寫法的另一個例子。
     if (
       dayTwoMorningEvent.holding &&
-      n.id === "mayor" &&
-      gameState.currentMapName === "livingArea"
+      dayTwoMorningEvent.holdMap === gameState.currentMapName &&
+      dayTwoMorningEvent.holdPositions?.[n.id]
     ) {
+      const hold = dayTwoMorningEvent.holdPositions[n.id];
       npcGroup.visible = true;
       n.mesh.visible = true;
-      n.mesh.position.x = DAY_TWO_MORNING_ARRIVAL.mayor.x;
-      n.mesh.position.z = DAY_TWO_MORNING_ARRIVAL.mayor.z;
-      n.mesh.rotation.y = 0; // 面朝上(-Z)，見 day2-morning-event.ts 同一條公式註解
+      n.mesh.position.x = hold.x;
+      n.mesh.position.z = hold.z;
+      n.mesh.rotation.y = hold.rotY;
       // 2026-09-02 修正：animateWalk() 對「原地不動」的情況會把
       // position.y 整個覆蓋成微小的待機彈跳量(見 humanoid.ts
       // animateWalk 的 moving=false 分支，不是疊加)，所以地形高度
       // 一定要在呼叫 animateWalk() 之後再設，順序跟上面
       // isPrologueMayorFollowing、下面 escort trail 那兩段完全一樣。
-      // 原本寫反了，導致村長固定站位時整個人半沉進地板——這輪
-      // Zeppelin 回報「村長出現在地面底下」就是這裡。
+      // 原本寫反了，導致村長固定站位時整個人半沉進地板——上一輪
+      // Zeppelin 回報「村長出現在地面底下」就是這裡，這裡保留修正過
+      // 的順序。
       animateWalk(n.mesh, false, gameState.elapsed);
       n.mesh.position.y = characterGroundY(
-        "livingArea",
-        DAY_TWO_MORNING_ARRIVAL.mayor.x,
-        DAY_TWO_MORNING_ARRIVAL.mayor.z,
+        dayTwoMorningEvent.holdMap,
+        hold.x,
+        hold.z,
       );
       return;
     }
