@@ -393,7 +393,7 @@ body.cutscene-presentation #hud {
     transform 0.1s ease;
 }
 .dialogChoiceBtn:hover {
-  background: rgba(245, 197, 66, 0.18);
+  background: rgba(0, 0, 0, 0.9);
   transform: translateY(-1px);
 }
 .dialogChoiceBtn:active {
