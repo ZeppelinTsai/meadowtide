@@ -365,6 +365,8 @@ export const METEOR_SHOWER_PHASE_NAMES: Record<string, string> = Object.freeze({
   fading: "流星雨漸弱",
 });
 export const FULL_MOON_SEASON_DAY = 14;
+// 第一季前 7 天（教學週）強制晴天，避免新手教學被雨雪打斷。
+export const TUTORIAL_WEEK_DAYS = 7;
 export const dayLength =
   TIME_CONFIG.realSecondsPerGameHour * TIME_CONFIG.gameHoursPerDay;
 export const WEATHER_NAMES: Record<string, string> = {
@@ -442,7 +444,8 @@ export function createSeasonWeatherSchedule(
       const seasonDay = index + 1;
       return (
         isSunday(firstAbsoluteDay + index) ||
-        Boolean(METEOR_SHOWER_SCHEDULE[seasonDay])
+        Boolean(METEOR_SHOWER_SCHEDULE[seasonDay]) ||
+        (absoluteSeason === 0 && seasonDay <= TUTORIAL_WEEK_DAYS)
       );
     },
     random,
