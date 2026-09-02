@@ -149,6 +149,10 @@ export const PROLOGUE_SCRIPT: Record<string, DialogueLine[]> = {
     mayor(
       "「房子雖然空了一段時間，但我偶爾都有過來整理，基本生活應該沒有問題。」",
     ),
+    PROLOGUE_MARKERS.movementTutorialStart,
+    mayor("「先教你基本的行走。用 W／A／S／D 或方向鍵，就能控制自己的移動。」"),
+    mayor("「滑鼠滾輪可以拉近或拉遠鏡頭；手把則使用右蘑菇頭上下，調整到你看得舒服的距離吧。」"),
+    PROLOGUE_MARKERS.movementTutorialEnd,
   ],
   farming: [
     PROLOGUE_MARKERS.grantRadishSeeds,
