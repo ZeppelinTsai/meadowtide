@@ -18,6 +18,7 @@ import {
   METEOR_CONFIG,
   METEOR_SHOWER_SCHEDULE,
   METEOR_SHOWER_PHASE_NAMES,
+  FULL_MOON_SEASON_DAY,
   SEASON_NAMES,
   dayLength,
 } from "./game-state";
@@ -824,8 +825,10 @@ export function updateMoon() {
   const daylight = getDaylightForSeason();
   const daySpan = daylight.sunset - daylight.sunrise;
   const moonAgeFraction =
-    (gameState.currentDay % TIME_CONFIG.daysPerSeason) /
-    TIME_CONFIG.daysPerSeason; // 0 新月 ~0.5 滿月
+    (((getSeasonDay() - FULL_MOON_SEASON_DAY + TIME_CONFIG.daysPerSeason / 2) %
+      TIME_CONFIG.daysPerSeason) +
+      TIME_CONFIG.daysPerSeason) /
+    TIME_CONFIG.daysPerSeason; // 每季固定第 14 日滿月
   if (gameState.moonPhaseTextureDay !== gameState.currentDay) {
     gameState.moonPhaseTextureDay = gameState.currentDay;
     if (moonCoreMat.map) moonCoreMat.map.dispose();

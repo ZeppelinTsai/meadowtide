@@ -358,6 +358,7 @@ export const METEOR_SHOWER_PHASE_NAMES: Record<string, string> = Object.freeze({
   peak: "流星雨高峰",
   fading: "流星雨漸弱",
 });
+export const FULL_MOON_SEASON_DAY = 14;
 export const dayLength =
   TIME_CONFIG.realSecondsPerGameHour * TIME_CONFIG.gameHoursPerDay;
 export const WEATHER_NAMES: Record<string, string> = {
