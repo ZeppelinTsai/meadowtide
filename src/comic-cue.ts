@@ -114,7 +114,9 @@ export function showComicCue(spec?: ComicCueSpec | null) {
     }),
   );
   const baseScale = 1.5;
-  const baseY = actor.position.y + 1.48;
+  // Humanoids are about 1 world unit tall. Keep the sprite's centre far enough
+  // above the head that the full comic bubble never overlaps the actor.
+  const baseY = actor.position.y + 1.9;
   const startAt = performance.now();
   const isReverseBounce = spec.kind === "sweatFace";
   sprite.renderOrder = 1000;
@@ -129,7 +131,7 @@ export function showComicCue(spec?: ComicCueSpec | null) {
     const elapsed = (performance.now() - startAt) / 1000;
     const bouncePhase = Math.sin(elapsed * 9.5);
     const lift = Math.abs(bouncePhase) * 0.6;
-    const travel = isReverseBounce ? -bouncePhase * 0.7 : bouncePhase * 0.7;
+    const travel = isReverseBounce ? -bouncePhase * 0.32 : Math.abs(bouncePhase) * 0.18;
     sprite.position.y = baseY + (isReverseBounce ? 0.55 - lift * 0.8 : 0) + travel;
     const pulse = baseScale * (1 + Math.abs(Math.sin(elapsed * 9.5)) * 0.2);
     sprite.scale.set(pulse, pulse, 1);
