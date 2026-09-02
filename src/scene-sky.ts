@@ -33,10 +33,10 @@ export const TILE = 1;
 // 純 2D 網格擋不擋路；階梯用相鄰不同高度的方塊自然產生，不用額外做斜面
 // ==============================================================
 export const PLATEAU_Y = 0.55;
-export const NORTH_TERRAIN_EXTENSION = 6;
+export const NORTH_TERRAIN_EXTENSION = 6 + 5; // 2026-09-03 牧草地北擴 5 格，地板／東側懸崖延伸範圍(NORTH_TERRAIN_EXTENSION)要跟著蓋到新的北側平台，不然新畜欄那一截會浮在沒鋪地板的空地上
 // 最大拉遠時相機會看過南側地圖邊界；延伸純視覺地面，避免天空從底部露出。
 export const SOUTH_TERRAIN_EXTENSION = 90;
-export const NORTH_CLIFF_Z = -5.7;
+export const NORTH_CLIFF_Z = -5.7 - 5; // 2026-09-03 跟著北側平台一起往北推 5 格，見上面 NORTH_TERRAIN_EXTENSION 的說明
 export const CAMERA_WORLD_BOUNDS = Object.freeze({
   west: -3,
   east: LAYOUT.coast.rampX + LAYOUT.coast.rampWidth - 0.85 + 26.7,

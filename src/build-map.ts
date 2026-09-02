@@ -562,17 +562,20 @@ export function buildMap(mapName) {
         gameState.mapGroup.add(rail);
       });
     });
+    // 2026-09-03：這片沙灘裝飾跟崖底亂石本來是相對 NORTH_CLIFF_Z 手動
+    // 對齊的寫死數字，牧草地北擴/NORTH_CLIFF_Z 再往北推 5 格時要一起
+    // 動，不然會留在半路、跟新的懸崖線脫節。
     const sandFringe = new THREE.Mesh(
       new THREE.PlaneGeometry(13, 2.4),
       new THREE.MeshStandardMaterial({ color: 0xe8d29a }),
     );
     sandFringe.rotation.x = -Math.PI / 2;
-    sandFringe.position.set(5, 0.01, -7.1);
+    sandFringe.position.set(5, 0.01, -7.1 - 5);
     gameState.mapGroup.add(sandFringe);
     for (let i = 0; i < 6; i++) {
       const bx = hash2(i * 5.1, 2.2),
         bz = hash2(i * 2.7, 6.6);
-      const boulder = makeStone(bx * 11, -6.2 - bz * 1.5, bx);
+      const boulder = makeStone(bx * 11, -6.2 - 5 - bz * 1.5, bx);
       boulder.scale.setScalar(1.4 + bz * 1.8);
       gameState.mapGroup.add(boulder);
     }

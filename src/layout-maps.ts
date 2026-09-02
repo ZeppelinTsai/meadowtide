@@ -46,14 +46,21 @@ export const LAYOUT = {
   },
   barn: {
     x: 20,
-    z: -2,
+    z: -7,
     w: 3,
     d: 2,
     doorX: 21,
     visualScale: 2,
     doorWorldHeight: 1.05,
-  }, // 整座動物小屋向左移 3 格
-  pasture: { x: 17, z: -2, width: 15, height: 16 }, // 延伸到小屋左右，外緣由渲染做不規則化
+  }, // 整座動物小屋向左移 3 格；2026-09-03 再往北(-5)搬，見 pasture 註解
+  // 2026-09-03：Zeppelin 覺得牧草地不夠大，把小屋/圍籬/北側懸崖(玄武岩)
+  // 整組往北挪 5 格(barn.z -2→-7、NORTH_CLIFF_Z、NORTH_TERRAIN_EXTENSION
+  // 同步 -5/+5，見 scene-sky.ts)，挪出來的 5 排空間直接併回牧草地——
+  // 南緣(z+height-1=13)刻意維持原值不動，只有北緣往外長，房子/農田/
+  // 池塘/果樹等其餘區域完全不受影響。北側平台(z<0)本來就是
+  // isBlocked()(build-map.ts)特別放行的可走區域，不需要真的擴張
+  // tiles 陣列本身。
+  pasture: { x: 17, z: -7, width: 15, height: 21 }, // 延伸到小屋左右，外緣由渲染做不規則化
   orchard: {
     x: 28,
     z: -1,
@@ -2036,9 +2043,15 @@ for (let z = LAYOUT.barn.z; z < LAYOUT.barn.z + LAYOUT.barn.d; z++) {
     MAPS.livingArea.tiles[z][x] = 1;
 }
 // 清掉動物小屋門前偏左一格的樹；位置從穀倉門推導，不另寫絕對座標。
-MAPS.livingArea.tiles[LAYOUT.barn.z + LAYOUT.barn.d + 2][
-  LAYOUT.barn.doorX - 1
-] = 0;
+// 2026-09-03：小屋北移後這格可能落在北側平台(z<0，tiles 陣列外)，
+// 跟上面 barn 牆體標記迴圈同一個道理——陣列外本來就沒有 tile=7 這種
+// 死資料可清，跳過即可，不用讓陣列外索引直接炸掉。
+{
+  const treeZ = LAYOUT.barn.z + LAYOUT.barn.d + 2;
+  if (treeZ >= 0 && treeZ < MAPS.livingArea.tiles.length) {
+    MAPS.livingArea.tiles[treeZ][LAYOUT.barn.doorX - 1] = 0;
+  }
+}
 
 // 除錯工具找到最後一批死資料：x=17~19,z=13~14 還留著 tile=7，是很多輪
 // 之前那個 6 格小農田的殘骸。現在的 9 塊大農田系統完全不靠陣列裡的
