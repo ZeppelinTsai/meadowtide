@@ -124,6 +124,15 @@ export function setDialogCg(cgId) {
 // 對話行可以是純字串(沿用舊格式，沒有立繪/名牌)，也可以是
 // {text, speaker?, name?, cg?} 物件——speaker 對應立繪檔名，name 是
 // 名牌顯示文字(不填就查 npcs 裡對應 id 的 name)，cg 觸發全螢幕 CG。
+/** 無 NPC 發話者的系統提示：保留系統名牌，但永遠不載入角色立繪。 */
+export function systemDialog(text: string) {
+  return {
+    text,
+    dialogueType: "system" as const,
+    name: "系統",
+    hidePortrait: true,
+  };
+}
 export function normalizeDialogLine(line) {
   return typeof line === "string" ? { text: line } : line;
 }

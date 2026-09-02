@@ -1,4 +1,11 @@
 const TRANSITION_MS = 200;
+const BLACK_HOLD_MS = { short: 140, long: 420 } as const;
+
+export type BlackTransitionLength = keyof typeof BLACK_HOLD_MS;
+
+function wait(ms: number): Promise<void> {
+  return new Promise((resolve) => window.setTimeout(resolve, ms));
+}
 
 function getLoadingScreen() {
   const element = document.getElementById("loadingScreen");
@@ -31,4 +38,17 @@ export function hideLoadingScreen(): Promise<void> {
     element.addEventListener("transitionend", finish, { once: true });
     window.setTimeout(finish, TRANSITION_MS + 50);
   });
+}
+/**
+ * 共用事件黑幕：CG 用 short，跨地圖／重定位用 long。
+ * action 會在畫面全黑後執行，避免玩家看到場景或 CG 切換中的一幀。
+ */
+export async function runBlackTransition(
+  length: BlackTransitionLength,
+  action: () => void | Promise<void>,
+): Promise<void> {
+  await showLoadingScreen();
+  await action();
+  await wait(BLACK_HOLD_MS[length]);
+  await hideLoadingScreen();
 }

@@ -8,8 +8,9 @@ import {
 } from "./layout-maps";
 import { npcGroup, npcs } from "./npc-runtime";
 import { loadMap } from "./build-map";
+import { runBlackTransition } from "./loading-screen";
 import { groundY } from "./scene-sky";
-import { dialogQueue, showDialogSequence } from "./dialogue";
+import { dialogQueue, showDialogSequence, systemDialog } from "./dialogue";
 import type { ComicCueKind } from "./comic-cue";
 import { startGuidedWalk, endExternalGuidedWalk } from "./prologue";
 import { setTimePauseSource } from "./time-pause";
@@ -102,7 +103,10 @@ const carpenter = (
   name: "歐文",
   revealNameAfter,
 });
-const artist = (text: string, revealNameAfter?: { npcId: string; stage: 1 | 2 }) => ({
+const artist = (
+  text: string,
+  revealNameAfter?: { npcId: string; stage: 1 | 2 },
+) => ({
   text,
   speaker: "artist",
   name: "露比",
@@ -148,7 +152,10 @@ export function startDayTwoMorningEvent() {
       mayorNpc.mesh.visible = true;
       mayorNpc.mesh.position.set(
         DAY_TWO_MORNING_ARRIVAL.mayor.x,
-        groundY(DAY_TWO_MORNING_ARRIVAL.mayor.x, DAY_TWO_MORNING_ARRIVAL.mayor.z),
+        groundY(
+          DAY_TWO_MORNING_ARRIVAL.mayor.x,
+          DAY_TWO_MORNING_ARRIVAL.mayor.z,
+        ),
         DAY_TWO_MORNING_ARRIVAL.mayor.z,
       );
       // 面朝上(-Z，dx=0,dz=-1)：atan2(0,-1)+π = 0，跟玩家隔一格面對面。
@@ -180,8 +187,24 @@ export function startDayTwoMorningEvent() {
 // Zeppelin 原話：「接著可以直接黑屏，不必再讓玩家重走一次已經走過的
 // 路」。所以這裡不啟用 escort 機制，直接黑屏傳送到港口，抵達後才是
 // 玩家真正看得到、有意義的一場戲。
+function loadEventMap(
+  mapName: string,
+  startPos: { x: number; z: number },
+  onLoaded: () => void,
+) {
+  void runBlackTransition(
+    "long",
+    () =>
+      new Promise<void>((resolve) => {
+        loadMap(mapName, startPos, () => {
+          onLoaded();
+          resolve();
+        });
+      }),
+  );
+}
 function startPortArrivalScene() {
-  loadMap("port", DAY_TWO_PORT_ARRIVAL.player, () => {
+  loadEventMap("port", DAY_TWO_PORT_ARRIVAL.player, () => {
     gameState.player.rotation.y = 0; // 面朝上(-Z)看著剛靠岸的船
     const mayorNpc = npcs.find((n) => n.id === "mayor");
     const carpenterNpc = npcs.find((n) => n.id === "carpenter");
@@ -208,7 +231,10 @@ function startPortArrivalScene() {
       carpenterNpc.mesh.visible = true;
       carpenterNpc.mesh.position.set(
         DAY_TWO_PORT_ARRIVAL.carpenter.x,
-        portGroundY(DAY_TWO_PORT_ARRIVAL.carpenter.x, DAY_TWO_PORT_ARRIVAL.carpenter.z),
+        portGroundY(
+          DAY_TWO_PORT_ARRIVAL.carpenter.x,
+          DAY_TWO_PORT_ARRIVAL.carpenter.z,
+        ),
         DAY_TWO_PORT_ARRIVAL.carpenter.z,
       );
       carpenterNpc.path = null;
@@ -218,14 +244,21 @@ function startPortArrivalScene() {
       artistNpc.mesh.visible = true;
       artistNpc.mesh.position.set(
         DAY_TWO_PORT_ARRIVAL.artist.x,
-        portGroundY(DAY_TWO_PORT_ARRIVAL.artist.x, DAY_TWO_PORT_ARRIVAL.artist.z),
+        portGroundY(
+          DAY_TWO_PORT_ARRIVAL.artist.x,
+          DAY_TWO_PORT_ARRIVAL.artist.z,
+        ),
         DAY_TWO_PORT_ARRIVAL.artist.z,
       );
       artistNpc.path = null;
       artistNpc.lastTargetKey = null;
     }
     holdNpcsAt("port", {
-      mayor: { x: DAY_TWO_PORT_ARRIVAL.player.x, z: DAY_TWO_PORT_ARRIVAL.player.z, rotY: 0 },
+      mayor: {
+        x: DAY_TWO_PORT_ARRIVAL.player.x,
+        z: DAY_TWO_PORT_ARRIVAL.player.z,
+        rotY: 0,
+      },
       carpenter: {
         x: DAY_TWO_PORT_ARRIVAL.carpenter.x,
         z: DAY_TWO_PORT_ARRIVAL.carpenter.z,
@@ -311,7 +344,7 @@ const VILLAGE_TOUR = {
 function startVillageHouseTour() {
   dayTwoMorningEvent.phase = "villageWalk";
   gameState.cutsceneActive = true;
-  loadMap("oldVillage", { x: 152, z: 18 }, () => {
+  loadEventMap("oldVillage", { x: 152, z: 18 }, () => {
     // 露比的登場戲在港口結束；選屋只由村長帶主角與歐文前往。
     const artistNpc = npcs.find((npc) => npc.id === "artist");
     if (artistNpc) artistNpc.mesh.visible = false;
@@ -356,7 +389,7 @@ function finishVillageHouseTour() {
       carpenter("「你以後要擴建牧場，也少不了木材和石材。」"),
       carpenter("「我有一把備用的萬用斧，給你吧。」"),
       carpenter("「以後你就能自己取得木材跟石材了。」"),
-      "[獲得萬用斧]",
+      systemDialog("獲得萬用斧"),
       carpenter("「那麼，我們出發吧。」"),
       mayor("「山從村莊西北的樓梯走就能到了。」"),
     ],
@@ -447,36 +480,44 @@ function startCarpenterRepairScene() {
     inventory.stone = Math.max(0, inventory.stone - 10);
     dayTwoMorningEvent.materialsSpent = true;
   }
-  loadMap("oldVillage", { x: 137, z: 18 }, () => {
+  loadEventMap("oldVillage", { x: 137, z: 18 }, () => {
     holdNpcsAt("oldVillage", {
       carpenter: { ...VILLAGE_TOUR.carpenterHouse, rotY: Math.PI },
     });
-    showDialogSequence(
-      [
-        carpenter("「好，那我要開始修繕了。」"),
-        repairCg("「海邊的房子最麻煩的不是雨，是濕氣和鹽。」"),
-        repairCg("「外觀看起來沒什麼，裡面可能早就開始腐了。」"),
-        "[歐文敲了敲拆下來的木料]",
-        repairCg("「像這塊。」"),
-        repairCg("「再晚一點處理，就不是換幾塊木頭能解決的了。」"),
-        { text: "……", speaker: "hero", name: "主角", cg: "day2Carpenter-01" },
-        repairCg("「怎麼？」"),
-        "[主角搖頭]",
-        repairCg("「放心。」"),
-        repairCg("「這棟還救得回來。」"),
-        repairCg("「不然我也不會選它。」"),
-        "[繼續施工]",
-        repairCg("「材料夠我先處理最危險的地方了。」"),
-        repairCg("「剩下的我自己慢慢來。」"),
-        repairCg("「你今天已經幫很多了。」"),
-        repairCg("「謝了。」"),
-        "[看了一眼還沒整理好的屋內]",
-        repairCg("「等這裡整理好，再請你進來坐吧。」"),
-        "[歐文好感 +30]",
-        "[個人事件完成]",
-      ],
-      completeDayTwoMorningEvent,
-    );
+    showDialogSequence([carpenter("「好，那我要開始修繕了。」")], () => {
+      void runBlackTransition("short", () => {
+        showDialogSequence(
+          [
+            repairCg("「海邊的房子最麻煩的不是雨，是濕氣和鹽。」"),
+            repairCg("「外觀看起來沒什麼，裡面可能早就開始腐了。」"),
+            "[歐文敲了敲拆下來的木料]",
+            repairCg("「像這塊。」"),
+            repairCg("「再晚一點處理，就不是換幾塊木頭能解決的了。」"),
+            {
+              text: "……",
+              speaker: "hero",
+              name: "主角",
+              cg: "day2Carpenter-01",
+            },
+            repairCg("「怎麼？」"),
+            "[主角搖頭]",
+            repairCg("「放心。」"),
+            repairCg("「這棟還救得回來。」"),
+            repairCg("「不然我也不會選它。」"),
+            "[繼續施工]",
+            repairCg("「材料夠我先處理最危險的地方了。」"),
+            repairCg("「剩下的我自己慢慢來。」"),
+            repairCg("「你今天已經幫很多了。」"),
+            repairCg("「謝了。」"),
+            "[看了一眼還沒整理好的屋內]",
+            repairCg("「等這裡整理好，再請你進來坐吧。」"),
+            "[歐文好感 +30]",
+            "[個人事件完成]",
+          ],
+          completeDayTwoMorningEvent,
+        );
+      });
+    });
   });
 }
 
