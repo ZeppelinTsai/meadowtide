@@ -32,7 +32,8 @@ export const npcs = npcDefs.map((def) => {
             ? new THREE.Group() // 暫時不建立廚師模型；保留空節點供任務狀態查找。
             : makeHumanoid({ shirt: def.shirt, hair: def.hair });
   mesh.position.set(def.home.x, 0, def.home.z);
-  if (def.id === "chef") mesh.visible = false;
+  // 露比在正式登島／招募事件觸發前不存在於世界，避免在舊城鎮 (170,11) 預先出現。
+  if (def.id === "chef" || def.id === "artist") mesh.visible = false;
   npcGroup.add(mesh);
   return {
     ...def,
