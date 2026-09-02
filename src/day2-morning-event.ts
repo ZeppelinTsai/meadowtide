@@ -3,6 +3,7 @@ import {
   DAY_TWO_MORNING_ARRIVAL,
   DAY_TWO_PORT_ARRIVAL,
   carpenterQuest,
+  artistQuest,
   portGroundY,
   LAYOUT,
 } from "./layout-maps";
@@ -220,10 +221,13 @@ function startPortArrivalScene() {
     if (mayorNpc) {
       npcGroup.visible = true;
       mayorNpc.mesh.visible = true;
+      // 2026-09-03 修正：站位改用村長自己的座標，不再疊在主角腳下把
+      // 主角整場戲遮住（見 layout-maps.ts DAY_TWO_PORT_ARRIVAL.mayor
+      // 旁的說明）。
       mayorNpc.mesh.position.set(
-        DAY_TWO_PORT_ARRIVAL.player.x,
+        DAY_TWO_PORT_ARRIVAL.mayor.x,
         y,
-        DAY_TWO_PORT_ARRIVAL.player.z,
+        DAY_TWO_PORT_ARRIVAL.mayor.z,
       );
       mayorNpc.path = null;
       mayorNpc.lastTargetKey = null;
@@ -259,8 +263,8 @@ function startPortArrivalScene() {
     }
     holdNpcsAt("port", {
       mayor: {
-        x: DAY_TWO_PORT_ARRIVAL.player.x,
-        z: DAY_TWO_PORT_ARRIVAL.player.z,
+        x: DAY_TWO_PORT_ARRIVAL.mayor.x,
+        z: DAY_TWO_PORT_ARRIVAL.mayor.z,
         rotY: 0,
       },
       carpenter: {
@@ -349,12 +353,16 @@ function startVillageHouseTour() {
   dayTwoMorningEvent.phase = "villageWalk";
   gameState.cutsceneActive = true;
   loadEventMap("oldVillage", { x: 152, z: 18 }, () => {
-    // 露比的登場戲在港口結束；選屋只由村長帶主角與歐文前往。
+    // 2026-09-03 Zeppelin 反饋：選屋這段也讓露比跟著走（原本只有村長/
+    // 歐文陪同，露比港口登場戲結束就被藏起來）。跟歐文一樣進
+    // holdPositions，站位鏡射到村長另一側，updateDayTwoWalkFollowers()
+    // 每幀一起重算跟著村長走。
     const artistNpc = npcs.find((npc) => npc.id === "artist");
-    if (artistNpc) artistNpc.mesh.visible = false;
+    if (artistNpc) artistNpc.mesh.visible = true;
     holdNpcsAt("oldVillage", {
       mayor: { ...VILLAGE_TOUR.start, rotY: Math.PI / 2 },
       carpenter: { x: 153.2, z: 17.45, rotY: Math.PI / 2 },
+      artist: { x: 150.8, z: 17.45, rotY: Math.PI / 2 },
     });
     startGuidedWalk(
       [VILLAGE_TOUR.start, VILLAGE_TOUR.firstHouse],
@@ -396,6 +404,13 @@ function finishVillageHouseTour() {
       systemDialog("獲得萬用斧"),
       carpenter("「那麼，我們出發吧。」"),
       mayor("「山從村莊西北的樓梯走就能到了。」"),
+      // 2026-09-03 Zeppelin：上山採集前加一段，讓露比明確表態不跟去——
+      // 她沒有掛在 isCarpenterEscortActor 那套 escort 機制上（那邊只認
+      // "mayor"/"carpenter"），這段對話結束、holdPositions 被
+      // beginMountainRoute() 釋放後，她會自動退回 npc-defs.ts 原本的
+      // 舊城鎮日常排程，不需要另外寫程式碼把她攔下來。
+      artist("「我就不跟你們上山了，這附近我想再逛逛。」"),
+      mayor("「也好，路上小心。」"),
     ],
     () => animatePrologueZoom(10, 0.9, beginMountainRoute),
   );
@@ -558,6 +573,13 @@ function completeDayTwoMorningEvent() {
   releaseHold();
   setTimePauseSource("guidedGameplay", false);
   gameState.cutsceneActive = false;
+  // 2026-09-03 Zeppelin：「木匠事件結束後準備接露比事件」——先讓她站在
+  // 舊城鎮定點等，文本之後才給（見 layout-maps.ts artistQuest 旁的
+  // 說明）。game-loop.ts 看到這個 stage 就會把她釘在
+  // ARTIST_EVENT_WAIT_POS，蓋掉原本的日常排程。
+  if (artistQuest.stage === "not_started") {
+    artistQuest.stage = "waiting_oldVillage";
+  }
 }
 
 export function canTriggerDayTwoTouchEvent(map: string, x: number, z: number) {
@@ -592,6 +614,12 @@ export function updateDayTwoWalkFollowers() {
       };
       dayTwoMorningEvent.holdPositions.carpenter = {
         x: mayorNpc.mesh.position.x + 1.15,
+        z: mayorNpc.mesh.position.z + 0.45,
+        rotY: mayorNpc.mesh.rotation.y,
+      };
+      // 露比鏡射到村長另一側，跟歐文左右對稱，不會撞在一起。
+      dayTwoMorningEvent.holdPositions.artist = {
+        x: mayorNpc.mesh.position.x - 1.15,
         z: mayorNpc.mesh.position.z + 0.45,
         rotY: mayorNpc.mesh.rotation.y,
       };

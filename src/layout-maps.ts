@@ -2311,6 +2311,16 @@ export const DAY_TWO_PORT_ARRIVAL = {
     x: LAYOUT.port.carpenterMeet.x,
     z: LAYOUT.port.carpenterMeet.z + 1,
   },
+  // 2026-09-03 修正：這裡原本沒有村長自己的座標，startPortArrivalScene()
+  // 直接把村長疊在 player 同一格（"起點座標不重要，下一幀會被
+  // holdPositions 覆寫"的舊註解誤把 holdPositions 也設成同一格）——
+  // 疊在主角腳下的木匠模型整場戲把主角遮住，Zeppelin 反饋「港口看不到
+  // 主角」。這是碼頭見面戲的固定站位，不是會被走位覆寫掉的暫時值，改給
+  // 村長自己一格，跟主角同排、面向船的方向站在旁邊，不跟歐文/露比同側。
+  mayor: {
+    x: LAYOUT.port.carpenterMeet.x - 1,
+    z: LAYOUT.port.carpenterMeet.z + 1,
+  },
   carpenter: {
     x: LAYOUT.port.carpenterMeet.x + 1,
     z: LAYOUT.port.carpenterMeet.z + 2,
@@ -2439,6 +2449,21 @@ export const CARPENTER_CONSTRUCTION_DAYS = 2;
 export const carpenterQuest = {
   stage: "not_started",
   constructionStartDay: -1,
+};
+
+// ==============================================================
+// 露比(藝術家)個人事件——2026-09-03 Zeppelin：「木匠事件結束後準備接
+// 露比事件」。這輪先只處理「人要站在哪、面向哪」，文本之後才會給，故意
+// 不比照 carpenterQuest/chefQuest 整套 stage 機器先寫好——只留一個最小
+// 的 stage 開關，day2-morning-event.ts 的 completeDayTwoMorningEvent()
+// 推進到 "waiting_oldVillage" 之後，game-loop.ts 就把她釘在這個定點
+// （蓋掉 npc-defs.ts 原本的日常排程，跟 CARPENTER_EVENT_WAIT_POS 那段
+// 同一招），等真正的招募/個人事件劇本寫出來，再往下擴充成觸碰事件 +
+// 更多 stage。
+// ==============================================================
+export const ARTIST_EVENT_WAIT_POS = { x: 142, z: 17 };
+export const artistQuest = {
+  stage: "not_started" as "not_started" | "waiting_oldVillage",
 };
 
 // events（地圖觸碰/互動事件表）需要 loadMap/handleCarpenterDockTouch/

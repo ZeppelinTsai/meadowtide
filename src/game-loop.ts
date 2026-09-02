@@ -64,6 +64,8 @@ import {
   MAPS,
   carpenterQuest,
   CARPENTER_EVENT_WAIT_POS,
+  artistQuest,
+  ARTIST_EVENT_WAIT_POS,
   SOUTHERNMOST_AVENUE_TREE_Z,
   aStar,
   portGroundY,
@@ -1094,6 +1096,28 @@ export function animate(now) {
         trailPoint.x,
         trailPoint.z,
       );
+      return;
+    }
+    // 露比(藝術家)個人事件——木匠事件結束後先釘她站在舊城鎮定點等，
+    // 蓋掉 npc-defs.ts 原本的日常排程。跟上面 isCarpenterWaitingAtHouse
+    // 同一招，只是還沒有招募/個人事件觸碰點，純粹站著等文本補上。
+    if (
+      artistQuest.stage === "waiting_oldVillage" &&
+      n.id === "artist" &&
+      gameState.currentMapName === "oldVillage"
+    ) {
+      n.mesh.visible = true;
+      n.mesh.position.set(
+        ARTIST_EVENT_WAIT_POS.x,
+        characterGroundY(
+          "oldVillage",
+          ARTIST_EVENT_WAIT_POS.x,
+          ARTIST_EVENT_WAIT_POS.z,
+        ),
+        ARTIST_EVENT_WAIT_POS.z,
+      );
+      n.mesh.rotation.y = 0; // 面朝上
+      animateWalk(n.mesh, false, gameState.elapsed);
       return;
     }
     if (!n.mesh.visible) return; // 木匠抵達前先不跑排程/路徑，省得算假人的路
