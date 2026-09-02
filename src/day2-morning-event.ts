@@ -312,10 +312,12 @@ function startVillageHouseTour() {
   dayTwoMorningEvent.phase = "villageWalk";
   gameState.cutsceneActive = true;
   loadMap("oldVillage", { x: 152, z: 18 }, () => {
+    // 露比的登場戲在港口結束；選屋只由村長帶主角與歐文前往。
+    const artistNpc = npcs.find((npc) => npc.id === "artist");
+    if (artistNpc) artistNpc.mesh.visible = false;
     holdNpcsAt("oldVillage", {
       mayor: { ...VILLAGE_TOUR.start, rotY: Math.PI / 2 },
       carpenter: { x: 153.2, z: 17.45, rotY: Math.PI / 2 },
-      artist: { x: 154.2, z: 17.45, rotY: Math.PI / 2 },
     });
     startGuidedWalk(
       [VILLAGE_TOUR.start, VILLAGE_TOUR.firstHouse],
@@ -522,11 +524,6 @@ export function updateDayTwoWalkFollowers() {
       };
       dayTwoMorningEvent.holdPositions.carpenter = {
         x: mayorNpc.mesh.position.x + 1.15,
-        z: mayorNpc.mesh.position.z + 0.45,
-        rotY: mayorNpc.mesh.rotation.y,
-      };
-      dayTwoMorningEvent.holdPositions.artist = {
-        x: mayorNpc.mesh.position.x + 2.15,
         z: mayorNpc.mesh.position.z + 0.45,
         rotY: mayorNpc.mesh.rotation.y,
       };

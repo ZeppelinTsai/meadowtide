@@ -1000,7 +1000,7 @@ export function animate(now) {
       // 原本寫反了，導致村長固定站位時整個人半沉進地板——上一輪
       // Zeppelin 回報「村長出現在地面底下」就是這裡，這裡保留修正過
       // 的順序。
-      animateWalk(n.mesh, moved > 0.008, gameState.elapsed);
+      animateWalk(n.mesh, moved > 0.008, gameState.effectElapsed);
       n.mesh.position.y = characterGroundY(
         dayTwoMorningEvent.holdMap,
         hold.x,
