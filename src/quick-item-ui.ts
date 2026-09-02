@@ -12,7 +12,7 @@ type QuickDirection = "up" | "down" | "left" | "right";
 
 const ITEM_ROWS = [
   ["radishSeeds", "potatoSeeds", "tomatoSeeds", "harvested"],
-  ["fish", "oysters"],
+  ["fish", "oysters", "mushroom"],
   [
     "wood",
     "stone",
@@ -45,6 +45,7 @@ const SYMBOLS: Record<string, string> = {
   harvested: "穗",
   fish: "魚",
   oysters: "貝",
+  mushroom: "菇",
   wood: "木",
   stone: "石",
   wildDaisy: "雛",

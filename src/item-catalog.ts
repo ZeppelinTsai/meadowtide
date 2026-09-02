@@ -43,7 +43,7 @@ export const SEED_ITEMS: readonly ItemDefinition[] = [
 export const BASIC_ITEMS: readonly ItemDefinition[] = [
   ...SEED_ITEMS,
   { id: "harvested", label: "農作物", edible: true },
-  { id: "mushroom", label: "蘑菇", edible: true },
+  { id: "mushroom", label: "香菇", edible: true }, // 2026-09-01：原本只有 prologue 劇情贈送，這次加了野外採集點，改用具體品種名
   { id: "fish", label: "魚", edible: true },
   { id: "oysters", label: "牡蠣", edible: true },
   { id: "wood", label: "木材", edible: false },

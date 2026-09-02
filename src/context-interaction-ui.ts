@@ -21,9 +21,11 @@ import {
   WOOD_NODES,
   STONE_NODES,
   FLOWER_NODES,
+  MUSHROOM_NODES,
   isPlantingAllowedAt,
 } from "./game-state";
 import { flowerSpeciesLabel } from "./wildflowers";
+import { mushroomSpeciesLabel } from "./mushrooms";
 import { animals, npcs } from "./npc-runtime";
 import { renderer, camera, scene } from "./scene-sky";
 import {
@@ -48,6 +50,7 @@ import {
 import {
   gatherNodeMeshes,
   flowerNodeMeshes,
+  mushroomNodeMeshes,
   fishingWaterMeshes,
   oreNodeMeshes,
 } from "./scene-registries";
@@ -111,7 +114,7 @@ let markerTimer = 0,
 // 2026-09-01：採花動作 id 是 "flower"（跟 wood/stone 平行但不同 id，見
 // targetForFlower()），原本沒補進這張表，跟砍柴/採石不同——按住互動鍵
 // 沒辦法連續採花，只能一次次重新按。補進來讓採集手感跟木材/石頭一致。
-const CONTINUOUS_PRIMARY_ACTIONS = new Set(["plant", "wood", "stone", "flower"]);
+const CONTINUOUS_PRIMARY_ACTIONS = new Set(["plant", "wood", "stone", "flower", "mushroom"]);
 let continuousPrimaryHeld = false,
   continuousLastTriggerKey = "";
 
@@ -227,6 +230,25 @@ function targetForFlower(nodeId: string): WorldTarget | null {
     getPosition: () => (node.collected ? null : { x: node.x, z: node.z }),
     isValid: () =>
       hasTool("sickle") && !node.collected && entry.group.visible,
+  };
+}
+function targetForMushroom(nodeId: string): WorldTarget | null {
+  // 蘑菇「直接可以摘」，不用檢查 hasTool()——跟野花/木材/石頭最大的
+  // 差異就在這裡，其餘結構完全比照 targetForFlower()。
+  const entry = mushroomNodeMeshes.find(
+    (e) => e.nodeId === nodeId && e.map === gameState.currentMapName,
+  );
+  const node = MUSHROOM_NODES.find((n) => n.id === nodeId);
+  if (!entry || !node || node.collected || !node.mushroomSpecies) return null;
+  return {
+    id: "mushroom:" + nodeId,
+    object: entry.group,
+    radius: 1.2,
+    actions: [
+      legacyAction("mushroom", `\u63a1\u96c6${mushroomSpeciesLabel(node.mushroomSpecies)}`),
+    ],
+    getPosition: () => (node.collected ? null : { x: node.x, z: node.z }),
+    isValid: () => !node.collected && entry.group.visible,
   };
 }
 function targetForOre(nodeId: string): WorldTarget | null {
@@ -429,6 +451,10 @@ function allTargets() {
     const t = targetForFlower(e.nodeId);
     if (t) list.push(t);
   });
+  mushroomNodeMeshes.forEach((e) => {
+    const t = targetForMushroom(e.nodeId);
+    if (t) list.push(t);
+  });
   oreNodeMeshes.forEach((e) => {
     const t = targetForOre(e.nodeId);
     if (t) list.push(t);
@@ -461,6 +487,8 @@ function refreshSelectedTarget(target: WorldTarget) {
     return targetForGather(target.id.slice(7));
   if (target.id.startsWith("flower:"))
     return targetForFlower(target.id.slice(7));
+  if (target.id.startsWith("mushroom:"))
+    return targetForMushroom(target.id.slice(9));
   if (target.id.startsWith("ore:")) return targetForOre(target.id.slice(4));
   if (target.id.startsWith("pasture:")) return targetForPasture();
   const position = target.getPosition();

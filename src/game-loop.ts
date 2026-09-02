@@ -13,6 +13,7 @@ import {
   WOOD_NODES,
   STONE_NODES,
   FLOWER_NODES,
+  MUSHROOM_NODES,
   settlePastureGrazing,
   settleFeederConsumption,
   pastureGrassStageAt,
@@ -147,6 +148,7 @@ import {
   pastureGrassBlades,
   gatherNodeMeshes,
   flowerNodeMeshes,
+  mushroomNodeMeshes,
   celestialSparkleMaterials,
   EAST_SEA_WAVE,
   NORTH_SEA_WAVE,
@@ -838,6 +840,19 @@ export function animate(now) {
   });
   flowerNodeMeshes.forEach((entry) => {
     const node = FLOWER_NODES.find((candidate) => candidate.id === entry.nodeId);
+    if (!node) {
+      entry.group.visible = false;
+      return;
+    }
+    entry.group.position.set(
+      node.x,
+      entry.map === "mountain" ? mountainGroundY(node.x, node.z) : 0,
+      node.z,
+    );
+    entry.group.visible = !node.collected;
+  });
+  mushroomNodeMeshes.forEach((entry) => {
+    const node = MUSHROOM_NODES.find((candidate) => candidate.id === entry.nodeId);
     if (!node) {
       entry.group.visible = false;
       return;

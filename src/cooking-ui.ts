@@ -13,7 +13,7 @@ import { reportPrologueCookingSuccess } from "./prologue";
 
 const INGREDIENT_LABELS: Record<CookingIngredientId, string> = {
   harvested: "農作物",
-  mushroom: "蘑菇",
+  mushroom: "香菇",
   fish: "魚",
   oysters: "牡蠣",
 };

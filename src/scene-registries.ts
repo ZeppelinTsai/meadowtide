@@ -28,6 +28,12 @@ export const waterSkyUnderlayMaterials: import("three").MeshStandardMaterial[] =
         nodeId: string;
         map: "livingArea" | "mountain";
       }[] = [];
+      // 蘑菇叢生節點——跟 flowerNodeMeshes 同一個理由，開一份獨立平行表。
+      export const mushroomNodeMeshes: {
+        group: import("three").Group;
+        nodeId: string;
+        map: "livingArea" | "mountain";
+      }[] = [];
       // 鐘乳石洞窟礦石節點——跟 gatherNodeMeshes 同一套模式，buildMap()
       // 重建這個地圖時清空重登記；礦石是「換樓層才重灑」不是「按時段
       // 刷新」，所以不需要 gatherNodeMeshes 那種原地搬動邏輯，採完直接

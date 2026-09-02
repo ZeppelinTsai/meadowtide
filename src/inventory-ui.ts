@@ -213,7 +213,7 @@ function inventoryEntries(): InventoryEntry[] {
     {
       id: "mushroom",
       tab: "bag",
-      label: "蘑菇",
+      label: "香菇",
       amount: inventory.mushrooms,
       tone: "red",
       symbol: "菇",

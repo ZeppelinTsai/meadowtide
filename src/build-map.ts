@@ -76,6 +76,7 @@ import {
   thresholdMarkersVisible,
   gatherNodeMeshes,
   flowerNodeMeshes,
+  mushroomNodeMeshes,
   oreNodeMeshes,
   celestialSparkleMaterials,
   southIndoorWallMeshes,
@@ -199,11 +200,13 @@ import {
   WOOD_NODES,
   STONE_NODES,
   FLOWER_NODES,
+  MUSHROOM_NODES,
   FEEDER_VISUAL,
   isPointInsideFeeder,
   refreshGatherNodes,
 } from "./game-state";
 import { makeFlowerCluster } from "./wildflowers";
+import { makeMushroomCluster } from "./mushrooms";
 
 // 地圖底板，可選「星空穿透」寫法：transparent+opacity:1+depthWrite:false，
 // 不是只關掉 depthWrite。純關 depthWrite（保留 opaque）會讓地板完全不擋深度，
@@ -269,6 +272,7 @@ export function buildMap(mapName) {
   thresholdMarkerMeshes.length = 0;
   gatherNodeMeshes.length = 0;
   flowerNodeMeshes.length = 0;
+  mushroomNodeMeshes.length = 0;
   oreNodeMeshes.length = 0;
   celestialSparkleMaterials.length = 0;
   southIndoorWallMeshes.length = 0;
@@ -2499,6 +2503,15 @@ export function buildMap(mapName) {
         gameState.mapGroup.add(cluster);
         flowerNodeMeshes.push({ group: cluster, nodeId: n.id, map: "mountain" });
       });
+      // 蘑菇節點——跟野花同一批區域，同一套渲染模式，只是每區只有 1 個。
+      MUSHROOM_NODES.filter((n) => n.map === "mountain").forEach((n) => {
+        if (!n.mushroomSpecies) return;
+        const cluster = makeMushroomCluster(n.mushroomSpecies, n.x, n.z);
+        cluster.position.y = mountainGroundY(n.x, n.z);
+        cluster.visible = !n.collected;
+        gameState.mapGroup.add(cluster);
+        mushroomNodeMeshes.push({ group: cluster, nodeId: n.id, map: "mountain" });
+      });
     }
   }
 
@@ -3612,6 +3625,14 @@ export function buildMap(mapName) {
       cluster.visible = !n.collected;
       plateauGroup.add(cluster);
       flowerNodeMeshes.push({ group: cluster, nodeId: n.id, map: "livingArea" });
+    });
+    // 蘑菇節點——生活區山腳，同一套模式。
+    MUSHROOM_NODES.filter((n) => n.map === "livingArea").forEach((n) => {
+      if (!n.mushroomSpecies) return;
+      const cluster = makeMushroomCluster(n.mushroomSpecies, n.x, n.z);
+      cluster.visible = !n.collected;
+      plateauGroup.add(cluster);
+      mushroomNodeMeshes.push({ group: cluster, nodeId: n.id, map: "livingArea" });
     });
 
     // 行道樹右側正式分成上下兩區：上方聚會／個人放鬆，下方小花園。

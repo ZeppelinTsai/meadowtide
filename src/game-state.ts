@@ -22,6 +22,10 @@ import {
   type FlowerSpeciesId,
   flowerSpeciesLabel,
 } from "./wildflowers";
+import {
+  type MushroomSpeciesId,
+  mushroomSpeciesLabel,
+} from "./mushrooms";
 export { TOOL_DEFINITIONS, type ToolId } from "./tool-catalog";
 export { MAX_EXTREME_WEATHER_PER_SEASON } from "./weather-schedule";
 
@@ -813,7 +817,7 @@ export function settleFeederConsumption() {
 // 玩家預設已經拿到斧頭，兩種資源現階段都用同一把斧頭簡化採集，之後
 // 「採礦(鐘乳石洞跟山洞)」是完全不同的系統，不是這裡的石頭採集點升級。
 // ==============================================================
-export type GatherKind = "wood" | "stone" | "flower";
+export type GatherKind = "wood" | "stone" | "flower" | "mushroom";
 export const GATHER_YIELD_MIN = 3,
   GATHER_YIELD_MAX = 5;
 export interface GatherNode {
@@ -826,13 +830,23 @@ export interface GatherNode {
   collected: boolean;
   // 序章荒廢農田固定障礙：跨刷新時段保留，直到玩家親自清除。
   persistent?: boolean;
-  // 野花節點專用：哪個物種。wood/stone 節點不會有這個欄位。
+  // 野花節點專用：哪個物種。wood/stone/mushroom 節點不會有這個欄位。
   species?: FlowerSpeciesId;
+  // 蘑菇節點專用：哪個物種。目前只有 "mushroom"(香菇)一種，欄位先留著
+  // 給以後其他菇類用，跟 species(野花)分開存、不共用同一個欄位——兩者
+  // 型別不同，共用容易在只認得其中一種的既有程式碼裡造成誤判。
+  mushroomSpecies?: MushroomSpeciesId;
 }
 export const WOOD_NODES: GatherNode[] = [];
 export const STONE_NODES: GatherNode[] = [];
 export const FLOWER_NODES: GatherNode[] = [];
+export const MUSHROOM_NODES: GatherNode[] = [];
 export const GATHER_NODES_PER_KIND = 3;
+// 蘑菇——跟野花共用同一批區域(mountainSide/foot/waist)，但密度低很多：
+// 每區固定 1 個節點，不用像 FLOWER_NODES_PER_ZONE 那樣分物種池，因為
+// 目前只有香菇一種，直接摘、不需要工具。之後真的加了第二種菇，這裡
+// 才需要比照 FLOWER_ZONE_SPECIES 開一張「每區可能物種」的表。
+export const MUSHROOM_NODES_PER_ZONE = 1;
 
 // 野花——每區允許的物種池與每次刷新的節點數，對應規格書的密度表：
 // 生活區山腳(高密度)/山區平台1(中密度)/山區平台2(中密度)各 3 節點。
@@ -922,8 +936,9 @@ export function refreshGatherNodes(force = false) {
   );
   WOOD_NODES.splice(0, WOOD_NODES.length, ...persistentWood);
   STONE_NODES.splice(0, STONE_NODES.length, ...persistentStone);
-  // 野花節點目前沒有 persistent 用例，直接整批清空重灑。
+  // 野花/蘑菇節點目前沒有 persistent 用例，直接整批清空重灑。
   FLOWER_NODES.length = 0;
+  MUSHROOM_NODES.length = 0;
   const usedByMap = new Map<string, { x: number; z: number }[]>();
   [...persistentWood, ...persistentStone].forEach((node) => {
     const used = usedByMap.get(node.map) || [];
@@ -997,6 +1012,37 @@ export function refreshGatherNodes(force = false) {
       });
     }
   }
+  // 蘑菇節點——跟野花同一套刷新時段/候選格演算法、同一批三個區域，只是
+  // 密度低很多(每區固定 1 個)，而且不吃工具檢查(摘香菇不用鐮刀/斧頭，
+  // hasTool 判定留在 harvestMushroomNode() 裡確認過永遠成立就好，這裡
+  // 不用另外過濾)。Zeppelin：「一區一個一個就好」。
+  for (const zone of flowerZones) {
+    const map = zone === "mountainSide" ? "livingArea" : "mountain";
+    const used = usedByMap.get(map) || [];
+    usedByMap.set(map, used);
+    const candidates = shuffled(gatherCandidates(zone));
+    for (let index = 0; index < MUSHROOM_NODES_PER_ZONE; index++) {
+      const pickIndex = candidates.findIndex((cell) =>
+        used.every(
+          (taken) =>
+            Math.abs(taken.x - cell.x) + Math.abs(taken.z - cell.z) >= 2,
+        ),
+      );
+      if (pickIndex < 0)
+        throw new Error(`採集點候選格不足：${zone}/mushroom`);
+      const [cell] = candidates.splice(pickIndex, 1);
+      used.push(cell);
+      MUSHROOM_NODES.push({
+        id: `${zone}-mushroom-${index}`,
+        kind: "mushroom",
+        map,
+        zone,
+        mushroomSpecies: "mushroom",
+        ...cell,
+        collected: false,
+      });
+    }
+  }
   return true;
 }
 
@@ -1051,6 +1097,34 @@ export function harvestFlowerNode(x: number, z: number) {
     kind: "success",
     title: "採花",
     text: `${flowerSpeciesLabel(node.species)} ×${amount}`,
+    count: amount,
+    until: gameState.elapsed + 2.6,
+  };
+  return amount;
+}
+
+// 蘑菇採集——跟 harvestFlowerNode 同一套模式，但「直接可以摘」不用檢查
+// hasTool()，也沒有季節限定(四季都有，跟野花一樣)。目前只有香菇一種，
+// 產量寫回 inventory.mushrooms(既有欄位，沒有另外開 wildflowers 那種
+// per-species 表——之後真的加第二種菇時再參考野花的做法擴充)。
+export function harvestMushroomNode(x: number, z: number) {
+  const node = MUSHROOM_NODES.find(
+    (candidate) =>
+      candidate.x === x &&
+      candidate.z === z &&
+      !candidate.collected &&
+      candidate.mushroomSpecies,
+  );
+  if (!node || !node.mushroomSpecies) return 0;
+  const amount =
+    GATHER_YIELD_MIN +
+    Math.floor(Math.random() * (GATHER_YIELD_MAX - GATHER_YIELD_MIN + 1));
+  inventory.mushrooms += amount;
+  node.collected = true;
+  gameState.harvestFeedback = {
+    kind: "success",
+    title: "採香菇",
+    text: `${mushroomSpeciesLabel(node.mushroomSpecies)} ×${amount}`,
     count: amount,
     until: gameState.elapsed + 2.6,
   };

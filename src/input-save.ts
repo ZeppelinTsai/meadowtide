@@ -30,8 +30,10 @@ import {
   WOOD_NODES,
   STONE_NODES,
   FLOWER_NODES,
+  MUSHROOM_NODES,
   harvestGatherNode,
   harvestFlowerNode,
+  harvestMushroomNode,
   refreshGatherNodes,
   RECIPES,
 } from "./game-state";
@@ -166,6 +168,7 @@ import {
 import {
   gatherNodeMeshes,
   flowerNodeMeshes,
+  mushroomNodeMeshes,
   oreNodeMeshes,
   setThresholdMarkersVisible,
 } from "./scene-registries";
@@ -357,6 +360,7 @@ export function saveGame(slot = "default") {
     woodNodes: JSON.parse(JSON.stringify(WOOD_NODES)),
     stoneNodes: JSON.parse(JSON.stringify(STONE_NODES)),
     flowerNodes: JSON.parse(JSON.stringify(FLOWER_NODES)),
+    mushroomNodes: JSON.parse(JSON.stringify(MUSHROOM_NODES)),
     // 洞窟樓層+礦石節點——不像 woodNodes/stoneNodes 有「刷新時段」欄位，
     // 單純存目前樓層跟該層的採集狀態；讀檔時只還原資料，實際地磚/模型
     // 由 loadMap() 的 regenerateMineFloor() 保險呼叫重新生成(見
@@ -547,10 +551,16 @@ export function loadGame(
     STONE_NODES.splice(0, STONE_NODES.length, ...data.stoneNodes);
     if (Array.isArray(data.flowerNodes)) {
       FLOWER_NODES.splice(0, FLOWER_NODES.length, ...data.flowerNodes);
+      if (Array.isArray(data.mushroomNodes)) {
+        MUSHROOM_NODES.splice(0, MUSHROOM_NODES.length, ...data.mushroomNodes);
+      } else {
+        // 蘑菇系統上線前(但已經有野花)的存檔——同一招，整批重灑一次。
+        refreshGatherNodes(true);
+      }
     } else {
       // 野花系統上線前的舊存檔沒有這個欄位——強制整批重灑一次(木材/
-      // 石頭/野花)，比只補野花、木石維持舊座標簡單，也是一次性的遷移
-      // 成本，之後每個刷新時段都會照常運作。
+      // 石頭/野花/蘑菇)，比只補野花、木石維持舊座標簡單，也是一次性的
+      // 遷移成本，之後每個刷新時段都會照常運作。
       refreshGatherNodes(true);
     }
   } else {
@@ -1193,8 +1203,21 @@ addEventListener("keydown", (e) => {
     const woodNode = WOOD_NODES.find(nearNode);
     const stoneNode = !woodNode && STONE_NODES.find(nearNode);
     const gatherNode = woodNode || stoneNode;
-    if (gatherNode && hasTool("dualAxe")) {
+    if (gatherNode) {
       const kind = woodNode ? "wood" : "stone";
+      if (!hasTool("dualAxe")) {
+        // 2026-09-01：開場玩家還沒拿到斧頭時，站在木材/石頭旁邊按 E 原本
+        // 完全沒反應，Zeppelin 反饋要跳提示，避免玩家搞不清楚為什麼
+        // 清不掉——跟下面野花的「需要鐮刀」提示同一套做法(kind:"empty"
+        // 樣式，跟 harvestToast 共用同一個 DOM/CSS，不用另外做新元件)。
+        gameState.harvestFeedback = {
+          kind: "empty",
+          title: "需要斧頭",
+          text: "先裝備斧頭才能" + (kind === "wood" ? "砍柴" : "採石") + "。",
+          until: gameState.elapsed + 2.6,
+        };
+        return;
+      }
       const granted = harvestGatherNode(kind, gatherNode.x, gatherNode.z);
       if (granted > 0) {
         if (kind === "wood") playRandomSfx(CHOP_WOOD_SFX);
@@ -1229,9 +1252,8 @@ addEventListener("keydown", (e) => {
   // inventory.wildflowers[物種](見 harvestFlowerNode())。鐮刀目前沒有
   // 專屬採集音效/飛散演出可用，先不比照木材/石頭加一套，等有素材再補。
   if (
-    (gameState.currentMapName === "mountain" ||
-      gameState.currentMapName === "livingArea") &&
-    hasTool("sickle")
+    gameState.currentMapName === "mountain" ||
+    gameState.currentMapName === "livingArea"
   ) {
     const { x: flx, z: flz } = gameState.playerGridPos;
     const flowerNode = FLOWER_NODES.find(
@@ -1241,10 +1263,44 @@ addEventListener("keydown", (e) => {
         Math.abs(n.x - flx) + Math.abs(n.z - flz) <= 1,
     );
     if (flowerNode) {
+      if (!hasTool("sickle")) {
+        gameState.harvestFeedback = {
+          kind: "empty",
+          title: "需要鐮刀",
+          text: "先裝備鐮刀才能採集花朵。",
+          until: gameState.elapsed + 2.6,
+        };
+        return;
+      }
       const granted = harvestFlowerNode(flowerNode.x, flowerNode.z);
       if (granted > 0) {
         const meshEntry = flowerNodeMeshes.find(
           (entry) => entry.nodeId === flowerNode.id,
+        );
+        if (meshEntry) meshEntry.group.visible = false;
+      }
+      return;
+    }
+  }
+
+  // 蘑菇節點——跟野花同一種鄰接判定，但「直接可以摘」不用檢查
+  // hasTool()，產量寫進 inventory.mushrooms(見 harvestMushroomNode())。
+  if (
+    gameState.currentMapName === "mountain" ||
+    gameState.currentMapName === "livingArea"
+  ) {
+    const { x: mux, z: muz } = gameState.playerGridPos;
+    const mushroomNode = MUSHROOM_NODES.find(
+      (n) =>
+        n.map === gameState.currentMapName &&
+        !n.collected &&
+        Math.abs(n.x - mux) + Math.abs(n.z - muz) <= 1,
+    );
+    if (mushroomNode) {
+      const granted = harvestMushroomNode(mushroomNode.x, mushroomNode.z);
+      if (granted > 0) {
+        const meshEntry = mushroomNodeMeshes.find(
+          (entry) => entry.nodeId === mushroomNode.id,
         );
         if (meshEntry) meshEntry.group.visible = false;
       }
