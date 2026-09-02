@@ -114,6 +114,8 @@ export const PROLOGUE_MARKERS = Object.freeze({
   foodQuestion: "「在蘿蔔成熟以前，我要吃什麼？」",
   captainWarehouseFade: "[船長前往倉庫取釣竿]",
   cookingComplete: "[玩家完成一份烤魚]",
+  movementTutorialStart: "[牧場環視結束]",
+  movementTutorialEnd: "[行走與鏡頭教學完成]",
 });
 export const PROLOGUE_SCRIPT: Record<string, DialogueLine[]> = {
   flyer: [

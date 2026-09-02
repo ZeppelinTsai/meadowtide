@@ -1045,7 +1045,8 @@ function startFarmingTutorial() {
 function finishPrologueTour() {
   useGuideZoom = false;
   lockPrologueZoom();
-  showDialogSequence(PROLOGUE_SCRIPT.tour.slice(9), () => {
+  const tutorialEnd = scriptMarkerIndex(PROLOGUE_SCRIPT.tour, PROLOGUE_MARKERS.movementTutorialEnd);
+  showDialogSequence(PROLOGUE_SCRIPT.tour.slice(tutorialEnd + 1), () => {
     startGuidedWalk(
       [
         { x: 21, z: 20 },
@@ -1059,15 +1060,20 @@ function finishPrologueTour() {
 function startLivingAreaArrival() {
   useGuideZoom = false;
   lockPrologueZoom();
-  showDialogSequence([PROLOGUE_SCRIPT.tour[8]], () => {
+  const arrivalEnd = scriptMarkerIndex(PROLOGUE_SCRIPT.tour, PROLOGUE_MARKERS.movementTutorialStart);
+  showDialogSequence(PROLOGUE_SCRIPT.tour.slice(8, arrivalEnd), () => {
     startFarmScan(() => {
-      startGuidedWalk(
+      const tutorialStart = scriptMarkerIndex(PROLOGUE_SCRIPT.tour, PROLOGUE_MARKERS.movementTutorialStart);
+      const tutorialEnd = scriptMarkerIndex(PROLOGUE_SCRIPT.tour, PROLOGUE_MARKERS.movementTutorialEnd);
+      showDialogSequence(PROLOGUE_SCRIPT.tour.slice(tutorialStart + 1, tutorialEnd), () => {
+        startGuidedWalk(
         [
           LAYOUT.livingArea.prologueArrival.mayor,
           { x: 21, z: 20 },
         ],
         finishPrologueTour,
-      );
+        );
+      });
     });
   });
 }
