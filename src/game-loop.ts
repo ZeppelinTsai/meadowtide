@@ -84,7 +84,6 @@ import {
 import { getScheduleTarget } from "./npc-defs";
 import {
   animateWalk,
-  animateRun,
   animateSit,
   animateAnimalWalk,
 } from "./humanoid";
@@ -511,9 +510,9 @@ export function animate(now) {
   // 走路若使用世界時間當相位，就會只平移、不擺手腳；視覺動畫改讀持續前進
   // 的 effectElapsed。是否播放仍由 isMoving 決定，選單／對話 dt=0 時不會踏步。
   else
-    animateRun(gameState.player, gameState.isMoving, gameState.effectElapsed);
-  // 2026-08-26 第六輪反饋「主角剛落地是陷進碼頭的」——animateRun()/
-  // animateSit() 剛剛那行會直接覆寫 position.y 成走路/待機用的 bob 值，
+    animateWalk(gameState.player, gameState.isMoving, gameState.effectElapsed);
+  // 2026-08-26 第六輪反饋「主角剛落地是陷進碼頭的」——角色步行動畫與
+  // animateSit() 都會直接覆寫 position.y 成走路/待機用的小幅 bob 值，
   // 序幕在 updatePrologueCutscene() 裡辛苦算出來的甲板/跳板/碼頭高度
   // 因此每幀都被蓋掉，看起來像整段演出都陷進場景。這裡蓋回去，是
   // no-op 除非 cutsceneActive 為真，見 prologue.ts 的
@@ -1087,7 +1086,7 @@ export function animate(now) {
       const moving = moved > 0.008;
       // animateWalk 會把 position.y 整個蓋成「原地踏步」的小幅彈跳量
       // （不是疊加），所以地形高度一定要在呼叫它之後再加回去——跟主角
-      // 那邊 animateRun() 先跑、才 += characterGroundY() 的順序完全一樣；
+      // 那邊 animateWalk() 先跑、才 += characterGroundY() 的順序完全一樣；
       // 順序顛倒的話這裡剛算好的地形高度下一行就會被彈跳量整個蓋掉。
       animateWalk(n.mesh, moving, gameState.elapsed);
       n.mesh.position.y += characterGroundY(
