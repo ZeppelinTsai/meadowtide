@@ -1069,7 +1069,10 @@ function startLivingAreaArrival() {
       showDialogSequence(PROLOGUE_SCRIPT.tour.slice(tutorialStart + 1, tutorialEnd), () => {
         freeMayorGuide = true;
         gameState.cutsceneActive = false;
-        setTimePauseSource("event", true);
+        // 自由行走教學不能保留 event 暫停源，否則 game-loop 傳入的 dt
+        // 永遠是 0，村長雖然有路徑卻一步也走不了。遊戲時間仍由
+        // updatePrologueCutscene() 每幀呼叫 lockPrologueDateTime() 鎖定。
+        setTimePauseSource("event", false);
         startGuidedWalk(
         [
           LAYOUT.livingArea.prologueArrival.mayor,
@@ -1308,7 +1311,7 @@ export function isPrologueShipStage(): boolean {
 // game-loop.ts 的 animate() 每幀呼叫；只有 gameState.cutsceneActive 為真
 // 時才有事做，其餘時間直接是個 no-op。
 export function updatePrologueCutscene(dt: number) {
-  if (!gameState.cutsceneActive || freeMayorGuide) return;
+  if (!gameState.cutsceneActive && !freeMayorGuide) return;
   lockPrologueDateTime();
   // 2026-08-26 加了過場鏡頭系統(cutscene-camera.ts)之後才發現的衝突：
   // 這裡原本每幀都無條件把 zoom 釘回 PROLOGUE_ZOOM，開場 startPrologueScene()
@@ -1323,10 +1326,6 @@ export function updatePrologueCutscene(dt: number) {
   ) {
     lockPrologueZoom();
   }
-  const ferry = prologueRefs.ferry;
-  const gangplank = prologueRefs.gangplank;
-  if (!ferry || !gangplank) return;
-
   if (stage === "guidedWalking") {
     const mayor = npcs.find((npc) => npc.id === "mayor");
     if (!mayor) {
@@ -1430,10 +1429,17 @@ export function updatePrologueCutscene(dt: number) {
       guideOnComplete = null;
       guideWaypoints = [];
       guideTrail = [];
+      const wasFreeMayorGuide = freeMayorGuide;
+      freeMayorGuide = false;
+      if (wasFreeMayorGuide) gameState.cutsceneActive = true;
       onComplete?.();
     }
     return;
   }
+
+  const ferry = prologueRefs.ferry;
+  const gangplank = prologueRefs.gangplank;
+  if (!ferry || !gangplank) return;
 
   if (stage === "mapTransition") {
     gameState.isMoving = false;
