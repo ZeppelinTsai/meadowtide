@@ -409,7 +409,8 @@ function finishVillageHouseTour() {
       // "mayor"/"carpenter"），這段對話結束、holdPositions 被
       // beginMountainRoute() 釋放後，她會自動退回 npc-defs.ts 原本的
       // 舊城鎮日常排程，不需要另外寫程式碼把她攔下來。
-      artist("「我就不跟你們上山了，這附近我想再逛逛。」"),
+      artist("「我先不跟你們上山了，這附近我想再逛逛。」"),
+      artist("「隔壁那棟房子我蠻喜歡的，先去放行李了。」"),
       mayor("「也好，路上小心。」"),
     ],
     () => animatePrologueZoom(10, 0.9, beginMountainRoute),
