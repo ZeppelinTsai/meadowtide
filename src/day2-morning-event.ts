@@ -491,6 +491,15 @@ const repairCg = (text: string) => ({
   ...carpenter(text),
   cg: "day2Carpenter-01",
 });
+// 2026-09-02：[繼續施工]之後歐文已經上屋頂動工，換一張差分(屋頂+
+// 鐵鎚，跟 day2Carpenter-01 室內檢查木料是同一套服裝/場景延續)。
+// setDialogCg() 同一時間點只要 cg id 不同就直接切換底圖，overlay 本身
+// 的 opacity 沒有被重置成 0 再淡入，所以這裡換圖不會黑屏——不用額外包
+// runBlackTransition，直接改 cg id 就是 Zeppelin 要的效果。
+const repairCg2 = (text: string) => ({
+  ...carpenter(text),
+  cg: "day2Carpenter-02",
+});
 
 function startCarpenterRepairScene() {
   if (!dayTwoMorningEvent.materialsSpent) {
@@ -523,12 +532,12 @@ function startCarpenterRepairScene() {
             repairCg("「這棟還救得回來。」"),
             repairCg("「不然我也不會選它。」"),
             "[繼續施工]",
-            repairCg("「材料夠我先處理最危險的地方了。」"),
-            repairCg("「剩下的我自己慢慢來。」"),
-            repairCg("「你今天已經幫很多了。」"),
-            repairCg("「謝了。」"),
+            repairCg2("「材料夠我先處理最危險的地方了。」"),
+            repairCg2("「剩下的我自己慢慢來。」"),
+            repairCg2("「你今天已經幫很多了。」"),
+            repairCg2("「謝了。」"),
             "[看了一眼還沒整理好的屋內]",
-            repairCg("「等這裡整理好，再請你進來坐吧。」"),
+            repairCg2("「等這裡整理好，再請你進來坐吧。」"),
             "[歐文好感 +30]",
             "[個人事件完成]",
           ],
