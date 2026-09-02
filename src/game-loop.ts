@@ -504,6 +504,7 @@ export function animate(now) {
   } else {
     updatePrologueCutscene(dt);
   }
+  if (!gameState.cutsceneActive) updatePrologueCutscene(dt);
   if (gameState.isSitting) animateSit(gameState.player);
   // 室內與礦坑會暫停世界時間(gameState.elapsed)，但玩家仍能在場景內移動。
   // 走路若使用世界時間當相位，就會只平移、不擺手腳；視覺動畫改讀持續前進
