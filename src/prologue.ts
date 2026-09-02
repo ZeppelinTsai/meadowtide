@@ -411,7 +411,7 @@ function syncLastPlayerY() {
 // 演出期間(cutsceneActive 為否)整段是 no-op，不影響正常移動的地形/
 // bob 疊加。
 export function reapplyProloguePlayerY() {
-  if (!gameState.cutsceneActive && !freeMayorGuide) return;
+  if (!gameState.cutsceneActive || freeMayorGuide) return;
   gameState.player.position.y = lastPlayerY;
   if (flyerPoseWeight > 0 && gameState.player.parts) {
     // animateRun() 在這之前會把手臂往待機角度拉回；事件姿勢必須最後套用。
@@ -1308,7 +1308,7 @@ export function isPrologueShipStage(): boolean {
 // game-loop.ts 的 animate() 每幀呼叫；只有 gameState.cutsceneActive 為真
 // 時才有事做，其餘時間直接是個 no-op。
 export function updatePrologueCutscene(dt: number) {
-  if (!gameState.cutsceneActive && !freeMayorGuide) return;
+  if (!gameState.cutsceneActive || freeMayorGuide) return;
   lockPrologueDateTime();
   // 2026-08-26 加了過場鏡頭系統(cutscene-camera.ts)之後才發現的衝突：
   // 這裡原本每幀都無條件把 zoom 釘回 PROLOGUE_ZOOM，開場 startPrologueScene()
@@ -1382,7 +1382,7 @@ export function updatePrologueCutscene(dt: number) {
         break;
       guideTrail.shift();
     }
-    if (guideTrail.length && leaderDistance > GUIDE_FOLLOW_DISTANCE) {
+    if (!freeMayorGuide && guideTrail.length && leaderDistance > GUIDE_FOLLOW_DISTANCE) {
       const playerTarget = guideTrail[0];
       const dx = playerTarget.x - gameState.player.position.x;
       const dz = playerTarget.z - gameState.player.position.z;
@@ -1405,7 +1405,7 @@ export function updatePrologueCutscene(dt: number) {
     );
     animateWalk(mayor.mesh, mayorMoving, gameState.effectElapsed);
     mayor.mesh.position.y += mayorGround;
-    gameState.player.position.y = guideGroundY(
+    if (!freeMayorGuide) gameState.player.position.y = guideGroundY(
       gameState.currentMapName,
       gameState.player.position.x,
       gameState.player.position.z,
@@ -1414,7 +1414,7 @@ export function updatePrologueCutscene(dt: number) {
       x: Math.round(gameState.player.position.x),
       z: Math.round(gameState.player.position.z),
     };
-    gameState.isMoving = playerMoving;
+    if (!freeMayorGuide) gameState.isMoving = playerMoving;
     syncLastPlayerY();
 
     if (
