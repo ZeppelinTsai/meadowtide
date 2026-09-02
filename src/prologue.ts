@@ -133,7 +133,6 @@ type PrologueMapLoader = (
 
 let stage: Stage = "inactive";
 let freeMayorGuide = false;
-let freeMayorGuide = false;
 let stageProgress = 0; // 0~1，每個計時型階段自己歸零重算
 let waypoints: THREE.Vector3[] = [];
 let waypointIndex = 0;
