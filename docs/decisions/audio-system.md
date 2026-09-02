@@ -63,7 +63,7 @@ src/settings.ts 是顯示與音量偏好的單一資料源，使用 meadowtide.s
   可調整 `BGM_LOOP_HEAD_SKIP` 與 `BGM_LOOP_TAIL_TRIM`，讓單一 Audio 實例在
   尾端留白前跳回有效開頭；最終仍建議離線修剪音檔頭尾。遊戲內的 GainNode
   淡入淡出負責換季、日夜及天氣銜接，不會修復 MP3 本身的循環接縫。
-- `src/weather-schedule.ts` 是每季天氣排程的純資料計算來源：流星雨第 11～14 日
+- `src/weather-schedule.ts` 是每季天氣排程的純資料計算來源：流星雨第 11～15 日
   固定晴天；夏季颱風／暴風雨前後固定雨天，冬季暴風雪前後固定雪天，兩類
   極端天氣每個 21 天季節最多各 2 次。排程會存入存檔，避免重開後改變。
   修改天氣機率、保護日或極端天氣規則後必須執行 `npm run test:weather`，測試
@@ -147,7 +147,7 @@ src/settings.ts 是顯示與音量偏好的單一資料源，使用 meadowtide.s
 
 ### 流星雨夜晚的天象 BGM
 
-每季第 11～14 日的流星雨期間，只有在戶外且 `isNightTime()` 成立時播放
+每季第 11～15 日的流星雨期間（第 14 日為高峰），只有在戶外且 `isNightTime()` 成立時播放
 `meteorShowerNight`（*Emerald Sky Dreaming*）。判定直接共用
 `METEOR_SHOWER_SCHEDULE`、`getSeasonDay()` 與流星畫面的夜間門檻；白天、
 室內與洞窟不播放。地域曲優先於天象曲。

@@ -8,7 +8,7 @@ import {
 const fixedRandom = () => 0.5;
 const DAYS_PER_SEASON = 21;
 const SEASON_COUNT = 4;
-const METEOR_SHOWER_DAYS = new Set([11, 12, 13, 14]);
+const METEOR_SHOWER_DAYS = new Set([11, 12, 13, 14, 15]);
 
 function createSchedule(absoluteSeason: number) {
   const firstAbsoluteDay = absoluteSeason * DAYS_PER_SEASON;

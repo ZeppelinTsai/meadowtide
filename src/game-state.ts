@@ -348,8 +348,9 @@ export const METEOR_CONFIG = Object.freeze({
 export const METEOR_SHOWER_SCHEDULE = Object.freeze({
   11: Object.freeze({ phase: "approach", minPerHour: 4, maxPerHour: 7 }),
   12: Object.freeze({ phase: "rising", minPerHour: 8, maxPerHour: 12 }),
-  13: Object.freeze({ phase: "peak", minPerHour: 18, maxPerHour: 26 }),
-  14: Object.freeze({ phase: "fading", minPerHour: 6, maxPerHour: 9 }),
+  13: Object.freeze({ phase: "rising", minPerHour: 8, maxPerHour: 12 }),
+  14: Object.freeze({ phase: "peak", minPerHour: 18, maxPerHour: 26 }),
+  15: Object.freeze({ phase: "fading", minPerHour: 6, maxPerHour: 9 }),
 });
 export const METEOR_SHOWER_PHASE_NAMES: Record<string, string> = Object.freeze({
   approach: "流星雨前夕",

@@ -20,8 +20,8 @@
   結果供天空、太陽、月亮、燈光、音樂與星象共用。
 - HUD 顯示季節內第 1～21 日與上／中／下旬。`F6` 儲存、`F9` 讀取，亦可
   呼叫 `saveGame(slot)`／`loadGame(slot)`。
-- 流星由 `METEOR_CONFIG`、`METEOR_SHOWER_SCHEDULE` 管理；第 11～14 日為
-  流星雨，第 13 日高峰。`meteorPool` 固定最多 16 個物件；室內、白天或
+- 流星由 `METEOR_CONFIG`、`METEOR_SHOWER_SCHEDULE` 管理；第 11～15 日為
+  流星雨，第 14 日高峰。`meteorPool` 固定最多 16 個物件；室內、白天或
   不可見天氣會清空活動狀態，不會累積 geometry/material。
 - 木材／石頭採集點每天 06:00、18:00 各刷新一次；採集後整個模型立即消失，
   不使用 emissive 發光提示。標記 `persistent` 的序章荒廢農田木石不屬於一般刷新：跨時段與換圖都保留未採集節點，只有玩家親自清除後才永久消失。每區、每批的數量以 `src/game-state.ts` 的
