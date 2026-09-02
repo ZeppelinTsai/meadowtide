@@ -2462,8 +2462,28 @@ export const carpenterQuest = {
 // 更多 stage。
 // ==============================================================
 export const ARTIST_EVENT_WAIT_POS = { x: 142, z: 17 };
+// 2026-09-03：文本補齊，正式實作「隔壁那個奇怪的人」——木匠事件結束後
+// 露比先在 ARTIST_EVENT_WAIT_POS 等，玩家互動觸發整段個人事件。stage
+// 繼續往前推：
+//   waiting_oldVillage → intro（互動觸發，立刻推進防止重複觸發，涵蓋整段
+//                         對話直到出發上山）
+//   intro → gatheringFlowers（傳送到山上，玩家自由採集三種顏色野花）
+//   gatheringFlowers → returning（湊到三色，傳送回舊城鎮，接顏料 CG 戲）
+//   returning → complete（個人事件完成，好感 +30，之後恢復日常排程）
+// flowerStartCounts：進入 gatheringFlowers 時拍一份 inventory.wildflowers
+// 快照，跟 dayTwoMorningEvent 的 woodStart/stoneStart 同一招，用來判斷
+// 玩家在「這次採集」期間新增了幾種顏色，不是看終身累積總數。
 export const artistQuest = {
-  stage: "not_started" as "not_started" | "waiting_oldVillage",
+  stage: "not_started" as
+    | "not_started"
+    | "waiting_oldVillage"
+    | "intro"
+    | "gatheringFlowers"
+    | "returning"
+    | "complete",
+  flowerStartCounts: null as Partial<
+    Record<import("./wildflowers").FlowerSpeciesId, number>
+  > | null,
 };
 
 // events（地圖觸碰/互動事件表）需要 loadMap/handleCarpenterDockTouch/

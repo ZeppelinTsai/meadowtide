@@ -103,6 +103,7 @@ import {
   startDayTwoMorningEvent,
   updateDayTwoWalkFollowers,
   canTriggerDayTwoTouchEvent,
+  updateRubyEvent,
 } from "./day2-morning-event";
 import {
   collidesAt,
@@ -952,6 +953,9 @@ export function animate(now) {
   // 的 hold 座標，必須在下面的 npcs.forEach 套用 holdPositions 之前先
   // 算好，不然這一幀套用到的會是上一幀的舊座標，看起來像慢半拍。
   updateDayTwoWalkFollowers();
+  // 露比個人事件的採花進度/HUD 輪詢，跟上面同一種「先算好再套用」的
+  // 理由——放在 npcs.forEach 之前，跟木匠/村長那段對稱。
+  updateRubyEvent();
   npcs.forEach((n) => {
     // Story NPCs may intentionally retain only an empty compatibility node.
     if (n.mesh.parts == null) {
@@ -1101,8 +1105,14 @@ export function animate(now) {
     // 露比(藝術家)個人事件——木匠事件結束後先釘她站在舊城鎮定點等，
     // 蓋掉 npc-defs.ts 原本的日常排程。跟上面 isCarpenterWaitingAtHouse
     // 同一招，只是還沒有招募/個人事件觸碰點，純粹站著等文本補上。
+    // 2026-09-03：intro（互動後的對話段）跟 returning（採花回來後的顏料
+    // 戲）這兩個階段也在舊城鎮同一個定點，跟 waiting_oldVillage 用同一招
+    // 釘住，避免對話播到一半她被日常排程拉走；gatheringFlowers 階段
+    // 玩家人在 mountain，這個條件本來就不會成立，不用額外處理。
     if (
-      artistQuest.stage === "waiting_oldVillage" &&
+      (artistQuest.stage === "waiting_oldVillage" ||
+        artistQuest.stage === "intro" ||
+        artistQuest.stage === "returning") &&
       n.id === "artist" &&
       gameState.currentMapName === "oldVillage"
     ) {

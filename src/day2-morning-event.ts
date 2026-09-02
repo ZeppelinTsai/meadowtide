@@ -4,7 +4,10 @@ import {
   DAY_TWO_PORT_ARRIVAL,
   carpenterQuest,
   artistQuest,
+  ARTIST_EVENT_WAIT_POS,
   portGroundY,
+  oldVillageGroundY,
+  mountainGroundY,
   LAYOUT,
 } from "./layout-maps";
 import { npcGroup, npcs } from "./npc-runtime";
@@ -20,6 +23,7 @@ import {
 } from "./prologue";
 import { setTimePauseSource } from "./time-pause";
 import { addAffectionReward } from "./affection";
+import { FLOWER_SPECIES, type FlowerSpeciesId } from "./wildflowers";
 
 // ==============================================================
 // 第二天早上劇本——Zeppelin 2026-09-02 給的完整版：村長來敲門 → 一起去
@@ -118,6 +122,7 @@ const artist = (
   revealNameAfter,
 });
 const captain = (text: string) => ({ text, speaker: "captain", name: "船長" });
+const hero = (text: string) => ({ text, speaker: "hero", name: "主角" });
 const cue = (text: string, actorId: string, kind: ComicCueKind) => ({
   text,
   comicCue: { actorId, kind },
@@ -584,6 +589,9 @@ function completeDayTwoMorningEvent() {
 }
 
 export function canTriggerDayTwoTouchEvent(map: string, x: number, z: number) {
+  // 露比個人事件的採花自由活動階段，比照木匠/村長採集教學同款鎖法——
+  // 玩家這時候人在 mountain 到處走，不要讓其他劇情觸碰點在半路上插隊。
+  if (artistQuest.stage === "gatheringFlowers") return false;
   if (dayTwoMorningEvent.phase === "mountainRoute") {
     const gate = LAYOUT.oldVillage.mountainGate;
     return (
@@ -655,4 +663,216 @@ export function resetDayTwoMorningEvent() {
   });
   setTimePauseSource("guidedGameplay", false);
   renderGatherObjective();
+}
+
+// ==============================================================
+// Day 2 後半——「隔壁那個奇怪的人」：露比(藝術家)個人事件。木匠事件
+// (completeDayTwoMorningEvent()) 結束後，她先站在 ARTIST_EVENT_WAIT_POS
+// 等（見 layout-maps.ts 該常數旁的說明），玩家一走近觸發整段。跟上面
+// 木匠/村長那條主線共用同一套 loadEventMap/showDialogSequence 寫法，
+// 但用獨立的 artistQuest.stage 當狀態機、獨立的 "rubyEvent" 時間暫停
+// 來源(time-pause.ts)，不跟 dayTwoMorningEvent 混在一起——那個狀態機
+// 早就跑到 "complete" 定住了，這是完全獨立的第二段個人事件。
+// ==============================================================
+
+const pigmentCg = (text: string) => ({
+  ...artist(text),
+  cg: "day2Artist-01",
+});
+
+// 上山採花的傳送落點——劇本給的座標，跟 VILLAGE_TOUR 那種場景標記同一
+// 種「直接寫死、來源是 Zeppelin 給的劇本」寫法。
+const RUBY_MOUNTAIN_SPOT = { x: 22, z: 59 };
+
+export function handleArtistWaitTouch() {
+  if (dialogQueue.length) return;
+  if (artistQuest.stage !== "waiting_oldVillage") return;
+  artistQuest.stage = "intro"; // 立刻推進，防止玩家在對話開始前重複觸發
+  startArtistPersonalEvent();
+}
+
+function startArtistPersonalEvent() {
+  gameState.cutsceneActive = true;
+  setTimePauseSource("rubyEvent", true);
+  // 鐮刀本來就是新遊戲預設起始工具(sickle: true)，這裡再設一次是
+  // 保險、不是真的解鎖——跟劇本「[獲得鐮刀]」的敘事對上，即使玩家不知
+  // 為何身上沒有鐮刀(例如之後改了預設值)，這場戲結束後也一定會有。
+  inventory.tools.sickle = true;
+  showDialogSequence(
+    [
+      "[藝術家站在隔壁空屋前，盯著外牆]",
+      artist("「……」"),
+      artist("「你覺得這面牆是白色的嗎？」"),
+      hero("「……？」"),
+      artist("「我覺得不是。」"),
+      artist("「有一點灰、一點黃……下面還留著雨水流過的顏色。」"),
+      "[她終於轉過頭]",
+      artist("「啊。」"),
+      artist("「你是剛才港口那個牧場主。」"),
+      artist("「抱歉，忘了自我介紹。」"),
+      artist("「我是今天搬來的藝術家，露比。」"),
+      artist("「其實我本來帶了顏料。」"),
+      artist("「但山上應該會有花。」"),
+      artist("「突然覺得，用帶來的顏料畫這座島，好像有點可惜。」"),
+      hero("「？」"),
+      artist("「有些植物可以做成天然顏料。」"),
+      artist("「既然要畫這座島……」"),
+      artist("「我想試試看，用這座島自己的顏色。」"),
+      cue("[主角看向窗外／山的方向，一臉躍躍欲試]", "player", "!"),
+      artist("「……你該不會也想去看看？」"),
+      "[主角點頭]",
+      artist("「這樣啊。」"),
+      "[翻找拿出鐮刀]",
+      artist("「那這把先給你——直接用手拔不太好。」"),
+      systemDialog("獲得鐮刀"),
+      artist("「那麼，我們一起去吧。」"),
+    ],
+    beginFlowerMountainTrip,
+  );
+}
+
+function beginFlowerMountainTrip() {
+  loadEventMap("mountain", RUBY_MOUNTAIN_SPOT, () => {
+    gameState.player.rotation.y = 0;
+    const artistNpc = npcs.find((n) => n.id === "artist");
+    if (artistNpc) {
+      // loadMap() 換圖時會照 npc.map===目前地圖名 重設 visible，露比的
+      // npc-defs.ts map 是 "oldVillage"，換到 mountain 會被蓋成
+      // false——這裡跟劇本要的「讓藝術家直接一起站在旁邊」一樣，明確
+      // 蓋回 true 並給她自己的座標，不跟玩家疊在同一格(疊在一起會擋到
+      // 玩家，跟 2026-09-03 修的港口見面戲同一個坑)。
+      artistNpc.mesh.visible = true;
+      artistNpc.mesh.position.set(
+        RUBY_MOUNTAIN_SPOT.x + 1,
+        mountainGroundY(RUBY_MOUNTAIN_SPOT.x + 1, RUBY_MOUNTAIN_SPOT.z),
+        RUBY_MOUNTAIN_SPOT.z,
+      );
+      artistNpc.mesh.rotation.y = Math.PI / 2;
+      artistNpc.path = null;
+      artistNpc.lastTargetKey = null;
+    }
+    showDialogSequence(
+      [
+        artist("「山腳和上面的幾處平台都有野花。」"),
+        artist("「靠近花叢使用鐮刀，就能採下來。」"),
+        artist("「如果可以的話，幫我找三種顏色。」"),
+      ],
+      () => {
+        artistQuest.stage = "gatheringFlowers";
+        // 跟 startMountainGatheringTutorial() 的 woodStart/stoneStart 同一
+        // 招：拍一份快照，之後只算「這次新採到」的顏色，不是終身累積。
+        artistQuest.flowerStartCounts = { ...inventory.wildflowers };
+        gameState.cutsceneActive = false;
+        renderFlowerColorObjective();
+      },
+    );
+  });
+}
+
+// 這次自由採集期間「新增」了幾種顏色(物種)——跟 gatheredWood()/
+// gatheredStone() 同一種「跟起始快照比對」寫法。
+function gatheredFlowerColors() {
+  const start = artistQuest.flowerStartCounts;
+  if (!start) return [];
+  return FLOWER_SPECIES.filter(
+    (species) => inventory.wildflowers[species.id] > (start[species.id] ?? 0),
+  );
+}
+
+function renderFlowerColorObjective() {
+  const el = document.getElementById("dayTwoObjective");
+  if (!el) return;
+  // 跟 renderGatherObjective() 同一個 2026-09-02 修過的教訓：對話/演出
+  // 還沒關掉時提示框先別跳出來，不然會蓋住立繪。
+  if (
+    artistQuest.stage !== "gatheringFlowers" ||
+    dialogQueue.length > 0 ||
+    gameState.cutsceneActive
+  ) {
+    el.style.display = "none";
+    return;
+  }
+  const found = gatheredFlowerColors();
+  const label = found.length
+    ? `已找到：${found.map((species) => species.pigmentColor).join("、")}`
+    : "還沒找到任何顏色";
+  el.textContent = `任務：幫露比尋找三種顏色的野花（${label}）${found.length}/3`;
+  el.style.display = "block";
+}
+
+function finishFlowerGathering() {
+  if (artistQuest.stage !== "gatheringFlowers") return;
+  artistQuest.stage = "returning";
+  gameState.cutsceneActive = true;
+  renderFlowerColorObjective();
+  showDialogSequence(
+    [artist("「湊到了，那麼，我們回去吧。」")],
+    startPigmentScene,
+  );
+}
+
+function startPigmentScene() {
+  loadEventMap(
+    "oldVillage",
+    { x: ARTIST_EVENT_WAIT_POS.x, z: ARTIST_EVENT_WAIT_POS.z + 1 },
+    () => {
+      gameState.player.rotation.y = 0; // 面朝上，正對站在原地等的露比
+      const artistNpc = npcs.find((n) => n.id === "artist");
+      if (artistNpc) {
+        artistNpc.mesh.visible = true;
+        artistNpc.mesh.position.set(
+          ARTIST_EVENT_WAIT_POS.x,
+          oldVillageGroundY(ARTIST_EVENT_WAIT_POS.x, ARTIST_EVENT_WAIT_POS.z),
+          ARTIST_EVENT_WAIT_POS.z,
+        );
+        artistNpc.mesh.rotation.y = Math.PI; // 面朝玩家走回來的方向(南)
+        artistNpc.path = null;
+        artistNpc.lastTargetKey = null;
+      }
+      showDialogSequence([artist("「跟我來，我弄給你看。」")], () => {
+        void runBlackTransition("short", () => {
+          showDialogSequence(
+            [
+              "[藝術家把其中一朵花揉碎／研磨]",
+              pigmentCg("「你看。」"),
+              "[顏色逐漸滲出]",
+              pigmentCg("「這就是我想要的。」"),
+              pigmentCg("「商店買得到更穩定、更漂亮的顏料。」"),
+              pigmentCg("「但這個顏色只屬於這裡。」"),
+              pigmentCg("「不過……」"),
+              pigmentCg("「每次缺顏料都爬一趟山，好像也不是辦法。」"),
+              "[看向主角]",
+              pigmentCg("「牧場不是有空地嗎？」"),
+              pigmentCg("「你可以考慮種一片自己的花田。」"),
+              // 系統提示保留 cg，不然這一句會把 setDialogCg 呼叫成 null，
+              // 中間硬插一次淡出/淡入，跟前後的差分連續戲不搭。花圃/種植
+              // 系統本身還沒做(見 docs/decisions/wildflower-gathering-
+              // system.md 第6節)，這句先純粹是敘事，沒有真的解鎖機制。
+              { ...systemDialog("野花與部分花卉可以種植"), cg: "day2Artist-01" },
+              pigmentCg("「到時候，我可能會常去找你。」"),
+            ],
+            completeArtistPersonalEvent,
+          );
+        });
+      });
+    },
+  );
+}
+
+function completeArtistPersonalEvent() {
+  addAffectionReward("artist", "personalEvent");
+  artistQuest.stage = "complete";
+  gameState.cutsceneActive = false;
+  setTimePauseSource("rubyEvent", false);
+}
+
+// game-loop.ts 每幀呼叫，跟 updateDayTwoWalkFollowers() 平行、各管各的
+// 狀態機——採花進度輪詢 + HUD 更新 + 湊滿三色自動觸發回程。
+export function updateRubyEvent() {
+  if (artistQuest.stage === "gatheringFlowers") {
+    renderFlowerColorObjective();
+    if (gatheredFlowerColors().length >= 3) {
+      finishFlowerGathering();
+    }
+  }
 }

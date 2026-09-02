@@ -32,6 +32,7 @@ import {
   COAST_ROAD_HALF_WIDTH,
   lakeEdgeFactor,
   CARPENTER_DOORSTEP,
+  ARTIST_EVENT_WAIT_POS,
   SHRINE_PATH_START_X,
   SHRINE_PATH_LENGTH,
   SHRINE_PATH_ELEVATION,
@@ -51,6 +52,7 @@ import {
   handleCarpenterDockTouch,
   handleCarpenterDoorstepTouch,
 } from "./carpenter-quest";
+import { handleArtistWaitTouch } from "./day2-morning-event";
 import {
   windowMats,
   waterSurfaceMaterials,
@@ -4462,6 +4464,18 @@ export const events = [
     z: CARPENTER_DOORSTEP.z,
     trigger: "touch",
     action: () => handleCarpenterDoorstepTouch(),
+  },
+  // 露比個人事件——木匠事件結束後她站在 ARTIST_EVENT_WAIT_POS (142,17)
+  // 等，玩家一走近就自動觸發（劇本是「玩家靠近」，不是特地按 E），跟
+  // CARPENTER_DOORSTEP/CARPENTER_EVENT_WAIT_POS 同一招：觸碰點跟 NPC
+  // 實際站的格子錯開一格（她南邊 z+1），玩家從南邊走過來時踩到觸碰點，
+  // 不用真的疊到她的模型上面。
+  {
+    map: "oldVillage",
+    x: ARTIST_EVENT_WAIT_POS.x,
+    z: ARTIST_EVENT_WAIT_POS.z + 1,
+    trigger: "touch",
+    action: () => handleArtistWaitTouch(),
   },
   // 生活區私人海岸北端 <-> 女神祠堂（骨架先接通，退潮限定判斷之後再加）
   // 觸發點整排(x=60,z=0~2)都能走進去，不是只有單一格。

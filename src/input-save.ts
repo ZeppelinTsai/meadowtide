@@ -76,6 +76,7 @@ import {
   carpenterQuest,
   FARMLAND_TILES,
   chefQuest,
+  artistQuest,
   REST_CHAIR,
   MAPS,
 } from "./layout-maps";
@@ -354,6 +355,7 @@ export function saveGame(slot = "default") {
     prologue: exportPrologueSaveState(),
     npcNameRevealStages: exportNpcNameRevealState(),
     carpenterQuest: { ...carpenterQuest },
+    artistQuest: { ...artistQuest },
     dayTwoMorningEvent: { ...dayTwoMorningEvent },
     oysterRackState: JSON.parse(JSON.stringify(oysterRackState)),
     oysterRackSlots: gameState.oysterRackSlots,
@@ -546,6 +548,21 @@ export function loadGame(
     ) {
       const mayorNpc = npcs.find((n) => n.id === "mayor");
       if (mayorNpc) mayorNpc.mesh.visible = true;
+    }
+  }
+  if (data.artistQuest) {
+    Object.assign(artistQuest, data.artistQuest);
+    // intro/gatheringFlowers/returning 都是露比個人事件演出途中的過渡
+    // 階段——存檔當下卡在這幾個狀態代表玩家存在對話/傳送半路上，讀檔後
+    // 沒有辦法安全接著播（跟木匠 "en_route_village" 讀檔要歸位成
+    // "escorting" 同一個理由），一律退回 waiting_oldVillage，玩家可以
+    // 重新走一次觸發。
+    if (
+      artistQuest.stage === "intro" ||
+      artistQuest.stage === "gatheringFlowers" ||
+      artistQuest.stage === "returning"
+    ) {
+      artistQuest.stage = "waiting_oldVillage";
     }
   }
   resetDayTwoMorningEvent();
