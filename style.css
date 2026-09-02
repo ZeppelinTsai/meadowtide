@@ -442,10 +442,23 @@ body.cutscene-presentation #hud {
   z-index: 10;
   transition: opacity 0.5s ease;
 }
-#cgImg {
+#cgImg,
+#cgImgNext {
+  position: absolute;
+  inset: 0;
   width: 100%;
   height: 100%;
   object-fit: cover;
+}
+/* 換差分（同一場戲、cgOverlay 已經開著時再換一張圖）用：cgImgNext 疊
+   在 cgImg 上面，從透明淡入蓋過去，兩張圖交疊那零點幾秒就是「差分轉
+   換」的演出，不會黑屏也不會硬切。淡入跑完後 JS 會把它「扶正」成
+   cgImg 本體、自己歸零，準備下一次差分——見 dialogue.ts setDialogCg()
+   的註解。*/
+#cgImgNext {
+  opacity: 0;
+  transition: opacity 0.5s ease;
+  pointer-events: none;
 }
 #fishHint {
   position: fixed;

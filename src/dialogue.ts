@@ -24,6 +24,11 @@ export const dialogPortraitPlaceholderEl = document.getElementById(
 );
 export const cgOverlayEl = document.getElementById("cgOverlay");
 export const cgImgEl = document.getElementById("cgImg") as HTMLImageElement;
+// 換差分用的第二張圖，平常疊在 cgImg 上面但透明——見 style.css #cgImgNext
+// 註解跟下面 setDialogCg() 的差分分支。
+export const cgImgNextEl = document.getElementById(
+  "cgImgNext",
+) as HTMLImageElement;
 
 // ==============================================================
 // 立繪／CG——UI 層唯一允許外部圖片的地方（3D 世界本身仍然完全程式
@@ -92,15 +97,44 @@ export function setDialogCg(cgId) {
   if (!cgId) {
     currentCgId = null;
     cgOverlayEl.style.opacity = "0";
+    // 差分轉換途中被硬清掉(例如玩家直接跳過對話)的邊界情況：cgImgNext
+    // 可能還停在淡入一半，這裡順便歸零，下次重新進 CG 才不會一開場
+    // 就疊著一張沒歸零的殘影。
+    cgImgNextEl.style.opacity = "0";
     setTimeout(() => {
       if (!currentCgId) cgOverlayEl.style.display = "none";
     }, 500);
     return;
   }
+  // 原本有值(不是第一次進 CG)、只是換成同一場戲的另一張差分，跟「從
+  // 3D 畫面/黑幕第一次進 CG」是兩種不同的演出：後者靠 cgOverlay 整層
+  // 從 0 淡入即可(黑幕→CG，本來就該有這段黑)；前者 overlay 早就是
+  // opacity:1 了，如果還是直接改 cgImgEl.src 會像切照片一樣硬切，也
+  // 不會黑屏但很生硬。改成疊 cgImgNext 從透明淡入蓋上去，讓新舊兩張
+  // 圖有半秒重疊淡入淡出，才是一般差分轉換該有的樣子。
+  const isDifferentialSwap = Boolean(currentCgId);
   currentCgId = cgId;
   const applyCg = (src: string) => {
     if (currentCgId !== cgId) return; // 載入期間對話已經跳到別行，放棄套用
+    if (isDifferentialSwap) {
+      cgImgNextEl.src = src;
+      cgOverlayEl.style.display = "block";
+      requestAnimationFrame(() => {
+        cgImgNextEl.style.opacity = "1";
+      });
+      window.setTimeout(() => {
+        // 上面這段淡入跑完了，把新圖「扶正」成 cgImg 本體、cgImgNext
+        // 歸零準備下一次差分。中途又被切到別張圖(currentCgId 已經不是
+        // 這次的 cgId)就不要蓋回去，讓新的那輪自己收尾就好。
+        if (currentCgId !== cgId) return;
+        cgImgEl.src = src;
+        cgImgEl.style.opacity = "1";
+        cgImgNextEl.style.opacity = "0";
+      }, 520);
+      return;
+    }
     cgImgEl.src = src;
+    cgImgEl.style.opacity = "1";
     cgOverlayEl.style.display = "block";
     requestAnimationFrame(() => {
       cgOverlayEl.style.opacity = "1";
