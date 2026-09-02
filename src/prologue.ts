@@ -269,7 +269,7 @@ function lockPrologueZoom() {
   updateCameraFrustum();
 }
 
-function animatePrologueZoom(
+export function animatePrologueZoom(
   targetZoom: number,
   durationSeconds: number,
   onComplete: () => void,

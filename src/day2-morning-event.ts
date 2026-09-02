@@ -12,7 +12,11 @@ import { runBlackTransition } from "./loading-screen";
 import { groundY } from "./scene-sky";
 import { dialogQueue, showDialogSequence, systemDialog } from "./dialogue";
 import type { ComicCueKind } from "./comic-cue";
-import { startGuidedWalk, endExternalGuidedWalk } from "./prologue";
+import {
+  startGuidedWalk,
+  endExternalGuidedWalk,
+  animatePrologueZoom,
+} from "./prologue";
 import { setTimePauseSource } from "./time-pause";
 import { addAffectionReward } from "./affection";
 
@@ -393,7 +397,7 @@ function finishVillageHouseTour() {
       carpenter("「那麼，我們出發吧。」"),
       mayor("「山從村莊西北的樓梯走就能到了。」"),
     ],
-    beginMountainRoute,
+    () => animatePrologueZoom(10, 0.9, beginMountainRoute),
   );
 }
 
