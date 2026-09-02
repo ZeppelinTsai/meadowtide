@@ -45,11 +45,14 @@ export const TITLE_SCENE_PRESETS: readonly TitleScenePreset[] = [
     period: "day",
     startHour: 6,
     camera: {
-      positionX: 18.27,
-      positionY: 2.38,
-      positionZ: 8.01,
-      yaw: -7.276,
-      pitch: 0.103,
+      // 2026-09-04 Zeppelin 用第一人稱鏡頭記錄工具重新抓的開頭構圖，
+      // positionY 額外 +3(1.37→4.37，Zeppelin 要求)。三個時段(day/
+      // afternoon/night)原本就共用同一組鏡頭數字，這次比照沿用。
+      positionX: 19.28,
+      positionY: 1.37 + 3,
+      positionZ: 3.41,
+      yaw: -0.821,
+      pitch: -0.009,
       fov: 65,
     },
   },
@@ -57,11 +60,12 @@ export const TITLE_SCENE_PRESETS: readonly TitleScenePreset[] = [
     period: "afternoon",
     startHour: 12,
     camera: {
-      positionX: 18.27,
-      positionY: 2.38,
-      positionZ: 8.01,
-      yaw: -7.276,
-      pitch: 0.103,
+      // 同上一組(day)，三個時段共用同一組鏡頭數字。
+      positionX: 19.28,
+      positionY: 1.37 + 3,
+      positionZ: 3.41,
+      yaw: -0.821,
+      pitch: -0.009,
       fov: 65,
     },
   },
@@ -69,11 +73,12 @@ export const TITLE_SCENE_PRESETS: readonly TitleScenePreset[] = [
     period: "night",
     startHour: 18,
     camera: {
-      positionX: 18.27,
-      positionY: 2.38,
-      positionZ: 8.01,
-      yaw: -7.276,
-      pitch: 0.103,
+      // 同上一組(day)，三個時段共用同一組鏡頭數字。
+      positionX: 19.28,
+      positionY: 1.37 + 3,
+      positionZ: 3.41,
+      yaw: -0.821,
+      pitch: -0.009,
       fov: 65,
     },
   },
