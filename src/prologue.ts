@@ -1322,6 +1322,7 @@ export function updatePrologueCutscene(dt: number) {
   // 完全「動不了」。改成只在鏡頭系統沒有接管時才每幀重新確認/防守，鏡頭
   // 系統接管時 zoom 完全交給它決定。
   if (
+    gameState.cutsceneActive &&
     !prologueZoomTransitionActive &&
     !isCameraShotsPlaying() &&
     !isCameraAdjustModeActive()
@@ -1433,7 +1434,11 @@ export function updatePrologueCutscene(dt: number) {
       guideTrail = [];
       const wasFreeMayorGuide = freeMayorGuide;
       freeMayorGuide = false;
-      if (wasFreeMayorGuide) gameState.cutsceneActive = true;
+      if (wasFreeMayorGuide) {
+        gameState.cutsceneActive = true;
+        useGuideZoom = false;
+        lockPrologueZoom();
+      }
       onComplete?.();
     }
     return;

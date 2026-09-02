@@ -132,7 +132,9 @@ function bowWorldPoint(localPoint: THREE.Vector3): THREE.Vector3 {
 - **世界互動**：cutsceneActive 期間 E/R/F、滑鼠情境互動、釣魚、播種、採集與
   NPC 閒聊全部封鎖；對話推進仍可使用 E。教學需要玩家實際操作時，應先結束
   cutsceneActive 進入自由活動／玩法等待階段，不可讓完整過場鎖定和自由操作
-  同時成立。
+  同時成立。自由活動期間也必須停止事件的每幀 zoom 鎖定，讓玩家自行縮放；
+  玩家完成條件、事件重新取得控制權時，先把鏡頭明確恢復到中景 zoom 5，再接續
+  對話或走位。後續事件皆沿用這個交接規則。
 - **NPC 顯示**：`startPrologueScene()` 開場把 captain/mayor/carpenter
   三個 NPC 的 `.mesh.visible` 都設 `false`（carpenter 是後來才補上的
   防守性修法——`carpenterQuest.stage === "escorting"` 時
