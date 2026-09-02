@@ -100,6 +100,8 @@ import {
   dayTwoMorningEvent,
   canStartDayTwoMorningEvent,
   startDayTwoMorningEvent,
+  updateDayTwoWalkFollowers,
+  canTriggerDayTwoTouchEvent,
 } from "./day2-morning-event";
 import {
   collidesAt,
@@ -912,6 +914,9 @@ export function animate(now) {
               ev.map === gameState.currentMapName && ev.trigger === "touch",
           )
           .filter((ev) => ev.x === roundedX && ev.z === roundedZ)
+          .filter((ev) =>
+            canTriggerDayTwoTouchEvent(ev.map, roundedX, roundedZ),
+          )
           .forEach((ev) => ev.action());
       }
     }
@@ -942,6 +947,10 @@ export function animate(now) {
     startPrologueFishingSequence();
   }
 
+  // 2026-09-02 第三輪：舊城鎮選屋橋段每幀都要重算歐文/露比跟著村長走
+  // 的 hold 座標，必須在下面的 npcs.forEach 套用 holdPositions 之前先
+  // 算好，不然這一幀套用到的會是上一幀的舊座標，看起來像慢半拍。
+  updateDayTwoWalkFollowers();
   npcs.forEach((n) => {
     // Story NPCs may intentionally retain only an empty compatibility node.
     if (n.mesh.parts == null) {
@@ -965,6 +974,21 @@ export function animate(now) {
       const hold = dayTwoMorningEvent.holdPositions[n.id];
       npcGroup.visible = true;
       n.mesh.visible = true;
+      // 自動走路的領隊位置與步態已由 startGuidedWalk() 更新，holding
+      // 只負責讓同隊角色保持可見；不可再用固定站位覆蓋村長。
+      if (dayTwoMorningEvent.phase === "villageWalk" && n.id === "mayor") {
+        return;
+      }
+      // 2026-09-02 第三輪：hold 座標現在不一定是靜止的——舊城鎮選屋橋段
+      // 每幀都會用 updateDayTwoWalkFollowers() 重算歐文/露比的 hold 座
+      // 標(跟著村長走)，所以這裡改成跟 escort trail 那段一樣，量前後兩
+      // 幀的位移決定要不要播走路動畫，而不是寫死 false。家門口/港口那
+      // 兩場固定站位戲的 hold 座標本來就不會逐幀變動，量出來的位移接
+      // 近 0，行為跟以前完全一樣。
+      const moved = Math.hypot(
+        hold.x - n.mesh.position.x,
+        hold.z - n.mesh.position.z,
+      );
       n.mesh.position.x = hold.x;
       n.mesh.position.z = hold.z;
       n.mesh.rotation.y = hold.rotY;
@@ -976,7 +1000,7 @@ export function animate(now) {
       // 原本寫反了，導致村長固定站位時整個人半沉進地板——上一輪
       // Zeppelin 回報「村長出現在地面底下」就是這裡，這裡保留修正過
       // 的順序。
-      animateWalk(n.mesh, false, gameState.elapsed);
+      animateWalk(n.mesh, moved > 0.008, gameState.elapsed);
       n.mesh.position.y = characterGroundY(
         dayTwoMorningEvent.holdMap,
         hold.x,

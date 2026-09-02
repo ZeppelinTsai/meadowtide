@@ -14,7 +14,8 @@ export type TimePauseSource =
   | "inventory"
   | "interior"
   | "menu"
-  | "storyEvent";
+  | "storyEvent"
+  | "guidedGameplay";
 
 const activeSources = new Set<TimePauseSource>();
 

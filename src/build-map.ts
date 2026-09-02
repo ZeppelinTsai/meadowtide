@@ -195,6 +195,7 @@ import {
 } from "./props";
 import { syncFarmVisuals } from "./farm-visuals";
 import { createTransitionEvents, type TransitionLink } from "./map-transitions";
+import { getNpcNameStage } from "./npc-name-reveal";
 import {
   getActiveOysterRackLayouts,
   WOOD_NODES,
@@ -3860,7 +3861,10 @@ export function buildMap(mapName) {
   gameState.currentMapName = mapName;
   npcGroup.position.y = 0;
   npcs.forEach((npc) => {
-    if (npc.id === "chef" || npc.id === "artist") {
+    if (
+      npc.id === "chef" ||
+      (npc.id === "artist" && getNpcNameStage("artist") === 0)
+    ) {
       // 藝術家要等正式登島／招募事件解鎖；換圖不可把初始隱藏覆蓋掉。
       npc.mesh.visible = false;
     } else if (npc.id === "carpenter") {

@@ -80,7 +80,10 @@ import {
   MAPS,
 } from "./layout-maps";
 import { tryShareChefMeal, mergeChefMealIntoChatLine } from "./chef-quest";
-import { dayTwoMorningEvent } from "./day2-morning-event";
+import {
+  dayTwoMorningEvent,
+  resetDayTwoMorningEvent,
+} from "./day2-morning-event";
 import {
   canQuickSaveDuringPrologue,
   canUsePrologueKitchen,
@@ -545,6 +548,7 @@ export function loadGame(
       if (mayorNpc) mayorNpc.mesh.visible = true;
     }
   }
+  resetDayTwoMorningEvent();
   if (data.dayTwoMorningEvent) {
     Object.assign(dayTwoMorningEvent, data.dayTwoMorningEvent);
     // holding 為真代表存檔當下村長還固定站在家門口——重新顯示她，實際

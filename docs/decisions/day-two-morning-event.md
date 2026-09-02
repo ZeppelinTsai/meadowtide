@@ -347,3 +347,18 @@ appearance」，`buildMap()` 現在會在**每次換地圖**時把 `chef`／`art
 `npm run test:save-slots`（3 過）、`npm run test:story`（14 過）全
 過。這台機器沒有能跑 `npm run dev` 進遊戲操作的環境，實際進遊戲玩一
 次門口戲＋港口戲，還是要 Zeppelin 確認一次。
+
+## 2026-09-02 Phase 3–5：選屋、自動走路、山區採集與修繕收尾
+
+- 港口戲結束後黑幕進入 `oldVillage`，借用序章 `startGuidedWalk()` 的純自動走路；
+  外部事件模式不鎖序章日期，且兩段演出明確使用 zoom 5。玩家全程不能操作。
+- 歐文在「我是歐文」完成後以 `revealNameAfter` 正式揭露姓名；露比同樣在自介後
+  揭露。`buildMap()` 只在露比仍為未知身分時隱藏她，避免登場後換圖又消失。
+- 選屋後才把 `inventory.tools.dualAxe` 設為 true。前往山區期間只允許舊城鎮
+  西北三格山門傳送；進山後暫停世界時間但保留玩家採集操作。
+- 採集目標以事件開始時的庫存為基準，要求新增木材 10、石材 10，HUD 字級固定
+  18px。完成後自動回選定房屋，播放 `day2Carpenter-01` CG。
+- 收尾把木匠好感增加 personalEvent 的 30 點、`carpenterQuest.stage` 設成
+  `moved_in`，並以 `rewardGranted` 防止讀檔或重入時重複發獎。
+- CG 新檔沿用「事件 id－流水號」：`030.png` 複製為 `day2Carpenter-01.png`，
+  並提供 1280/1600 WebP 響應式衍生檔。

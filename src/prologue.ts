@@ -146,6 +146,8 @@ let guideWaypointIndex = 0;
 let guideTrail: THREE.Vector3[] = [];
 let guideOnComplete: (() => void) | null = null;
 let useGuideZoom = false;
+let guidedWalkZoom: number | null = null;
+let externalGuidedWalk = false;
 const TUTORIAL_PLOT = { minX: 13, maxX: 15, minZ: 22, maxZ: 24 } as const;
 
 function tutorialCropCount() {
@@ -260,7 +262,8 @@ function lockPrologueDateTime() {
 }
 
 function lockPrologueZoom() {
-  const targetZoom = useGuideZoom ? PROLOGUE_GUIDE_ZOOM : PROLOGUE_ZOOM;
+  const targetZoom =
+    guidedWalkZoom ?? (useGuideZoom ? PROLOGUE_GUIDE_ZOOM : PROLOGUE_ZOOM);
   if (gameState.zoom === targetZoom) return;
   gameState.zoom = targetZoom;
   updateCameraFrustum();
@@ -544,6 +547,19 @@ function beginStage(next: Stage) {
   if (next !== "greeting") greetingDialogueStarted = false;
 }
 
+// 2026-09-02：給 day2-morning-event.ts 用的收尾——它的舊城鎮選屋橋段
+// 借用 startGuidedWalk()，但這段本身不是序章章節鏈的一部分，結束後不
+// 會再有下一個 beginStage() 呼叫把 stage 帶往別處，會卡在
+// "guidedWalking" 不放，導致 canQuickSaveDuringPrologue()／
+// canUsePrologueKitchen() 之類只認 "inactive"/"done" 的守衛永久誤判
+// 成「序章還在進行」。呼叫端自己負責在拿到 onComplete 之後呼叫這個，
+// 把狀態收乾淨——這時候真正的序章早就結束了，回到 "done" 沒有副作用。
+export function endExternalGuidedWalk() {
+  guidedWalkZoom = null;
+  externalGuidedWalk = false;
+  beginStage("done");
+}
+
 function guideGroundY(mapName: string, x: number, z: number): number {
   // Interior floors are built at Y=0. Falling through to living-area groundY()
   // re-applies the outdoor plateau height after loadMap positioned the player.
@@ -566,9 +582,16 @@ function placeGuideActor(actor: any, x: number, z: number) {
   actor.mesh.position.y = gy;
 }
 
-function startGuidedWalk(
+// 2026-09-02：改成 export，讓 day2-morning-event.ts 的舊城鎮選屋橋段可以
+// 直接重用序章這套「純自動走路、玩家整段鎖死不能動」的機制——見
+// docs/decisions/day-two-morning-event.md 第三輪。函式本身不用改，
+// 呼叫端只要自己負責在呼叫前把 gameState.cutsceneActive 設成
+// true（序章原本的呼叫點全部都已經身處 cutsceneActive 期間，這裡是
+// 唯一新增的跨模組呼叫端，所以額外寫這則註解說明）。
+export function startGuidedWalk(
   points: { x: number; z: number }[],
   onComplete: () => void,
+  options: { zoom?: number; external?: boolean } = {},
 ) {
   const mayor = npcs.find((npc) => npc.id === "mayor");
   if (!mayor || points.length < 2) {
@@ -584,6 +607,8 @@ function startGuidedWalk(
   guideTrail = [mayor.mesh.position.clone()];
   guideOnComplete = onComplete;
   useGuideZoom = true;
+  guidedWalkZoom = options.zoom ?? null;
+  externalGuidedWalk = options.external === true;
   lockPrologueZoom();
   beginStage("guidedWalking");
 }
@@ -1314,7 +1339,7 @@ export function isPrologueShipStage(): boolean {
 // 時才有事做，其餘時間直接是個 no-op。
 export function updatePrologueCutscene(dt: number) {
   if (!gameState.cutsceneActive && !freeMayorGuide) return;
-  lockPrologueDateTime();
+  if (!externalGuidedWalk) lockPrologueDateTime();
   // 2026-08-26 加了過場鏡頭系統(cutscene-camera.ts)之後才發現的衝突：
   // 這裡原本每幀都無條件把 zoom 釘回 PROLOGUE_ZOOM，開場 startPrologueScene()
   // 已經鎖過一次「已知距離」，但這裡每幀重覆鎖，會讓 F4 手動調整模式或

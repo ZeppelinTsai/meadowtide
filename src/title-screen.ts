@@ -19,6 +19,7 @@ import { makeFemaleHeroPlayer, makeMaleHeroPlayer } from "./humanoid";
 import { resetStoryState } from "./story/story-state";
 import { resetNpcNameRevealState } from "./npc-name-reveal";
 import { resetAnimalInteractionState } from "./animal-interactions";
+import { resetDayTwoMorningEvent } from "./day2-morning-event";
 import { resetRelationships } from "./affection";
 import { scene } from "./scene-sky";
 import { hideLoadingScreen } from "./loading-screen";
@@ -270,6 +271,7 @@ export function initTitleScreen() {
     resetStoryState();
     resetNpcNameRevealState();
     resetAnimalInteractionState();
+    resetDayTwoMorningEvent();
     resetRelationships();
     gameState.ownedAnimals = [];
     gameState.oysterRackSlots = 1;

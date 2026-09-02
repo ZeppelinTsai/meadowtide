@@ -1,15 +1,19 @@
-import { gameState, TIME_CONFIG, dayLength } from "./game-state";
+import { gameState, inventory, TIME_CONFIG, dayLength } from "./game-state";
 import {
   DAY_TWO_MORNING_ARRIVAL,
   DAY_TWO_PORT_ARRIVAL,
   carpenterQuest,
   portGroundY,
+  LAYOUT,
 } from "./layout-maps";
 import { npcGroup, npcs } from "./npc-runtime";
 import { loadMap } from "./build-map";
 import { groundY } from "./scene-sky";
 import { dialogQueue, showDialogSequence } from "./dialogue";
 import type { ComicCueKind } from "./comic-cue";
+import { startGuidedWalk, endExternalGuidedWalk } from "./prologue";
+import { setTimePauseSource } from "./time-pause";
+import { addAffectionReward } from "./affection";
 
 // ==============================================================
 // 第二天早上劇本——Zeppelin 2026-09-02 給的完整版：村長來敲門 → 一起去
@@ -52,6 +56,18 @@ export const dayTwoMorningEvent = {
     { x: number; z: number; rotY: number }
   > | null,
   due: false,
+  phase: "idle" as
+    | "idle"
+    | "port"
+    | "villageWalk"
+    | "mountainRoute"
+    | "gathering"
+    | "returning"
+    | "complete",
+  woodStart: 0,
+  stoneStart: 0,
+  rewardGranted: false,
+  materialsSpent: false,
 };
 
 // 窗口本身用絕對 elapsed 表示（day===1、hour∈[8,8.5)），跟
@@ -77,10 +93,14 @@ export function canStartDayTwoMorningEvent(): boolean {
 // 這裡不走 i18n（day2-morning-event.ts 是獨立劇本檔，不是序章章節），
 // 直接放繁中字串，跟 carpenter-quest.ts 的寫法一致。------
 const mayor = (text: string) => ({ text, speaker: "mayor", name: "村長" });
-const carpenter = (text: string) => ({
+const carpenter = (
+  text: string,
+  revealNameAfter?: { npcId: string; stage: 1 },
+) => ({
   text,
   speaker: "carpenter",
   name: "歐文",
+  revealNameAfter,
 });
 const artist = (text: string, revealNameAfter?: { npcId: string; stage: 1 | 2 }) => ({
   text,
@@ -111,6 +131,8 @@ function releaseHold() {
 export function startDayTwoMorningEvent() {
   dayTwoMorningEvent.triggered = true;
   dayTwoMorningEvent.due = false;
+  dayTwoMorningEvent.phase = "port";
+  setTimePauseSource("guidedGameplay", true);
   loadMap("livingArea", DAY_TWO_MORNING_ARRIVAL.player, () => {
     // 模型鼻子朝本地 -Z，rotation.y = atan2(dx,dz)+π 是全專案統一公式
     // （見 game-loop.ts NPC 走位那段同一條註解）。面朝下(+Z，dx=0,dz=1)
@@ -238,7 +260,7 @@ function startPortArrivalScene() {
         captain("「行李都還在我手上。」"),
         "[歐文抬頭][這才像突然想起自己是來報到的]",
         carpenter("「……抱歉。」"),
-        carpenter("「我是歐文。」"),
+        carpenter("「我是歐文。」", { npcId: "carpenter", stage: 1 }),
         carpenter("「今天剛到的木匠。」"),
         "[歐文正式登場]",
         carpenter("「聽說島上有不少房子需要修。」"),
@@ -272,8 +294,267 @@ function startPortArrivalScene() {
 // 釋放 holdPositions（歐文/村長改交給 escort 機制、露比回她自己原本的
 // 日常排程——她的登場戲到此結束，後續劇情這輪還沒寫）。
 function onPortArrivalSceneComplete() {
-  releaseHold();
   carpenterQuest.stage = "escorting";
-  // TODO(下一輪)：舊城鎮選屋 + 上山採集教學 + 回房修繕，Zeppelin 給的
-  // 完整劇本後半段，還沒接上。
+  startVillageHouseTour();
+}
+
+const VILLAGE_TOUR = {
+  start: { x: 152, z: 17 },
+  firstHouse: { x: 143, z: 17 },
+  carpenterHouse: { x: 137, z: 17 },
+} as const;
+
+function startVillageHouseTour() {
+  dayTwoMorningEvent.phase = "villageWalk";
+  gameState.cutsceneActive = true;
+  loadMap("oldVillage", { x: 152, z: 18 }, () => {
+    holdNpcsAt("oldVillage", {
+      mayor: { ...VILLAGE_TOUR.start, rotY: Math.PI / 2 },
+      carpenter: { x: 153.2, z: 17.45, rotY: Math.PI / 2 },
+      artist: { x: 154.2, z: 17.45, rotY: Math.PI / 2 },
+    });
+    startGuidedWalk(
+      [VILLAGE_TOUR.start, VILLAGE_TOUR.firstHouse],
+      () => {
+        endExternalGuidedWalk();
+        showDialogSequence(
+          [carpenter("「……」"), carpenter("「看下一間好了。」")],
+          () =>
+            startGuidedWalk(
+              [VILLAGE_TOUR.firstHouse, VILLAGE_TOUR.carpenterHouse],
+              finishVillageHouseTour,
+              { zoom: 5, external: true },
+            ),
+        );
+      },
+      { zoom: 5, external: true },
+    );
+  });
+}
+
+function finishVillageHouseTour() {
+  endExternalGuidedWalk();
+  showDialogSequence(
+    [
+      carpenter("「……屋頂要補，外牆有受潮，不過樑柱還能用。」"),
+      carpenter("「不用拆。」"),
+      carpenter("「好，就這棟了。」"),
+      carpenter("「我需要一些材料。」"),
+      mayor("「山上應該還能找到木材和石材。」"),
+      carpenter("「好，那我去取。」"),
+      "[主角看著他]",
+      carpenter("「……」"),
+      carpenter("「你是不是也想知道山上的材料怎麼採？」"),
+      "[主角點頭]",
+      carpenter("「正好。」"),
+      carpenter("「你以後要擴建牧場，也少不了木材和石材。」"),
+      carpenter("「我有一把備用的萬用斧，給你吧。」"),
+      carpenter("「以後你就能自己取得木材跟石材了。」"),
+      "[獲得萬用斧]",
+      carpenter("「那麼，我們出發吧。」"),
+      mayor("「山從村莊西北的樓梯走就能到了。」"),
+    ],
+    beginMountainRoute,
+  );
+}
+
+function beginMountainRoute() {
+  inventory.tools.dualAxe = true;
+  gameState.harvestFeedback = {
+    kind: "success",
+    title: "獲得道具",
+    text: "萬用斧",
+    count: 1,
+    until: gameState.elapsed + 2.6,
+  };
+  dayTwoMorningEvent.phase = "mountainRoute";
+  gameState.cutsceneActive = false;
+  setTimePauseSource("guidedGameplay", true);
+}
+
+function startMountainGatheringTutorial() {
+  if (dayTwoMorningEvent.phase !== "mountainRoute") return;
+  dayTwoMorningEvent.phase = "gathering";
+  gameState.cutsceneActive = true;
+  const arrival = LAYOUT.mountain.townArrival;
+  holdNpcsAt("mountain", {
+    mayor: { x: arrival.x - 1, z: arrival.z + 1, rotY: 0 },
+    carpenter: { x: arrival.x + 1, z: arrival.z + 1, rotY: 0 },
+  });
+  showDialogSequence(
+    [
+      carpenter("「好，那麼，我教你一下用法吧。」"),
+      carpenter("「走到落枝、石頭旁，然後按下 E 即可獲得材料。」"),
+      carpenter("「先試著收集十份木材和十份石材。」"),
+    ],
+    () => {
+      dayTwoMorningEvent.woodStart = inventory.wood;
+      dayTwoMorningEvent.stoneStart = inventory.stone;
+      gameState.cutsceneActive = false;
+      releaseHold();
+      renderGatherObjective();
+    },
+  );
+}
+
+function gatheredWood() {
+  return Math.max(0, inventory.wood - dayTwoMorningEvent.woodStart);
+}
+function gatheredStone() {
+  return Math.max(0, inventory.stone - dayTwoMorningEvent.stoneStart);
+}
+
+function renderGatherObjective() {
+  const el = document.getElementById("dayTwoObjective");
+  if (!el) return;
+  if (dayTwoMorningEvent.phase !== "gathering") {
+    el.style.display = "none";
+    return;
+  }
+  el.textContent = `任務：木材 ${Math.min(10, gatheredWood())}/10｜石材 ${Math.min(10, gatheredStone())}/10`;
+  el.style.display = "block";
+}
+
+function finishGatheringTutorial() {
+  if (dayTwoMorningEvent.phase !== "gathering") return;
+  dayTwoMorningEvent.phase = "returning";
+  gameState.cutsceneActive = true;
+  renderGatherObjective();
+  showDialogSequence(
+    [
+      carpenter("「嗯，夠了。」"),
+      carpenter("「第一次用就挺順手的。」"),
+      carpenter("「走吧，回去把房子處理掉。」"),
+    ],
+    startCarpenterRepairScene,
+  );
+}
+
+const repairCg = (text: string) => ({
+  ...carpenter(text),
+  cg: "day2Carpenter-01",
+});
+
+function startCarpenterRepairScene() {
+  if (!dayTwoMorningEvent.materialsSpent) {
+    inventory.wood = Math.max(0, inventory.wood - 10);
+    inventory.stone = Math.max(0, inventory.stone - 10);
+    dayTwoMorningEvent.materialsSpent = true;
+  }
+  loadMap("oldVillage", { x: 137, z: 18 }, () => {
+    holdNpcsAt("oldVillage", {
+      carpenter: { ...VILLAGE_TOUR.carpenterHouse, rotY: Math.PI },
+    });
+    showDialogSequence(
+      [
+        carpenter("「好，那我要開始修繕了。」"),
+        repairCg("「海邊的房子最麻煩的不是雨，是濕氣和鹽。」"),
+        repairCg("「外觀看起來沒什麼，裡面可能早就開始腐了。」"),
+        "[歐文敲了敲拆下來的木料]",
+        repairCg("「像這塊。」"),
+        repairCg("「再晚一點處理，就不是換幾塊木頭能解決的了。」"),
+        { text: "……", speaker: "hero", name: "主角", cg: "day2Carpenter-01" },
+        repairCg("「怎麼？」"),
+        "[主角搖頭]",
+        repairCg("「放心。」"),
+        repairCg("「這棟還救得回來。」"),
+        repairCg("「不然我也不會選它。」"),
+        "[繼續施工]",
+        repairCg("「材料夠我先處理最危險的地方了。」"),
+        repairCg("「剩下的我自己慢慢來。」"),
+        repairCg("「你今天已經幫很多了。」"),
+        repairCg("「謝了。」"),
+        "[看了一眼還沒整理好的屋內]",
+        repairCg("「等這裡整理好，再請你進來坐吧。」"),
+        "[歐文好感 +30]",
+        "[個人事件完成]",
+      ],
+      completeDayTwoMorningEvent,
+    );
+  });
+}
+
+function completeDayTwoMorningEvent() {
+  if (!dayTwoMorningEvent.rewardGranted) {
+    addAffectionReward("carpenter", "personalEvent");
+    dayTwoMorningEvent.rewardGranted = true;
+  }
+  carpenterQuest.stage = "moved_in";
+  dayTwoMorningEvent.phase = "complete";
+  releaseHold();
+  setTimePauseSource("guidedGameplay", false);
+  gameState.cutsceneActive = false;
+}
+
+export function canTriggerDayTwoTouchEvent(map: string, x: number, z: number) {
+  if (dayTwoMorningEvent.phase === "mountainRoute") {
+    const gate = LAYOUT.oldVillage.mountainGate;
+    return (
+      map === "oldVillage" &&
+      z === gate.z &&
+      x >= gate.x - 1 &&
+      x <= gate.x + gate.width - 2
+    );
+  }
+  return dayTwoMorningEvent.phase !== "gathering";
+}
+
+export function updateDayTwoWalkFollowers() {
+  setTimePauseSource(
+    "guidedGameplay",
+    dayTwoMorningEvent.phase !== "idle" &&
+      dayTwoMorningEvent.phase !== "complete",
+  );
+  if (
+    dayTwoMorningEvent.phase === "villageWalk" &&
+    dayTwoMorningEvent.holdPositions
+  ) {
+    const mayorNpc = npcs.find((npc) => npc.id === "mayor");
+    if (mayorNpc) {
+      dayTwoMorningEvent.holdPositions.mayor = {
+        x: mayorNpc.mesh.position.x,
+        z: mayorNpc.mesh.position.z,
+        rotY: mayorNpc.mesh.rotation.y,
+      };
+      dayTwoMorningEvent.holdPositions.carpenter = {
+        x: mayorNpc.mesh.position.x + 1.15,
+        z: mayorNpc.mesh.position.z + 0.45,
+        rotY: mayorNpc.mesh.rotation.y,
+      };
+      dayTwoMorningEvent.holdPositions.artist = {
+        x: mayorNpc.mesh.position.x + 2.15,
+        z: mayorNpc.mesh.position.z + 0.45,
+        rotY: mayorNpc.mesh.rotation.y,
+      };
+    }
+  }
+  if (
+    dayTwoMorningEvent.phase === "mountainRoute" &&
+    gameState.currentMapName === "mountain"
+  ) {
+    startMountainGatheringTutorial();
+  }
+  if (dayTwoMorningEvent.phase === "gathering") {
+    renderGatherObjective();
+    if (gatheredWood() >= 10 && gatheredStone() >= 10) {
+      finishGatheringTutorial();
+    }
+  }
+}
+
+export function resetDayTwoMorningEvent() {
+  Object.assign(dayTwoMorningEvent, {
+    triggered: false,
+    holding: false,
+    holdMap: null,
+    holdPositions: null,
+    due: false,
+    phase: "idle",
+    woodStart: 0,
+    stoneStart: 0,
+    rewardGranted: false,
+    materialsSpent: false,
+  });
+  setTimePauseSource("guidedGameplay", false);
+  renderGatherObjective();
 }
