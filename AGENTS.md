@@ -173,6 +173,7 @@
 - 智慧型情境互動、動物三動作、E/R/F 與 Nintendo/Xbox 映射、點擊尋路 → `docs/decisions/context-interaction-and-navigation.md`
 - 野花採集系統(5 物種、跟木材/石頭同一批區域、鐮刀採集) `wildflowers.ts` → `docs/decisions/wildflower-gathering-system.md`
 - 蘑菇採集系統(目前 1 物種即香菇、跟野花同一批區域但每區僅 1 節點、不需工具直接摘) `mushrooms.ts` → `docs/decisions/mushroom-gathering-system.md`
+- 第二天早上村長固定站門口強制觸發演出(試驗版，日期+時段強制觸發不用玩家觸碰，跟木匠碼頭事件共用同一時段但刻意獨立) `day2-morning-event.ts` → `docs/decisions/day-two-morning-event.md`
 
 ## 正式劇情資料規則
 

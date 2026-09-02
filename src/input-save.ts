@@ -80,6 +80,7 @@ import {
   MAPS,
 } from "./layout-maps";
 import { tryShareChefMeal, mergeChefMealIntoChatLine } from "./chef-quest";
+import { dayTwoMorningEvent } from "./day2-morning-event";
 import {
   canQuickSaveDuringPrologue,
   canUsePrologueKitchen,
@@ -349,6 +350,7 @@ export function saveGame(slot = "default") {
     prologue: exportPrologueSaveState(),
     npcNameRevealStages: exportNpcNameRevealState(),
     carpenterQuest: { ...carpenterQuest },
+    dayTwoMorningEvent: { ...dayTwoMorningEvent },
     oysterRackState: JSON.parse(JSON.stringify(oysterRackState)),
     oysterRackSlots: gameState.oysterRackSlots,
     feederUnits: gameState.feederUnits,
@@ -540,6 +542,17 @@ export function loadGame(
     ) {
       const mayorNpc = npcs.find((n) => n.id === "mayor");
       if (mayorNpc) mayorNpc.mesh.visible = true;
+    }
+  }
+  if (data.dayTwoMorningEvent) {
+    Object.assign(dayTwoMorningEvent, data.dayTwoMorningEvent);
+    // holding 為真代表存檔當下村長還固定站在家門口——重新顯示她，實際
+    // 位置/朝向交給 game-loop.ts 的 dayTwoMorningEvent.holding 那段每幀
+    // 校正，這裡不用重算座標。
+    if (dayTwoMorningEvent.holding) {
+      const mayorNpc = npcs.find((n) => n.id === "mayor");
+      if (mayorNpc) mayorNpc.mesh.visible = true;
+      npcGroup.visible = true;
     }
   }
   Object.keys(oysterRackState).forEach((key) => delete oysterRackState[key]);

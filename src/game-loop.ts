@@ -64,6 +64,7 @@ import {
   MAPS,
   carpenterQuest,
   CARPENTER_EVENT_WAIT_POS,
+  DAY_TWO_MORNING_ARRIVAL,
   SOUTHERNMOST_AVENUE_TREE_Z,
   aStar,
   portGroundY,
@@ -96,6 +97,11 @@ import {
 } from "./props";
 import { dialogQueue } from "./dialogue";
 import { isBlocked, events } from "./build-map";
+import {
+  dayTwoMorningEvent,
+  canStartDayTwoMorningEvent,
+  startDayTwoMorningEvent,
+} from "./day2-morning-event";
 import {
   collidesAt,
   keys,
@@ -918,6 +924,13 @@ export function animate(now) {
   updateCarpenterEscortTrail();
   updateMayorPrologueTrail();
 
+  // 第二天 08:00-08:30 強制觸發，不管玩家人在哪張地圖/哪個位置——跟下面
+  // isPrologueSeekingRod() 那個「玩家主動靠近船長」的觸碰式判斷不同款，
+  // 見 day2-morning-event.ts 檔頭註解。
+  if (canStartDayTwoMorningEvent()) {
+    startDayTwoMorningEvent();
+  }
+
   if (
     isPrologueSeekingRod() &&
     gameState.currentMapName === "port" &&
@@ -933,6 +946,29 @@ export function animate(now) {
     // Story NPCs may intentionally retain only an empty compatibility node.
     if (n.mesh.parts == null) {
       n.mesh.visible = false;
+      return;
+    }
+    // 第二天早上村長固定站在家門口等玩家：holding 為真時整段接管，不
+    // 讓下面的日常行程表(getScheduleTarget)把她重新排走。跟
+    // isCarpenterWaitingAtHouse 那段（更下面）是同一種「固定站位」寫
+    // 法，差別是這裡不用等 carpenterQuest 的 stage，直接看
+    // dayTwoMorningEvent.holding。
+    if (
+      dayTwoMorningEvent.holding &&
+      n.id === "mayor" &&
+      gameState.currentMapName === "livingArea"
+    ) {
+      npcGroup.visible = true;
+      n.mesh.visible = true;
+      n.mesh.position.x = DAY_TWO_MORNING_ARRIVAL.mayor.x;
+      n.mesh.position.z = DAY_TWO_MORNING_ARRIVAL.mayor.z;
+      n.mesh.position.y = characterGroundY(
+        "livingArea",
+        DAY_TWO_MORNING_ARRIVAL.mayor.x,
+        DAY_TWO_MORNING_ARRIVAL.mayor.z,
+      );
+      n.mesh.rotation.y = 0; // 面朝上(-Z)，見 day2-morning-event.ts 同一條公式註解
+      animateWalk(n.mesh, false, gameState.elapsed);
       return;
     }
     if (isPrologueMayorFollowing() && n.id === "mayor") {

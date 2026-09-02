@@ -3,13 +3,9 @@
 // meadowtide.html 版本靠 regex 抽取＋vm 執行「純資料」那段的做法相比，
 // 現在有了真正的模組邊界，不用再抽取字串執行。
 //
-// 用法：npm run map-debug -- [--map=livingArea|oldVillage|port|house] [--legend] [--landmarks]
-//
-// layout-maps.ts 必須保持零 DOM/WebGL 依賴（不能 import 任何最終會拉到
-// THREE.WebGLRenderer / document.getElementById 的模組），這支工具才能在
-// 純 Node 環境下執行，不用開瀏覽器就能先看一眼格子對不對。
+// 用法：npm run map-debug -- [--map=livingArea|oldVillage|port|house] [--legend] [--landmarks] [--filter=關鍵字]
 
-import { MAPS } from "../src/layout-maps";
+import { MAPS, LAYOUT } from "../src/layout-maps";
 
 const LEGEND: Record<number, string> = {
   0: "·",
@@ -58,6 +54,60 @@ if (process.argv.includes("--legend")) {
   );
 }
 
+// --landmarks：從 LAYOUT（唯一的座標 single source of truth，見
+// layout-maps.ts 檔頭註解）遞迴掃出所有「有 x/z 座標的節點」，不用另外
+// 手抄一份、之後會跟著 LAYOUT 改動脫鉤的座標清單。寫事件（例如某個 NPC
+// 該站在哪、某個傳送點在哪）要查座標時直接跑這個指令；改了 LAYOUT 裡的
+// 數字（搬房子、搬地標）之後這份清單自動就是最新的，不用手動維護。
+interface Landmark {
+  path: string;
+  x: number;
+  z: number;
+  extra: string;
+}
+
+function collectLandmarks(
+  node: unknown,
+  path: string[],
+  out: Landmark[],
+): void {
+  if (node === null || typeof node !== "object") return;
+  const record = node as Record<string, unknown>;
+  if (typeof record.x === "number" && typeof record.z === "number") {
+    const extra = Object.keys(record)
+      .filter((k) => k !== "x" && k !== "z" && typeof record[k] !== "object")
+      .map((k) => `${k}=${record[k]}`)
+      .join(", ");
+    out.push({ path: path.join("."), x: record.x, z: record.z, extra });
+  }
+  for (const key of Object.keys(record)) {
+    const value = record[key];
+    if (value !== null && typeof value === "object") {
+      collectLandmarks(value, [...path, key], out);
+    }
+  }
+}
+
 if (process.argv.includes("--landmarks")) {
-  console.log("\n(標記房子/穀倉/NPC等地標，之後可以擴充這段)");
+  const filterArg = process.argv.find((a) => a.startsWith("--filter="));
+  const filter = filterArg ? filterArg.slice("--filter=".length).toLowerCase() : "";
+  const landmarks: Landmark[] = [];
+  collectLandmarks(LAYOUT, [], landmarks);
+  const filtered = filter
+    ? landmarks.filter((l) => l.path.toLowerCase().includes(filter))
+    : landmarks;
+  filtered.sort((a, b) => a.path.localeCompare(b.path));
+  console.log(
+    `\n=== LAYOUT 座標點（${filtered.length} 筆${filter ? `，篩選 "${filter}"` : ""}） ===`,
+  );
+  const pathWidth = Math.max(0, ...filtered.map((l) => l.path.length));
+  for (const l of filtered) {
+    const coord = `(${l.x}, ${l.z})`.padEnd(12, " ");
+    console.log(
+      `  ${l.path.padEnd(pathWidth, " ")}  ${coord}${l.extra ? "  " + l.extra : ""}`,
+    );
+  }
+  if (filtered.length === 0) {
+    console.log("  （沒有符合的座標點，換個 --filter 關鍵字試試）");
+  }
 }

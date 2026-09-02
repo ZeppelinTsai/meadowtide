@@ -2289,6 +2289,16 @@ for (let z = HOUSE_ROAD_START_Z; z < MAPS.livingArea.tiles.length; z++) {
   }
 }
 
+// 第二天早上「村長在家門口等你」事件（day2-morning-event.ts）的定位點：
+// 玩家門前這條路已經有 HOUSE_ROAD_X/HOUSE_ROAD_START_Z 這組現成的「家門口」
+// 座標，直接沿用，不要另外寫死一組容易跟著房子搬家脫鉤的數字——之後房子
+// 位置改了，這裡跟著自動更新。村長固定站在玩家傳送點正南一格(z+1)，兩人
+// 隔一格面對面。
+export const DAY_TWO_MORNING_ARRIVAL = {
+  player: { x: HOUSE_ROAD_X, z: HOUSE_ROAD_START_Z },
+  mayor: { x: HOUSE_ROAD_X, z: HOUSE_ROAD_START_Z + 1 },
+};
+
 // 主屋門前道路往西分支；接近農田的北側入口向北加寬兩格，形成三格深的入口。
 // 農田本體四周另鋪一圈一格寬道路，南側不再繼續向城區延伸。
 // 路線全部由 LAYOUT 推導；之後移動房屋或農田時不需要重寫絕對座標。
