@@ -225,7 +225,7 @@ export const PROLOGUE_SCRIPT: Record<string, DialogueLine[]> = {
     PROLOGUE_MARKERS.enterFarmHouse,
     mayor("「這就是你的住處。家具不多，但爐灶、床和基本用品都還能使用。」"),
     mayor(
-      "「使用床鋪可以讓時間快速經過。你可以睡到隔天早上六點，或休息到今天傍晚六點。」",
+      "「使用床鋪可以讓時間快速經過。系統會依照當下時間，帶你睡到最近的早上六點，或是休息到今天傍晚六點。」",
     ),
     mayor("「大致上就是這些。還有什麼想問的嗎？」"),
     PROLOGUE_MARKERS.foodQuestion,

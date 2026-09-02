@@ -1404,6 +1404,13 @@ addEventListener("keydown", (e) => {
 
   // 床鋪——序章結束後才開放。睡眠與休息都走 updateGameClock()，確保換日、
   // 作物成長、天氣與 06:00 自動存檔沿用正式時間事件路徑。
+  // Zeppelin 2026-09-02 反饋：兩個選項要改成「最近的」早上六點/晚上六
+  // 點，不是寫死跳到隔天——原本半夜(hour<6)睡覺也會整組跳到隔天六點，
+  // 平白多跳過快一整天；改成還沒到今天六點就睡到今天六點，已經過了
+  // 六點才睡到隔天。順便避免玩家半夜醒來隨手再睡一次「休息到今天傍晚
+  // 六點」，把第二天早上 8:00-8:30 的強制事件時間窗跳過去——這段時間窗
+  // 本身的防跳過保險見 game-clock.ts 的 crossedDayTwoMorningWindow()，
+  // 這裡只需要讓目的地座落在合理範圍，兩邊分工。
   if (gameState.currentMapName === "house") {
     const { x: hx, z: hz } = gameState.playerGridPos;
     const bed = (MAPS.house.furniture || []).find(
@@ -1415,8 +1422,12 @@ addEventListener("keydown", (e) => {
         return;
       }
       const hour = gameState.currentPhase * TIME_CONFIG.gameHoursPerDay;
+      const morningIsToday = hour < 6;
       const options = [
-        { label: "睡到隔天早上六點", value: "tomorrow" },
+        {
+          label: morningIsToday ? "睡到今天早上六點" : "睡到隔天早上六點",
+          value: "morning",
+        },
       ];
       if (hour < 18) {
         options.unshift({ label: "休息到今天傍晚六點", value: "evening" });
@@ -1426,7 +1437,7 @@ addEventListener("keydown", (e) => {
         const target =
           value === "evening"
             ? currentDayStart + dayLength * (18 / 24)
-            : currentDayStart + dayLength * (1 + 6 / 24);
+            : currentDayStart + dayLength * ((morningIsToday ? 0 : 1) + 6 / 24);
         updateGameClock(Math.max(0, target - gameState.elapsed));
       });
       return;

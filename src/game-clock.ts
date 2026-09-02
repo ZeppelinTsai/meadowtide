@@ -4,6 +4,11 @@ import { updateAvenueTreeColors, updateSeasonalTreeColors, updateSeasonalGroundC
 import { syncFarmVisuals } from "./farm-visuals";
 import { scheduleNextMeteor } from "./scene-sky";
 import { isWorldTimePaused } from "./time-pause";
+import {
+  dayTwoMorningEvent,
+  DAY_TWO_MORNING_WINDOW_START,
+  DAY_TWO_MORNING_WINDOW_END,
+} from "./day2-morning-event";
 
 export function beginNewDay(day) {
         gameState.currentSeason = getSeasonIndex(day);
@@ -61,6 +66,24 @@ export function beginNewDay(day) {
         ) > 0;
       }
 
+      // 2026-09-02 Zeppelin 反饋「避免強制事件被跳過」——道理跟上面
+      // crossedAutosaveMark() 一樣：睡覺或 N 鍵快轉一次把 elapsed 瞬間
+      // 往前跳一大段，中間不會有任何一幀落在 [8:00, 8:30) 窗口內，靠
+      // day2-morning-event.ts 自己每幀輪詢 currentDay/currentPhase 的
+      // canStartDayTwoMorningEvent() 永遠抓不到。這裡改成比較「這次前進
+      // 的 elapsed 區間」有沒有含到窗口本身(用絕對 elapsed 起訖，不是
+      // currentPhase 前後值)，含到就把 dayTwoMorningEvent.due 設成
+      // true，交給 day2-morning-event.ts 自己決定何時真正觸發(要避開
+      // dialogQueue/cutsceneActive 等畫面狀態)——跟
+      // gameState.pendingAutosave 同一種「底層時鐘只負責標記、真正動作
+      // 留給消費端」分工，這裡刻意不直接呼叫 startDayTwoMorningEvent()。
+      function crossedDayTwoMorningWindow(oldElapsed, newElapsed) {
+        return (
+          newElapsed >= DAY_TWO_MORNING_WINDOW_START &&
+          oldElapsed < DAY_TWO_MORNING_WINDOW_END
+        );
+      }
+
       export function updateGameClock(delta) {
         if (!(delta > 0)) return 0;
         const oldElapsed = gameState.elapsed;
@@ -80,6 +103,12 @@ export function beginNewDay(day) {
         }
         if (crossedAutosaveMark(oldElapsed, gameState.elapsed)) {
           gameState.pendingAutosave = true;
+        }
+        if (
+          !dayTwoMorningEvent.triggered &&
+          crossedDayTwoMorningWindow(oldElapsed, gameState.elapsed)
+        ) {
+          dayTwoMorningEvent.due = true;
         }
         return crossedDays;
       }

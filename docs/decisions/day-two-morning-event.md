@@ -133,3 +133,98 @@ npm run map-debug -- --landmarks --filter=house  # 只看路徑包含 "house" �
   邏輯層驗證過（`tsc`/既有測試全過），但「傳送點會不會卡到什麼東西」
   「村長模型面對面站著視覺上順不順」這些需要 Zeppelin 親自進遊戲、調到
   第二天早上 8 點左右看一次。
+## 2026-09-02 第二輪：Zeppelin 反饋「避免強制事件被跳過」＋睡覺系統改成「最近」
+
+### 問題：睡覺／N 鍵快轉是瞬間跳時間，可能整段跳過事件窗口
+
+`game-clock.ts` 的 `updateGameClock(delta)` 是單一一次 `gameState.elapsed
++= delta` 的瞬間賦值，沒有逐格動畫；跨日的部分本來就有逐日迴圈
+（`beginNewDay()`）保底，但「日內某個時段窗口」（例如本事件的
+`day===1 && hour∈[8,8.5)`）沒有對應的保底機制——原本的
+`canStartDayTwoMorningEvent()` 只在每幀輪詢「現在是不是剛好落在窗口
+內」，如果玩家睡覺一次跳過一大段時間、剛好整個窗口被跳過去（例如在
+第二天 06:00～08:00 之間又睡了一次「休息到今天傍晚六點」，一次跳到
+18:00），這個事件就會被永久跳過，之後永遠不會再觸發。
+
+同樣的風險理論上也存在於 `carpenter-quest.ts` 的
+`canStartCarpenterDockScene()`（同一個 `day===1, hour∈[8,8.5)` 窗
+口），但那個是「觸碰式」——要玩家實際走到碼頭觸發點才會判斷，不是
+每幀自動判斷，且不是「強制」事件，這輪先不動它，留在下面「還沒做」
+清單。
+
+### 修法：比照 `crossedAutosaveMark()` 的絕對 elapsed 區間比較
+
+`game-clock.ts` 本來就有 `crossedAutosaveMark(oldElapsed, newElapsed)`
+處理「N 鍵快轉可能跳過每日 06:00 自動存檔點」的同類問題——比較的是
+**這次前進所橫跨的絕對 elapsed 區間**有沒有含到目標時間點，而不是
+比較 `currentPhase` 前後值（大跳躍時 `currentPhase` 可能繞回同一個
+值，比不出來）。這輪新增 `crossedDayTwoMorningWindow(oldElapsed,
+newElapsed)`，用一樣的手法比較「這次前進的區間」有沒有含到
+`[DAY_TWO_MORNING_WINDOW_START, DAY_TWO_MORNING_WINDOW_END)`（這兩個
+常數搬到 `day2-morning-event.ts` 自己身上，用同一顆 `dayLength`
+換算，跟窗口定義放在同一個檔案，不用在 `game-clock.ts` 重複定義
+`day===1, hour∈[8,8.5)` 這組魔術數字）。
+
+`updateGameClock()` 偵測到跨過窗口、且事件還沒 `triggered` 過，就把
+新增的 `dayTwoMorningEvent.due` 旗標設成 `true`——跟既有的
+`gameState.pendingAutosave` 是同一種分工：**底層時鐘只負責標記「該
+發生了」），真正要不要現在觸發（要避開 `dialogQueue`/`cutsceneActive`
+等畫面狀態）留給消費端自己決定**。`day2-morning-event.ts` 的
+`canStartDayTwoMorningEvent()` 加一行：`due` 為真時直接放行（不用
+再比對現在的 `hour` 是否還落在窗口內，跳躍後很可能已經不在了）；
+`startDayTwoMorningEvent()` 觸發時把 `due` 重設回 `false`。
+
+`game-clock.ts` 反過來 `import` `day2-morning-event.ts`——先確認過沒
+有循環 import 風險：`day2-morning-event.ts` 自己只 import
+`game-state`/`layout-maps`/`npc-runtime`/`build-map`/`scene-sky`/
+`dialogue`，這幾個都不會繞回 `game-clock.ts` 或 `input-save.ts`。
+
+### 睡覺選單改成「最近的」六點，不是寫死跳到隔天
+
+`src/input-save.ts` 的床鋪互動（E 鍵）原本兩個選項都是寫死算法：
+「早上」永遠是**隔天**六點，「傍晚」永遠是**今天**十八點。問題是半
+夜（例如凌晨 2 點）選「睡到隔天早上六點」會整組多跳過快一整天（凌晨
+2 點的「今天」六點其實還沒過），不符合直覺，也是 Zeppelin 這輪反饋
+的原因。
+
+改法：讀目前的 `hour = gameState.currentPhase * TIME_CONFIG
+.gameHoursPerDay`，`morningIsToday = hour < 6`——如果現在還沒到今天
+六點，早上選項就睡到**今天**六點；已經過了六點（含白天、晚上）才睡到
+**隔天**六點。傍晚選項維持只在 `hour < 18` 時才出現（已經過晚上六點
+就沒有意義），一律睡到**今天**十八點——因為只在 `hour < 18` 時才會
+出現，「今天」在這個條件下就是最近的一個。兩個選項文字也跟著動態換
+成「睡到今天早上六點」/「睡到隔天早上六點」，不再永遠顯示「隔天」。
+
+目標時間點改用 `currentDayStart = Math.floor(gameState.elapsed /
+dayLength) * dayLength` 當基準去加時段比例，取代原本直接用
+`gameState.elapsed` 往後估算「加 N 小時」的寫法——這樣「六點」永遠是
+六點整，不會因為玩家不是剛好在整點按下選單而產生零頭誤差。
+
+這個修改跟上面「避免強制事件被跳過」是同一件事的兩面：改成「最近」
+之後單次睡眠跳躍的時間變短了（最多 24 小時，原本半夜睡「隔天六點」
+理論上可以跳到將近 30 小時），降低了跳過事件窗口的機率，但不能單靠
+「跳躍變短」保證不跳過，所以還是需要上面 `due` 旗標這層真正的保底。
+
+### 序章教學文字同步更新
+
+`src/story/chapters/prologue-script.ts` 的 `house` 段落（村長介紹床
+鋪那句）原文是「你可以睡到隔天早上六點，或休息到今天傍晚六點」，跟
+新行為不符（不再永遠是「隔天」），改成「系統會依照當下時間，帶你睡
+到最近的早上六點，或是休息到今天傍晚六點」，不再寫死「隔天」兩個字。
+
+### 驗證
+
+`npx tsc --noEmit`、`npm run test:map-tools`、`npm run test:save-slots`、
+`npm run test:story` 全過（跟第一輪一樣，這台機器沒有能實際跑
+`npm run dev` 進遊戲操作的環境，邏輯層驗證過，實際跳一次時間+看選單
+文字用不用順眼，還是要 Zeppelin 進遊戲確認一次）。
+
+### 還沒做（沿用上一輪未完成項）
+
+- `carpenter-quest.ts` 的 `canStartCarpenterDockScene()` 仍是原本的
+  `hour∈[8,8.5)` 觸碰式窗口，這輪沒有動它——它不是「強制」事件（要玩
+  家自己走到碼頭），跟這輪「強制事件被跳過」的問題性質不完全一樣，
+  且用同一招（`due` 旗標）去修會牽動 `carpenterQuest.stage` 的狀態機，
+  影響面比較大，先留給下一輪視需要再處理。
+- 上一輪列的「沒有對話」「村長會永遠釘在門口」「跟木匠碼頭事件的關係
+  未定」三項都還沒動。
