@@ -8,6 +8,7 @@ import { initUiFocusNavigation } from "./ui-focus-navigation";
 import { setLocale, translateDocument, onLocaleChanged } from "./i18n";
 import { gameSettings } from "./settings";
 import { initContextInteraction } from "./context-interaction-ui";
+import { installPerfHarness } from "./debug-perf";
 
 // 開局改成先進標題畫面(title-screen.ts)：按任意鍵→主選單，玩家自己選
 // 「開始新遊戲」(序幕)或「繼續遊戲」(讀檔進生活區)，不再是開局自動
@@ -23,4 +24,7 @@ initContextInteraction();
 // gameState.player 存不存在互斥(標題畫面階段還沒有 player，Esc 監聽會
 // 直接跳過)，不用互相知道對方的狀態。
 initPauseMenu();
+// 效能測試 harness(debug-perf.ts)——2026-09-03 加，只掛 window.__perf、
+// 不主動做任何事，不影響正常遊戲流程。
+installPerfHarness();
 requestAnimationFrame(animate);

@@ -16,7 +16,12 @@ import {
   type PearlRarity,
 } from "./pearl-system";
 import { getRelationship } from "./affection";
-import { playRandomSfx, HONEY_HARVEST_SFX } from "./sfx";
+import {
+  playRandomSfx,
+  HONEY_HARVEST_SFX,
+  OYSTER_HARVEST_SFX,
+  OYSTER_PEARL_SFX,
+} from "./sfx";
 import { storyState } from "./story/story-state";
 import type { ToolId } from "./tool-catalog";
 import {
@@ -764,9 +769,13 @@ export function harvestOysterRack(x: number, z: number) {
     Math.floor(Math.random() * (OYSTER_YIELD_MAX - OYSTER_YIELD_MIN + 1));
   inventory.oysters += yieldCount;
   rackState.harvestsToday++;
+  playRandomSfx(OYSTER_HARVEST_SFX);
 
   const pearl = rollPearl(gameState.oysterRackSlots, pearlUnlocks());
   if (pearl) inventory.pearls[pearl] += 1;
+  // 開出珍珠是額外的驚喜，疊加播放一聲更討喜的確認音，跟基本的巡視
+  // 音效(OYSTER_HARVEST_SFX)分開、不互相取代。
+  if (pearl) playRandomSfx(OYSTER_PEARL_SFX);
   const pearlLabel = pearl
     ? PEARL_DEFINITIONS.find((entry) => entry.id === pearl)?.label
     : null;

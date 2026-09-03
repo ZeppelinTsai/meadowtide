@@ -162,3 +162,20 @@ export const HONEY_HARVEST_SFX = [
   "kenney_interface-sounds/Audio/glass_002.ogg",
   "kenney_interface-sounds/Audio/glass_003.ogg",
 ];
+
+// 牡蠣架巡視——2026-09-03 Zeppelin 指定跟蜂蜜一起補。跟開蜂箱蓋的清脆
+// 「glass」不同，牡蠣殼是硬殼互相碰撞的悶響，借「impactPlate_light」
+// (瓷盤級的輕碰撞，質感比 impactWood/impactMining 更接近硬殼)。
+export const OYSTER_HARVEST_SFX = [
+  "kenney_impact-sounds/Audio/impactPlate_light_000.ogg",
+  "kenney_impact-sounds/Audio/impactPlate_light_001.ogg",
+  "kenney_impact-sounds/Audio/impactPlate_light_002.ogg",
+];
+// 開出珍珠時疊加播放的加碼音效——跟 RELATIONSHIP_EVENT_SFX 同一組
+// confirmation 素材(正向、討喜的確認感)，但獨立成自己的常數，之後要
+// 各自調整互不影響。
+export const OYSTER_PEARL_SFX = [
+  "kenney_interface-sounds/Audio/confirmation_001.ogg",
+  "kenney_interface-sounds/Audio/confirmation_002.ogg",
+  "kenney_interface-sounds/Audio/confirmation_003.ogg",
+];

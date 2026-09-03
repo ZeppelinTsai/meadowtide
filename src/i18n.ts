@@ -88,7 +88,8 @@ export function t(key: string): string {
 /** Translate legacy source text while it is being migrated to stable t() keys. */
 export function translateText(source: string): string {
   if (currentLocale === "zh") return source;
-  const translated = UI_TRANSLATIONS[currentLocale][source];
+  const translated =
+    UI_TRANSLATIONS[currentLocale][source] ?? NAME_LOOKUP[currentLocale][source];
   if (translated !== undefined) return translated;
   if (import.meta.env.DEV && /[一-龥]/.test(source) && !warnedMissingSources.has(source)) {
     warnedMissingSources.add(source);
@@ -128,6 +129,31 @@ export function translateDocument(root: ParentNode = document) {
 // ==============================================================
 const TRANSLATIONS: Record<Locale, TranslationTree> = {
   zh: {
+    // characters/places——2026-09-03 新增的共用命名空間。之前只有
+    // carpenter.name.{mayor,carpenter} 這兩個名字有三語翻譯，鎖在
+    // carpenter.* 底下；其他事件想顯示村長的名字，要嘛重複存一次翻譯，
+    // 要嘛借用一個語意不合的 key（carpenter.name.mayor 用在跟木匠無關
+    // 的事件上很奇怪）。這裡把「角色/地點顯示名」獨立成共用命名空間，
+    // 任何 StoryEvent 的 dialogue step 都可以直接
+    // nameKey: "characters.mayor"，不用管這句話原本屬於哪個章節。
+    // carpenter.name.* 保留不動（避免動到已經在正式運作的木匠事件），
+    // 但兩邊內容刻意保持一致，之後木匠事件要遷移時可以直接改用這裡。
+    characters: {
+      mayor: "村長",
+      carpenter: "木匠",
+      chef: "廚師",
+      captain: "船長",
+      artist: "藝術家",
+    },
+    // 跟 src/ui-translations.ts 裡地圖圖例既有的 山區/城鎮/牧場/港口
+    // 完全同一組字串——這裡是新開的結構化來源，兩邊字串一致才能讓
+    // translateText() 底下的 NAME_LOOKUP 推導對上（見檔案下方）。
+    places: {
+      livingArea: "牧場",
+      port: "港口",
+      oldVillage: "城鎮",
+      mountain: "山區",
+    },
     carpenter: {
       name: { mayor: "村長", carpenter: "木匠" },
       dock: {
@@ -178,6 +204,19 @@ const TRANSLATIONS: Record<Locale, TranslationTree> = {
     },
   },
   en: {
+    characters: {
+      mayor: "Mayor",
+      carpenter: "Carpenter",
+      chef: "Chef",
+      captain: "Captain",
+      artist: "Artist",
+    },
+    places: {
+      livingArea: "Farm",
+      port: "Port",
+      oldVillage: "Town",
+      mountain: "Mountain",
+    },
     carpenter: {
       name: { mayor: "Mayor", carpenter: "Carpenter" },
       dock: {
@@ -231,6 +270,19 @@ const TRANSLATIONS: Record<Locale, TranslationTree> = {
     },
   },
   ja: {
+    characters: {
+      mayor: "村長",
+      carpenter: "大工",
+      chef: "シェフ",
+      captain: "船長",
+      artist: "アーティスト",
+    },
+    places: {
+      livingArea: "牧場",
+      port: "港",
+      oldVillage: "町",
+      mountain: "山地",
+    },
     carpenter: {
       name: { mayor: "村長", carpenter: "大工" },
       dock: {
@@ -278,6 +330,41 @@ const TRANSLATIONS: Record<Locale, TranslationTree> = {
       },
     },
   },
+};
+
+// ==============================================================
+// NAME_LOOKUP——從上面 characters/places 衍生出「中文原文→譯文」對照表，
+// 給 translateText() 的舊式原文查表用。單一資料源只有 TRANSLATIONS，這裡
+// 純粹是推導，不要手動在 ui-translations.ts 另外重複打一次同樣的字串，
+// 不然又會變回「兩份名字翻譯，改一個忘記改另一個」的老問題。
+// 這樣一來，任何還沒切到 t() key 的舊呼叫點（例如 npc-defs.ts 的
+// npcLine() 直接回傳 npc.name 這種原文字串）也能透過 translateText()
+// 自動吃到 characters/places 的翻譯，不用逐一改呼叫點。
+// ==============================================================
+function buildNameLookup(locale: Locale): Record<string, string> {
+  const lookup: Record<string, string> = {};
+  for (const namespace of ["characters", "places"] as const) {
+    const zhGroup = TRANSLATIONS.zh[namespace] as
+      | Record<string, string>
+      | undefined;
+    const localeGroup = TRANSLATIONS[locale][namespace] as
+      | Record<string, string>
+      | undefined;
+    if (!zhGroup || !localeGroup) continue;
+    for (const key of Object.keys(zhGroup)) {
+      const zhText = zhGroup[key];
+      const translated = localeGroup[key];
+      if (typeof zhText === "string" && typeof translated === "string") {
+        lookup[zhText] = translated;
+      }
+    }
+  }
+  return lookup;
+}
+const NAME_LOOKUP: Record<Locale, Record<string, string>> = {
+  zh: {},
+  en: buildNameLookup("en"),
+  ja: buildNameLookup("ja"),
 };
 
 // ==============================================================

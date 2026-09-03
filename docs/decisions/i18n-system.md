@@ -57,3 +57,33 @@ meadowtideI18n.locales           // 列出支援的語言代碼 ["zh","en","ja"]
 - 缺翻譯時 `t()` 會退回 `zh` 並在 console 印一行警告，不會讓對話框空白或
   丟例外；兩邊都查不到才會直接印出 key 本身當文字內容，方便一眼看出是
   哪一句漏翻。
+
+## 共用角色/地點命名空間（2026-09-03）
+
+在 `TRANSLATIONS` 裡新增了 `characters.*`／`places.*` 這兩個共用命名
+空間（`src/i18n.ts`），收角色（`mayor`/`carpenter`/`chef`/`captain`/
+`artist`）跟地圖（`livingArea`/`port`/`oldVillage`/`mountain`）的顯示
+名三語對照。動機：`carpenter.name.mayor` 這組翻譯之前鎖在 `carpenter.*`
+底下，別的事件想顯示村長名字時沒有語意合適的 key 可以借用，只能重複
+存一次翻譯，以後改名字要改兩個地方。新事件（不管是 TS `StoryEvent`
+還是 Phase A 的 JSON 事件）要在 `dialogue`/`choice` step 顯示角色或地點
+名稱，直接用 `nameKey: "characters.mayor"` 這種共用 key，不用管這句話
+邏輯上屬於哪個章節。`carpenter.name.*` 保留沒動（避免動到正式在跑的
+木匠事件），內容跟 `characters.*` 刻意保持一致。
+
+同時加了 `NAME_LOOKUP`——從 `characters`/`places` 衍生出「中文原文→
+譯文」對照，餵給 `translateText()` 的舊式原文查表用（衍生而非手動在
+`ui-translations.ts` 重複打一次字串，避免又出現兩份名字翻譯各自漂移
+的問題）。效果是：任何還沒切到 `t()` key 的舊呼叫點（例如
+`npc-defs.ts` 的 `npcLine()` 直接回傳 `npc.name` 這種原文字串、
+`dialogue.ts` 對話框名牌）也會自動吃到這批翻譯，不用逐一改呼叫點。
+`places.*` 的四個地圖名稱字串故意跟 `src/ui-translations.ts` 既有的
+地圖圖例（山區/城鎮/牧場/港口）完全一致，NAME_LOOKUP 才推得出對應
+關係。
+
+驗證：`npx tsc --noEmit`、`npm run test:story`（14 個測試）、
+`npm run story-audit`（1 event，OK）、`test:map-tools`／`test:weather`／
+`test:affection`／`test:save-slots`／`test:context-interaction`／
+`test:tools`／`test:pearls`／`test:first-person` 全過；另外寫了一支
+throwaway 腳本直接呼叫 `translateText("村長")` 等九組角色/地點字串，
+確認 en/ja 都能查到正確譯文（`t("characters.mayor")` 也驗證過）。
