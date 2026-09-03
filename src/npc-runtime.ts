@@ -1,7 +1,13 @@
 import * as THREE from "three";
 import { hash2 } from "./utils";
 import { scene, PLATEAU_Y } from "./scene-sky";
-import { MAPS, LAYOUT, carpenterQuest, isInsideLakeShape } from "./layout-maps";
+import {
+  MAPS,
+  LAYOUT,
+  carpenterQuest,
+  botanistQuest,
+  isInsideLakeShape,
+} from "./layout-maps";
 import { npcDefs } from "./npc-defs";
 import { makeCaptain, makeCarpenter, makeHumanoid, makeMayor, makeArtist } from "./humanoid";
 import { makeAnimal } from "./props";
@@ -33,7 +39,9 @@ export const npcs = npcDefs.map((def) => {
             : makeHumanoid({ shirt: def.shirt, hair: def.hair });
   mesh.position.set(def.home.x, 0, def.home.z);
   // 露比在正式登島／招募事件觸發前不存在於世界，避免在舊城鎮 (170,11) 預先出現。
-  if (def.id === "chef" || def.id === "artist") mesh.visible = false;
+  // 克拉拉(植物學家)同一招：第三天個人事件登場前也先不存在。
+  if (def.id === "chef" || def.id === "artist" || def.id === "botanist")
+    mesh.visible = false;
   npcGroup.add(mesh);
   return {
     ...def,
@@ -53,6 +61,14 @@ export const npcs = npcDefs.map((def) => {
       carpenterQuest.stage === "escorting" ||
       carpenterQuest.stage === "village_scene_done" ||
       carpenterQuest.stage === "moved_in";
+})();
+// 克拉拉同一招——不過真正讀存檔時的可見度是 input-save.ts 的
+// loadGame() 明確設定(跟木匠那段一樣、比藝術家那段完整，見
+// day3-morning-event.ts 開頭的說明)，這裡只處理「模組剛載入、還沒讀
+// 過任何存檔」那個起始瞬間，例如開發時熱重載。
+(() => {
+  const botanistNpc = npcs.find((n) => n.id === "botanist");
+  if (botanistNpc) botanistNpc.mesh.visible = botanistQuest.stage !== "not_started";
 })();
 
 // ==============================================================

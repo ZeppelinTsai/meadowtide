@@ -24,6 +24,7 @@ import {
   MUSHROOM_NODES,
   isPlantingAllowedAt,
   flowerBedState,
+  isOysterRackInteractionTile,
 } from "./game-state";
 import { flowerSpeciesLabel, isFlowerSpeciesId } from "./wildflowers";
 import { mushroomSpeciesLabel } from "./mushrooms";
@@ -107,6 +108,7 @@ destinationMarker.visible = false;
 scene.add(destinationMarker);
 const pastureTargetObject = new THREE.Object3D();
 const fishingTargetObject = new THREE.Object3D();
+const oysterTargetObject = new THREE.Object3D();
 const heldItemTargetObject = new THREE.Object3D();
 const stoveTargetObject = new THREE.Object3D();
 let markerTimer = 0,
@@ -343,6 +345,36 @@ function targetForStove(): WorldTarget | null {
       gameState.currentMapName === "house" && canUsePrologueKitchen(),
   };
 }
+// 2026-09-04：牡蠣架緊貼海邊，站上去按 E 原本就會正確採收（見
+// input-save.ts 舊版 E 鍵判斷鏈裡「牡蠣架判定要排在 nearWater() 前面」
+// 的註解），但右下角情境互動膠囊完全沒有牡蠣架這個候選目標，於是海邊的
+// targetForFishing() fallback（見下方，也見
+// docs/decisions/context-interaction-and-navigation.md 的「Nearby
+// fishing fallback」）就會搶著顯示「E 釣魚」——玩家看到的提示跟按下去
+// 實際發生的事情對不上。這裡補一個有名字的資源目標，讓牡蠣架蓋過釣魚
+// fallback，膠囊顯示跟實際行為一致；真正的採收邏輯還是走
+// runLegacyPrimaryInteraction() 轉發回舊版 E 鍵判斷鏈，不重複實作。
+function targetForOyster(): WorldTarget | null {
+  if (!gameState.player) return null;
+  const { x, z } = gameState.playerGridPos;
+  if (!isOysterRackInteractionTile(x, z)) return null;
+  return {
+    id: "oyster-rack",
+    object: oysterTargetObject,
+    radius: 0.6,
+    actions: [legacyAction("oyster-rack", "採收牡蠣")],
+    getPosition: () =>
+      gameState.player
+        ? { x: gameState.player.position.x, z: gameState.player.position.z }
+        : null,
+    isValid: () =>
+      Boolean(gameState.player) &&
+      isOysterRackInteractionTile(
+        gameState.playerGridPos.x,
+        gameState.playerGridPos.z,
+      ),
+  };
+}
 function targetForFishing(): WorldTarget | null {
   if (!gameState.player || !hasTool("fishingRod")) return null;
   const active = gameState.fishingState !== "idle";
@@ -517,6 +549,10 @@ function allTargets() {
     const t = targetForFlowerBed(x, z);
     if (t) list.push(t);
   });
+  {
+    const t = targetForOyster();
+    if (t) list.push(t);
+  }
   const fishing = targetForFishing();
   if (fishing) list.push(fishing);
   return list;
@@ -589,6 +625,11 @@ function chooseTarget(allowActiveFishing = false) {
     .sort((a, b) => a.distance - b.distance)[0];
   if (giftCandidate)
     return targets.find((target) => target.id === giftCandidate.id) || null;
+  // 牡蠣架是固定資源點，玩家站上去多半就是要採收，不該被同一格也成立的
+  // 釣魚 fallback 蓋過去——比照上面 giftCandidate 的做法，直接優先回傳。
+  const oysterCandidate = candidates.find((c) => c.id === "oyster-rack");
+  if (oysterCandidate)
+    return targets.find((target) => target.id === oysterCandidate.id) || null;
   const chosen = chooseInteractionTarget(candidates, currentTarget?.id || null);
   return chosen
     ? targets.find((t) => t.id === chosen.id) || null

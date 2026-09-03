@@ -1,5 +1,5 @@
 import { gameState } from "./game-state";
-import { MAPS, mountainGroundY, oldVillageGroundY, portGroundY } from "./layout-maps";
+import { MAPS, mountainGroundY, oldVillageGroundY, portGroundY, isOnOldVillageStair } from "./layout-maps";
 import { isBlocked } from "./build-map";
 import { animals, npcs } from "./npc-runtime";
 import { dialogQueue, activeChoice } from "./dialogue";
@@ -13,8 +13,24 @@ let navigation: NavigationState | null = null;
 const listeners = new Set<(destination: GridPoint | null) => void>();
 function notify() { const end = navigation && navigation.path.length ? navigation.path[navigation.path.length - 1] : null; listeners.forEach((listener) => listener(end)); }
 function safeAt(mapName: string, x: number, z: number) { return ![[-0.22,-0.22],[0.22,-0.22],[-0.22,0.22],[0.22,0.22]].some(([dx,dz]) => isBlocked(mapName, x + dx, z + dz)); }
+// 2026-09-04 Zeppelin 反饋「從 (100,36) 點擊沒辦法自動走到神社
+// (100,29) 那邊」——追下來是波上宮那段南端樓梯(layout-maps.ts 的
+// westStairs 最後一項，x=99~101,fromZ:31,toZ:34)的落差比其他樓梯陡：
+// 其他樓梯都是爬 1 層 elevation、攤在 3~7 格 z 距離，這段是爬滿 3 層
+// elevation、只攤在 3 格，oldVillageGroundY() 用 6 個 steps 算下來每
+// 一個「整數格」剛好正正好落差 1.0(3層/3格分6步，每步0.5，但整數格
+// 一次跨兩步)。WASD 連續走路是每幀走一小段(canTraverseVillageHeight()
+// 同一個 0.7 門檻，但採樣間距遠小於 1 格)，永遠不會一次跨過整層落差，
+// 所以人工走得上去；這裡的 A* 只在整數格上取樣，單步落差 1.0 超過
+// 0.7 門檻，判定「爬不上去」，導致點擊整段樓梯範圍完全找不到路徑。
+// 樓梯本來就是「設計來讓玩家跨越這種高度差」的地形，不該被這個給一般
+// 平地/懸崖用的門檻擋下——只要起點或終點其中一端落在
+// isOnOldVillageStair() 範圍內，直接放行，不比較高度差。
 function canStep(mapName: string, fromX: number, fromZ: number, x: number, z: number) {
-  if (mapName === "oldVillage") return Math.abs(oldVillageGroundY(x,z) - oldVillageGroundY(fromX,fromZ)) <= 0.7;
+  if (mapName === "oldVillage") {
+    if (isOnOldVillageStair(x, z) || isOnOldVillageStair(fromX, fromZ)) return true;
+    return Math.abs(oldVillageGroundY(x,z) - oldVillageGroundY(fromX,fromZ)) <= 0.7;
+  }
   if (mapName === "mountain") return Math.abs(mountainGroundY(x,z) - mountainGroundY(fromX,fromZ)) <= 0.7;
   if (mapName === "port") return Math.abs(portGroundY(x,z) - portGroundY(fromX,fromZ)) <= 0.45;
   return true;

@@ -17,6 +17,10 @@ import { INDOOR_MAPS } from "./environment";
 // 想維持的 true 打架（誰的呼叫在那一幀比較晚跑誰贏，行為不穩定）。開一個
 // 獨立的鍵，不跟木匠事件共用，兩邊互不干擾——跟這個檔案原本 "storyEvent"
 // 不沿用 "event" 是同一個理由（見上面那段註解）。
+// botanistEvent：2026-09-04 第三天克拉拉(植物學家)個人事件補的第七個
+// 來源，跟 rubyEvent 同一個理由不沿用 "guidedGameplay"——這個事件同樣
+// 沒有 dayTwoMorningEvent.phase 那種每幀覆寫的邏輯，但獨立開一個鍵比較
+// 不用擔心以後兩邊事件如果重疊會互相打架。
 export type TimePauseSource =
   | "event"
   | "inventory"
@@ -24,7 +28,8 @@ export type TimePauseSource =
   | "menu"
   | "storyEvent"
   | "guidedGameplay"
-  | "rubyEvent";
+  | "rubyEvent"
+  | "botanistEvent";
 
 const activeSources = new Set<TimePauseSource>();
 

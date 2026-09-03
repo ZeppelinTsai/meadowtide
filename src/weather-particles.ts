@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import { hash2 } from "./utils";
 import { scene } from "./scene-sky";
-import { gameState, weatherTransitionRamp } from "./game-state";
+import { gameState, weatherTransitionRamp, weatherBlend } from "./game-state";
 import { INDOOR_MAPS, isOutdoorMap } from "./environment";
 import { MAPS } from "./layout-maps";
 import { isFirstPersonModeActive } from "./first-person-camera";
@@ -355,31 +355,31 @@ export function updateWeatherEffects(dt, nightFactor) {
   const lowerWeatherFloor = isFirstPersonModeActive()
     ? Math.max(WEATHER_BOUNDS.minY + 2.4, 2.4)
     : WEATHER_BOUNDS.minY;
+  const isRainLike = (w: string) =>
+    w === "rain" || w === "typhoon" || w === "storm";
+  const rainRamp = weatherTransitionRamp();
+  const rainFadingOut =
+    isRainLike(gameState.previousWeather) && !isRainLike(gameState.currentWeather);
   const rainMode =
-    gameState.currentWeather === "rain" ||
-    gameState.currentWeather === "typhoon" ||
-    gameState.currentWeather === "storm";
-  const rainBaseCount =
-    gameState.currentWeather === "rain"
-      ? 190
-      : gameState.currentWeather === "typhoon"
-        ? 360
-        : gameState.currentWeather === "storm"
-          ? 300
-          : 0;
+    isRainLike(gameState.currentWeather) || (rainFadingOut && rainRamp < 1);
+  // 換天氣時用 previousWeather/currentWeather 的過渡值決定雨滴的外觀，
+  // 這樣離開雨天也會跟進場一樣淡出，而不是天氣一變就瞬間消失。
+  const rainKind = isRainLike(gameState.currentWeather)
+    ? gameState.currentWeather
+    : gameState.previousWeather;
+  const rainBaseCount = weatherBlend(
+    { rain: 190, typhoon: 360, storm: 300 },
+    0,
+  );
   const rainCount = activeWeatherParticleCount(rainBaseCount);
-  const rainDrift =
-    gameState.currentWeather === "typhoon"
-      ? 13
-      : gameState.currentWeather === "storm"
-        ? 7
-        : 2;
+  const rainDrift = rainKind === "typhoon" ? 13 : rainKind === "storm" ? 7 : 2;
   rainEffect.visible = rainMode;
   if (rainMode) {
     rainGeometry.setDrawRange(0, rainCount * 2);
-    rainMaterial.opacity =
-      (gameState.currentWeather === "rain" ? 0.52 : 0.72) *
-      weatherTransitionRamp();
+    rainMaterial.opacity = weatherBlend(
+      { rain: 0.52, typhoon: 0.72, storm: 0.72 },
+      0,
+    );
     for (let i = 0; i < rainCount; i++) {
       const base = i * 6,
         speed = 14 + rainSeeds[i] * 10;
@@ -388,7 +388,7 @@ export function updateWeatherEffects(dt, nightFactor) {
       x = wrapWeatherParticle(x, WEATHER_BOUNDS.minX, WEATHER_BOUNDS.maxX);
       y = wrapWeatherParticle(y, lowerWeatherFloor, WEATHER_BOUNDS.maxY);
       const slant = rainDrift * 0.055,
-        length = gameState.currentWeather === "rain" ? 0.62 : 0.95;
+        length = rainKind === "rain" ? 0.62 : 0.95;
       rainPositions[base] = x;
       rainPositions[base + 1] = y;
       // 雨滴往 +X、-Y 移動，線段也要指向同一個下風方向。
@@ -398,24 +398,33 @@ export function updateWeatherEffects(dt, nightFactor) {
     rainGeometry.attributes.position.needsUpdate = true;
   }
 
+  const isSnowLike = (w: string) => w === "snow" || w === "blizzard";
+  const snowFadingOut =
+    isSnowLike(gameState.previousWeather) && !isSnowLike(gameState.currentWeather);
   const snowMode =
-    gameState.currentWeather === "snow" ||
-    gameState.currentWeather === "blizzard";
+    isSnowLike(gameState.currentWeather) || (snowFadingOut && rainRamp < 1);
+  const snowKind = isSnowLike(gameState.currentWeather)
+    ? gameState.currentWeather
+    : gameState.previousWeather;
   snowEffect.points.visible = snowMode;
   if (snowMode) {
-    const snowCount = activeWeatherParticleCount(SNOW_BASE_COUNT);
+    const snowBaseCount = weatherBlend(
+      { snow: SNOW_BASE_COUNT, blizzard: SNOW_BASE_COUNT },
+      0,
+    );
+    const snowCount = activeWeatherParticleCount(snowBaseCount);
     snowEffect.geometry.setDrawRange(0, snowCount);
-    snowEffect.material.opacity =
-      (gameState.currentWeather === "blizzard" ? 0.9 : 0.72) *
-      weatherTransitionRamp();
-    snowEffect.material.size =
-      gameState.currentWeather === "blizzard" ? 7.5 : 6.5;
+    snowEffect.material.opacity = weatherBlend(
+      { snow: 0.72, blizzard: 0.9 },
+      0,
+    );
+    snowEffect.material.size = snowKind === "blizzard" ? 7.5 : 6.5;
     for (let i = 0; i < snowCount; i++) {
       const base = i * 3,
         seed = snowEffect.seeds[i];
       snowEffect.positions[base] = wrapWeatherParticle(
         snowEffect.positions[base] +
-          ((gameState.currentWeather === "blizzard" ? 10 : 1.2) +
+          ((snowKind === "blizzard" ? 10 : 1.2) +
             Math.sin(gameState.effectElapsed * 1.4 + seed * 20)) *
             dt,
         WEATHER_BOUNDS.minX,
@@ -423,7 +432,7 @@ export function updateWeatherEffects(dt, nightFactor) {
       );
       snowEffect.positions[base + 1] = wrapWeatherParticle(
         snowEffect.positions[base + 1] -
-          (gameState.currentWeather === "blizzard" ? 5.2 : 1.4 + seed) * dt,
+          (snowKind === "blizzard" ? 5.2 : 1.4 + seed) * dt,
         lowerWeatherFloor,
         WEATHER_BOUNDS.maxY,
       );
@@ -523,7 +532,7 @@ export function updateWeatherEffects(dt, nightFactor) {
     );
   }
   const flashWave =
-    gameState.currentWeather === "storm"
+    rainKind === "storm"
       ? Math.pow(
           Math.max(
             0,
@@ -536,5 +545,7 @@ export function updateWeatherEffects(dt, nightFactor) {
         )
       : 0;
   weatherFlashLight.intensity =
-    flashWave * (nightFactor > 0.45 ? 2.8 : 1.5) * weatherTransitionRamp();
+    flashWave *
+    (nightFactor > 0.45 ? 2.8 : 1.5) *
+    weatherBlend({ storm: 1 }, 0);
 }

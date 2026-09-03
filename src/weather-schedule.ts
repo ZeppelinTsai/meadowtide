@@ -7,6 +7,30 @@ export const MAX_EXTREME_WEATHER_PER_SEASON = 2;
 // 一直以來就是刻意留給「跟遊戲全域狀態無關的天氣排程算法」用，才能被
 // weather-schedule.test.ts 正常測到。rollWeatherForSeason()(game-state.ts)
 // 呼叫這個函式來決定要不要略過(可能過期的)排程快取，直接回傳 clear。
+// 2026-09-04 新增：天氣轉換緩衝的共用純函式。原本只有雲量
+// (cloudOpacityByWeather)、天色濃淡(weatherShadeByWeather)、雨/雪粒子
+// opacity 這幾處各自手寫一次「previousWeather 的值 lerp 到
+// currentWeather 的值，lerp 係數用 weatherTransitionRamp()」，其餘會
+// 隨天氣改變的視覺量(色調曝光、環境光/太陽光強度、雨雪粒子數量/是否
+// 顯示…)反而直接看 gameState.currentWeather 硬切，換天氣那一幀就會
+// 瞬間跳掉，跟 Zeppelin 反饋的「晴陰雨雪大雪颱風轉換要有緩衝效果」是
+// 同一類問題。抽成一個共用的純函式，不吃 gameState，方便在 Node 測試
+// 環境直接測到(不像 game-loop.ts/scene-sky.ts 那樣拉到
+// WebGLRenderer)，game-state.ts 再包一層讀 gameState 目前值的版本给
+// 各處呼叫。
+export function blendWeatherValue(
+  previousWeather: string,
+  currentWeather: string,
+  ramp: number,
+  valuesByWeather: Partial<Record<string, number>>,
+  fallback = 0,
+): number {
+  const from = valuesByWeather[previousWeather] ?? fallback;
+  const to = valuesByWeather[currentWeather] ?? fallback;
+  const clampedRamp = Math.max(0, Math.min(1, ramp));
+  return from + (to - from) * clampedRamp;
+}
+
 export function isTutorialWeekDay(
   absoluteSeason: number,
   seasonDayIndex: number,

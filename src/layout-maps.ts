@@ -2617,6 +2617,46 @@ export const artistQuest = {
   > | null,
 };
 
+// ==============================================================
+// 克拉拉(植物學家)個人事件——第三天早上劇本，Zeppelin 2026-09-04 給的
+// 完整版：跟歐文/露比「玩家去港口接人」相反，這次是她主動上門拜訪牧場
+// （見 day3-morning-event.ts 開頭說明），帶到蜂箱那塊空地聊完，直接
+// 架設蜂箱、呼叫 game-state.ts 的 unlockBeehive()——那邊蜂箱系統本來
+// 就是「初始無，等第三天事件解鎖」的設計，這次補的就是那個事件本身。
+//
+// 門口／對話站位沿用 HOUSE_ROAD_X/HOUSE_ROAD_START_Z 這組現成的「家門
+// 口」座標系，跟 DAY_TWO_MORNING_ARRIVAL 同一招，房子之後搬家這裡不用
+// 跟著手動改數字：玩家 (HOUSE_ROAD_X, HOUSE_ROAD_START_Z+1) = (21,18)，
+// 克拉拉站在玩家再往南兩格 (21,20)——跟 Zeppelin 給的座標吻合。
+export const DAY_THREE_BOTANIST_ARRIVAL = {
+  player: { x: HOUSE_ROAD_X, z: HOUSE_ROAD_START_Z + 1 },
+  botanist: { x: HOUSE_ROAD_X, z: HOUSE_ROAD_START_Z + 3 },
+};
+
+// 蜂箱那塊空地——BEEHIVE_VISUAL(game-state.ts)本來就固定站在
+// LAYOUT.beehive(28,39)，這裡直接沿用同一組數字算演出站位：主角
+// (27,39)面右、克拉拉(29,39)面左，蜂箱夾在正中間，跟 Zeppelin 給的
+// 座標吻合(不是巧合——蜂箱本來就已經照這個劇本的需要放好了)。
+export const DAY_THREE_BEEHIVE_SCENE = {
+  player: { x: LAYOUT.beehive.x - 1, z: LAYOUT.beehive.z },
+  botanist: { x: LAYOUT.beehive.x + 1, z: LAYOUT.beehive.z },
+};
+
+// stage 跟 artistQuest 同一套寫法，但這次沒有「自由採集」的中間態——
+// 全程靠 showDialogSequence 串接 callback 就能跑完一場戲，只需要一個
+// 中繼狀態：
+//   not_started → intro（劇情觸發，涵蓋門口寒暄～蜂箱架設～收尾全程）
+//   intro → complete（個人事件完成，好感 +30，unlockBeehive()，之後
+//                      恢復日常排程）
+// scenePos：event 進行中，game-loop.ts 逐幀把她釘在這個座標（跟
+// dayTwoMorningEvent.holdPositions 同一種「固定站位」道理，只是這裡只
+// 有克拉拉一個人，不需要整份 Record，直接放單一物件就夠），劇本裡每次
+// 場景切換(黑屏傳送)都會更新這個值；event 沒在跑的時候是 null。
+export const botanistQuest = {
+  stage: "not_started" as "not_started" | "intro" | "complete",
+  scenePos: null as { x: number; z: number; rotY: number } | null,
+};
+
 // events（地圖觸碰/互動事件表）需要 loadMap/handleCarpenterDockTouch/
 // handleCarpenterDoorstepTouch，這些函式所在的模組會遞移載入
 // scene-sky.ts（THREE.WebGLRenderer／document.getElementById 等 DOM/WebGL

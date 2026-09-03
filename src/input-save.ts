@@ -87,6 +87,7 @@ import {
   FLOWER_BED_TILES,
   chefQuest,
   artistQuest,
+  botanistQuest,
   REST_CHAIR,
   MAPS,
 } from "./layout-maps";
@@ -95,6 +96,7 @@ import {
   dayTwoMorningEvent,
   resetDayTwoMorningEvent,
 } from "./day2-morning-event";
+import { resetBotanistEvent } from "./day3-morning-event";
 import {
   canQuickSaveDuringPrologue,
   canUsePrologueKitchen,
@@ -373,6 +375,9 @@ export function saveGame(slot = "default") {
     npcNameRevealStages: exportNpcNameRevealState(),
     carpenterQuest: { ...carpenterQuest },
     artistQuest: { ...artistQuest },
+    // scenePos 是演出中途才有意義的暫時值，跟座標一起存也無妨(readGame
+    // 那邊會在還原時清成 null，不會拿舊座標播錯場景)。
+    botanistQuest: { ...botanistQuest },
     dayTwoMorningEvent: { ...dayTwoMorningEvent },
     oysterRackState: JSON.parse(JSON.stringify(oysterRackState)),
     oysterRackSlots: gameState.oysterRackSlots,
@@ -594,6 +599,27 @@ export function loadGame(
     ) {
       artistQuest.stage = "waiting_oldVillage";
     }
+  }
+  // 克拉拉(植物學家)第三天個人事件——跟上面 artistQuest 同一個理由，
+  // 先無條件清一次 "botanistEvent" 這個時間暫停來源(見 day3-morning-
+  // event.ts resetBotanistEvent() 的說明)，再還原存檔資料。
+  resetBotanistEvent();
+  if (data.botanistQuest) {
+    Object.assign(botanistQuest, data.botanistQuest);
+    // "intro" 代表存檔當下正在演出途中(門口寒暄～蜂箱架設～收尾全程都
+    // 是這個 stage)，讀檔後沒辦法安全接著播，退回 "not_started"——這個
+    // 事件沒有 artistQuest 那種「玩家自己走過去再次觸發」的中繼站，退
+    // 回 not_started 之後靠 canStartDayThreeMorningEvent() 的窗口條件
+    // 自然重新觸發一次(通常還在原本那個時間窗口內，因為時間本來就被
+    // "botanistEvent" 這個來源暫停住)。scenePos 是演出中途的暫時座標，
+    // 一起清成 null，避免下次意外沿用到舊座標。
+    if (botanistQuest.stage === "intro") botanistQuest.stage = "not_started";
+    botanistQuest.scenePos = null;
+    const botanistNpc = npcs.find((n) => n.id === "botanist");
+    // 明確設一次可見度，不像 artistQuest 那段依賴之後某一幀的固定站位
+    // 分支順手補上——那個分支只在 "intro" 才會跑，"complete" 狀態下
+    // 露比事實上一直沒有等效的還原點，克拉拉這裡直接學木匠那段做對。
+    if (botanistNpc) botanistNpc.mesh.visible = botanistQuest.stage === "complete";
   }
   resetDayTwoMorningEvent();
   if (data.dayTwoMorningEvent) {

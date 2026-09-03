@@ -3,6 +3,7 @@ import test from "node:test";
 import {
   createWeatherSchedule,
   isTutorialWeekDay,
+  blendWeatherValue,
   MAX_EXTREME_WEATHER_PER_SEASON,
 } from "./weather-schedule";
 
@@ -81,4 +82,33 @@ test("isTutorialWeekDay: only applies to absolute season 0, never later seasons 
       );
     }
   }
+});
+
+test("blendWeatherValue: ramp 0 is fully the previous weather's value", () => {
+  const values = { rain: 190, typhoon: 360, clear: 0 };
+  assert.equal(blendWeatherValue("rain", "clear", 0, values), 190);
+});
+
+test("blendWeatherValue: ramp 1 is fully the current weather's value", () => {
+  const values = { rain: 190, typhoon: 360, clear: 0 };
+  assert.equal(blendWeatherValue("rain", "clear", 1, values), 0);
+});
+
+test("blendWeatherValue: mid-ramp linearly interpolates between the two", () => {
+  const values = { rain: 190, clear: 0 };
+  assert.equal(blendWeatherValue("rain", "clear", 0.5, values), 95);
+  assert.equal(blendWeatherValue("clear", "rain", 0.25, values), 47.5);
+});
+
+test("blendWeatherValue: missing entries fall back to the fallback value, default 0", () => {
+  const values = { rain: 0.52 };
+  assert.equal(blendWeatherValue("cloudy", "rain", 1, values), 0.52);
+  assert.equal(blendWeatherValue("cloudy", "rain", 0, values), 0);
+  assert.equal(blendWeatherValue("cloudy", "sunny", 1, values, 3), 3);
+});
+
+test("blendWeatherValue: ramp is clamped to [0, 1]", () => {
+  const values = { rain: 190, clear: 0 };
+  assert.equal(blendWeatherValue("rain", "clear", -5, values), 190);
+  assert.equal(blendWeatherValue("rain", "clear", 5, values), 0);
 });

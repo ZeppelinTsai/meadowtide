@@ -14,6 +14,7 @@ import {
   getSeasonDay,
   isNightTime,
   weatherTransitionRamp,
+  weatherBlend,
   TIME_CONFIG,
   METEOR_CONFIG,
   METEOR_SHOWER_SCHEDULE,
@@ -824,8 +825,27 @@ export function updateMoon() {
   }
   const daylight = getDaylightForSeason();
   const daySpan = daylight.sunset - daylight.sunrise;
+  // 2026-09-04 Zeppelin 反饋「換日的時候月亮的位置會瞬移一下」——原本
+  // 這裡用 getSeasonDay()（回傳 (currentDay % daysPerSeason) + 1，純
+  // 看「今天是第幾天」的整數，一整天內都是同一個值，只有換日那一刻
+  // 才會跳一格）去算 moonAgeFraction(月齡，決定月出時間偏移
+  // moonRiseFrac，進而決定月亮在天空上的左右位置 moonProgress)。換日
+  // 瞬間 moonAgeFraction 從一個整數跳到下一個整數(差 1/21 個週期)，
+  // moonRiseFrac 也跟著整個跳動——如果月亮那個時間點剛好還掛在天上
+  // (滿月前後很常見，會跨過午夜)，玩家就會看到月亮在換日那一幀直接
+  // 位移一段距離，不是連續滑過去的。
+  // 改成用連續的「天數(含小數的當天時刻)」而不是整數 currentDay 去算
+  // ——gameState.elapsed/dayLength 本來就是 currentDay 的連續版本(整
+  // 數部分＝currentDay，小數部分＝currentPhase)，月齡因此變成隨時間
+  // 平滑往前爬，不會在換日那一瞬間跳動；月相貼圖(下面
+  // makeMoonPhaseTexture())本來就只在換日時重畫一次，形狀本來就是
+  // 離散更新，不受影響，繼續維持原本「一天只重算一次貼圖」的做法。
+  const continuousSeasonDay =
+    ((gameState.elapsed / dayLength) % TIME_CONFIG.daysPerSeason) + 1;
   const moonAgeFraction =
-    (((getSeasonDay() - FULL_MOON_SEASON_DAY + TIME_CONFIG.daysPerSeason / 2) %
+    (((continuousSeasonDay -
+      FULL_MOON_SEASON_DAY +
+      TIME_CONFIG.daysPerSeason / 2) %
       TIME_CONFIG.daysPerSeason) +
       TIME_CONFIG.daysPerSeason) /
     TIME_CONFIG.daysPerSeason; // 每季固定第 14 日滿月
@@ -1022,7 +1042,9 @@ export function updateSunAndClouds(nightFactor) {
     sunGlow.scale.setScalar(pulse);
   }
 
-  const cloudCount =
+  // 雲朵數量也跟著 previousWeather -> currentWeather 的過渡值淡入淡出，
+  // 不會換天氣的瞬間就一次多/少好幾朵雲。
+  const cloudCount = weatherBlend(
     {
       clear: 3,
       cloudy: 8,
@@ -1031,7 +1053,9 @@ export function updateSunAndClouds(nightFactor) {
       storm: 9,
       snow: 8,
       blizzard: 9,
-    }[gameState.currentWeather] ?? 3;
+    },
+    3,
+  );
   const cloudOpacityByWeather = {
     clear: 0.18,
     cloudy: 0.52,
@@ -1169,11 +1193,16 @@ export function updateSkyDome(nightFactor, viewCamera: THREE.Camera = camera) {
     weatherShadeByWeather[gameState.currentWeather] || 0,
     weatherTransitionRamp(),
   );
-  const weatherSky =
-    gameState.currentWeather === "snow" ||
-    gameState.currentWeather === "blizzard"
+  // 天色目標色也要跟著過渡混合，否則換天氣那一瞬間色相會先跳一下，
+  // 濃淡才慢慢加深，看起來像瞬間變臉。
+  const weatherSkyColorFor = (weather: string) =>
+    weather === "snow" || weather === "blizzard"
       ? new THREE.Color(0xb9c6d2)
       : new THREE.Color(0x667386);
+  const weatherSky = weatherSkyColorFor(gameState.previousWeather).lerp(
+    weatherSkyColorFor(gameState.currentWeather),
+    weatherTransitionRamp(),
+  );
   zenith.lerp(weatherSky, weatherShade);
   middle.lerp(weatherSky, weatherShade * 0.9);
   horizon.lerp(weatherSky, weatherShade * 0.78);

@@ -4,7 +4,7 @@ import { LAYOUT, MAPS, MOUNTAIN_GATE_BLOCKER, FLOWER_BED_TILES } from "./layout-
 import { npcs, hasPastureGrassAt } from "./npc-runtime";
 import { isNearFishingWater } from "./fishing-water";
 import { syncFarmVisuals, syncFlowerBedVisuals } from "./farm-visuals";
-import { createWeatherSchedule, isTutorialWeekDay } from "./weather-schedule";
+import { createWeatherSchedule, isTutorialWeekDay, blendWeatherValue } from "./weather-schedule";
 import { getScaledBuildingBounds } from "./building-scale";
 import { cropTypeForSeedItem } from "./item-catalog";
 import {
@@ -517,6 +517,24 @@ export function weatherTransitionRamp() {
       WEATHER_TRANSITION_SECONDS,
   );
 }
+// 天氣轉換緩衝的共用讀值版本——包一層 gameState.previousWeather/
+// currentWeather/weatherTransitionRamm() 目前值，呼叫端(game-loop.ts/
+// scene-sky.ts/weather-particles.ts)只要給一份「各天氣對應數值」的
+// map 就能拿到平滑過渡的結果，不用每處各自重寫一次 lerp。純邏輯在
+// weather-schedule.ts 的 blendWeatherValue()，這裡只是接上目前的
+// gameState 值。
+export function weatherBlend(
+  valuesByWeather: Partial<Record<string, number>>,
+  fallback = 0,
+) {
+  return blendWeatherValue(
+    gameState.previousWeather,
+    gameState.currentWeather,
+    weatherTransitionRamp(),
+    valuesByWeather,
+    fallback,
+  );
+}
 export const ANIMAL_INDOOR_WEATHER = new Set([
   "rain",
   "typhoon",
@@ -697,10 +715,18 @@ export function growFlowerBedForNewDay() {
 // 也就是玩家自然走到底、感覺「已經站在浮筏旁邊」的那格，反而不算數，
 // 這才是「站不上去/採不到」的真正原因，不是判定寫錯。把最靠海這格
 // 也一起算進採集點，兩格都能觸發，不用逼玩家往回退一步才踩得中。
+// 2026-09-04：Zeppelin 反饋站在牡蠣架旁邊時，右下角情境互動膠囊會被
+// targetForFishing() 的「附近有水就可以釣魚」搶走提示（牡蠣架本來就緊貼
+// 海邊，判定範圍天生重疊），而且判定格只有海邊那兩格、稍微站偏一點就
+// 踩不中。往陸地方向多加一格(43, z)放寬站位容錯，實際優先權的修正在
+// context-interaction-ui.ts 註冊 targetForOyster()，讓牡蠣架變成有名字
+// 的資源目標、蓋過釣魚這個 fallback（見 docs/decisions/
+// context-interaction-and-navigation.md 的「Nearby fishing fallback」）。
 export const OYSTER_RACK_LAYOUTS = [
   {
     visual: { x: 46, z: 14 },
     interactionTiles: [
+      [43, 14],
       [44, 14],
       [45, 14],
     ],
@@ -708,6 +734,7 @@ export const OYSTER_RACK_LAYOUTS = [
   {
     visual: { x: 46, z: 16 },
     interactionTiles: [
+      [43, 16],
       [44, 16],
       [45, 16],
     ],
@@ -715,6 +742,7 @@ export const OYSTER_RACK_LAYOUTS = [
   {
     visual: { x: 46, z: 18 },
     interactionTiles: [
+      [43, 18],
       [44, 18],
       [45, 18],
     ],

@@ -132,6 +132,26 @@ export const npcDefs = [
       { t: 0.92, ...pos(LAYOUT.oldVillage.plaza.x + 12, LAYOUT.oldVillage.plaza.z + 7) },
     ],
   },
+  {
+    // 克拉拉(植物學家)——第三天個人事件登場前先不存在於世界(見
+    // npc-runtime.ts 的初始 visible=false，跟廚師/藝術家同一招)。日常
+    // 排程站點特意跟村長(+9/+11)、廚師(+12/+11)、藝術家(+12/+7)錯開，
+    // 避免疊在同一塊；她研究野花/蘑菇，但目前地圖只有舊城鎮廣場一帶
+    // 驗證過安全走位，山區/花田那邊還沒鋪好給 NPC 走的 A* 資料，這裡
+    // 先跟其他「登島後定居」的角色一樣，回廣場一帶散步。
+    id: "botanist",
+    map: "oldVillage",
+    name: "植物學家",
+    shirt: 0x6b8f5a,
+    hair: 0x4a3728,
+    home: { x: LAYOUT.oldVillage.plaza.x + 4, z: LAYOUT.oldVillage.plaza.z + 4 },
+    schedule: [
+      { t: 0.25, ...pos(LAYOUT.oldVillage.plaza.x + 4, LAYOUT.oldVillage.plaza.z + 4) },
+      { t: 0.45, ...pos(LAYOUT.oldVillage.plaza.x + 2, LAYOUT.oldVillage.plaza.z + 7) },
+      { t: 0.7, ...pos(LAYOUT.oldVillage.plaza.x + 6, LAYOUT.oldVillage.plaza.z + 3) },
+      { t: 0.92, ...pos(LAYOUT.oldVillage.plaza.x + 4, LAYOUT.oldVillage.plaza.z + 4) },
+    ],
+  },
 ];
 export function getScheduleTarget(schedule, phase) {
   let target = schedule[schedule.length - 1];

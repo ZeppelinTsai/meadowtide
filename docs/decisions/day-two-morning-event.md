@@ -995,3 +995,231 @@ showDialogSequence(
 `npm run test:affection`（5 項）、`npm run test:save-slots`（3 項）、
 `npm run test:weather`（5 項）、`npm run test:comic-cue`（沒有獨立
 script，直接用 `tsx --test src/comic-cue.test.ts` 跑，1 項）全過。
+
+
+## 2026-09-04 第十二輪：黑屏直接把村長送回廣場、神社樓梯點不到路
+
+### 村長「瞬移到廣場」其實是 Zeppelin 要的效果，不是 bug
+
+上一輪誤會了——Zeppelin 澄清「趁黑屏讓村長直接瞬移到廣場，不然她會擋
+在前面」，是明確要求「利用黑屏本來就會擋住畫面這件事，直接把村長傳送
+過去」，不是要debug「為什麼他用走的走過去」。改成在
+`completeDayTwoMorningEvent()` 的黑屏回呼裡（`runBlackTransition
+("short", ...)` 內、跟切換 `artistQuest.stage`/呼叫
+`startArtistPersonalEvent()` 同一批）直接把村長的 mesh 座標設到
+`LAYOUT.oldVillage.plaza.x+9, plaza.z+11`——這正是 `npc-defs.ts` 裡村
+長 `home` 欄位的座標，語意上就是「回到廣場」，他一整天的排程本來就是
+繞著這個點走。只設 x/z、清空 `path`/`lastTargetKey`，Y 高度跟走路動
+畫交給 `game-loop.ts` 那段 `npcs.forEach` 最後統一套用的
+`animateWalk()+=characterGroundY()`（對所有落到預設排程分支、沒被前
+面任何特例攔截的 NPC 都適用，不用在這裡自己重算）。整個動作都在黑屏
+淡入之前完成，玩家看到的會是「淡出→（村長已經傳送完畢）→淡入露比開
+場戲，村長不在畫面裡擋路」。
+
+### 神社（波上宮）南端樓梯點不到——A* 逐格取樣被同一個高度差門檻卡死
+
+Zeppelin 附了鳥居神社的截圖，回報「無法從 [oldVillage] (100,36) 點擊
+(100,29) 之類的區域自動行走到神社那邊」。
+
+先確認這個結構是什麼：`layout-maps.ts` 的
+`LAYOUT.oldVillage.northBeachPlatform`（波上宮平台，`elevation: 3`），
+南端接一段樓梯下到沙灘——`westStairs` 陣列最後一項（西擴前 `x:-1`，
+擴張後落在 `x=99~101`，`fromZ:31, toZ:34, baseElevation:0,
+elevation:3, steps:6`）。
+
+追下來是點擊導航（`player-navigation.ts` 的 `canStep()`）跟 WASD 手動
+走路（`game-loop.ts` 的 `canTraverseVillageHeight()`）雖然共用同一個
+「相鄰高度差不能超過 0.7」門檻概念，但取樣密度完全不同：
+
+- WASD 是每幀走一小段（`moveSpeed=15格/秒 * dt`，一幀大概 0.2~0.3
+  格），`oldVillageGroundY()` 對樓梯範圍是用 `steps` 分段算高度
+  （這段是 6 步，每步只跨 3÷6=0.5 格 z 距離、爬 3÷6=0.5 elevation），
+  連續小步移動幾乎不會一次跨過一整個 0.5 格的階梯分段，單幀高度差遠
+  低於 0.7，走得上去。
+- 點擊導航的 A* 只在**整數格**上取樣（`Math.round()` 後的座標）。這
+  段樓梯總落差 3、只攤在 3 格 z 距離，換算下來每一個**整數格**剛好
+  跨過兩個階梯分段，落差精準等於 1.0——比對其他樓梯（其餘 westStairs
+  項目全部都是「爬 1 層 elevation、攤在 3~7 格」，換算每整數格落差最
+  多 0.33），這段是全城鎮唯一「總落差跟總格數比例超過 0.7」的樓梯，
+  單獨被 0.7 這個門檻擋下，A* 判定「爬不上去」，從樓梯底端到平台完全
+  找不到路徑，點擊那一帶（含 Zeppelin 點的 (100,29)）都會跳出「無法
+  移動」的提示。
+
+樓梯本來就是「設計來讓玩家跨越高度差」的地形，不該被一般平地/懸崖用
+的門檻擋住。`layout-maps.ts` 剛好已經有一個現成的 `isOnOldVillageStair
+(x,z)` 匯出函式（原本只用來給樓梯踏階疊一點視覺高度，這次是第一次拿
+來放行碰撞判定），改成 `player-navigation.ts` 的 `canStep()` 只要起點
+或終點其中一端落在樓梯範圍內就直接放行、不比較高度差，不用去改動樓梯
+本身的幾何（這一帶的平台/樓梯銜接已經被 Zeppelin 反饋過好幾輪、調得
+很細，不想再動它），也不影響 WASD 那條完全獨立的
+`canTraverseVillageHeight()`（它本來就沒問題，不用跟著改）。
+
+補了一份新測試 `shrine-stair-navigation.test.ts`：不直接測
+`player-navigation.ts`（它的 import 鏈一路拉到
+`build-map.ts`/`npc-runtime.ts`/`scene-sky.ts` 建 `WebGLRenderer`，沒
+有 DOM 的 `tsx --test` 環境測不了，跟這幾輪一直遇到的環境限制一樣），
+改測 `layout-maps.ts` 匯出的 `oldVillageGroundY()`/
+`isOnOldVillageStair()` 這兩個純函式本身，在測試檔裡照抄一份
+`canStep()` 的邏輯：第一項測試故意驗證「沒有樓梯放行時，這段樓梯每一
+步確實都會被 0.7 門檻擋下」，證明這真的是需要修的案例；第二、三項測
+試放行後每一步、以及完整從 (100,36) 走到 (100,29) 這條路徑上每一步都
+過得去。
+
+### 驗證
+
+`tsc --noEmit` 通過；`npm run test:map-tools`（41 項）、
+`npm run test:affection`（5 項）、`npm run test:save-slots`（3 項）、
+`npm run test:weather`（5 項）、新增的 `shrine-stair-navigation.test.ts`
+（3 項）全過。村長瞬移那段是一次性賦值，沒有對應的自動化測試，靠程式
+碼審查確認（Y 高度/走路動畫交給既有的逐幀邏輯統一套用，不用另外驗
+證）。
+
+
+## 2026-09-04 第十三輪：換日瞬間月亮位置瞬移
+
+Zeppelin 附了兩組換日前後的截圖，反饋「遊戲在換日的時候，月亮的位置
+會瞬移一下」，建議把換日的月亮/星空軌跡處理平滑一點。這輪不是
+day2-morning-event 相關的內容，但同一份文件記錄方便日後回溯，所以還
+是寫進來。
+
+### 根因：月齡是用整數「今天第幾天」算的，換日那瞬間會跳一格
+
+`scene-sky.ts` 的 `updateMoon()` 算月亮左右位置的邏輯鏈是：
+
+```
+moonAgeFraction(月齡, 0~1)
+  → moonRiseFrac(月出時刻，隨月齡往後移)
+  → deltaFromRise / moonProgress(月亮在天空上的水平位置)
+```
+
+原本 `moonAgeFraction`是拿 `getSeasonDay()`——`(currentDay % 21) + 1`，
+純看「今天是本季第幾天」的整數——去算。這個值一整天(00:00~23:59)都固
+定不變，只有換日那一瞬間(`currentDay` +1)才會跳到下一個整數，換算成
+月齡差 1/21 個週期。`moonRiseFrac` 因此也跟著整個跳動——如果那個時間
+點月亮剛好還掛在天上(滿月前後的月亮本來就常常跨過午夜才落下，很常
+見)，玩家就會在換日那一幀看到月亮的位置直接跳一段，不是連續滑過去
+的，跟 Zeppelin 截圖裡兩個時間點月亮位置明顯不同對得上。
+
+有趣的是，星空本身其實已經踩過同一個坑、也已經修過了——
+`updateSeasonalStars()` 上面就有現成的註解：「星空繞天頂的旋轉不能直
+接讀 currentPhase：那是每天 0 點準時從 0.999 摔回 0 的鋸齒波……」，用
+的是繞正午換算(`noonWrappedElapsed`)的連續寫法，不會在換日瞬間跳動。
+這次是同一類問題在月亮這邊被漏掉了，不是新的成因。
+
+### 修法
+
+把 `moonAgeFraction` 的輸入從離散的 `getSeasonDay()`(整數 `currentDay`)
+換成連續版本：`gameState.elapsed / dayLength`——這本來就是 `currentDay`
+的連續版(整數部分＝`currentDay`，小數部分＝`currentPhase`)，套進跟原
+本一模一樣的公式(`% daysPerSeason` 換算季內第幾天)，月齡就會隨遊戲時
+間平滑往前爬，不會在換日那一瞬間跳動，換日前後月亮的水平位置會連續
+接上。月相貼圖(`makeMoonPhaseTexture()`，畫月牙/凸月形狀的那張
+canvas)維持原本「一天只重畫一次」不變——形狀變化本來就是以天為單位
+的離散更新，肉眼看不出差異，不用跟著改成每幀重算。
+
+太陽的位置計算沒有這個問題（`getDaylightForSeason()` 只依季節，不吃
+「今天第幾天」這個會在換日跳動的輸入），不用一起改。
+
+### 驗證
+
+`tsc --noEmit` 通過；`npm run test:map-tools`（41 項）、
+`npm run test:affection`（5 項）、`npm run test:save-slots`（3 項）、
+`npm run test:weather`（5 項）、`shrine-stair-navigation.test.ts`
+（3 項）全過。沒辦法補自動化測試——`scene-sky.ts` 本身就是建立
+`WebGLRenderer` 的地方，在沒有 DOM/canvas 的 `tsx --test` 環境完全無
+法 import，這輪多次遇到同一個環境限制。已經逐行核對公式：新舊寫法在
+同一天內任何時刻的差值都遠小於原本换日瞬間的跳動量，且换日邊界上數值
+連續（`continuousSeasonDay` 在 `currentDay` 從 N 進位到 N+1 的瞬間，
+本身就是從 `N + 0.999...` 平滑過渡到 `N+1 + 0.000...`，不存在整數跳
+動）。
+
+
+## 2026-09-04 第十四輪：晴陰雨雪颱風轉換也要有緩衝效果
+
+Zeppelin 反饋：「還有晴陰雨雪大雪颱風轉換也是 要有點緩衝效果」——延續
+上一輪月亮換日瞬移的思路，這次換天氣種類（例如雨轉晴、雪轉大雪）本身
+也有好幾處是瞬間切換，不是平滑過渡。
+
+### 根本原因
+
+專案裡其實已經有一套現成的換天氣緩衝機制：`WEATHER_TRANSITION_SECONDS
+= 75` 秒的 `weatherTransitionRamp()`，從 `gameState.weatherChangedAt`
+起算 0→1，`beginNewDay()` 換天氣時也早就有留 `previousWeather`。雲的
+不透明度、天空的「天氣濃淡」(`weatherShade`)、雨雪粒子的淡入、閃電強
+度都已經是用「`previousWeather` 的值 lerp 到 `currentWeather` 的值，
+lerp 比例是 ramp」這個正確的寫法。
+
+但同一個檔案、甚至同一個函式裡，還留著好幾處只看
+`gameState.currentWeather === "xxx"` 的硬判斷，沒有套用 ramp：
+
+- `game-loop.ts` 光照區塊——`toneMappingExposure`、環境光/太陽光強度
+  與顏色、季節性補光——全部只吃「現在」是不是晴天/雪天，換天氣那一
+  幀直接跳一格亮度／色溫。
+- `weather-particles.ts` 的雨、雪——`rainMode`/`snowMode` 只看
+  `currentWeather`，一旦天氣種類離開雨/雪，粒子直接 `visible = false`
+  瞬間消失，不透明度原本雖然有乘 `weatherTransitionRamp()`，但那只在
+  「進場」時有效（因為出場那一幀整個 `if` 區塊根本不會跑），閃電強度
+  也是同樣的「只淡入、不淡出」。
+- `scene-sky.ts` 的 `cloudCount`（雲朵數量，整數，離散跳幾朵）跟
+  `weatherSky`（天空混色的目標顏色，只看 `currentWeather` 是不是雪天
+  二選一）——`weatherShade`（混色的「量」）本身雖然是平滑的，但混色
+  的「目標顏色」跟雲朵數量卻是換天氣那一幀直接跳過去，看起來還是像
+  瞬間變臉。
+
+### 修法
+
+新增一個共用、純函式版的 blend 工具，跟上一輪 `isTutorialWeekDay()` 的
+套路一樣——邏輯寫成不吃 `gameState` 的純函式（可測），實際使用的地方
+包一層薄薄的 wrapper 讀目前的 gameState：
+
+- `weather-schedule.ts` 新增 `blendWeatherValue(previousWeather,
+  currentWeather, ramp, valuesByWeather, fallback=0)`：`lerp(valuesByWeather[previousWeather] ?? fallback, valuesByWeather[currentWeather] ?? fallback, clamp(ramp,0,1))`。
+- `game-state.ts` 新增 `weatherBlend(valuesByWeather, fallback=0)`，內部
+  接上目前的 `gameState.previousWeather`/`currentWeather`/
+  `weatherTransitionRamp()`，呼叫 `blendWeatherValue()`。
+
+然後在每個發現的缺口套用：
+
+- `game-loop.ts`：光照強度/顏色相關的天氣加成項（`summerSun` 的晴天
+  權重、`winterSnowReflection` 的雪天權重、`toneMappingExposure` 的晴
+  天曝光……）全部改成 `weatherBlend({...})`，不再是 `currentWeather
+  === "clear" ? x : 0` 這種硬開關。
+- `weather-particles.ts`：雨/雪的 `visible` 判斷改成「現在是雨/雪，
+  或『前一個天氣』是雨/雪而且 ramp 還沒走完」都算 mode 開啟；粒子數
+  量、不透明度都直接用 `weatherBlend()` 算，換天氣時數量跟不透明度會
+  一起從舊天氣的值淡到新天氣的值（含新天氣是「非雨雪」時淡到 0，也
+  就是补上原本完全沒有的淡出效果）；閃電強度同樣改成
+  `weatherBlend({storm:1},0)`，離開暴風雨天氣時也會淡出而不是瞬間關
+  掉。
+- `scene-sky.ts`：`cloudCount` 改成 `weatherBlend({...},3)`（浮點數，
+  `cloud.visible = index < cloudCount` 本來就能吃小數，雲會一朵一朵
+  慢慢冒出來/收起來，不用額外取整數）；`weatherSky` 改成把「雪天目
+  標色」跟「風雨目標色」各自轉成 `THREE.Color`，用 ramp 直接 lerp 出
+  一個過渡色，不再是二選一硬切。
+
+沒有動的地方：`cloudOpacity`、`weatherShade`、`cloudSpeed`／
+`cloudColor`（這兩個是視覺上不明顯的次要屬性，換天氣時肉眼幾乎看不出
+瞬間感，優先度低，先不碰，避免動到跟本輪需求無關的程式碼）。
+
+### 驗證
+
+`tsc --noEmit` 全程通過（分三次套用後都各自確認一次）。
+
+`blendWeatherValue()` 是純函式，補了 5 個新測試到
+`weather-schedule.test.ts`：ramp=0 時完全等於前一個天氣的值、ramp=1
+時完全等於現在天氣的值、ramp 中間值線性內插、缺項時退回 fallback（含
+沒指定 fallback 時預設為 0）、ramp 超出 [0,1] 範圍會被夾住。
+`npm run test:weather` 從原本 5 項變成 10 項，全過。
+
+`npm run test:map-tools`（41）、`npm run test:affection`（5）、
+`npm run test:save-slots`（3）、`shrine-stair-navigation.test.ts`
+（3）全部照跑一次，確認沒有被這輪改動波及，全過。
+
+老實說：`game-loop.ts`、`scene-sky.ts`、`weather-particles.ts` 這三個
+被改動的檔案本身都是不能在 Node 測試環境 import 的（`scene-sky.ts`
+模組載入時就會建立 `THREE.WebGLRenderer`，沒有 DOM/canvas 會直接
+`ReferenceError`），這輪一樣沒辦法補到它們的自動化測試，只能靠
+`tsc --noEmit`＋逐行核對每個改動點的邏輯（新舊天氣的值、fallback、
+ramp 方向）＋幫真正的 blend 數學（`blendWeatherValue`）補單元測試這
+三層來把關。實際換天氣時光照/雲朵/雨雪粒子淡入淡出的視覺效果，還是
+要 Zeppelin 在遊戲裡實際跑過一次換天氣才能最終確認。

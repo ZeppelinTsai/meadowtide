@@ -17,6 +17,7 @@ import {
   settlePastureGrazing,
   settleFeederConsumption,
   pastureGrassStageAt,
+  weatherBlend,
 } from "./game-state";
 import {
   isGameTimePaused,
@@ -67,6 +68,7 @@ import {
   CARPENTER_EVENT_WAIT_POS,
   artistQuest,
   ARTIST_EVENT_WAIT_POS,
+  botanistQuest,
   SOUTHERNMOST_AVENUE_TREE_Z,
   aStar,
   portGroundY,
@@ -106,6 +108,10 @@ import {
   canTriggerDayTwoTouchEvent,
   updateRubyEvent,
 } from "./day2-morning-event";
+import {
+  canStartDayThreeMorningEvent,
+  startDayThreeMorningEvent,
+} from "./day3-morning-event";
 import {
   collidesAt,
   keys,
@@ -939,6 +945,10 @@ export function animate(now) {
     startDayTwoMorningEvent();
   }
 
+  if (canStartDayThreeMorningEvent()) {
+    startDayThreeMorningEvent();
+  }
+
   if (
     isPrologueSeekingRod() &&
     gameState.currentMapName === "port" &&
@@ -1165,6 +1175,29 @@ export function animate(now) {
         "oldVillage",
         ARTIST_EVENT_WAIT_POS.x,
         ARTIST_EVENT_WAIT_POS.z,
+      );
+      return;
+    }
+    // 克拉拉(植物學家)第三天個人事件——跟上面 artistQuest 那段同一種
+    // 「釘在固定站位」寫法，差別是站位會隨場次換(門口／蜂箱空地)，所以
+    // 讀 botanistQuest.scenePos 這個會變動的物件，不是寫死的常數。
+    // day3-morning-event.ts 每次場景切換都會更新這個值，這裡只負責套用。
+    if (
+      botanistQuest.stage === "intro" &&
+      n.id === "botanist" &&
+      gameState.currentMapName === "livingArea" &&
+      botanistQuest.scenePos
+    ) {
+      npcGroup.visible = true;
+      n.mesh.visible = true;
+      n.mesh.position.x = botanistQuest.scenePos.x;
+      n.mesh.position.z = botanistQuest.scenePos.z;
+      n.mesh.rotation.y = botanistQuest.scenePos.rotY;
+      animateWalk(n.mesh, false, gameState.elapsed);
+      n.mesh.position.y += characterGroundY(
+        "livingArea",
+        botanistQuest.scenePos.x,
+        botanistQuest.scenePos.z,
       );
       return;
     }
@@ -1587,31 +1620,43 @@ export function animate(now) {
     scene.fog = null;
   }
   const daylight = Math.pow(1 - nightFactor, 1.25);
+  // 2026-09-04 Zeppelin 反饋「晴陰雨雪大雪颱風轉換也要有點緩衝效果」
+  // ——這整段(曝光、環境光/太陽光強度與顏色、季節光暈)原本全部直接看
+  // gameState.currentWeather 硬切，跟雲量/天色濃淡那兩處(cloudOpacity/
+  // weatherShade，scene-sky.ts)不一樣，那兩處已經用 weatherTransitionRamp()
+  // 從「前一個天氣」的值淡到新天氣，這裡完全沒有，換天氣那一幀整個場
+  // 景的色調/亮度會瞬間跳一階。改成用 weatherBlend()(game-state.ts，
+  // 跟雲量/天色那套同一個 lerp 概念，包成共用函式)取代每個
+  // `currentWeather === "X"` 的硬判斷，換天氣時這些量都會跟著
+  // weatherTransitionRamp() 平滑地從舊天氣的值滑到新天氣的值。
+  const clearWeight = weatherBlend({ clear: 1 });
   // 晴朗白天降低 ACES 曝光，保留草地、岩石與建築的色彩層次；
   // 夜間稍微回升，避免星空與燈光變得太暗。
-  renderer.toneMappingExposure =
-    gameState.currentWeather === "clear" ? 0.76 + nightFactor * 0.26 : 1.02;
+  const clearExposure = 0.76 + nightFactor * 0.26;
+  renderer.toneMappingExposure = THREE.MathUtils.lerp(
+    1.02,
+    clearExposure,
+    clearWeight,
+  );
   const noonWarmth =
     daylight *
     Math.pow(
       Math.max(0, 1 - Math.abs(gameState.currentPhase - 0.5) / 0.2),
       1.7,
     );
-  const fairWeather =
-    gameState.currentWeather === "clear" ||
-    gameState.currentWeather === "cloudy";
+  // 晴天(1)/陰天(0.42)分別對應原本「fairWeather ? (clear?1:0.42) : 0」
+  // 的三種結果，雨/雪/颱風等其餘天氣沒列進 map，fallback 0 剛好對應
+  // 原本 else 分支的 0。
+  const summerSunStrength = weatherBlend({ clear: 1, cloudy: 0.42 });
   const summerSun =
-    gameState.currentSeason === 1 && fairWeather
-      ? daylight * (gameState.currentWeather === "clear" ? 1 : 0.42)
-      : 0;
+    gameState.currentSeason === 1 ? daylight * summerSunStrength : 0;
+  const fairWeatherWeight = weatherBlend({ clear: 1, cloudy: 1 });
   const autumnWarmth =
-    gameState.currentSeason === 2 && fairWeather ? daylight * 0.32 : 0;
+    gameState.currentSeason === 2 ? daylight * 0.32 * fairWeatherWeight : 0;
+  const winterPrecipWeight = weatherBlend({ snow: 1, blizzard: 1 });
   const winterSnowReflection =
-    gameState.currentSeason === 3 &&
-    (gameState.currentWeather === "snow" ||
-      gameState.currentWeather === "blizzard")
-      ? (gameState.currentWeather === "snow" ? 0.34 : 0.22) *
-        (0.35 + daylight * 0.65)
+    gameState.currentSeason === 3
+      ? weatherBlend({ snow: 0.34, blizzard: 0.22 }) * (0.35 + daylight * 0.65)
       : 0;
 
   ambient.intensity =
@@ -1628,11 +1673,11 @@ export function animate(now) {
     summerSun * 0.48 +
     autumnWarmth * 0.12 +
     winterSnowReflection * 0.18;
-  if (gameState.currentWeather === "clear") {
-    // 降低均勻灑滿全場的白光，改由陰影與材質色建立晴天的清晰對比。
-    ambient.intensity *= 1 - daylight * 0.22;
-    sun.intensity *= 1 - daylight * 0.18;
-  }
+  // 降低均勻灑滿全場的白光，改由陰影與材質色建立晴天的清晰對比——
+  // clearWeight 取代原本的 `currentWeather === "clear"` 硬判斷，換天氣
+  // 時這個削減量會跟著平滑淡入/淡出，不是整片瞬間變暗或變亮。
+  ambient.intensity *= 1 - daylight * 0.22 * clearWeight;
+  sun.intensity *= 1 - daylight * 0.18 * clearWeight;
   sun.color.copy(DAY.sunColor).lerp(NIGHT.sunColor, nightFactor);
   if (summerSun > 0) sun.color.lerp(SUMMER_SUN_COLOR, summerSun * 0.42);
   else if (autumnWarmth > 0) sun.color.lerp(AUTUMN_SUN_COLOR, autumnWarmth);
@@ -1642,12 +1687,17 @@ export function animate(now) {
   sun.color.lerp(NOON_WARM_COLOR, noonWarmth * noonSeasonStrength);
   seasonalBounceLight.intensity =
     summerSun * 0.22 + winterSnowReflection * 0.75;
+  // 這兩行原本用「winterSnowReflection > 0 ? 1 : 0」當 lerp 係數——即使
+  // winterSnowReflection 本身已經因為上面的修正變成平滑漸變，這裡的布林
+  // 判斷還是會在它剛超過 0 的那一刻讓顏色瞬間跳到「完全冬季色」，改用
+  // winterPrecipWeight(雪/暴風雪的平滑權重，0~1)直接當係數，顏色也會
+  // 跟著平滑過渡。
   seasonalBounceLight.color
     .set(0xfff2c7)
-    .lerp(WINTER_AMBIENT_COLOR, winterSnowReflection > 0 ? 1 : 0);
+    .lerp(WINTER_AMBIENT_COLOR, winterPrecipWeight);
   seasonalBounceLight.groundColor
     .copy(SUMMER_BOUNCE_GROUND)
-    .lerp(WINTER_BOUNCE_GROUND, winterSnowReflection > 0 ? 1 : 0);
+    .lerp(WINTER_BOUNCE_GROUND, winterPrecipWeight);
   windowMats.forEach((m) => {
     m.emissiveIntensity = nightFactor;
   });

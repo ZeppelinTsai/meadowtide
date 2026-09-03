@@ -726,6 +726,25 @@ function completeDayTwoMorningEvent() {
     artistQuest.stage === "waiting_oldVillage"
   ) {
     void runBlackTransition("short", () => {
+      // 2026-09-04 Zeppelin：「趁黑屏讓村長直接瞬移到廣場，不然她會擋
+      // 在前面」——上一輪把村長放行去日常排程後，原本想讓他自己走過
+      // 去，但這段對話幾乎全程開著對話框(isGameplayPaused() 只要
+      // #dialog 還開著 dt 就是 0)，他大部分時間根本沒機會真的走，等於
+      // 一路卡在木匠戲最後站的位置——正好擋在露比開場戲的鏡頭前面。
+      // 既然黑屏本來就會擋住畫面，不用等日常排程慢慢帶他過去，直接在
+      // 這裡把他的座標一次設到 home 那個廣場定點(跟 npc-defs.ts 裡
+      // mayor 整天的排程本來就是繞著這個點走，語意上就是「回到廣場」)。
+      // 只設 x/z、path/lastTargetKey 清空，Y 高度跟走路動畫交給
+      // game-loop.ts 那段 npcs.forEach 最後統一套用的
+      // animateWalk()+=characterGroundY()(對所有沒有被前面分支攔截、
+      // 落到預設排程分支的 NPC 都適用，不用在這裡自己重算一次)。
+      const mayorNpc = npcs.find((n) => n.id === "mayor");
+      if (mayorNpc) {
+        mayorNpc.mesh.position.x = LAYOUT.oldVillage.plaza.x + 9;
+        mayorNpc.mesh.position.z = LAYOUT.oldVillage.plaza.z + 11;
+        mayorNpc.path = null;
+        mayorNpc.lastTargetKey = null;
+      }
       artistQuest.stage = "intro";
       startArtistPersonalEvent();
     });

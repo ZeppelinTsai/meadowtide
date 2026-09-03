@@ -1,5 +1,5 @@
 import { gameState, dayLength, getSeasonIndex, rollWeatherForSeason, SEASON_NAMES, WEATHER_NAMES, growCropsForNewDay, growFlowerBedForNewDay } from "./game-state";
-import { carpenterQuest, CARPENTER_CONSTRUCTION_DAYS, chefQuest, CHEF_RENOVATION_DAYS } from "./layout-maps";
+import { carpenterQuest, CARPENTER_CONSTRUCTION_DAYS, chefQuest, CHEF_RENOVATION_DAYS, botanistQuest } from "./layout-maps";
 import { updateAvenueTreeColors, updateSeasonalTreeColors, updateSeasonalGroundColors } from "./props";
 import { syncFarmVisuals, syncFlowerBedVisuals } from "./farm-visuals";
 import { scheduleNextMeteor } from "./scene-sky";
@@ -9,6 +9,11 @@ import {
   DAY_TWO_MORNING_WINDOW_START,
   DAY_TWO_MORNING_WINDOW_END,
 } from "./day2-morning-event";
+import {
+  dayThreeMorningEvent,
+  DAY_THREE_MORNING_WINDOW_START,
+  DAY_THREE_MORNING_WINDOW_END,
+} from "./day3-morning-event";
 
 export function beginNewDay(day) {
         gameState.currentSeason = getSeasonIndex(day);
@@ -84,6 +89,15 @@ export function beginNewDay(day) {
         );
       }
 
+      // 第三天早上克拉拉事件的窗口偵測，跟上面第二天那個同一套算法
+      // (見 day3-morning-event.ts 開頭說明)，這裡只是換一組窗口常數。
+      function crossedDayThreeMorningWindow(oldElapsed, newElapsed) {
+        return (
+          newElapsed >= DAY_THREE_MORNING_WINDOW_START &&
+          oldElapsed < DAY_THREE_MORNING_WINDOW_END
+        );
+      }
+
       export function updateGameClock(delta) {
         if (!(delta > 0)) return 0;
         const oldElapsed = gameState.elapsed;
@@ -111,6 +125,12 @@ export function beginNewDay(day) {
           crossedDayTwoMorningWindow(oldElapsed, gameState.elapsed)
         ) {
           dayTwoMorningEvent.due = true;
+        }
+        if (
+          botanistQuest.stage === "not_started" &&
+          crossedDayThreeMorningWindow(oldElapsed, gameState.elapsed)
+        ) {
+          dayThreeMorningEvent.due = true;
         }
         return crossedDays;
       }
