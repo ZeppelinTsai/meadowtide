@@ -29,8 +29,8 @@ export const farmGroup = new THREE.Group();
       }
 
 // 花田——渲染邏輯照抄上面 syncFarmVisuals()，只是讀 flowerBedState/
-// FLOWER_BED_TILES 而不是 cropState/FARMLAND_TILES；圍籬跟草坪/碎石
-// 步道/鳥浴盆是靜態場景(build-map.ts 蓋一次)，這裡只管每格的花本身。
+// FLOWER_BED_TILES 而不是 cropState/FARMLAND_TILES；圍籬是靜態場景
+// (build-map.ts 蓋一次)，這裡只管每格的土/花本身。
 export const flowerBedGroup = new THREE.Group();
 flowerBedGroup.position.y = PLATEAU_Y;
 scene.add(flowerBedGroup);
@@ -42,15 +42,11 @@ export function syncFlowerBedVisuals() {
   }
   flowerBedGroup.visible = true;
   FLOWER_BED_TILES.forEach(([x, z]) => {
-    // makeSoil() 原本是給沒有草坪蓋在上面的普通農地用的，y=0.01；這裡
-    // 疊在 makeSmallGarden() 那片整片草坪(props-decor.ts，草坪頂面約
-    // y=0.038)上面，太低會被草坪蓋住整個看不到土——2026-09-04 實機
-    // 回報「花田被砍光光」，查出來就是這個。改成 0.045，跟同一個函式
-    // 裡碎石步道(0.045)、makeGardenBed() 舊裝飾花圃的土(0.02，頂面
-    // 0.045)同一個高度，是這個場景既有、已驗證會露出來的數字。
-    const soil = makeSoil(x, z);
-    soil.position.y = 0.045;
-    flowerBedGroup.add(soil);
+    // 這片花田原本疊在 makeSmallGarden() 的草坪上，土要墊到 0.045 才
+    // 不會被草坪蓋住(見 git log)；2026-09-04 makeSmallGarden() 的草坪/
+    // 步道/鳥浴盆整個拿掉後(build-map.ts)，改回跟一般農地
+    // (syncFarmVisuals())同一套 makeSoil() 預設高度。
+    flowerBedGroup.add(makeSoil(x, z));
     const bed = flowerBedState[`${x},${z}`];
     if (bed) {
       const mesh = makeFlowerBedMesh(bed.stage, bed.species);

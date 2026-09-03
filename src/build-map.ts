@@ -148,7 +148,6 @@ import {
   makeFruitTree,
   makeOysterRack,
   makeRestArea,
-  makeSmallGarden,
   makePortScene,
   makeToriiGate,
   makeMountainSummitShrine,
@@ -3646,13 +3645,13 @@ export function buildMap(mapName) {
     });
 
     // 行道樹右側正式分成上下兩區：上方聚會／個人放鬆，下方小花園。
-    // 2026-09-03：露比事件結尾那句「牧場不是有空地嗎？」正式接上——
-    // makeSmallGarden() 原本的 6 個純裝飾花圃已經拿掉(見 props-decor.ts
-    // 的說明)，改由 flowerBedGroup(farm-visuals.ts)畫真正可種/可收的
-    // 花圃；這裡只補一圈圍籬圈住同一塊地，草坪/碎石步道/鳥浴盆維持
-    // makeSmallGarden() 原樣。
+    // 2026-09-03：露比事件結尾那句「牧場不是有空地嗎？」正式接上，改由
+    // flowerBedGroup(farm-visuals.ts)畫真正可種/可收的花圃。
+    // 2026-09-04：Zeppelin 反饋 makeSmallGarden() 的草坪／碎石步道／
+    // 鳥浴盆都是純裝飾、跟真正的花田(flowerBedGroup)疊在一起反而顯得
+    // 多餘，整個拿掉，只留圍籬圈住同一塊地。makeSmallGarden() 函式本身
+    // 留著沒刪，之後如果想在別處放同一套裝飾小花園還能直接用。
     plateauGroup.add(makeRestArea(LAYOUT.restArea));
-    plateauGroup.add(makeSmallGarden(LAYOUT.garden));
     plateauGroup.add(
       makeFence(
         LAYOUT.garden.x,
