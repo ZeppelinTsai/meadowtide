@@ -362,3 +362,636 @@ appearance」，`buildMap()` 現在會在**每次換地圖**時把 `chef`／`art
   `moved_in`，並以 `rewardGranted` 防止讀檔或重入時重複發獎。
 - CG 新檔沿用「事件 id－流水號」：`030.png` 複製為 `day2Carpenter-01.png`，
   並提供 1280/1600 WebP 響應式衍生檔。
+
+## 2026-09-04：修正「港口迎接戲主角陷進地板」bug
+
+Zeppelin 實測回報：第二天切到港口時主角會陷進地面裡。追下去發現這是
+「2026-08-26 第六輪反饋」那個 bug 的變種，不是新問題重犯：
+
+`game-loop.ts` 裡 `animateWalk()` 每幀都會把 `gameState.player.position.y`
+整個覆寫成走路/待機用的小幅 bob 值（不是疊加），序幕靠
+`reapplyProloguePlayerY()` 讀 `prologue.ts` 內部的 `lastPlayerY` 蓋回正
+確地形高度來解決；`game-loop.ts` 也照著把「補回地形高度」的
+`characterGroundY()` 疊加動作包在 `if (!gameState.cutsceneActive)` 底
+下，理由是序幕期間的 Y 完全交給 `reapplyProloguePlayerY()` 決定，不要
+被地形疊加拉回海平面/碼頭高度。
+
+問題是這兩段判斷式讀的都是**通用**的 `gameState.cutsceneActive`，不是
+「現在是不是真的在跑序幕」——`day2-morning-event.ts` 的港口迎接戲也會
+把 `cutsceneActive` 設成 `true`（純粹是想借用同一套「鎖玩家操作、隱藏
+UI」機制），但這場戲換圖時從來沒呼叫過 `syncLastPlayerY()`，
+`lastPlayerY` 就停在序幕最後一次同步的值（livingArea 平地、接近 0）。
+於是港口迎接戲整段：`reapplyProloguePlayerY()` 把主角的 Y 每幀蓋回這個
+序幕遺留的舊值，地形疊加又被同一個 `cutsceneActive` 判斷式跳過——主角
+被釘在錯誤的高度，港口這裡比 livingArea 高一階（`portGroundY()` 在
+`carpenterMeet` 一帶算出來是 `port.elevation = 1`），看起來就是整場戲
+都陷進碼頭。
+
+**修法**：沒有動 `game-loop.ts`／`reapplyProloguePlayerY()` 本體（風險
+較高、影響全部呼叫點），改成讓 `day2-morning-event.ts` 自己在每次換圖
+後補呼叫一次 `syncLastPlayerY()`（`prologue.ts` 把這支函式改成
+`export`）：
+- `startDayTwoMorningEvent()` 家門口 `loadMap("livingArea", …)` 的
+  callback 開頭補一次。
+- 這輪其餘所有換圖（港口／舊城鎮／山區／顏料戲）都走同一個本檔案的
+  `loadEventMap()` helper，直接在它內部 `loadMap()` 的 callback 補
+  （`loadMap` 剛設好新地圖地形高度時同步一次，呼叫端 `onLoaded()`
+  跑完後再同步一次，防呼叫端自己又動了玩家座標），涵蓋這輪所有場景，
+  以後這個檔案新增場景也不用另外記得加。
+
+之後任何新演出只要會把 `gameState.cutsceneActive` 設成 `true`，換圖
+後都要記得呼叫 `syncLastPlayerY()`——這不是序幕專屬的內部細節，
+`prologue.ts` 裡該函式上方已經補了對應說明。
+
+驗證：`npx tsc --noEmit`、`npm run test:story`（14 過）、
+`npm run test:map-tools`（41 過）、`npm run story-audit`（1 event, OK）
+全過。這台機器沒有能跑 `npm run dev` 進遊戲操作的環境，實際進遊戲玩
+一次港口迎接戲，還是要 Zeppelin 確認高度看起來對不對。
+
+## 2026-09-04：木匠事件結束後沒有接上藝術家事件——追查中，邏輯本身沒找到問題
+
+Zeppelin 反饋「木匠事件結束後理論要直接接藝術家的事件，但沒有發生」。
+追了一遍完整鏈路（`completeDayTwoMorningEvent()` → `artistQuest.stage`
+設成 `"waiting_oldVillage"` → `game-loop.ts` 的釘位邏輯把露比放到
+`ARTIST_EVENT_WAIT_POS` → `build-map.ts` 觸碰點觸發
+`handleArtistWaitTouch()`），每一段程式邏輯單獨看都是對的、也用
+`tsc`/現有測試驗證不出矛盾。
+
+跟木匠事件本來就不是「直接接」，是「露比先站定點等，玩家要走近才觸
+發」（見上面 2026-09-03 那則記錄），跟 `carpenter-quest.ts` 的
+`CARPENTER_DOORSTEP` 是同一招：觸碰點只佔她南邊那一格
+（`(142,18)`），玩家要從南側走進來才會踩到，從其他方向靠近不會觸
+發——這是全專案這類「站定點等玩家」NPC 共用的既有模式，不是這次新
+引入的設計，所以沒有貿然把它加寬。
+
+這輪沒有找到確切的程式邏輯錯誤，需要 Zeppelin 下次測到時幫忙確認兩件
+事，才能判斷是哪一段真的壞了：(1) 木匠事件結束後，露比有沒有站在舊城
+鎮 `(142,17)` 那個位置（有出現代表狀態機推進正常，問題出在觸碰點；沒
+出現代表 `completeDayTwoMorningEvent()`／`artistQuest.stage` 這段本身
+沒推進，需要往回查）；(2) 如果她有出現，是從哪個方向走近她的（南側
+`(142,18)` 這格才會觸發）。
+
+
+## 2026-09-04 第二～三輪：三輪回報都「根本沒看到露比」——改成木匠戲結束直接自動接上，不再靠玩家自己找到她
+
+上一則記錄請 Zeppelin 幫忙確認「露比有沒有站在 `(142,17)`」跟「從哪個
+方向走近她」，後續兩輪回報是：
+
+1. 「要故意直接觸發 連續的才行，讓主角自己走過去，露比理論上就在隔壁
+   棟，應該可以看得到才對」——描述聽起來是有走到，但沒特別確認方向。
+2. 「事件結束後根本沒看到露比，但走過去倒是有觸發，應該是直接觸發，
+   但是要讓主角自動走過去這樣」——這輪關鍵：**確認了觸碰事件本身有
+   正常觸發**，代表 `artistQuest.stage` 有推進到 `waiting_oldVillage`、
+   `handleArtistWaitTouch()` 的觸碰判斷也是通的（上一則記錄列的兩個
+   待確認項目，等於間接確認都正常）——問題純粹是玩家自己完全沒看到
+   她的模型，是被動走到觸發格才碰上的，不是先看到人再走過去。
+
+### 這輪逐行核對過、排除掉的假設
+
+再追了幾個上一輪沒仔細查的角度，全部核對後排除：
+
+- **`makeArtist()` 模型本身**（`src/humanoid.ts`）：整份手動搭建的
+  mesh 讀過一遍，材質/geometry/scale 都正常，沒有 opacity=0、scale=0
+  這類會讓她「技術上存在但畫面上看不到」的設定。
+- **`ARTIST_EVENT_WAIT_POS = {x:142, z:17}` 是不是超出地圖範圍**：一
+  開始懷疑座標是不是打錯（`77` 寬的舊城鎮怎麼會有 `x=142`），追進
+  `OLD_VILLAGE_OCEAN_EXPANSION`（西擴 `+100` 海面）才發現這個常數本
+  來就是「西擴後」的座標，換算回去是 `x=42`——剛好對到木匠家隔壁那
+  棟房子（城鎮 `houses[]` 陣列裡 `x:42, z:13` 那間），跟
+  `CARPENTER_EVENT_WAIT_POS`（同樣西擴後的 `x=137,z=17`）只差 5 格，
+  完全符合「隔壁棟」的敘事，不是打錯數字、也沒有真的跑到地圖外的
+  海面上。
+- **`game-loop.ts` 逐幀釘位邏輯前面有沒有更早的分支把 artist 攔
+  截掉**：把 `npcs.forEach()` 整段從頭讀到露比那個分支，前面
+  `holding`／`isPrologueMayorFollowing`／cutscene 鎖定／
+  `isCarpenterEscortActor`／`isCarpenterWaitingAtHouse` 這幾段全部
+  只認 `mayor`／`carpenter`／`captain`，不會誤攔 `artist`。
+- **`n.mesh.parts == null` 那個最前面的早退判斷**：只有 `chef`（空
+  `THREE.Group()`，故意不建模型）會踩到，`artist` 是正常的
+  `makeArtist()` 回傳值，有 `.parts`，不受影響。
+
+唯一找到的真正差異：其他固定站位分支（`holding`／
+`isPrologueMayorFollowing`／`isCarpenterEscortActor`）都會順手設一次
+`npcGroup.visible = true`，露比那段漏了這行。`buildMap()` 換圖時算出
+來的 `npcGroup.visible` 在 `oldVillage` 本來就一定是 `true`（見
+`build-map.ts` 那段公式），理論上不該是這次看不到人的成因，但既然是
+唯一一處寫法不一致的地方，這輪還是把它補齊了（`game-loop.ts`）。
+
+### 沒有再繼續往下猜，改成正面解決「討論了三輪都還是找不到人」這件事
+
+程式邏輯逐行核對不出錯，加上「觸碰事件确實有觸發」這個新證據，讓這輪
+判斷比較像是「不知道要往哪走、相機也沒帶到那裡」的可發現性落差，不是
+真的渲染壞掉——但這只是推論，不是實測驗證過的結論（環境限制：這個
+session 沒辦法自己跑一份能跨 tool call 存活的 dev server 連上瀏覽器
+實測，見下面「環境限制」那段）。
+
+與其繼續猜第四輪，直接回應 Zeppelin 這兩輪都明確講的訴求（第一輪
+「理論要直接接」、這輪「應該是直接觸發…自動走過去」）：把
+`completeDayTwoMorningEvent()` 原本「推進到 `waiting_oldVillage`、
+交給玩家自己走過去碰」的設計，改成木匠戲一結束就直接呼叫
+`startArtistPersonalEvent()`，跳過站定點等碰觸發那個中間站。
+`ARTIST_EVENT_WAIT_POS` 這個座標跟 `handleArtistWaitTouch()` 觸碰事
+件本身都保留，沒有刪——如果之後想改回「玩家自由探索找到她」的體驗，
+`completeDayTwoMorningEvent()` 那兩行換回
+`artistQuest.stage = "waiting_oldVillage"` 就好。
+
+同時在 `startArtistPersonalEvent()` 開頭加了一次性 `console.info`
+除錯輸出（`mesh.visible`／`npcGroup.visible`／local+world position／
+scale／`hasParts`／目前地圖／玩家座標），如果自動接上之後畫面上還是
+看不到露比，下次直接看 F12 console 這行貼出來就有實際數據，不用再靠
+截圖猜。確認沒問題之後這段除錯輸出可以刪掉。
+
+### 環境限制：這個 session 沒辦法自己連上瀏覽器實測
+
+`device_bash` 每次呼叫都是全新的沙箱行程樹（`bwrap` 隔離），背景行程
+（`setsid nohup … & disown`）不會跨呼叫存活——起 dev server 那次呼叫
+一結束，server 就跟著沒了，沒辦法在下一次呼叫用瀏覽器工具連上去實測。
+這是這一輪只能靠程式碼逐行核對、沒辦法自己截圖驗證「露比到底有沒有
+畫出來」的原因，記錄下來避免以後又想著「直接開瀏覽器測一次不就好了」
+重複踩坑。
+
+### 驗證
+
+`tsc --noEmit` 通過；`npm run test:map-tools`（41 項）、
+`npm run test:affection`（5 項）、`npm run test:save-slots`（3 項）全過。
+沒有新增/修改任何測試——這輪改的是流程時機（何時呼叫
+`startArtistPersonalEvent()`）跟一行除錯輸出，沒有新的可測邏輯分支。
+
+
+## 2026-09-04 第四輪：選屋橋段三個新問題——跟隊順序、Y 高度、露比放生後亂走
+
+自動接上（上一則記錄）送出後，Zeppelin 這輪附了兩張選屋橋段
+(`startVillageHouseTour()`) 的截圖，回報三件事：(1) 露比跟隨村長走的
+時候應該排在隊伍最後面；(2) 露比沒有走到（木匠選中的）那棟房子，而是
+跑去廣場了；(3) 她走路的樣子很像貼地平移，高度好像有誤差。這三個都是
+選屋橋段本身的問題，跟上一輪的「看不到人」是不同橋段（那個是木匠事件
+完全結束後的露比個人事件，這個是木匠事件進行中、四人一起去挑房子那
+段），這輪逐一查出實際成因並修正：
+
+**(1) 跟隊順序**——`updateDayTwoWalkFollowers()` 原本讓歐文/露比鏡射
+在村長兩側（`x ± 1.15`），但整段選屋橋段的行進方向固定沿 z=17 往 -x
+走（`VILLAGE_TOUR` 三個點 x=152→143→137），鏡射意味著露比落在
+`村長x - 1.15`，比村長更靠近 -x（前進方向），等於走在隊伍最前面，跟
+反饋的「應該在隊伍最後面」正好相反。改成跟歐文同側、但偏移量加倍
+（`村長x + 2.3`），z 也錯開一點避免完全重疊，讓她確實排在隊尾；開場
+定格的初始站位（`startVillageHouseTour()` 裡的 `holdNpcsAt`）也同步
+改成同一個方向，避免開場第一幀跟後續每幀的算法對不上而跳動。
+
+**(2) 沒走到房子、跑去廣場**——追進 `beginMountainRoute()`（選屋結束、
+準備上山採集材料那段）才發現：露比說完「我先不跟你們上山了...隔壁那
+棟房子我蠻喜歡的，先去放行李了」這兩句台詞後，程式碼原本的想法是說
+`releaseHold()` 解除固定站位後，她會「自動退回 npc-defs.ts 原本的舊
+城鎮日常排程」——但日常排程的路徑table跟她剛講的「隔壁那棟房子」毫無
+關聯，玩家看到的就是她憑空走去排程指定的其他地點（這次是廣場），跟
+台詞對不上。改成 `beginMountainRoute()` 直接把 `artistQuest.stage` 推
+進到 `waiting_oldVillage`——這是既有的狀態，`game-loop.ts` 的釘位邏輯
+本來就認得，會把她放到 `ARTIST_EVENT_WAIT_POS`（「隔壁那棟房子」）並
+釘住，一路撐到 `completeDayTwoMorningEvent()` 接上她的個人事件為止，
+跟台詞完全對上。連帶把 `completeDayTwoMorningEvent()` 裡判斷「要不要
+接上露比事件」的條件從只認 `not_started` 放寬到也接受
+`waiting_oldVillage`（現在正常流程一定會先經過這個狀態），避免卡住。
+
+**(3) 走路貼地平移**——這個才是真正的程式邏輯錯誤，不是這次新增的，
+是既有的固定站位（`holding`）分支本來就有的 bug：`animateWalk()`
+不管 moving 還是 idle，都會直接覆蓋 `position.y`（moving 時是
+`Math.abs(Math.sin(t*10))*0.03` 的踏步彈跳量，idle 時是
+`Math.sin(t*2)*0.01` 的待機微幅浮動），`characterGroundY()` 回傳的是
+純地形高度、不含彈跳量——兩者要疊加才對。`holding` 分支上一輪(見前面
+「修正村長半沉進地板」那則)已經把呼叫順序改成先 `animateWalk()` 再處
+理地形高度，但地形高度那行用的是 `=`（直接覆蓋）不是 `+=`（疊加），
+等於把 `animateWalk()` 剛設好的踏步彈跳量整個蓋掉，變成只有四肢在動、
+身體完全不會上下浮動的「貼地平移」——跟 escort trail、日常排程那兩段
+本來就用 `+=` 的正確寫法不一致。這個分支同時服務 mayor/carpenter/
+artist 三種角色，這次修正是共用的，選屋橋段、家門口固定站位、港口迎
+接戲全部一起受惠，不是只修露比這一種情境。
+
+### 驗證
+
+`tsc --noEmit` 通過；`npm run test:map-tools`（41 項）、
+`npm run test:affection`（5 項）、`npm run test:save-slots`（3 項）全過。
+
+
+## 2026-09-04 第五輪：露比開場戲加分鏡（發現→回頭反應→走過去）
+
+Zeppelin 貼了截圖確認上一輪自動接上之後露比的 CG 立繪正常顯示（三輪
+除錯的「看不到人」疑慮到此正式排除，是可發現性問題，不是渲染壞掉），
+然後給了一段具體分鏡，要在 `completeDayTwoMorningEvent()` 接上露比事
+件時照著演：露比先站定 `[oldVillage] (142,18)` 面朝上、發出「...」、
+對話框顯示「露比：「……」」；接著主角轉向右側、發出「!」；然後走到
+露比左邊 `(141,18)`；再繼續原本的對話。
+
+實作對應：
+
+- `ARTIST_EVENT_WAIT_POS` 從 `(142,17)` 改成 Zeppelin 指定的
+  `(142,18)`——這個常數原本是比照 `CARPENTER_EVENT_WAIT_POS` 的公式
+  推算出來的，現在有明確指定座標，直接改成定案值。
+- `startArtistPersonalEvent()` 拆成三段 `showDialogSequence`：第一段
+  只有開場白 `[藝術家站在隔壁空屋前，盯著外牆]` + 露比的「……」（掛
+  `comicCue: {actorId:"artist", kind:"..."}`)；第二段是主角轉向
+  `FACING_ANGLE.right`（面向東側，露比所在方向）+「!」反應
+  cue；第三段（`continueArtistPersonalEventDialogue()`）是原本從
+  「你覺得這面牆是白色的嗎？」開始的完整對話，透過新寫的
+  `walkPlayerTo()` 走到露比左邊(142-1, 18)之後才接上。
+- 新增 `walkPlayerTo(target, onDone)`：主角在演出中自己走一小段路的
+  小工具，用獨立的 `requestAnimationFrame` 迴圈線性內插座標，速度比
+  照 `game-loop.ts` 日常排程 NPC 的 1.6 格/秒；沒有沿用
+  `startGuidedWalk()`，因為那個函式寫死操控 `mayor`，是給「NPC 領頭、
+  主角跟隨」設計的，這裡反過來是主角自己走，硬套風險比自己寫一個小
+  工具大。地形高度疊加用跟這輪其他修正一致的
+  `animateWalk() 先、position.y += 地形高度後` 順序，避免又出現貼地
+  平移。
+- 拿掉了上一輪加的一次性除錯 `console.log`——確認沒問題了，照描述
+  刪掉。
+
+### 驗證
+
+`tsc --noEmit` 通過；`npm run test:map-tools`（41 項）、
+`npm run test:affection`（5 項）、`npm run test:save-slots`（3 項）全過。
+`walkPlayerTo()` 本身沒有寫自動化測試——是純視覺演出的小工具，邏輯
+（線性內插+速度換算）很單純，用既有測試套件驗證不到，之後如果想補，
+可以測「給定 target 跟 speed，durationMs 的計算」這種純函式部分。
+
+
+## 2026-09-04 第六輪：離隊「瞬移」改成自己走過去＋補一個同款 Y 陷入 bug
+
+Zeppelin 反饋兩件事：(1) 木匠事件（選屋橋段）結束後露比直接不見了；
+(2) 要不要讓她離隊後自己走到定點；(3) 高度可能還是有點陷下去。
+
+**(1)+(2) 瞬移改成走路**——上一輪（第四輪）把 `beginMountainRoute()`
+改成離隊時直接把 `artistQuest.stage` 設成 `waiting_oldVillage`，讓
+`game-loop.ts` 的釘位邏輯接手——但那段邏輯是「這一幀直接把座標釘死在
+`ARTIST_EVENT_WAIT_POS`」，跟她剛剛走隊形的座標完全對不上，視覺上就是
+瞬間消失、在別的地方憑空出現。改成新寫的 `walkArtistToWaitSpot(onDone)`
+——從她離隊當下的座標，自己用跟主角 `walkPlayerTo()` 同一套算法（線性
+內插、1.6 格/秒）走到 `ARTIST_EVENT_WAIT_POS`，走到了才呼叫 `onDone()`
+把 `artistQuest.stage` 推進到 `waiting_oldVillage`，這時候釘位邏輯接手
+才不會有瞬移感。跟主角那個工具的差異：這裡動的是 NPC 的 mesh，而且要
+避免走路過程被 `game-loop.ts` 的日常排程 A* 系統搶走——沒有自己寫一套
+全新的「NPC 免疫日常排程」機制，而是借用既有的
+`holdNpcsAt()`/`dayTwoMorningEvent.holding` 那套（跟村長領隊走位共用
+同一條 `game-loop.ts` 釘位分支），每幀重新呼叫 `holdNpcsAt()` 更新她的
+座標，順便繼承那條分支上一輪（第四輪）已經修好的 Y 疊加順序，不用重
+複寫一份地形高度計算。`beginMountainRoute()` 裡 `dayTwoMorningEvent.
+phase = "mountainRoute"` 這行要在走路動畫的第一幀跑之前就切掉，不然
+`updateDayTwoWalkFollowers()` 還認得 `"villageWalk"`，會用村長的位置
+每幀重算 `holdPositions.artist`，跟這裡的走路動畫互相搶著寫同一個
+欄位。
+
+**(3) Y 陷入**——這次不是走路動畫的問題，是「站定點等」那個釘位分支
+（`waiting_oldVillage`/`intro`/`returning`）本身就有 bug，跟走路無關：
+原本用 `position.set(x, 地形高度, z)` 一次把座標設好，但緊接著呼叫的
+`animateWalk(moving=false)` 會把 `position.y` 整個覆蓋成
+`Math.sin(t*2)*0.01` 的待機微幅浮動（見 humanoid.ts），等於把剛設好
+的地形高度整個蓋掉、變成貼近 0 的高度——這一帶地形墊高在
+`groundElevation`(=1) 附近，所以看起來像陷進地板。改成跟 `holding`
+分支同一個順序：x/z 先設好，`animateWalk()` 呼叫完之後再用 `+=` 疊加
+地形高度。順便發現木匠「站在工地空屋前」那個等待姿勢
+（`isCarpenterWaitingAtHouse` 分支）也是一模一樣的寫法、一模一樣的
+bug，只是還沒被抓到，這輪一起修掉，沒有等下次才發現同一個坑。
+
+（`isPrologueMayorFollowing` 那段村長序章跟隨的分支也有類似但比較輕微
+的變體——`animateWalk()` 呼叫順序是對的，但地形高度用 `=` 直接覆蓋
+不是 `+=`，會把彈跳量蓋掉、變成貼地平移，不會真的陷進地板。這個是序
+章既有、已經上線測過的場景，這輪沒有一起動，先記錄下來，如果之後序
+章那段也被反饋「走路怪怪的」，就是同一個成因。）
+
+### 驗證
+
+`tsc --noEmit` 通過；`npm run test:map-tools`（41 項）、
+`npm run test:affection`（5 項）、`npm run test:save-slots`（3 項）全過。
+
+
+## 2026-09-04 第七輪：港口見面戲改成兩排面對面
+
+Zeppelin 給了新的港口事件佔位座標，四人份都是直接指定的絕對座標＋朝
+向：`[port] (5,21) 歐文面左`、`[port] (5,23) 露比面左`、
+`[port] (3,21) 主角面右`、`[port] (3,23) 村長面右`。
+
+這四個座標剛好都落在既有的 `LAYOUT.port.carpenterMeet`
+(`{x:3, z:21, width:3, height:3}`) 範圍內，改成用它推導（`x`/`x+2`、
+`z`/`z+2`）而不是寫死四個數字，比較好維護——跟原本
+`layout-maps.ts` 的寫法風格一致。原本(2026-09-03 那版)是主角/村長同排
+面向船、歐文/露比也同排面向船（迎接的人跟被迎接的人各自面對船，不是
+面對彼此）；這次改成兩排面對面——主角/村長站西側那排面向東(right)，
+歐文/露比站東側那排面向西(left)，兩排隔著中間對望，比較像「迎接」的
+構圖。
+
+`layout-maps.ts` 的 `DAY_TWO_PORT_ARRIVAL` 四個座標改用
+`carpenterMeet` 推導；`day2-morning-event.ts` 的
+`startPortArrivalScene()` 裡，主角初始朝向、`holdNpcsAt()` 傳給
+mayor/carpenter/artist 的 `rotY` 都從寫死的 `0`/`Math.PI` 改成
+`FACING_ANGLE.right`/`FACING_ANGLE.left`（跟這輪稍早加的
+`FACING_ANGLE` import 共用）。
+
+### 驗證
+
+`tsc --noEmit` 通過；`npm run test:map-tools`（41 項）、
+`npm run test:affection`（5 項）、`npm run test:save-slots`（3 項）全過。
+
+
+## 2026-09-04 第八輪：露比離隊走路「順移」——改成不靠推斷、自己驅動動畫
+
+Zeppelin 反饋上一輪的 `walkArtistToWaitSpot()`「露比沒有事件後走過去
+而是順移了」，另外提到「所有角色的碰撞還是有問題，導致沒有進入行走
+動畫」。
+
+先講可以確認、也修掉的部分：`walkArtistToWaitSpot()` 上一版是借用
+`holdNpcsAt()`/`dayTwoMorningEvent.holding` 這套機制，讓
+`game-loop.ts` 的「holding」分支自己比較「這幀的目標座標」跟「mesh
+目前座標」的差距，超過門檻(0.008)才播走路動畫——問題是
+`walkArtistToWaitSpot()` 自己的 `requestAnimationFrame` 迴圈跟
+`game-loop.ts` 主迴圈的 `animate()` 是兩條各自獨立、沒有互相同步的
+rAF 鏈，「這裡有沒有真的把新座標寫進 holdPositions」跟「那邊這一幀有
+沒有讀到最新值」時序對不齊，靠比較前後兩幀座標差推斷「有沒有在動」這
+件事並不可靠，會導致動畫沒有跟位移同步觸發，看起來就是貼地滑過去。
+
+改成完全比照 `walkPlayerTo()` 的寫法——不再假手任何分支去推斷，直接
+在 `walkArtistToWaitSpot()` 自己的 rAF 迴圈裡呼叫
+`animateWalk(mesh, true, ...)`，全部自己算好、自己套用，不依賴任何
+跨迴圈的狀態推斷。要避免這段期間被日常排程的 A* 系統搶著改她的
+position，原本借用的 `holding` 機制語意也不完全對得上（那是給「固定
+站位」設計的，不是給「這段時間交給別的程式碼控制」設計的），換成一個
+新的、意思更明確的旗標 `dayTwoMorningEvent.artistSoloWalking`——
+`game-loop.ts` 的 `npcs.forEach` 一開始看到這個旗標為真、且是 artist
+就直接跳過整段（含日常排程），不會有兩邊同時搶著改同一個 mesh 的
+position/rotation 造成「動畫跟位移打架」的情況。
+
+「所有角色的碰撞還是有問題」這句沒有辦法在這輪確認——回頭查了村長領
+隊那套（`prologue.ts` 的 `updatePrologueCutscene()` guidedWalking 分
+支）跟 carpenter escort trail、上面幾輪修過的 holding 分支，都沒有找
+到會擋住移動的碰撞檢查(`isBlocked()` 只用在日常排程 NPC 的 A* 尋路跟
+玩家自己走路那兩處，這幾段固定站位/跟隨走位完全不經過那段)，這些分支
+判斷「有沒有在動」的邏輯(`mayorMoving`、`moved > 0.008`)結構上看起來
+是對的，不像這次 `walkArtistToWaitSpot()` 那樣有跨 rAF 鏈的時序問
+題。如果村長領隊那組走位（選屋橋段）也有「不播走路動畫」的狀況，需要
+下次遇到時附一張走路當下的截圖或說明具體是哪一段，這輪沒有足夠線索
+能確定是同一個成因還是另一個問題。
+
+### 驗證
+
+`tsc --noEmit` 通過；`npm run test:map-tools`（41 項）、
+`npm run test:affection`（5 項）、`npm run test:save-slots`（3 項）全過。
+
+
+## 2026-09-04 第九輪：木匠戲收尾加黑屏、村長/木匠解除凍結、教學周天氣修正
+
+這輪 Zeppelin 一次提了四件事，逐項拆開處理。
+
+### (1) 木匠事件結束後先黑屏，再接露比事件
+
+`completeDayTwoMorningEvent()` 原本是木匠最後一句台詞收掉、下一行就
+直接呼叫 `startArtistPersonalEvent()`，兩場戲之間沒有任何停頓，觀感
+上像硬接。改成用檔案裡已經在用的 `runBlackTransition("short", ...)`
+包住這段轉場（跟 CG 切換、`startCarpenterRepairScene()` 裡歐文換裝那
+段是同一套機制）：畫面全黑之後才真的把 `artistQuest.stage` 切成
+`"intro"` 並呼叫 `startArtistPersonalEvent()`，黑屏持續 140ms（short
+的 hold 時間）後淡出，玩家看到的會是「木匠戲淡出→短暫全黑→淡入露比
+戲」，兩段戲有明確段落感，不是同一幀硬切。
+
+### (2) 村長/木匠事件結束後回去過自己的日常（含逛廣場）
+
+這是這輪查最久的一個。追過 `carpenterQuest.stage` 的狀態機，確認
+`completeDayTwoMorningEvent()` 把它設成 `"moved_in"` 之後，
+`game-loop.ts` 裡專門攔截村長/木匠的 `isCarpenterEscortActor`（只認
+`"escorting"`/`"village_scene_done"`）跟 `isCarpenterWaitingAtHouse`
+（只認 `"construction"`/`"ready_for_move_in"`）都不會再命中——這條路
+其實原本就沒問題，`moved_in` 之後兩人本來就會落回日常排程分支。
+
+真正卡住他們的是另一段完全通用、跟木匠劇情無關的碼：
+
+```js
+if (
+  (gameState.cutsceneActive ||
+    isPrologueFarmingActive() ||
+    isPrologueSeekingRod() ||
+    isPrologueFishingTutorialActive()) &&
+  (n.id === "mayor" || n.id === "captain")
+)
+  return;
+```
+
+這段本來是為了序章期間村長/船長的位置要完全交給 `prologue.ts` 控制、
+不能被日常排程同一幀蓋掉而寫的，條件裡用的是最籠統的
+`gameState.cutsceneActive`——這個旗標是全專案共用的通用鎖（序章／木
+匠事件／露比個人事件全部都會把它設成 true），並不是「序章專屬」的旗
+標。露比事件現在（見上一項）黑屏後立刻自動接上，`cutsceneActive` 從
+木匠戲結尾到露比在山上採花結束之前幾乎全程是 true，於是村長跟木匠就
+在這整段期間被這段守衛凍結住，回不去日常排程——這才是「回自己日程」
+卡住的真正原因，跟 carpenter quest 的 stage 機器完全無關。
+
+修法：`prologue.ts` 新增一個之前沒有的通用檢查
+`isPrologueActive()`（`stage !== "inactive" && stage !== "done"`），
+`game-loop.ts` 那段守衛改成只看 `isPrologueActive()`——
+`isPrologueFarmingActive()`/`isPrologueSeekingRod()`/
+`isPrologueFishingTutorialActive()` 對應的階段本來就落在
+`isPrologueActive()` 涵蓋的範圍內，不用再各別列一次，順便讓條件精簡
+一些。這樣只有「序章本身」真的還沒結束時才會凍結村長/船長，Day2 之後
+任何借用 `cutsceneActive` 的事件都不會再誤傷這段邏輯。
+
+### (3) 「先讓她們在廣場逛好了」
+
+一旦 (2) 修好、村長跟木匠不再被凍結，他們就會落回 `npc-defs.ts` 既有
+的日常排程——那套排程本來就會讓沒有特殊事件卡著的 NPC 在自己的地圖範
+圍內走動（含廣場），這點不用額外改碼，Zeppelin 這句話本身就是在確認
+「日常排程帶去廣場」是可接受的結果，不是要另外指定廣場座標。
+
+### (4) 教學周（第一週）應該永遠晴天，但目前看到雨天
+
+`rollWeatherForSeason()` 本來就有教學周保護——`createSeasonWeatherSchedule()`
+的 `isProtectedDay` 已經把 `absoluteSeason === 0` 的前
+`TUTORIAL_WEEK_DAYS`（7）天強制排成 `clear`。邏輯本身沒寫錯，Zeppelin
+自己也猜「不確定是記錄還是邏輯問題」——實際上兩者都有一點：
+
+- `gameState.weatherSchedules` 跟 `gameState.currentWeather` 都會整
+  包存進存檔（`input-save.ts` 的 `saveGame()`/`loadGame()`），讀檔時
+  `loadGame()` 原本是 `data.currentWeather || rollWeatherForSeason(...)`
+  ——只要存檔裡已經有 `currentWeather` 這個字串（不管是不是在教學周
+  保護邏輯上線之前存的），就會直接信任那個可能過期的舊值，不會重
+  算。這輪測試用的存檔很可能就是這種「比保護邏輯更早」存下來的天氣
+  結果。
+- `gameState.weatherSchedules` 這份 cache 本身也會跨場景留在記憶體
+  裡沿用——標題畫面的天氣預覽、或同一頁先讀過某個存檔又回頭開新遊
+  戲，都不會清空它；`startNewGame()` 原本也沒有重置這個欄位。
+
+與其在讀檔／新遊戲／標題預覽這些各自獨立的進入點分別補一次「清快
+取」，這輪把保護規則直接搬到 `rollWeatherForSeason()` 的回傳值那一
+層：把判斷式抽成 `weather-schedule.ts` 裡一個不依賴 `gameState` 的
+純函式 `isTutorialWeekDay(absoluteSeason, seasonDayIndex, tutorialWeekDays)`，
+`rollWeatherForSeason()` 在碰任何排程快取之前先問這個函式——只要是教
+學周範圍內的日子，不管快取（不管是剛算的、還是從舊存檔/記憶體沿用下
+來的）裡實際存了什麼，一律直接回傳 `clear`。這樣一次涵蓋所有呼叫路
+徑，不用擔心漏掉某個進入點。
+
+抽成獨立純函式而不是直接寫在 `game-state.ts` 裡，是因為
+`game-state.ts` 的 import 鏈會一路拉到 `scene-sky.ts` 建
+`WebGLRenderer`，在沒有 DOM/canvas 的 `tsx --test` 環境沒辦法直接
+import 這個檔案做單元測試；`weather-schedule.ts` 本來就是刻意抽出來
+放「跟遊戲全域狀態無關的天氣排程算法」的地方，`isTutorialWeekDay()`
+可以直接被 `weather-schedule.test.ts` 測到。
+
+順便修了兩處配套：
+- `input-save.ts` 的 `loadGame()` 不再優先信任 `data.currentWeather`
+  這個可能過期的字串，一律呼叫 `rollWeatherForSeason()` 重新算——排
+  程快取本身在一般情況下沒變，重算結果會跟存檔當下一致，只有在存檔
+  資料過期/不一致（例如這次的教學周）時才會被「修正」回正確值。
+- `title-screen.ts` 的 `startNewGame()` 補上
+  `gameState.weatherSchedules = {}`，避免新遊戲沿用同一頁前一輪讀過
+  的存檔留下的排程快取（教學周本身已經被上面那層強制保護涵蓋，這裡
+  純粹是順手歸零，避免教學周「之後」的天數也意外沿用舊排程）。
+
+### 驗證
+
+`tsc --noEmit` 通過；`npm run test:map-tools`（41 項）、
+`npm run test:affection`（5 項）、`npm run test:save-slots`（3 項）、
+`npm run test:weather`（新增 `isTutorialWeekDay` 兩項測試，共 5 項）
+全過。天氣這部分沒辦法用瀏覽器實際跑一輪存讀檔驗證（環境限制，見檔案
+開頭說明），已用單元測試把「教學周永遠晴天、且不受快取內容影響」這條
+規則鎖住；如果下次進遊戲教學周內還是看到非晴天天氣，麻煩附上當下是遊
+戲第幾天、是新遊戲還是讀舊存檔，方便進一步排查是不是還有其他路徑在繞
+過 `rollWeatherForSeason()`。
+
+
+## 2026-09-04 第十輪：露比事件結束強制跳到 15:00、花田改回一叢式外觀
+
+### 露比事件結束後時間強制改到 1500
+
+`completeArtistPersonalEvent()` 是露比整場事件（港口相遇→木匠戲→黑屏
+接上→山上採花→回村研磨顏料）真正收尾的地方，之前只解除
+`setTimePauseSource("rubyEvent", false)`，遊戲時間會維持在事件開始
+暫停的那個時間點繼續往下走——劇情演了大半天，時鐘卻還停在早上，觀感
+不對。
+
+比照 `prologue.ts` 序章結束時同款寫法（`beginStage("done")` 收尾那段
+的 `FREE_TIME_PHASE = 15/24`，直接改寫 `gameState.elapsed`/
+`gameState.currentPhase`）新增 `RUBY_EVENT_END_PHASE = 15/24`。差別是
+序章發生在第 0 天，`prologue.ts` 可以直接用 `dayLength * phase`；露比
+事件是第二天以後，這裡改成
+`gameState.currentDay * dayLength + dayLength * RUBY_EVENT_END_PHASE`，
+保留當下的 `currentDay`，只覆寫「這一天內的時刻」，不會把日期也一起
+拉回去。
+
+### 花田花朵視覺——從單朵改回固定三角排列的小花叢
+
+這片花田在更早之前（同樣 2026-09-04）因為「花會偏移大概0.2個單位」
+的反饋，從借用 `makeFlowerCluster()`（野外採集點那種 2~4 朵隨機散開
+的叢生模型）改成單一朵花精準種在格子正中央——問題是矯枉過正，種出來
+的花田看起來一格一朵，稀稀落落不像花田。
+
+這次改法不是走回頭路重新借用 `makeFlowerCluster()`（它的散開角度/半
+徑整段都是隨機數，是造成「偏移」反饋的根本原因），而是在
+`makeFlowerBedMesh()` 裡直接寫死一個三角形排列的小花叢：3 朵花頭固定
+在 120° 等分的角度上、固定半徑 0.09（乘上 `CLUSTER_SCALE` 2.6 倍後約
+0.23 個單位，離相鄰格線還有一半以上緩衝），只用 hash 讓每朵花的旋轉角
+度／縮放有一點細微差異（不影響位置）。因為位置本身是常數、三個角度對
+稱分布，整叢花的視覺重心永遠精準落在 group 原點——呼叫端
+（`farm-visuals.ts` 的 `syncFlowerBedVisuals()`）再把這個 group 定位
+到格子座標，跟之前「單朵花種在正中央」對齊格線的效果一樣，但多了叢生
+的層次感。半成熟階段（stage 1）維持單朵縮小版不變，只有成熟階段
+（stage 2，會顯示採收提示的那個階段）套用新的三角花叢。收成邏輯
+（`harvestFlowerBed()`）完全沒動，純粹外觀調整。
+
+### 驗證
+
+`tsc --noEmit` 通過；`npm run test:map-tools`（41 項）、
+`npm run test:affection`（5 項）、`npm run test:save-slots`（3 項）全
+過。花叢視覺跟強制時間這兩項都是純渲染/賦值邏輯，沒有對應的單元測
+試，已用程式碼審查確認邏輯正確（時間那段特別檢查了「保留 currentDay」
+這個跟序章版本的關鍵差異）。
+
+
+## 2026-09-04 第十一輪：露比開場「!」演出完全沒播出來——修掉、村長瞬移到廣場待查
+
+Zeppelin 附了黑屏淡入後的截圖，反饋兩件事：「木匠事件結束後村長直接
+瞬移到廣場」、「黑屏後應該要!演出，我覺得應該是太早了我沒看到，而且
+應該要停頓一下的」。這兩件事分開查，一件是確認、修掉的 bug，一件是
+查過但沒能確認成因，如實記錄、留給下次帶更精確資訊回報。
+
+### 「!」演出沒播出來——`showDialogSequence()` 的舞台指示壓縮邏輯有個
+空隙
+
+先看程式在做什麼：`showDialogSequence()` 開頭會把整段台詞陣列「壓
+縮」一次——凡是文字整句被 `[...]` 包住的行都當成「舞台指示」，不會
+自己變成一格獨立的對話框，只把它身上帶的 `comicCue`（如果有）記在
+`pendingComicCue`，交給壓縮後陣列裡「下一句真正會顯示的台詞」一起帶
+出去（讓驚嘆號泡泡跟下一句話同時出現，這是這個檔案裡到處都在用、也
+一直運作正常的手法，例如「[主角頭上「！」]」後面接著木匠的台詞）。
+
+問題出在露比開場戲那句：
+```js
+showDialogSequence(
+  [cue("[主角轉頭，注意到隔壁站著一個人]", "player", "!")],
+  () => { walkPlayerTo(...) },
+);
+```
+這個陣列只有這一句，而且是舞台指示（`[...]`包住）。壓縮迴圈跑完後，
+它被吃進 `pendingComicCue`，但後面沒有任何一句「真正的台詞」可以承
+接——`compacted` 壓縮完是空陣列。`showDialogSequence()` 看到空陣列會
+直接 `closeDialogUi()` 再 `queueMicrotask(onComplete)`，也就是這個驚
+嘆號根本沒有被畫出來過一次，`walkPlayerTo()` 幾乎在同一個 tick 就被
+呼叫——玩家會覺得「太快了、我根本沒看到」，因為畫面上真的什麼都沒
+播。這是這輪 Round 3 把開場戲拆成三段分鏡時，第一次把單獨一句
+`cue()` 當成整個陣列傳進去，才踩到這個之前沒人踩過的空隙——之前所有
+`cue()` 的用法都嵌在更長的陣列裡、後面一定接著真的台詞，沒暴露過這個
+問題。
+
+修法：`showDialogSequence()` 壓縮迴圈跑完後，如果 `pendingComicCue`
+還卡在手上沒人接（代表陣列收在一句「純舞台指示＋comicCue」），補一個
+安全網——塞一句 `{text: "", comicCue: pendingComicCue}` 的合成台詞進
+`compacted`。`shouldDisplayDialogText()` 看到有 `comicCue` 就會自動隱
+藏文字框、只顯示泡泡，`renderDialogLine()` 也已經有現成的 1400ms 計
+時器負責這種「隱藏文字」的行自動往下推進——這正好就是「顯示驚嘆號、
+停頓一下、再自動繼續」，不用另外加等待機制，也不影響任何現有的、後
+面接著真台詞的 `cue()` 用法（`pendingComicCue` 在那些情況下迴圈跑完
+前就已經被消耗掉，不會走到這個新分支）。
+
+這是共用邏輯（`dialogue.ts`），改一次全專案任何未來「單獨一句舞台指
+示+驚嘆號」的寫法都會受惠，不用每次都靠人工記得「後面一定要接一句真
+台詞」這個隱性規則。
+
+沒辦法補自動化測試——`showDialogSequence()`/`renderDialogLine()` 這
+條路徑會碰到 `document.getElementById`、`npcs`（一路拉到
+`scene-sky.ts` 建 `WebGLRenderer`），在沒有 DOM 的 `tsx --test` 環境
+沒辦法直接測，跟這輪之前 `game-state.ts` 遇到的環境限制一樣。已經逐
+行追過壓縮邏輯的分支條件確認修法正確；`comic-cue.test.ts`（測純邏輯
+`shouldDisplayDialogText()`）維持通過，跟這次改動本來就是兩個不同層
+級的邏輯。
+
+### 村長「瞬移到廣場」——查了但沒能定位到明確成因
+
+先排除幾個可能性：
+- 木匠事件結束到露比開場黑屏淡入這一小段，地圖沒有換過（全程都在
+  oldVillage），`loadMap()`/`buildMap()` 沒有被呼叫，不存在「換圖時
+  把 NPC 重新擺到某個座標」這種會被誤認成瞬移的重建動作——查過
+  `buildMap()`，一般排程 NPC（不是木匠護送那個特例）本來就不會在建圖
+  時被重新定位，`getScheduleTarget()` 只有 `game-loop.ts` 逐幀那段跟
+  `prologue.ts` 船長那段在用。
+- 村長被放行去日常排程（見上一輪 `isPrologueActive()` 那個修正）之
+  後，真正會移動他座標的只有 `game-loop.ts` 那段逐幀 A* 走路邏輯——
+  是逐格插值走過去，理論上不會整個瞬間跳到終點。
+- 但這整段期間對話框幾乎沒停過（`isGameplayPaused()` 只要 `#dialog`
+  還開著就會回傳 true，這時候 `dt` 直接是 0），意味著村長絕大部分時
+  間根本沒有機會真的走動——他很可能整個木匠戲收尾到露比開場淡入這段
+  期間都維持凍結在木匠戲最後站的位置附近（這點反而跟截圖對得上：截
+  圖裡村長跟木匠疊在一起、站在房子附近，不是站在廣場）。
+
+综合起来，「瞬移到廣場」比較可能發生在露比整場事件「真正結束、玩家拿
+回自由控制」之後——這輪剛好也把 `completeArtistPersonalEvent()` 加上
+了「強制跳到 15:00」（見上一輪紀錄），時間一變，村長的日常排程目標
+可能直接換成「廣場」，這時候對話框關閉、`dt` 恢復正常，他確實會開始
+用逐幀走路邏輯走過去——如果他當時離廣場不遠、走過去只要一兩秒，玩家
+沒特別盯著看的話，很容易觀感上就是「一回神人已經在那了」，不是真的瞬
+間位移。
+
+這個解釋合理，但沒辦法在這個環境實際跑一輪確認（沒有瀏覽器可以驗
+證），跟前幾輪「碰撞」那次一樣，這裡誠實記下沒有查到能 100% 確認的
+成因，不亂猜一個修法上去。如果下次遇到，麻煩幫忙確認一下：是在黑屏
+剛淡入那一刻就已經在廣場了（代表凍結期間位置真的悄悄變了，比較可疑）
+，還是在露比整場事件結束、玩家重新能自由行動之後才發現他已經在廣場
+（比較符合「其實有走過去，只是走得快/沒注意到」）。
+
+### 驗證
+
+`tsc --noEmit` 通過；`npm run test:map-tools`（41 項）、
+`npm run test:affection`（5 項）、`npm run test:save-slots`（3 項）、
+`npm run test:weather`（5 項）、`npm run test:comic-cue`（沒有獨立
+script，直接用 `tsx --test src/comic-cue.test.ts` 跑，1 項）全過。

@@ -4,7 +4,7 @@ import { LAYOUT, MAPS, MOUNTAIN_GATE_BLOCKER, FLOWER_BED_TILES } from "./layout-
 import { npcs, hasPastureGrassAt } from "./npc-runtime";
 import { isNearFishingWater } from "./fishing-water";
 import { syncFarmVisuals, syncFlowerBedVisuals } from "./farm-visuals";
-import { createWeatherSchedule } from "./weather-schedule";
+import { createWeatherSchedule, isTutorialWeekDay } from "./weather-schedule";
 import { getScaledBuildingBounds } from "./building-scale";
 import { cropTypeForSeedItem } from "./item-catalog";
 import {
@@ -471,16 +471,36 @@ export function rollWeatherForSeason(
   day = gameState.currentDay,
 ) {
   const absoluteSeason = Math.floor(day / TIME_CONFIG.daysPerSeason);
-  const scheduleKey = String(absoluteSeason);
-  const schedule =
-    gameState.weatherSchedules[scheduleKey] ||
-    (gameState.weatherSchedules[scheduleKey] =
-      createSeasonWeatherSchedule(absoluteSeason));
   const seasonDayIndex =
     ((day % TIME_CONFIG.daysPerSeason) + TIME_CONFIG.daysPerSeason) %
     TIME_CONFIG.daysPerSeason;
   // seasonIndex 保留在介面中，讓既有呼叫端不必改；排程以 absolute day 為準。
   void seasonIndex;
+  // 2026-09-04 Zeppelin 反饋「第一週教學周應該永遠晴天，但目前有雨天」
+  // ——createSeasonWeatherSchedule() 的 isProtectedDay 本來就有把
+  // absoluteSeason===0 的前 TUTORIAL_WEEK_DAYS 天強制排成 clear，邏輯
+  // 本身沒錯；問題出在 gameState.weatherSchedules 跟 currentWeather 都
+  // 會整包存進存檔(見 input-save.ts saveGame()/loadGame())、也會留在
+  // 記憶體裡跨場景沿用(標題畫面預覽、同一頁重開新遊戲都不會清空這個
+  // cache)——只要玩家手上那份排程是在這個保護邏輯生效之前就已經算好
+  // 並存檔/快取下來的，之後不管邏輯本身多正確，讀到的都還是舊的、沒
+  // 被保護過的隨機結果，回頭看就像「教學周還是會下雨」。
+  // 與其在每個讀檔/新遊戲/標題預覽的進入點各自補一次「清快取」，這裡
+  // 直接把保護規則搬到回傳值本身：不管排程快取(不管是剛算的、還是從
+  // 存檔/記憶體沿用的舊資料)裡實際存的是什麼，教學周這幾天永遠回傳
+  // clear，一勞永逸涵蓋所有呼叫路徑。
+  // 實際判斷式抽到 weather-schedule.ts 的 isTutorialWeekDay()——那邊是
+  // 不依賴 gameState 的純函式，才能在 Node 測試環境被直接單元測試到
+  // (game-state.ts 這個檔案本身因為 import 鏈會拉到 scene-sky.ts 建
+  // WebGLRenderer，没有 DOM 的 tsx --test 沒辦法直接 import 它)。
+  if (isTutorialWeekDay(absoluteSeason, seasonDayIndex, TUTORIAL_WEEK_DAYS)) {
+    return "clear";
+  }
+  const scheduleKey = String(absoluteSeason);
+  const schedule =
+    gameState.weatherSchedules[scheduleKey] ||
+    (gameState.weatherSchedules[scheduleKey] =
+      createSeasonWeatherSchedule(absoluteSeason));
   return schedule[seasonDayIndex];
 }
 gameState.currentSeason = getSeasonIndex(0);

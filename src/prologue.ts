@@ -406,7 +406,16 @@ function faceBoth(dx: number, dz: number) {
 
 // 見上面 lastPlayerY 的註解——每次寫完 gameState.player.position.y 之後
 // 呼叫，把「這幀真正該有的高度」存起來，給 reapplyProloguePlayerY() 用。
-function syncLastPlayerY() {
+// 2026-09-04 改成 export：reapplyProloguePlayerY() 是照 gameState.
+// cutsceneActive 這個「通用」旗標判斷要不要蓋 Y，不是只在真正的序幕才
+// 為真——day2-morning-event.ts 的港口迎接戲等演出也會借用同一個旗標
+// 鎖玩家操作/隱藏 UI，但那些場景換圖時不會呼叫這裡，lastPlayerY 就停
+// 在序幕最後一次同步的值，港口這種比 livingArea 高一階的地形，玩家會
+// 被硬拉回舊值，看起來像整場戲都陷進碼頭裡（Zeppelin 2026-09-04 反
+// 饋「主角在地面裡」）。日後任何演出只要會把 cutsceneActive 設 true，
+// 换圖之後都要呼叫這支函式回報一次「這幀真正該有的高度」，不是只有
+// 序幕自己的分支需要。
+export function syncLastPlayerY() {
   lastPlayerY = gameState.player.position.y;
 }
 
@@ -734,6 +743,15 @@ export function restorePrologueSaveState(
   beginStage(
     hasCompletedStoryEvent("main.prologue.arrival") ? "done" : "inactive",
   );
+}
+
+// 是否「序章本身」正在進行中(不含 inactive/done 這兩個終止態)。
+// Day2 之後陸續有其他事件(木匠事件、露比個人事件…)也會借用
+// gameState.cutsceneActive 來鎖輸入/藏 UI，但那些跟序章無關；
+// 凡是只想判斷「序章有沒有在跑」的地方，都應該用這個而不是
+// 直接看 gameState.cutsceneActive，否則會被別的事件誤觸發。
+export function isPrologueActive(): boolean {
+  return stage !== "inactive" && stage !== "done";
 }
 
 export function isPrologueSeekingRod(): boolean {

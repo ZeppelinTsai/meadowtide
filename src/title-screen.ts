@@ -276,6 +276,13 @@ export function initTitleScreen() {
     resetAnimalInteractionState();
     resetDayTwoMorningEvent();
     resetRelationships();
+    // 2026-09-04：這裡原本沒清 weatherSchedules——標題畫面的天氣預覽、
+    // 或同一頁先讀過別的存檔又回來開新遊戲，都會讓 gameState.weatherSchedules
+    // 留著上一輪的快取，新遊戲第一週就可能沿用到不是「保護過」的舊排程。
+    // rollWeatherForSeason() 現在已經會在回傳值那層強制教學周 clear(見
+    // game-state.ts 那邊的說明)，這裡再清空純粹是順手歸零、避免新遊戲
+    // 教學周之後的天數也沿用上一輪玩過的排程，不是這個 bug 的必要修復。
+    gameState.weatherSchedules = {};
     gameState.ownedAnimals = [];
     gameState.oysterRackSlots = 1;
     inventory.pearls.white = 0;

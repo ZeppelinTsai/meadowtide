@@ -20,11 +20,13 @@ import {
   startGuidedWalk,
   endExternalGuidedWalk,
   animatePrologueZoom,
+  syncLastPlayerY,
 } from "./prologue";
 import { setTimePauseSource } from "./time-pause";
 import { addAffectionReward } from "./affection";
 import { announceHomeVisitorThenRun } from "./ui-toast";
 import { FLOWER_SPECIES, type FlowerSpeciesId } from "./wildflowers";
+import { animateWalk, FACING_ANGLE } from "./humanoid";
 
 // ==============================================================
 // 第二天早上劇本——Zeppelin 2026-09-02 給的完整版：村長來敲門 → 一起去
@@ -79,6 +81,12 @@ export const dayTwoMorningEvent = {
   stoneStart: 0,
   rewardGranted: false,
   materialsSpent: false,
+  // 2026-09-04：露比離隊後自己走去定點那段(walkArtistToWaitSpot())用
+  // 的旗標——單純只是讓 game-loop.ts 逐幀排程迴圈那段暫時跳過她，不要
+  // 被日常排程的 A* 系統搶著改 position，跟 holding/holdPositions 是
+  // 兩回事，不會互相干擾。true 的時候 walkArtistToWaitSpot() 自己的
+  // rAF 迴圈直接控制她的 mesh，包含呼叫 animateWalk()。
+  artistSoloWalking: false,
 };
 
 // 窗口本身用絕對 elapsed 表示（day===1、hour∈[8,8.5)），跟
@@ -158,6 +166,11 @@ export function startDayTwoMorningEvent() {
     gameState.cutsceneActive = true;
     setTimePauseSource("guidedGameplay", true);
     loadMap("livingArea", DAY_TWO_MORNING_ARRIVAL.player, () => {
+      // loadMap() 剛把 position.y 設成這張圖正確的地形高度；這裡的
+      // cutsceneActive 已經是 true，之後每幀 reapplyProloguePlayerY()
+      // 會把 Y 蓋成 lastPlayerY，所以要先同步一次，見 prologue.ts
+      // syncLastPlayerY() 上面 2026-09-04 補的說明。
+      syncLastPlayerY();
       // 模型鼻子朝本地 -Z，rotation.y = atan2(dx,dz)+π 是全專案統一公式
       // （見 game-loop.ts NPC 走位那段同一條註解）。面朝下(+Z，dx=0,dz=1)
       // 就是 atan2(0,1)+π = π。
@@ -214,7 +227,12 @@ function loadEventMap(
     () =>
       new Promise<void>((resolve) => {
         loadMap(mapName, startPos, () => {
+          // 同上：loadMap() 剛算好這張新地圖的地形高度，先同步一次給
+          // reapplyProloguePlayerY() 用，見 prologue.ts syncLastPlayerY()
+          // 的說明；onLoaded() 之後如果又動了玩家座標，下面再補一次。
+          syncLastPlayerY();
           onLoaded();
+          syncLastPlayerY();
           resolve();
         });
       }),
@@ -222,7 +240,10 @@ function loadEventMap(
 }
 function startPortArrivalScene() {
   loadEventMap("port", DAY_TWO_PORT_ARRIVAL.player, () => {
-    gameState.player.rotation.y = 0; // 面朝上(-Z)看著剛靠岸的船
+    // 2026-09-04 改版佔位：主角/村長站西側那排面向東(right)，歐文/
+    // 露比站東側那排面向西(left)，兩排面對面，見 layout-maps.ts
+    // DAY_TWO_PORT_ARRIVAL 旁的說明。
+    gameState.player.rotation.y = FACING_ANGLE.right;
     const mayorNpc = npcs.find((n) => n.id === "mayor");
     const carpenterNpc = npcs.find((n) => n.id === "carpenter");
     const artistNpc = npcs.find((n) => n.id === "artist");
@@ -277,17 +298,17 @@ function startPortArrivalScene() {
       mayor: {
         x: DAY_TWO_PORT_ARRIVAL.mayor.x,
         z: DAY_TWO_PORT_ARRIVAL.mayor.z,
-        rotY: 0,
+        rotY: FACING_ANGLE.right,
       },
       carpenter: {
         x: DAY_TWO_PORT_ARRIVAL.carpenter.x,
         z: DAY_TWO_PORT_ARRIVAL.carpenter.z,
-        rotY: Math.PI,
+        rotY: FACING_ANGLE.left,
       },
       artist: {
         x: DAY_TWO_PORT_ARRIVAL.artist.x,
         z: DAY_TWO_PORT_ARRIVAL.artist.z,
-        rotY: Math.PI,
+        rotY: FACING_ANGLE.left,
       },
       // 船長留在自己碼頭邊的日常站位就好，不用特別釘住——這裡先不放
       // captain 進 holdPositions，讓他照原本的行程表小範圍走動。
@@ -367,14 +388,19 @@ function startVillageHouseTour() {
   loadEventMap("oldVillage", { x: 152, z: 18 }, () => {
     // 2026-09-03 Zeppelin 反饋：選屋這段也讓露比跟著走（原本只有村長/
     // 歐文陪同，露比港口登場戲結束就被藏起來）。跟歐文一樣進
-    // holdPositions，站位鏡射到村長另一側，updateDayTwoWalkFollowers()
-    // 每幀一起重算跟著村長走。
+    // holdPositions，updateDayTwoWalkFollowers() 每幀一起重算跟著村長
+    // 走——這裡只是開場定格的起始站位，要跟那邊的公式方向一致。
+    // 2026-09-04：這組初始站位原本讓露比落在 x=150.8，比村長起點
+    // (152)更靠 -x（隊伍前進方向），等於一開始就排在隊伍最前面，跟
+    // Zeppelin 反饋的「應該在隊伍最後面」相反——改成跟
+    // updateDayTwoWalkFollowers() 裡的公式同一個方向(+2.3x/+0.15z)，
+    // 開場第一幀就跟後續每幀算出來的位置一致，不會有一幀的跳動。
     const artistNpc = npcs.find((npc) => npc.id === "artist");
     if (artistNpc) artistNpc.mesh.visible = true;
     holdNpcsAt("oldVillage", {
       mayor: { ...VILLAGE_TOUR.start, rotY: Math.PI / 2 },
       carpenter: { x: 153.2, z: 17.45, rotY: Math.PI / 2 },
-      artist: { x: 150.8, z: 17.45, rotY: Math.PI / 2 },
+      artist: { x: 154.3, z: 17.15, rotY: Math.PI / 2 },
     });
     startGuidedWalk(
       [VILLAGE_TOUR.start, VILLAGE_TOUR.firstHouse],
@@ -416,17 +442,85 @@ function finishVillageHouseTour() {
       systemDialog("獲得萬用斧"),
       carpenter("「那麼，我們出發吧。」"),
       mayor("「山從村莊西北的樓梯走就能到了。」"),
-      // 2026-09-03 Zeppelin：上山採集前加一段，讓露比明確表態不跟去——
-      // 她沒有掛在 isCarpenterEscortActor 那套 escort 機制上（那邊只認
-      // "mayor"/"carpenter"），這段對話結束、holdPositions 被
+      // 2026-09-03 Zeppelin：上山採集前加一段，讓露比明確表態不跟去。
+      // 2026-09-04 Zeppelin 反饋「露比沒有走到他的房子而是跑到廣場
+      // 了」——這段原本的想法是說完這兩句、holdPositions 被
       // beginMountainRoute() 釋放後，她會自動退回 npc-defs.ts 原本的
-      // 舊城鎮日常排程，不需要另外寫程式碼把她攔下來。
+      // 舊城鎮日常排程，覺得不需要另外寫程式碼攔她。但日常排程跟她
+      // 剛講的「隔壁那棟房子」完全無關，玩家看到的就是她憑空走去別
+      // 的地方——實際上要有效果，得讓 beginMountainRoute() 把她放進
+      // ARTIST_EVENT_WAIT_POS 那個「站定點」狀態（跟 completeDayTwo
+      // MorningEvent() 最後接的是同一個 stage），而不是真的放生給日常
+      // 排程，見下面 beginMountainRoute() 的說明。
       artist("「我先不跟你們上山了，這附近我想再逛逛。」"),
       artist("「隔壁那棟房子我蠻喜歡的，先去放行李了。」"),
       mayor("「也好，路上小心。」"),
     ],
     () => animatePrologueZoom(10, 0.9, beginMountainRoute),
   );
+}
+
+// 2026-09-04 Zeppelin 反饋「木匠事件後露比直接不見了，讓她離隊後自己
+// 走到定點可以嗎」——上一輪的做法是 releaseHold() 之後直接把
+// artistQuest.stage 設成 waiting_oldVillage，game-loop.ts 的釘位邏輯
+// 下一幀就會把她「瞬移」到 ARTIST_EVENT_WAIT_POS，跟隊伍走位的位置一
+// 對不上，看起來就是憑空消失。改成用一個小工具讓她從離隊當下的座標
+// 自己走過去，走到了才真的推進 stage、交給釘位邏輯接手。
+//
+// 2026-09-04 二次修正：第一版借用 holdNpcsAt()/dayTwoMorningEvent.
+// holding，靠 game-loop.ts 的「holding」分支自己比較前後兩幀座標差
+// 決定要不要播走路動畫——Zeppelin 反饋「順移了，沒有進入行走動畫」。
+// 追下來是這個寫法本身的設計問題：holdNpcsAt() 是每幀從這裡(walk
+// ArtistToWaitSpot 自己的 rAF 迴圈)重新呼叫，跟 game-loop.ts 主迴圈是
+// 兩個各自獨立、沒有互相同步的 requestAnimationFrame 鏈，「這幀的
+// holdPositions 有沒有真的更新到」跟「game-loop.ts 這幀有沒有讀到最
+// 新值」時序上對不齊，比較前後兩幀座標差來推斷有沒有在動這件事就不可
+// 靠。改成完全比照 walkPlayerTo() 的寫法——不再假手 holding 分支去
+// 「猜」有沒有在動，直接在這個函式自己的 rAF 迴圈裡呼叫
+// animateWalk(mesh, true, ...)，全部自己算好、自己套用，不依賴任何
+// 跨迴圈的狀態推斷。要避免 game-loop.ts 的日常排程 A* 系統這段時間
+// 搶著改她的 position，改成一個新的簡單旗標
+// dayTwoMorningEvent.artistSoloWalking（見上面宣告旁的說明），比繼續
+// 沿用語意不完全對得上的 holding 更明確、不會有上述的時序問題。
+function walkArtistToWaitSpot(onDone: () => void) {
+  const artistNpc = npcs.find((n) => n.id === "artist");
+  const target = { x: ARTIST_EVENT_WAIT_POS.x, z: ARTIST_EVENT_WAIT_POS.z };
+  if (!artistNpc) {
+    onDone();
+    return;
+  }
+  const mesh = artistNpc.mesh;
+  const start = { x: mesh.position.x, z: mesh.position.z };
+  const dx = target.x - start.x;
+  const dz = target.z - start.z;
+  const dist = Math.hypot(dx, dz);
+  if (dist < 0.001) {
+    onDone();
+    return;
+  }
+  mesh.rotation.y = Math.atan2(dx, dz) + Math.PI;
+  dayTwoMorningEvent.artistSoloWalking = true;
+  const speed = 1.6; // 跟 game-loop.ts 日常排程 NPC 同一個走路速度
+  const durationMs = (dist / speed) * 1000;
+  const startTime = performance.now();
+  function step(now: number) {
+    const t = Math.min(1, (now - startTime) / durationMs);
+    mesh.position.x = start.x + dx * t;
+    mesh.position.z = start.z + dz * t;
+    // 跟 walkPlayerTo()、game-loop.ts 逐幀釘位那幾段同一個順序：
+    // animateWalk() 會直接覆蓋 position.y 成踏步彈跳量，一定要先呼叫、
+    // 再用 += 疊加地形高度。
+    animateWalk(mesh, t < 1, gameState.elapsed);
+    mesh.position.y +=
+      oldVillageGroundY(mesh.position.x, mesh.position.z) + 0.03;
+    if (t < 1) {
+      requestAnimationFrame(step);
+    } else {
+      dayTwoMorningEvent.artistSoloWalking = false;
+      onDone();
+    }
+  }
+  requestAnimationFrame(step);
 }
 
 function beginMountainRoute() {
@@ -441,9 +535,24 @@ function beginMountainRoute() {
     count: 1,
     until: gameState.elapsed + 2.6,
   };
+  // phase 要在 walkArtistToWaitSpot() 的第一幀跑之前就切掉，不然
+  // updateDayTwoWalkFollowers() 還認得 "villageWalk"，每幀會用村長的
+  // 位置重算 holdPositions.artist，跟這裡剛開始的走路動畫互相搶著寫
+  // 同一個欄位。
   dayTwoMorningEvent.phase = "mountainRoute";
   gameState.cutsceneActive = false;
   setTimePauseSource("guidedGameplay", true);
+  // 2026-09-04：露比剛講完「先去放行李」，不能真的放給 npc-defs.ts 的
+  // 日常排程（那組排程跟這句台詞完全無關，會讓她憑空走到不相干的地
+  // 方，比如廣場），也不能直接瞬移到 ARTIST_EVENT_WAIT_POS（看起來像
+  // 憑空消失）——改成讓她自己走過去，走到了才推進 stage，交給
+  // game-loop.ts 的釘位邏輯接手，一路撐到 completeDayTwoMorningEvent()
+  // 接上她的個人事件為止，跟台詞對得上。
+  if (artistQuest.stage === "not_started") {
+    walkArtistToWaitSpot(() => {
+      artistQuest.stage = "waiting_oldVillage";
+    });
+  }
 }
 
 function startMountainGatheringTutorial() {
@@ -586,12 +695,40 @@ function completeDayTwoMorningEvent() {
   releaseHold();
   setTimePauseSource("guidedGameplay", false);
   gameState.cutsceneActive = false;
-  // 2026-09-03 Zeppelin：「木匠事件結束後準備接露比事件」——先讓她站在
-  // 舊城鎮定點等，文本之後才給（見 layout-maps.ts artistQuest 旁的
-  // 說明）。game-loop.ts 看到這個 stage 就會把她釘在
-  // ARTIST_EVENT_WAIT_POS，蓋掉原本的日常排程。
-  if (artistQuest.stage === "not_started") {
-    artistQuest.stage = "waiting_oldVillage";
+  // 2026-09-03 Zeppelin：「木匠事件結束後準備接露比事件」——原本是讓
+  // 她站在舊城鎮定點（ARTIST_EVENT_WAIT_POS）等玩家自己走過去碰觸發，
+  // game-loop.ts 逐幀把她釘在那個座標，蓋掉原本的日常排程。
+  // 2026-09-04 Zeppelin 三輪回報「事件結束後根本沒看到露比」——逐行核對
+  // 過 makeArtist() 的模型、ARTIST_EVENT_WAIT_POS 座標（跟舊城鎮西擴
+  // +100 平移換算後落在木匠家隔壁棟，不是外海／地圖邊界外）、
+  // game-loop.ts 的逐幀釘位邏輯、buildMap() 換圖時的顯示/隱藏判斷，
+  // 都沒找到邏輯錯誤；玩家自己回報「走過去確實有觸發」，代表 stage
+  // 機器跟觸碰事件本身其實是通的，問題比較像是「不知道要往哪走、
+  // 相機也沒帶到那裡」的可發現性落差，不是渲染真的壞掉。
+  // Zeppelin 從第一輪就講「理論要直接接」，這輪又明確要「自動觸發＋
+  // 自動走過去」——與其繼續猜可發現性問題，改成木匠戲一結束就直接
+  // 接上露比開場白，不再經過「站著等玩家自己找到」這個中間站。
+  // 之後如果想恢復成「玩家自由探索」的體驗，把下面兩行換回
+  // `artistQuest.stage = "waiting_oldVillage";` 就好，ARTIST_EVENT_WAIT_POS
+  // 那個站位跟觸碰事件本身沒有動，都還在。
+  // beginMountainRoute() 現在已經把她推進到 waiting_oldVillage（見上面
+  // 2026-09-04 那則說明），這裡改成接受 not_started／waiting_oldVillage
+  // 兩種狀態都觸發——保留 not_started 分支是防呆：萬一之後劇本調整、
+  // 有其他路徑跳過 beginMountainRoute() 直接到這裡，還是能正常接上，
+  // 不會卡住。
+  // 2026-09-04 Zeppelin：「木匠事件結束後先黑屏」——之前是木匠戲最後一句
+  // 對話框收掉、下一幀馬上接上露比的開場白，兩場戲之間沒有任何停頓，
+  // 觀感上像同一場戲硬接。改成中間補一段短黑幕(跟 CG 切換同款
+  // "short")，黑屏期間才切換 stage／真正啟動露比事件，玩家看到的會是
+  // 「木匠戲淡出→短暫全黑→淡入露比戲」，兩段戲有明確的段落感。
+  if (
+    artistQuest.stage === "not_started" ||
+    artistQuest.stage === "waiting_oldVillage"
+  ) {
+    void runBlackTransition("short", () => {
+      artistQuest.stage = "intro";
+      startArtistPersonalEvent();
+    });
   }
 }
 
@@ -633,10 +770,17 @@ export function updateDayTwoWalkFollowers() {
         z: mayorNpc.mesh.position.z + 0.45,
         rotY: mayorNpc.mesh.rotation.y,
       };
-      // 露比鏡射到村長另一側，跟歐文左右對稱，不會撞在一起。
+      // 2026-09-04 Zeppelin 反饋「露比跟隨應該在隊伍最後面」——原本這裡
+      // 是鏡射到村長另一側(x - 1.15)，跟歐文左右對稱不會撞在一起沒錯，
+      // 但這段選屋橋段全程沿 z=17 這條路、單純往 -x 方向走(見
+      // VILLAGE_TOUR 三個點 x=152→143→137)，鏡射意味著露比落在
+      // "x - 1.15"，比村長更靠近 -x 方向，等於走在隊伍最前面，不是
+      // 「隊伍最後面」。改成跟歐文同一側、但 x 偏移量更大(2.3，歐文的
+      // 兩倍)，讓她排在隊伍最尾端；z 另外錯開一點點(0.15 而非 0.45)
+      // 避免跟歐文的踏點完全重疊。
       dayTwoMorningEvent.holdPositions.artist = {
-        x: mayorNpc.mesh.position.x - 1.15,
-        z: mayorNpc.mesh.position.z + 0.45,
+        x: mayorNpc.mesh.position.x + 2.3,
+        z: mayorNpc.mesh.position.z + 0.15,
         rotY: mayorNpc.mesh.rotation.y,
       };
     }
@@ -673,13 +817,16 @@ export function resetDayTwoMorningEvent() {
 }
 
 // ==============================================================
-// Day 2 後半——「隔壁那個奇怪的人」：露比(藝術家)個人事件。木匠事件
-// (completeDayTwoMorningEvent()) 結束後，她先站在 ARTIST_EVENT_WAIT_POS
-// 等（見 layout-maps.ts 該常數旁的說明），玩家一走近觸發整段。跟上面
-// 木匠/村長那條主線共用同一套 loadEventMap/showDialogSequence 寫法，
-// 但用獨立的 artistQuest.stage 當狀態機、獨立的 "rubyEvent" 時間暫停
-// 來源(time-pause.ts)，不跟 dayTwoMorningEvent 混在一起——那個狀態機
-// 早就跑到 "complete" 定住了，這是完全獨立的第二段個人事件。
+// Day 2 後半——「隔壁那個奇怪的人」：露比(藝術家)個人事件。露比在
+// beginMountainRoute() 說完「先去放行李」那兩句台詞後，就已經推進到
+// waiting_oldVillage、被釘在 ARTIST_EVENT_WAIT_POS（見 layout-maps.ts
+// 該常數旁的說明）；木匠事件 completeDayTwoMorningEvent() 結束後直接
+// 接上她的開場白（2026-09-04 改成自動接續，不再等玩家自己走過去碰觸
+// 發——見 completeDayTwoMorningEvent() 那邊的說明）。跟上面木匠/村長
+// 那條主線共用同一套 loadEventMap/showDialogSequence 寫法，但用獨立
+// 的 artistQuest.stage 當狀態機、獨立的 "rubyEvent" 時間暫停來源
+// (time-pause.ts)，不跟 dayTwoMorningEvent 混在一起——那個狀態機早就
+// 跑到 "complete" 定住了，這是完全獨立的第二段個人事件。
 // ==============================================================
 
 const pigmentCg = (text: string) => ({
@@ -707,6 +854,58 @@ export function handleArtistWaitTouch() {
   startArtistPersonalEvent();
 }
 
+// 2026-09-04：露比開場戲的「發現」演出——Zeppelin 給的分鏡：她先站定
+// 露臉、主角轉頭注意到她、再走過去站到她左邊，才接上原本的對話。跟
+// 上面三輪除錯不同，那時候的疑問「她到底有沒有畫出來」已經由截圖證實
+// 沒有問題（CG 立繪正常顯示），這裡純粹是把演出分鏡做出來，除錯用的
+// console.log 已經拿掉。
+//
+// 走路這段沒有沿用 startGuidedWalk()——那個函式寫死操控 mayor
+// (`npcs.find(npc => npc.id === "mayor")`)，是給「NPC 領頭、主角跟隨」
+// 的多人隊伍走位設計的，這裡反過來是「主角自己走一小段」，硬套會需要
+// 動到那份共用邏輯、風險比自己寫一個小工具大。距離只有一格，用一個
+// 獨立的 rAF 迴圈線性內插 gameState.player 的位置即可，跟主線的
+// A*/路徑系統無關，不會互相干擾。
+function walkPlayerTo(target: { x: number; z: number }, onDone: () => void) {
+  const start = {
+    x: gameState.player.position.x,
+    z: gameState.player.position.z,
+  };
+  const dx = target.x - start.x;
+  const dz = target.z - start.z;
+  const dist = Math.hypot(dx, dz);
+  if (dist < 0.001) {
+    onDone();
+    return;
+  }
+  gameState.player.rotation.y = Math.atan2(dx, dz) + Math.PI;
+  // 跟 game-loop.ts 日常排程 NPC 同一個走路速度(1.6 格/秒)，走起來的
+  // 節奏才會跟遊戲平常的走路速度一致，不會忽快忽慢。
+  const speed = 1.6;
+  const durationMs = (dist / speed) * 1000;
+  const startTime = performance.now();
+  function step(now: number) {
+    const t = Math.min(1, (now - startTime) / durationMs);
+    gameState.player.position.x = start.x + dx * t;
+    gameState.player.position.z = start.z + dz * t;
+    // 跟本檔案其他地方、game-loop.ts 逐幀釘位那幾段同一個順序：
+    // animateWalk() 會直接覆蓋 position.y 成踏步彈跳量，一定要先呼叫、
+    // 再用 += 疊加地形高度，見 game-loop.ts 2026-09-04 那則說明。
+    animateWalk(gameState.player, t < 1, gameState.elapsed);
+    gameState.player.position.y +=
+      oldVillageGroundY(
+        gameState.player.position.x,
+        gameState.player.position.z,
+      ) + 0.03;
+    if (t < 1) {
+      requestAnimationFrame(step);
+    } else {
+      onDone();
+    }
+  }
+  requestAnimationFrame(step);
+}
+
 function startArtistPersonalEvent() {
   gameState.cutsceneActive = true;
   setTimePauseSource("rubyEvent", true);
@@ -717,7 +916,29 @@ function startArtistPersonalEvent() {
   showDialogSequence(
     [
       "[藝術家站在隔壁空屋前，盯著外牆]",
-      artist("「……」"),
+      { ...artist("「……」"), comicCue: { actorId: "artist", kind: "..." } },
+    ],
+    () => {
+      // 主角注意到隔壁的露比，轉向她(她站在 ARTIST_EVENT_WAIT_POS，
+      // 東側)、露出驚訝反應，再走過去站到她左邊(西側一格)，跟
+      // Zeppelin 給的分鏡一致。
+      gameState.player.rotation.y = FACING_ANGLE.right;
+      showDialogSequence(
+        [cue("[主角轉頭，注意到隔壁站著一個人]", "player", "!")],
+        () => {
+          walkPlayerTo(
+            { x: ARTIST_EVENT_WAIT_POS.x - 1, z: ARTIST_EVENT_WAIT_POS.z },
+            () => continueArtistPersonalEventDialogue(),
+          );
+        },
+      );
+    },
+  );
+}
+
+function continueArtistPersonalEventDialogue() {
+  showDialogSequence(
+    [
       artist("「你覺得這面牆是白色的嗎？」"),
       hero("「……？」"),
       artist("「我覺得不是。」"),
@@ -869,7 +1090,7 @@ function startPigmentScene() {
               // game-state.ts 的 flowerBedState/plantFlowerBed())已經
               // 上線，這句提示現在對應真的可種/可收的花圃，不再只是
               // 純敘事鋪陳。
-              { ...systemDialog("野花與部分花卉可以種植"), cg: "day2Artist-02" },
+              // { ...systemDialog("野花與部分花卉可以種植"), cg: "day2Artist-02" },
               pigmentCg2("「到時候，我可能會常去找你。」"),
             ],
             completeArtistPersonalEvent,
@@ -880,11 +1101,24 @@ function startPigmentScene() {
   );
 }
 
+// 露比個人事件整場戲(port 相遇→木匠戲→黑屏接上→山上採花→回村研磨顏
+// 料)跑下來，遊戲內時間其實只是被 setTimePauseSource("rubyEvent", true)
+// 暫停在木匠戲結束的時間點，不會照實際跑的時間流逝——事件結束後直接
+// 解除暫停，時間感會很奇怪(明明劇情演了大半天，時鐘卻還停在早上)。
+// Zeppelin 要求「露比事件結束後強制時間改到1500」，比照 prologue.ts
+// 序章結束時同款寫法(FREE_TIME_PHASE = 15/24，見那邊 beginStage("done")
+// 收尾那段)——差別是序章發生在第 0 天，直接用 dayLength*phase 就好；
+// 這裡是第二天以後，要保留 gameState.currentDay 這個日期部分，只改
+// 「這一天內的時刻」，不然會把 elapsed 拉回第 0 天，等於倒退好幾天。
+const RUBY_EVENT_END_PHASE = 15 / 24; // 15:00
 function completeArtistPersonalEvent() {
   addAffectionReward("artist", "personalEvent");
   artistQuest.stage = "complete";
   gameState.cutsceneActive = false;
   setTimePauseSource("rubyEvent", false);
+  gameState.elapsed =
+    gameState.currentDay * dayLength + dayLength * RUBY_EVENT_END_PHASE;
+  gameState.currentPhase = RUBY_EVENT_END_PHASE;
 }
 
 // game-loop.ts 每幀呼叫，跟 updateDayTwoWalkFollowers() 平行、各管各的

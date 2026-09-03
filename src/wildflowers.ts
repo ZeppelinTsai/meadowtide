@@ -364,9 +364,25 @@ const CLUSTER_SPREAD: Partial<Record<FlowerSpeciesId, number>> = {
 // 2026-09-04：成熟株原本直接借 makeFlowerCluster()——那是給野外採集點
 // 用的「2~4 朵花頭彼此隨機散開」效果，散開半徑(0.05~0.2)乘上
 // CLUSTER_SCALE(2.6倍)後實際偏移到 0.13~0.52 個單位，跟農地格線對不
-// 齊，Zeppelin 反饋「花會偏移大概0.2個單位」。花田是整齊的格子，改成
-// 單一朵花精準種在格子正中央(跟 makeCropMesh() 的作物一樣不做隨機
-// 位移)，只借 makeFlowerHead() 畫單朵花的幾何，不用整叢。
+// 齊，Zeppelin 反饋「花會偏移大概0.2個單位」，當時改成單一朵花精準種
+// 在格子正中央。
+// 2026-09-04(同日再修)：Zeppelin 接著反饋「一朵一朵的不太好看，視覺
+// 效果要是一叢」——上面那次修正把問題矯枉過正了，單朵花看起來太單
+// 薄，不像一片花田。跟 makeFlowerCluster() 的差別只在「用隨機角度/半
+// 徑」還是「用固定角度/半徑」：隨機版本會因為種子不同讓整叢視覺重心
+// 偏向某一側，看起來跟格線沒對齊；只要把散開位置改成固定、對稱的三角
+// 形花叢(120°等分)，半徑控制在夠小(0.09，乘上 CLUSTER_SCALE 後約
+// 0.23 個單位，離格線還有一半以上空間)，整叢的視覺重心天生就落在格子
+// 正中央，不會有偏移問題，同時又有「一叢」的層次感。只用 hash 給每朵
+// 花一點點角度/縮放上的細微差異(不影響位置)，讓同一片花田裡每格看起
+// 來不會全部長得一模一樣、但也不會亂飄。收成邏輯(harvestFlowerBed())
+// 完全沒動，這裡純粹是外觀。
+const FLOWER_BED_TUFT_RADIUS = 0.09;
+const FLOWER_BED_TUFT_ANGLES = [
+  Math.PI / 2,
+  Math.PI / 2 + (Math.PI * 2) / 3,
+  Math.PI / 2 + (Math.PI * 4) / 3,
+];
 export function makeFlowerBedMesh(
   stage: number,
   species: FlowerSpeciesId,
@@ -381,9 +397,29 @@ export function makeFlowerBedMesh(
     g.add(sprout);
     return g;
   }
-  const head = makeFlowerHead(species);
-  head.scale.setScalar(stage === 1 ? CLUSTER_SCALE * 0.5 : CLUSTER_SCALE);
-  return head;
+  if (stage === 1) {
+    // 半成熟：維持單朵、縮小版，跟成熟階段的「一叢」拉出層次差異，也
+    // avoid 幼苗剛冒芽沒多久就一叢盛開的怪感覺。
+    const head = makeFlowerHead(species);
+    head.scale.setScalar(CLUSTER_SCALE * 0.5);
+    return head;
+  }
+  // 成熟階段：固定三角形排列的小花叢，seed 只影響角度/縮放這類「看起
+  // 來自然」的細節，位置本身(半徑/角度)是常數，整叢的視覺中心點永遠
+  // 落在 group 原點(呼叫端會把這個 group 定位到格子正中央)。
+  const group = new THREE.Group();
+  const seed = hash2(species.length * 5.1, species.charCodeAt(0) * 1.3);
+  FLOWER_BED_TUFT_ANGLES.forEach((baseAngle, i) => {
+    const head = makeFlowerHead(species);
+    const jitter = hash2(seed + i * 2.9, i * 4.7);
+    const r = FLOWER_BED_TUFT_RADIUS;
+    head.position.set(Math.cos(baseAngle) * r, 0, Math.sin(baseAngle) * r);
+    head.rotation.y = jitter * Math.PI * 2;
+    head.scale.setScalar(0.85 + jitter * 0.3);
+    group.add(head);
+  });
+  group.scale.setScalar(CLUSTER_SCALE);
+  return group;
 }
 
 export function makeFlowerCluster(

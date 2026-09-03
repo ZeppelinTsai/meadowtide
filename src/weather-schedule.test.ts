@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   createWeatherSchedule,
+  isTutorialWeekDay,
   MAX_EXTREME_WEATHER_PER_SEASON,
 } from "./weather-schedule";
 
@@ -54,4 +55,30 @@ test("summer extreme weather has rainy transition days and is capped", () => {
 
 test("winter blizzards have snowy transition days and are capped", () => {
   verifyExtremeTransitions(3);
+});
+
+test("isTutorialWeekDay: first 7 days of absolute season 0 are protected, day 8 onward is not", () => {
+  const TUTORIAL_WEEK_DAYS = 7;
+  for (let seasonDayIndex = 0; seasonDayIndex < TUTORIAL_WEEK_DAYS; seasonDayIndex++) {
+    assert.equal(
+      isTutorialWeekDay(0, seasonDayIndex, TUTORIAL_WEEK_DAYS),
+      true,
+      `season-day ${seasonDayIndex + 1} of the very first season should be protected`,
+    );
+  }
+  assert.equal(isTutorialWeekDay(0, TUTORIAL_WEEK_DAYS, TUTORIAL_WEEK_DAYS), false);
+  assert.equal(isTutorialWeekDay(0, TUTORIAL_WEEK_DAYS + 5, TUTORIAL_WEEK_DAYS), false);
+});
+
+test("isTutorialWeekDay: only applies to absolute season 0, never later seasons at the same season-day index", () => {
+  const TUTORIAL_WEEK_DAYS = 7;
+  for (const absoluteSeason of [1, 2, 4, 8]) {
+    for (let seasonDayIndex = 0; seasonDayIndex < TUTORIAL_WEEK_DAYS; seasonDayIndex++) {
+      assert.equal(
+        isTutorialWeekDay(absoluteSeason, seasonDayIndex, TUTORIAL_WEEK_DAYS),
+        false,
+        `absolute season ${absoluteSeason} should never be treated as the tutorial week`,
+      );
+    }
+  }
 });

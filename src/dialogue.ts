@@ -259,6 +259,22 @@ export function showDialogSequence(lines, onComplete = null) {
     pendingComicCue = null;
     compacted.push(line);
   });
+  // 2026-09-04 修正：如果整段陣列最後收在一句「純舞台指示＋comicCue」
+  // （例如只想讓角色頭上冒個驚嘆號、後面沒有接真正要顯示文字的台詞——
+  // day2-morning-event.ts 的露比開場戲「[主角轉頭，注意到隔壁站著一個
+  // 人]」+"!" 就是這樣單獨一句傳進來），上面迴圈跑完 pendingComicCue
+  // 會卡在手上、沒有下一句「真的會進 compacted」的台詞可以承接——原本
+  // 直接被吃掉，這個驚嘆號完全不會顯示，dialogQueue 是空的（見下面
+  // !dialogQueue.length 分支），onComplete 幾乎當下就被呼叫，Zeppelin
+  // 反饋「太早了我沒看到，應該要停頓一下」，根本原因是這個泡泡從頭到
+  // 尾沒真正播出來過。這裡補一個安全網：用一句空白文字、只帶
+  // comicCue 的合成行接住它——shouldDisplayDialogText() 看到有
+  // comicCue 就會自動隱藏文字框、只顯示驚嘆號泡泡，並且套用
+  // renderDialogLine() 既有的 1400ms 計時器自動往下推進，正好就是
+  // 「顯示一下、停頓、再繼續」的效果，不用另外加等待機制。
+  if (pendingComicCue) {
+    compacted.push({ text: "", comicCue: pendingComicCue });
+  }
   dialogQueue = compacted;
   dialogIndex = 0;
   dialogSequenceOnComplete = onComplete;

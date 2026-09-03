@@ -1,5 +1,20 @@
 export const MAX_EXTREME_WEATHER_PER_SEASON = 2;
 
+// 2026-09-04 新增：獨立於 createWeatherSchedule() 之外的「教學周永遠
+// 晴天」判斷式，故意抽成不依賴 gameState/game-state.ts 的純函式——
+// game-state.ts 那條 import 鏈會一路拉到 scene-sky.ts 建 WebGLRenderer，
+// 在 Node 測試環境(tsx --test，沒有 DOM/canvas)會直接炸掉，這個檔案
+// 一直以來就是刻意留給「跟遊戲全域狀態無關的天氣排程算法」用，才能被
+// weather-schedule.test.ts 正常測到。rollWeatherForSeason()(game-state.ts)
+// 呼叫這個函式來決定要不要略過(可能過期的)排程快取，直接回傳 clear。
+export function isTutorialWeekDay(
+  absoluteSeason: number,
+  seasonDayIndex: number,
+  tutorialWeekDays: number,
+): boolean {
+  return absoluteSeason === 0 && seasonDayIndex + 1 <= tutorialWeekDays;
+}
+
 export interface WeatherScheduleOptions {
   absoluteSeason: number;
   daysPerSeason: number;

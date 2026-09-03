@@ -52,6 +52,7 @@ import {
   isPrologueCookingTutorialActive,
   isPrologueSeekingRod,
   isPrologueMayorFollowing,
+  isPrologueActive,
   reportPrologueFishingFailure,
   startPrologueFishingSequence,
   isPrologueShipStage,
@@ -997,16 +998,26 @@ export function animate(now) {
       n.mesh.position.x = hold.x;
       n.mesh.position.z = hold.z;
       n.mesh.rotation.y = hold.rotY;
-      // 2026-09-02 修正：animateWalk() 對「原地不動」的情況會把
-      // position.y 整個覆蓋成微小的待機彈跳量(見 humanoid.ts
-      // animateWalk 的 moving=false 分支，不是疊加)，所以地形高度
-      // 一定要在呼叫 animateWalk() 之後再設，順序跟上面
-      // isPrologueMayorFollowing、下面 escort trail 那兩段完全一樣。
+      // 2026-09-02 修正：animateWalk() 不管 moving/idle 哪一種分支，都
+      // 是直接覆蓋 position.y(見 humanoid.ts animateWalk：moving 時是
+      // Math.abs(Math.sin(t*10))*0.03 的踏步彈跳量、idle 時是
+      // Math.sin(t*2)*0.01 的待機微幅浮動)，所以地形高度一定要在呼叫
+      // animateWalk() 之後再處理，順序跟下面 escort trail 那段一樣。
       // 原本寫反了，導致村長固定站位時整個人半沉進地板——上一輪
       // Zeppelin 回報「村長出現在地面底下」就是這裡，這裡保留修正過
       // 的順序。
+      // 2026-09-04 二次修正：光是順序對還不夠——這裡原本用 `=` 直接把
+      // position.y 蓋成 characterGroundY() 算出的地形高度，等於把
+      // animateWalk() 剛設好的那一點點踏步彈跳量整個蓋掉，人物走路時
+      // 身體完全不會上下浮動、只有手腳在動，看起來像貼著地面平移
+      // （Zeppelin 反饋「露比走路很像平移，Y 好像有誤差」正是這裡）。
+      // characterGroundY() 回傳的是純地形高度，不含彈跳量，要用跟下面
+      // escort trail、更下面日常排程那兩段同樣的 `+=`，把地形高度疊加
+      // 在 animateWalk() 留下的彈跳量之上，兩者才會同時生效。這個分支
+      // 同時也給 mayor/carpenter 用，一併受惠，不是只修 artist 這一種
+      // 情境。
       animateWalk(n.mesh, moved > 0.008, gameState.effectElapsed);
-      n.mesh.position.y = characterGroundY(
+      n.mesh.position.y += characterGroundY(
         dayTwoMorningEvent.holdMap,
         hold.x,
         hold.z,
@@ -1036,13 +1047,14 @@ export function animate(now) {
     }
     // 序章期間村長與船長的位置由 prologue.ts 完整控制，不能再讓日常
     // 排程於同一幀覆寫，否則船長會瞬移或偏離下船路線。
-    if (
-      (gameState.cutsceneActive ||
-        isPrologueFarmingActive() ||
-        isPrologueSeekingRod() ||
-        isPrologueFishingTutorialActive()) &&
-      (n.id === "mayor" || n.id === "captain")
-    )
+    // 2026-09-04 修正：原本這裡直接看 gameState.cutsceneActive，但這個
+    // flag 是跨系統共用的通用鎖(序章／木匠事件／露比個人事件都會設
+    // true)，導致 Day2 露比事件一開場就把村長/船長凍結到事件結束為
+    // 止，回不去日常排程。改成 isPrologueActive()，只在「序章本身」
+    // 真的還沒結束時才凍結，isPrologueFarmingActive()/
+    // isPrologueSeekingRod()/isPrologueFishingTutorialActive() 對應的
+    // 階段本來就落在 isPrologueActive() 的範圍內，不用再各別列一次。
+    if (isPrologueActive() && (n.id === "mayor" || n.id === "captain"))
       return;
     const isCarpenterEscortActor =
       (carpenterQuest.stage === "escorting" ||
@@ -1066,16 +1078,21 @@ export function animate(now) {
         n.id === "carpenter"
       ) {
         n.mesh.visible = true;
-        n.mesh.position.set(
+        // 2026-09-04：跟下面露比那段同一個 bug、同一個修法——
+        // position.set(x, 地形高度, z) 設好的 Y 會被緊接著的
+        // animateWalk(moving=false) 整個覆蓋掉(idle 分支寫死
+        // Math.sin(t*2)*0.01)，變成貼近 0 的高度，這裡的地形墊高在
+        // groundElevation 附近，理論上歐文站在工地空屋前也會有一樣
+        // 「陷下去」的問題，只是還沒被抓到——順手一起修掉，不用等下次
+        // 才發現同一個坑。
+        n.mesh.position.x = CARPENTER_EVENT_WAIT_POS.x;
+        n.mesh.position.z = CARPENTER_EVENT_WAIT_POS.z;
+        animateWalk(n.mesh, false, gameState.elapsed);
+        n.mesh.position.y += characterGroundY(
+          "oldVillage",
           CARPENTER_EVENT_WAIT_POS.x,
-          characterGroundY(
-            "oldVillage",
-            CARPENTER_EVENT_WAIT_POS.x,
-            CARPENTER_EVENT_WAIT_POS.z,
-          ),
           CARPENTER_EVENT_WAIT_POS.z,
         );
-        animateWalk(n.mesh, false, gameState.elapsed);
         return;
       }
       const trailPoint = sampleCarpenterEscortTrail(
@@ -1102,6 +1119,13 @@ export function animate(now) {
       );
       return;
     }
+    // 2026-09-04：露比離隊後自己走去 ARTIST_EVENT_WAIT_POS 那段
+    // （day2-morning-event.ts 的 walkArtistToWaitSpot()）整段由它自己
+    // 的 rAF 迴圈直接控制 mesh，包含呼叫 animateWalk()——這裡只負責
+    // 「別插手」，跳過下面所有分支（含日常排程的 A* 系統），不然兩邊
+    // 會同一幀搶著改她的 position，動畫/座標互相打架，玩起來就是
+    // Zeppelin 反饋的「順移」(沒有正確播放走路動畫)。
+    if (dayTwoMorningEvent.artistSoloWalking && n.id === "artist") return;
     // 露比(藝術家)個人事件——木匠事件結束後先釘她站在舊城鎮定點等，
     // 蓋掉 npc-defs.ts 原本的日常排程。跟上面 isCarpenterWaitingAtHouse
     // 同一招，只是還沒有招募/個人事件觸碰點，純粹站著等文本補上。
@@ -1116,18 +1140,32 @@ export function animate(now) {
       n.id === "artist" &&
       gameState.currentMapName === "oldVillage"
     ) {
+      // 2026-09-04：跟上面 holding／isPrologueMayorFollowing／
+      // isCarpenterEscortActor 那幾段固定站位分支對齊，補上
+      // npcGroup.visible——這段原本只設 n.mesh.visible，沒有一起確保
+      // 父層的 npcGroup 可見。buildMap() 換圖時算出來的 npcGroup.visible
+      // 在 oldVillage 本來就一定是 true，所以理論上不會是這次「看不到
+      // 露比」的成因，但既然是唯一一段跟其他固定站位寫法不一致的地方，
+      // 順手補齊、不留這個不對稱。
+      npcGroup.visible = true;
       n.mesh.visible = true;
-      n.mesh.position.set(
-        ARTIST_EVENT_WAIT_POS.x,
-        characterGroundY(
-          "oldVillage",
-          ARTIST_EVENT_WAIT_POS.x,
-          ARTIST_EVENT_WAIT_POS.z,
-        ),
-        ARTIST_EVENT_WAIT_POS.z,
-      );
+      // 2026-09-04 修正：跟這輪其他幾處一樣的錯誤——原本用
+      // position.set(x, 地形高度, z) 把 Y 一次設好，但緊接著呼叫的
+      // animateWalk(moving=false) 會把 position.y 整個覆蓋成
+      // Math.sin(t*2)*0.01 的待機微幅浮動（見 humanoid.ts），等於把
+      // 剛設好的地形高度直接蓋掉、變成貼近 0 的高度——這裡的地形本來
+      // 就墊高在 groundElevation(=1) 附近，難怪 Zeppelin 反饋「高度還
+      // 是有點陷下去」。改成跟 holding 分支同一個順序：x/z 先設好，
+      // animateWalk() 呼叫完之後再用 += 疊加地形高度。
+      n.mesh.position.x = ARTIST_EVENT_WAIT_POS.x;
+      n.mesh.position.z = ARTIST_EVENT_WAIT_POS.z;
       n.mesh.rotation.y = 0; // 面朝上
       animateWalk(n.mesh, false, gameState.elapsed);
+      n.mesh.position.y += characterGroundY(
+        "oldVillage",
+        ARTIST_EVENT_WAIT_POS.x,
+        ARTIST_EVENT_WAIT_POS.z,
+      );
       return;
     }
     if (!n.mesh.visible) return; // 木匠抵達前先不跑排程/路徑，省得算假人的路

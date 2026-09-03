@@ -447,9 +447,19 @@ export function loadGame(
   updateSeasonAndDate();
   gameState.prevDay = gameState.currentDay;
   gameState.weatherSchedules = data.weatherSchedules || {};
-  gameState.currentWeather =
-    data.currentWeather ||
-    rollWeatherForSeason(gameState.currentSeason, gameState.currentDay);
+  // 2026-09-04：這裡原本優先信任存檔裡的 data.currentWeather 字串，只有
+  // 在它是 falsy 時才回退去 rollWeatherForSeason() 重新算。問題是舊存檔
+  // (或教學周保護邏輯上線前存的檔)裡這個字串本來就可能已經是「沒被保護
+  // 過」的隨機結果(例如雨天)，直接信任等於把過期的錯誤結果原封不動搬
+  // 回來，跟 rollWeatherForSeason() 現在的邏輯(教學周永遠 clear)兜不
+  // 起來。改成一律重新呼叫 rollWeatherForSeason()——它已經是唯一負責
+  // 「這天該是什麼天氣」的地方(教學周／週日／流星雨日的保護規則都在
+  // 那裡)，讀檔時重算跟存檔當下算出來的結果在一般情況下本來就會一樣，
+  // 只有在存檔資料過期/不一致時才會「修正」回正確值，不會有副作用。
+  gameState.currentWeather = rollWeatherForSeason(
+    gameState.currentSeason,
+    gameState.currentDay,
+  );
   const savedTools = data.inventory?.tools;
   Object.assign(inventory, data.inventory || {});
   inventory.tools = {

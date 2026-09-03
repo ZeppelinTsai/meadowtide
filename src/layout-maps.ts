@@ -2434,24 +2434,22 @@ export const DAY_TWO_MORNING_ARRIVAL = {
 // 事件用的同一塊區域，中心點 (3,21)，南移一格站在區域內＝(3,22)，跟
 // Zeppelin 給的座標吻合，不是巧合、是同一塊地方），歐文/露比在旁邊代表
 // 剛下船，沒有精確的「跳板落地點」資料可推導，用小 offset 站在主角右側。
+// 2026-09-04 Zeppelin 改版港口見面戲佔位：兩排面對面——主角/村長站
+// carpenterMeet 西側那一排(x)，歐文/露比站東側那一排(x+2)，兩排各自
+// 南北錯開(z / z+2)、面向對方。原本(2026-09-03 那版)是主角/村長同排
+// 面向船、歐文/露比也同排面向船，這次改成迎接的人面向被迎接的人。
 export const DAY_TWO_PORT_ARRIVAL = {
   player: {
     x: LAYOUT.port.carpenterMeet.x,
-    z: LAYOUT.port.carpenterMeet.z + 1,
+    z: LAYOUT.port.carpenterMeet.z,
   },
-  // 2026-09-03 修正：這裡原本沒有村長自己的座標，startPortArrivalScene()
-  // 直接把村長疊在 player 同一格（"起點座標不重要，下一幀會被
-  // holdPositions 覆寫"的舊註解誤把 holdPositions 也設成同一格）——
-  // 疊在主角腳下的木匠模型整場戲把主角遮住，Zeppelin 反饋「港口看不到
-  // 主角」。這是碼頭見面戲的固定站位，不是會被走位覆寫掉的暫時值，改給
-  // 村長自己一格，跟主角同排、面向船的方向站在旁邊，不跟歐文/露比同側。
   mayor: {
-    x: LAYOUT.port.carpenterMeet.x - 1,
-    z: LAYOUT.port.carpenterMeet.z + 1,
+    x: LAYOUT.port.carpenterMeet.x,
+    z: LAYOUT.port.carpenterMeet.z + 2,
   },
   carpenter: {
-    x: LAYOUT.port.carpenterMeet.x + 1,
-    z: LAYOUT.port.carpenterMeet.z + 2,
+    x: LAYOUT.port.carpenterMeet.x + 2,
+    z: LAYOUT.port.carpenterMeet.z,
   },
   artist: {
     x: LAYOUT.port.carpenterMeet.x + 2,
@@ -2589,7 +2587,12 @@ export const carpenterQuest = {
 // 同一招），等真正的招募/個人事件劇本寫出來，再往下擴充成觸碰事件 +
 // 更多 stage。
 // ==============================================================
-export const ARTIST_EVENT_WAIT_POS = { x: 142, z: 17 };
+// 2026-09-04 Zeppelin 給的開場分鏡指定站位：(142,18)，跟原本
+// (142,17)（比照 CARPENTER_EVENT_WAIT_POS 的公式推算）差一格。這個
+// 分鏡出來之後，露比不再靠玩家自己走過去踩觸碰點發現(那條路徑已經
+// 沒有用到，見 day2-morning-event.ts completeDayTwoMorningEvent()/
+// beginMountainRoute() 的說明)，所以直接照分鏡給的座標定案。
+export const ARTIST_EVENT_WAIT_POS = { x: 142, z: 18 };
 // 2026-09-03：文本補齊，正式實作「隔壁那個奇怪的人」——木匠事件結束後
 // 露比先在 ARTIST_EVENT_WAIT_POS 等，玩家互動觸發整段個人事件。stage
 // 繼續往前推：
