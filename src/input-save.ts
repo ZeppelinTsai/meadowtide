@@ -136,7 +136,13 @@ import {
   advanceChoicePage,
   resolveChoice,
 } from "./dialogue";
-import { loadMap, isBlocked, events, syncPlayerAppearance } from "./build-map";
+import {
+  loadMap,
+  isBlocked,
+  events,
+  syncPlayerAppearance,
+  groundYForMap,
+} from "./build-map";
 import { isInventoryOpen } from "./inventory-ui";
 import {
   updateAvenueTreeColors,
@@ -660,6 +666,17 @@ export function loadGame(
         : data.player;
       gameState.player.position.x = restoredPosition.x;
       gameState.player.position.z = restoredPosition.z;
+      // 2026-09-04：這裡原本只補 x/z，沒有跟著重算 y——地圖沒換
+      // (targetMap === currentMapName)所以不會走上面 loadMap() 那條
+      // 已經有算 y 的路，玩家會維持讀檔前的舊高度，落在跟目標地形不
+      // 相符的 y 上。Zeppelin 反饋「第二天在港口讀檔會陷進地面」，
+      // 這是第三次同一類「傳送前忘了先拿目標地點的 Y」的 bug，跟
+      // loadMap() 共用同一份 groundYForMap() 補上。
+      gameState.player.position.y = groundYForMap(
+        targetMap,
+        restoredPosition.x,
+        restoredPosition.z,
+      );
       gameState.playerGridPos = {
         x: Math.round(restoredPosition.x),
         z: Math.round(restoredPosition.z),

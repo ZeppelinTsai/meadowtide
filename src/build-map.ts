@@ -4007,6 +4007,22 @@ export function isBlocked(mapName, x, z) {
   return false;
 }
 
+// 依地圖名稱換算某座標的地面 Y——loadMap() 換圖時用這個決定玩家該站
+// 在哪個高度，跟下面 loadMap() 內部這段算式共用同一份實作，避免兩處
+// 各自維護一份容易長歪(這正是 input-save.ts 同圖讀檔那段漏掉補 Y、
+// 玩家在港口讀檔陷進地板的成因——2026-09-04 Zeppelin 反饋)。
+export function groundYForMap(mapName: string, x: number, z: number) {
+  return mapName === "livingArea"
+    ? groundY(x, z)
+    : mapName === "port"
+      ? portGroundY(x, z)
+      : mapName === "oldVillage"
+        ? oldVillageGroundY(x, z) + 0.03
+        : mapName === "mountain"
+          ? mountainGroundY(x, z) + (isOnMountainStair(x, z) ? 0.3 : 0.08)
+          : 0;
+}
+
 export function loadMap(mapName, startPos, onLoaded?: () => void | false) {
   gameState.isSitting = false;
   fadeOut(() => {
@@ -4061,28 +4077,11 @@ export function loadMap(mapName, startPos, onLoaded?: () => void | false) {
     syncPlayerAppearance();
     gameState.player.position.x = gameState.playerGridPos.x;
     gameState.player.position.z = gameState.playerGridPos.z;
-    gameState.player.position.y =
-      mapName === "livingArea"
-        ? groundY(gameState.playerGridPos.x, gameState.playerGridPos.z)
-        : mapName === "port"
-          ? portGroundY(gameState.playerGridPos.x, gameState.playerGridPos.z)
-          : mapName === "oldVillage"
-            ? oldVillageGroundY(
-                gameState.playerGridPos.x,
-                gameState.playerGridPos.z,
-              ) + 0.03
-            : mapName === "mountain"
-              ? mountainGroundY(
-                  gameState.playerGridPos.x,
-                  gameState.playerGridPos.z,
-                ) +
-                (isOnMountainStair(
-                  gameState.playerGridPos.x,
-                  gameState.playerGridPos.z,
-                )
-                  ? 0.3
-                  : 0.08)
-              : 0;
+    gameState.player.position.y = groundYForMap(
+      mapName,
+      gameState.playerGridPos.x,
+      gameState.playerGridPos.z,
+    );
     if (
       (carpenterQuest.stage === "escorting" ||
         carpenterQuest.stage === "village_scene_done") &&
