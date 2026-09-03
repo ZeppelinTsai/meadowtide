@@ -2201,15 +2201,15 @@ for (let bc = 0; bc < FARM_ORIGIN.columns; bc++) {
 //    只有一種——每格種的是玩家手上當時拿的哪種花，見 game-state.ts 的
 //    flowerBedState/plantFlowerBed()。
 //    2026-09-04：原本只挑 6 格(dx=2/4/6、dz=2/5)當花圃、格子間留草地
-//    間隔，Zeppelin 反饋看起來像圍籬裡東一塊西一塊，改成整片
-//    [livingArea] (25,31)~(32,37)——也就是圍籬 minX/minZ~maxX/maxZ
-//    整塊(dx=0..width-1、dz=0..height-1，含圍籬柱子那一圈)——都鋪滿
-//    可種花的土，圍籬柱子細，疊在土上不影響視覺。
+//    間隔，Zeppelin 反饋看起來像圍籬裡東一塊西一塊，改成整片鋪土；
+//    第一版鋪到圍籬柱子那一圈([livingArea] (25,31)~(32,37))，Zeppelin
+//    覺得太滿要收一圈，改成圍籬內縮一格的
+//    [livingArea] (26,32)~(31,36)(dx=1..width-2、dz=1..height-2)。
 // ==============================================================
 export const FLOWER_BED_TILES: Array<[number, number]> = (() => {
   const tiles: Array<[number, number]> = [];
-  for (let dz = 0; dz <= LAYOUT.garden.height - 1; dz++) {
-    for (let dx = 0; dx <= LAYOUT.garden.width - 1; dx++) {
+  for (let dz = 1; dz <= LAYOUT.garden.height - 2; dz++) {
+    for (let dx = 1; dx <= LAYOUT.garden.width - 2; dx++) {
       tiles.push([LAYOUT.garden.x + dx, LAYOUT.garden.z + dz]);
     }
   }
