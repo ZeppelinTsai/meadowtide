@@ -2196,21 +2196,25 @@ for (let bc = 0; bc < FARM_ORIGIN.columns; bc++) {
 
 // ==============================================================
 // 1.56) 花田——露比事件結尾埋的伏筆(「牧場不是有空地嗎？」)現在接上：
-//    直接沿用小花園(LAYOUT.garden)那塊地當圍籬範圍，原本 6 個純裝飾
-//    花圃(makeSmallGarden())位置留給這裡的 6 格真正可種/可收的花圃
-//    取代，草坪/碎石步道/鳥浴盆維持不變。跟 FARMLAND_TILES 同一套
-//    「固定座標清單 + xxxState 物件」寫法，只是花的物種不像作物只有
-//    一種——每格種的是玩家手上當時拿的哪種花，見 game-state.ts 的
+//    直接沿用小花園(LAYOUT.garden)那塊地當圍籬範圍。跟 FARMLAND_TILES
+//    同一套「固定座標清單 + xxxState 物件」寫法，只是花的物種不像作物
+//    只有一種——每格種的是玩家手上當時拿的哪種花，見 game-state.ts 的
 //    flowerBedState/plantFlowerBed()。
+//    2026-09-04：原本只挑 6 格(dx=2/4/6、dz=2/5)當花圃、格子間留草地
+//    間隔，Zeppelin 反饋看起來像圍籬裡東一塊西一塊，改成整片
+//    [livingArea] (25,31)~(32,37)——也就是圍籬 minX/minZ~maxX/maxZ
+//    整塊(dx=0..width-1、dz=0..height-1，含圍籬柱子那一圈)——都鋪滿
+//    可種花的土，圍籬柱子細，疊在土上不影響視覺。
 // ==============================================================
-export const FLOWER_BED_TILES: Array<[number, number]> = [
-  [2, 2],
-  [4, 2],
-  [6, 2],
-  [2, 5],
-  [4, 5],
-  [6, 5],
-].map(([dx, dz]) => [LAYOUT.garden.x + dx, LAYOUT.garden.z + dz]);
+export const FLOWER_BED_TILES: Array<[number, number]> = (() => {
+  const tiles: Array<[number, number]> = [];
+  for (let dz = 0; dz <= LAYOUT.garden.height - 1; dz++) {
+    for (let dx = 0; dx <= LAYOUT.garden.width - 1; dx++) {
+      tiles.push([LAYOUT.garden.x + dx, LAYOUT.garden.z + dz]);
+    }
+  }
+  return tiles;
+})();
 
 // 湖再放大一輪，往「房子左上」拉：原本 5×4(20格)，現在 6×6(36格)。
 // 講清楚空間上的硬限制：房子在 x=5~7，西邊到地圖邊界(山區背景開始的
