@@ -358,10 +358,15 @@ const CLUSTER_SPREAD: Partial<Record<FlowerSpeciesId, number>> = {
   dandelion: 0.55,
 };
 // 花田專用——生長階段跟 props-resources.ts 的 makeCropMesh(stage,
-// cropType) 同一套三階段(0 幼苗/1 半成熟/2 成熟)，但成熟株直接借用
-// 上面 makeFlowerCluster()，不用另外畫一套花的幾何；半成熟只是把整叢
-// 縮小，不換造型，肉眼還是看得出物種顏色。不吃 x/z，跟 makeCropMesh
-// 一樣把定位留給呼叫端(farm-visuals.ts 的 syncFlowerBedVisuals())。
+// cropType) 同一套三階段(0 幼苗/1 半成熟/2 成熟)。不吃 x/z，跟
+// makeCropMesh 一樣把定位留給呼叫端(farm-visuals.ts 的
+// syncFlowerBedVisuals())。
+// 2026-09-04：成熟株原本直接借 makeFlowerCluster()——那是給野外採集點
+// 用的「2~4 朵花頭彼此隨機散開」效果，散開半徑(0.05~0.2)乘上
+// CLUSTER_SCALE(2.6倍)後實際偏移到 0.13~0.52 個單位，跟農地格線對不
+// 齊，Zeppelin 反饋「花會偏移大概0.2個單位」。花田是整齊的格子，改成
+// 單一朵花精準種在格子正中央(跟 makeCropMesh() 的作物一樣不做隨機
+// 位移)，只借 makeFlowerHead() 畫單朵花的幾何，不用整叢。
 export function makeFlowerBedMesh(
   stage: number,
   species: FlowerSpeciesId,
@@ -376,9 +381,9 @@ export function makeFlowerBedMesh(
     g.add(sprout);
     return g;
   }
-  const cluster = makeFlowerCluster(species, 0, 0);
-  if (stage === 1) cluster.scale.multiplyScalar(0.5);
-  return cluster;
+  const head = makeFlowerHead(species);
+  head.scale.setScalar(stage === 1 ? CLUSTER_SCALE * 0.5 : CLUSTER_SCALE);
+  return head;
 }
 
 export function makeFlowerCluster(

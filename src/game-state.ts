@@ -607,8 +607,12 @@ export function plantFlowerBed(x: number, z: number) {
   const heldItemId = inventory.heldItemId;
   if (!heldItemId || !isFlowerSpeciesId(heldItemId)) return;
   if ((inventory.wildflowers[heldItemId] ?? 0) <= 0) return;
+  // 2026-09-04：玩家手上拿的是「已經開好的花」(採集或收成得到的成品，
+  // 不是種子)，種下去理當馬上是成體，不用像作物那樣按天數發芽——
+  // Zeppelin 反饋「成體花下去應該還是成體花」，這裡直接給 stage:2，
+  // 下面 growFlowerBedForNewDay() 也不再往回算天數覆蓋掉它。
   flowerBedState[key] = {
-    stage: 0,
+    stage: 2,
     plantedDay: gameState.currentDay,
     species: heldItemId,
   };
@@ -634,9 +638,12 @@ export function harvestFlowerBed(x: number, z: number) {
 }
 
 export function growFlowerBedForNewDay() {
-  Object.values(flowerBedState).forEach((bed) => {
-    bed.stage = Math.min(2, gameState.currentDay - bed.plantedDay);
-  });
+  // 花田種下去就已經是成體(見上面 plantFlowerBed)，不像作物需要按
+  // 天數逐漸長大——這裡故意不再重算 stage，不然隔天(或存讀檔後追
+  // 補天數時)會把剛種下去的成體花按 plantedDay 差距往回算成幼苗，
+  // 這正是 Zeppelin 反饋的「成體花下去應該還是成體花」那個 bug。
+  // 保留函式本身跟原有呼叫點(game-clock.ts/input-save.ts)不動，之後
+  // 如果真的要做「凋謝」之類的每日效果可以再從這裡接。
 }
 
 // ==============================================================
