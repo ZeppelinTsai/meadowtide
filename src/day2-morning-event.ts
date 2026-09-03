@@ -23,6 +23,7 @@ import {
 } from "./prologue";
 import { setTimePauseSource } from "./time-pause";
 import { addAffectionReward } from "./affection";
+import { announceHomeVisitorThenRun } from "./ui-toast";
 import { FLOWER_SPECIES, type FlowerSpeciesId } from "./wildflowers";
 
 // ==============================================================
@@ -146,50 +147,56 @@ export function startDayTwoMorningEvent() {
   dayTwoMorningEvent.triggered = true;
   dayTwoMorningEvent.due = false;
   dayTwoMorningEvent.phase = "port";
-  // 家門口與港口都是不可操作的事件演出：沿用 game-loop.ts 的
-  // cutscene-presentation，隱藏地圖／資訊／選單與快捷操作 UI。
-  // beginMountainRoute() 交還自由行走時會再解除。
-  gameState.cutsceneActive = true;
-  setTimePauseSource("guidedGameplay", true);
-  loadMap("livingArea", DAY_TWO_MORNING_ARRIVAL.player, () => {
-    // 模型鼻子朝本地 -Z，rotation.y = atan2(dx,dz)+π 是全專案統一公式
-    // （見 game-loop.ts NPC 走位那段同一條註解）。面朝下(+Z，dx=0,dz=1)
-    // 就是 atan2(0,1)+π = π。
-    gameState.player.rotation.y = Math.PI;
-    const mayorNpc = npcs.find((n) => n.id === "mayor");
-    if (mayorNpc) {
-      npcGroup.visible = true;
-      mayorNpc.mesh.visible = true;
-      mayorNpc.mesh.position.set(
-        DAY_TWO_MORNING_ARRIVAL.mayor.x,
-        groundY(
+  // 2026-09-04：原本時間一到就不管玩家在哪直接黑屏傳送，Zeppelin 反饋
+  // 想先跳一段「有人來家裡了」的提示、停頓一下再進正式劇情——上面
+  // triggered 已經同步設成 true，接下來每一幀 canStartDayTwoMorningEvent()
+  // 都會直接短路，所以延遲執行的這段不會被重複觸發。
+  announceHomeVisitorThenRun(() => {
+    // 家門口與港口都是不可操作的事件演出：沿用 game-loop.ts 的
+    // cutscene-presentation，隱藏地圖／資訊／選單與快捷操作 UI。
+    // beginMountainRoute() 交還自由行走時會再解除。
+    gameState.cutsceneActive = true;
+    setTimePauseSource("guidedGameplay", true);
+    loadMap("livingArea", DAY_TWO_MORNING_ARRIVAL.player, () => {
+      // 模型鼻子朝本地 -Z，rotation.y = atan2(dx,dz)+π 是全專案統一公式
+      // （見 game-loop.ts NPC 走位那段同一條註解）。面朝下(+Z，dx=0,dz=1)
+      // 就是 atan2(0,1)+π = π。
+      gameState.player.rotation.y = Math.PI;
+      const mayorNpc = npcs.find((n) => n.id === "mayor");
+      if (mayorNpc) {
+        npcGroup.visible = true;
+        mayorNpc.mesh.visible = true;
+        mayorNpc.mesh.position.set(
           DAY_TWO_MORNING_ARRIVAL.mayor.x,
+          groundY(
+            DAY_TWO_MORNING_ARRIVAL.mayor.x,
+            DAY_TWO_MORNING_ARRIVAL.mayor.z,
+          ),
           DAY_TWO_MORNING_ARRIVAL.mayor.z,
-        ),
-        DAY_TWO_MORNING_ARRIVAL.mayor.z,
+        );
+        // 面朝上(-Z，dx=0,dz=-1)：atan2(0,-1)+π = 0，跟玩家隔一格面對面。
+        mayorNpc.mesh.rotation.y = 0;
+        mayorNpc.path = null;
+        mayorNpc.lastTargetKey = null;
+      }
+      holdNpcsAt("livingArea", {
+        mayor: {
+          x: DAY_TWO_MORNING_ARRIVAL.mayor.x,
+          z: DAY_TWO_MORNING_ARRIVAL.mayor.z,
+          rotY: 0,
+        },
+      });
+      showDialogSequence(
+        [
+          mayor("「早安。」"),
+          mayor("「今天有兩位新居民要搬來島上。」"),
+          mayor("「一位是木匠，另一位是藝術家。」"),
+          mayor("「船差不多要到了，我們一起去港口接他們吧。」"),
+          "[村長進入同行狀態]",
+        ],
+        startPortArrivalScene,
       );
-      // 面朝上(-Z，dx=0,dz=-1)：atan2(0,-1)+π = 0，跟玩家隔一格面對面。
-      mayorNpc.mesh.rotation.y = 0;
-      mayorNpc.path = null;
-      mayorNpc.lastTargetKey = null;
-    }
-    holdNpcsAt("livingArea", {
-      mayor: {
-        x: DAY_TWO_MORNING_ARRIVAL.mayor.x,
-        z: DAY_TWO_MORNING_ARRIVAL.mayor.z,
-        rotY: 0,
-      },
     });
-    showDialogSequence(
-      [
-        mayor("「早安。」"),
-        mayor("「今天有兩位新居民要搬來島上。」"),
-        mayor("「一位是木匠，另一位是藝術家。」"),
-        mayor("「船差不多要到了，我們一起去港口接他們吧。」"),
-        "[村長進入同行狀態]",
-      ],
-      startPortArrivalScene,
-    );
   });
 }
 
