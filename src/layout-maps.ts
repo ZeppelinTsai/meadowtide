@@ -91,6 +91,12 @@ export const LAYOUT = {
     chair: { offsetX: 2, offsetZ: 4, rotation: 0, playerRotation: Math.PI },
   },
   garden: { x: 25, z: 31, width: 8, height: 7 },
+  // 蜂箱系統預留點——花田(garden)南緣 z=37 再往南 2 格的開闊草地，
+  // map-debug --map=livingArea --legend 已確認是平坦草地、不在花田/
+  // 林蔭道(x≈20-23)/任何建築範圍內。座標本身跟遊戲進度無關，蜂箱
+  // 「有沒有蓋出來」由 storyState.flags["beehive.unlocked"] 控制
+  // (見 game-state.ts)，這裡只先佔位。
+  beehive: { x: 28, z: 39 },
   farm: {
     x: 5,
     z: 17 + NORTH_EXPANSION,

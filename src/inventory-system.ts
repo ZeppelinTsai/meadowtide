@@ -9,6 +9,7 @@ import {
   makeCropMesh,
   makeFishProp,
   makeOysterProp,
+  makeHoneyProp,
   makePearlProp,
   makeSeedPouch,
   makeStonePile,
@@ -45,6 +46,7 @@ const BAG_ITEM_TARGET_LONG_EDGE: Record<string, number> = {
   harvested: 1.9,
   mushroom: 1.3,
   oysters: 1.8,
+  honey: 0.55,
   wood: 1.2,
   stone: 1.25,
   wildDaisy: 0.85,
@@ -60,6 +62,7 @@ const HELD_ITEM_SCALE_MULTIPLIER: Record<string, number> = {
   harvested: 1.12,
   mushroom: 1.08,
   oysters: 1.08,
+  honey: 0.85,
   wood: 1.0,
   stone: 1.0,
   wildDaisy: 0.9,
@@ -120,6 +123,7 @@ export function itemAmount(itemId: string): number {
   if (itemId === "mushroom") return inventory.mushrooms;
   if (itemId === "fish") return inventory.fish;
   if (itemId === "oysters") return inventory.oysters;
+  if (itemId === "honey") return inventory.honey;
   if (itemId === "wood") return inventory.wood;
   if (itemId === "stone") return inventory.stone;
   if (isFlowerSpeciesId(itemId)) return inventory.wildflowers[itemId] ?? 0;
@@ -153,6 +157,8 @@ function changeItemAmount(itemId: string, delta: number) {
     inventory.fish = Math.max(0, inventory.fish + delta);
   else if (itemId === "oysters")
     inventory.oysters = Math.max(0, inventory.oysters + delta);
+  else if (itemId === "honey")
+    inventory.honey = Math.max(0, inventory.honey + delta);
   else if (itemId === "wood")
     inventory.wood = Math.max(0, inventory.wood + delta);
   else if (itemId === "stone")
@@ -213,6 +219,7 @@ export function moveItemToStorageAmount(
   else if (itemId === "mushroom") inventory.mushrooms = bagAmount;
   else if (itemId === "fish") inventory.fish = bagAmount;
   else if (itemId === "oysters") inventory.oysters = bagAmount;
+  else if (itemId === "honey") inventory.honey = bagAmount;
   else if (itemId === "wood") inventory.wood = bagAmount;
   else if (itemId === "stone") inventory.stone = bagAmount;
   else if (isFlowerSpeciesId(itemId)) inventory.wildflowers[itemId] = bagAmount;
@@ -264,6 +271,7 @@ export function moveItemFromStorageAmount(
   else if (itemId === "mushroom") inventory.mushrooms = bagAmount;
   else if (itemId === "fish") inventory.fish = bagAmount;
   else if (itemId === "oysters") inventory.oysters = bagAmount;
+  else if (itemId === "honey") inventory.honey = bagAmount;
   else if (itemId === "wood") inventory.wood = bagAmount;
   else if (itemId === "stone") inventory.stone = bagAmount;
   else if (isFlowerSpeciesId(itemId)) inventory.wildflowers[itemId] = bagAmount;
@@ -397,6 +405,11 @@ export function makeInventoryItemVisual(itemId: string): THREE.Object3D {
   if (itemId === "oysters")
     return normalizeItemDisplayModel(
       makeOysterProp(),
+      bagDisplayTargetLongEdge(itemId),
+    );
+  if (itemId === "honey")
+    return normalizeItemDisplayModel(
+      makeHoneyProp(),
       bagDisplayTargetLongEdge(itemId),
     );
   if (itemId === "wood")

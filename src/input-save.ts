@@ -40,6 +40,11 @@ import {
   harvestMushroomNode,
   refreshGatherNodes,
   RECIPES,
+  BEEHIVE_VISUAL,
+  beehiveState,
+  harvestBeehive,
+  isBeehiveUnlocked,
+  unlockBeehive,
 } from "./game-state";
 import { updateGameClock, updateSeasonAndDate } from "./game-clock";
 import { getLocale, translateText } from "./i18n";
@@ -371,6 +376,7 @@ export function saveGame(slot = "default") {
     dayTwoMorningEvent: { ...dayTwoMorningEvent },
     oysterRackState: JSON.parse(JSON.stringify(oysterRackState)),
     oysterRackSlots: gameState.oysterRackSlots,
+    beehiveState: { ...beehiveState },
     feederUnits: gameState.feederUnits,
     pastureGrazeSettledDay: gameState.pastureGrazeSettledDay,
     pastureGrazedToday: gameState.pastureGrazedToday,
@@ -594,6 +600,19 @@ export function loadGame(
   Object.keys(oysterRackState).forEach((key) => delete oysterRackState[key]);
   Object.assign(oysterRackState, data.oysterRackState || {});
   setOysterRackSlots(data.oysterRackSlots);
+  beehiveState.harvestsToday = Math.max(
+    0,
+    Math.floor(Number(data.beehiveState?.harvestsToday)) || 0,
+  );
+  beehiveState.lastHarvestDay = Number.isFinite(data.beehiveState?.lastHarvestDay)
+    ? data.beehiveState.lastHarvestDay
+    : -1;
+  // 舊存檔遷移：見 game-state.ts 蜂箱那段開頭註解——第三天解鎖事件還沒
+  // 寫出來之前，只要這份存檔本身天數已經到第三天(或更後面)，直接補上
+  // beehive.unlocked，Zeppelin 自己手上已經過第三天的舊存檔不用重玩。
+  if (!isBeehiveUnlocked() && gameState.currentDay >= 3) {
+    unlockBeehive();
+  }
   if (Array.isArray(data.woodNodes) && Array.isArray(data.stoneNodes)) {
     gameState.gatherSpawnSlot = Number(data.gatherSpawnSlot);
     WOOD_NODES.splice(0, WOOD_NODES.length, ...data.woodNodes);
@@ -1239,6 +1258,22 @@ addEventListener("keydown", (e) => {
       harvestOysterRack(oysterX, oysterZ);
       return;
     }
+  }
+
+  // 蜂箱——單點座標＋互動半徑，跟動物投餵機同一招(Math.hypot 判定)，
+  // 差別是投餵機按 E 只查看存量、蜂箱是真的會消耗「今天採過了嗎」。
+  // 沒解鎖(isBeehiveUnlocked()===false)時 build-map.ts 根本沒放模型，
+  // 這裡也不用另外判斷，harvestBeehive() 內部自己會擋。
+  if (
+    gameState.currentMapName === "livingArea" &&
+    isBeehiveUnlocked() &&
+    Math.hypot(
+      gameState.player.position.x - BEEHIVE_VISUAL.x,
+      gameState.player.position.z - BEEHIVE_VISUAL.z,
+    ) <= BEEHIVE_VISUAL.interactionRadius
+  ) {
+    harvestBeehive();
+    return;
   }
 
   // 動物投餵機只負責查看存量；牧草必須在牧場格上按 R／手把 B 收割，

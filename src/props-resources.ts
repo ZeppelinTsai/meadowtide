@@ -223,6 +223,122 @@ export function makePearlProp(rarity: import("./pearl-system").PearlRarity) {
   group.add(pearl, highlight);
   return group;
 }
+// 蜂箱——放在花田南側的獨立點狀結構，跟動物投餵機一樣是「單點座標＋
+// interactionRadius」而不是農地那種多格清單(見 game-state.ts 的
+// BEEHIVE_VISUAL/isPointInsideBeehive)。造型走傳統疊層蜂箱(bee skep 的
+// 現代版，一層層往上縮)，尖頂加一圈小蜜蜂裝飾，遠遠就認得出跟投餵機
+// /養殖架不是同一種設施。初期(gameState.ts 的 isBeehiveUnlocked()===
+// false 時)build-map.ts 根本不會呼叫這個函式，不用在這裡自己判斷要不
+// 要畫。
+export function makeBeehive(x, z) {
+  const group = new THREE.Group();
+  const boxMat = new THREE.MeshStandardMaterial({
+    color: 0xc9963f,
+    flatShading: true,
+    roughness: 0.85,
+  });
+  const trimMat = new THREE.MeshStandardMaterial({
+    color: 0x8a5a2b,
+    flatShading: true,
+    roughness: 0.78,
+  });
+  const roofMat = new THREE.MeshStandardMaterial({
+    color: 0x6b3f22,
+    flatShading: true,
+    roughness: 0.82,
+  });
+
+  // 三層疊箱，越往上越窄，模仿傳統蜂箱一層層加高的樣子。
+  const tiers = [
+    { size: 0.62, y: 0.16, height: 0.3 },
+    { size: 0.5, y: 0.42, height: 0.24 },
+    { size: 0.4, y: 0.62, height: 0.2 },
+  ];
+  tiers.forEach(({ size, y, height }, i) => {
+    const tier = new THREE.Mesh(
+      new THREE.BoxGeometry(size, height, size),
+      boxMat,
+    );
+    tier.position.y = y;
+    tier.castShadow = true;
+    tier.receiveShadow = true;
+    group.add(tier);
+    const rim = new THREE.Mesh(
+      new THREE.BoxGeometry(size + 0.05, 0.04, size + 0.05),
+      trimMat,
+    );
+    rim.position.y = y + height / 2 + 0.02;
+    rim.castShadow = true;
+    group.add(rim);
+    if (i === 0) {
+      // 底層開一個小小的出入口，面向南邊(玩家互動的方向)。
+      const hole = new THREE.Mesh(
+        new THREE.CircleGeometry(0.045, 8),
+        new THREE.MeshStandardMaterial({ color: 0x2b1c10 }),
+      );
+      hole.position.set(0, y - height * 0.15, size / 2 + 0.001);
+      group.add(hole);
+    }
+  });
+
+  const roof = new THREE.Mesh(
+    new THREE.ConeGeometry(0.34, 0.24, 4),
+    roofMat,
+  );
+  roof.rotation.y = Math.PI / 4;
+  roof.position.y = 0.86;
+  roof.castShadow = true;
+  group.add(roof);
+
+  // 底座木架，墊高蜂箱離地一點，跟投餵機的腳架同一種語彙。
+  [-1, 1].forEach((sx) => {
+    [-1, 1].forEach((sz) => {
+      const leg = new THREE.Mesh(
+        new THREE.BoxGeometry(0.05, 0.16, 0.05),
+        trimMat,
+      );
+      leg.position.set(sx * 0.24, 0.08, sz * 0.24);
+      leg.castShadow = true;
+      group.add(leg);
+    });
+  });
+
+  // 一圈小蜜蜂裝飾(扁球體+線框翅膀)，純視覺，繞著蜂箱慢慢轉的動畫留給
+  // animate() 之後要做再接，這裡先固定擺三隻位置不同的意思意思。
+  const beeBodyMat = new THREE.MeshStandardMaterial({
+    color: 0x2b2117,
+    flatShading: true,
+  });
+  const beeWingMat = new THREE.MeshStandardMaterial({
+    color: 0xf3efe4,
+    transparent: true,
+    opacity: 0.55,
+  });
+  [
+    [0.32, 0.55, 0.1],
+    [-0.28, 0.68, -0.18],
+    [0.15, 0.78, 0.3],
+  ].forEach(([bx, by, bz], i) => {
+    const bee = new THREE.Group();
+    const body = new THREE.Mesh(
+      new THREE.SphereGeometry(0.035, 6, 5),
+      beeBodyMat,
+    );
+    body.scale.set(1, 0.85, 1.3);
+    bee.add(body);
+    const wing = new THREE.Mesh(new THREE.CircleGeometry(0.03, 6), beeWingMat);
+    wing.position.set(0, 0.02, 0);
+    wing.rotation.x = -Math.PI / 2.4;
+    bee.add(wing);
+    bee.position.set(bx, by, bz);
+    bee.rotation.y = hash2(i, 3.7) * Math.PI * 2;
+    group.add(bee);
+  });
+
+  group.position.set(x, 0, z);
+  return group;
+}
+
 // 休息區野餐組——桌子＋兩張長椅，樹蔭直接借用 makeTree
 
 export function makeAnimalFeeder(config) {
@@ -793,6 +909,60 @@ export function makeOysterProp() {
   mantle.castShadow = true;
 
   group.add(lowerShell, innerShell, meat, mantle);
+  return group;
+}
+
+// 蜂蜜——小罐子造型，跟 makeOysterProp 一樣是「揹包圖示尺寸」的小
+// scale，靠 normalizeItemDisplayModel 統一縮放成揹包格大小，不用自己
+// 算精確比例。玻璃罐用半透明材質，裡面一層琥珀色蜂蜜實體，蓋子用
+// 木塞的顏色跟蜂箱本身(makeBeehive)的深棕色呼應。
+export function makeHoneyProp() {
+  const group = new THREE.Group();
+  const glassMat = new THREE.MeshStandardMaterial({
+    color: 0xf6ecc9,
+    transparent: true,
+    opacity: 0.35,
+    roughness: 0.15,
+    flatShading: true,
+  });
+  const honeyMat = new THREE.MeshStandardMaterial({
+    color: 0xd98f1f,
+    flatShading: true,
+    roughness: 0.35,
+  });
+  const lidMat = new THREE.MeshStandardMaterial({
+    color: 0x6b4326,
+    flatShading: true,
+    roughness: 0.8,
+  });
+
+  const jar = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.11, 0.1, 0.2, 10),
+    glassMat,
+  );
+  jar.position.y = 0.11;
+  jar.castShadow = true;
+
+  const honey = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.095, 0.088, 0.16, 10),
+    honeyMat,
+  );
+  honey.position.y = 0.1;
+
+  const neck = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.06, 0.08, 0.05, 10),
+    glassMat,
+  );
+  neck.position.y = 0.235;
+
+  const lid = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.065, 0.065, 0.045, 10),
+    lidMat,
+  );
+  lid.position.y = 0.28;
+  lid.castShadow = true;
+
+  group.add(jar, honey, neck, lid);
   return group;
 }
 

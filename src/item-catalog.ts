@@ -8,6 +8,7 @@ export type InventoryItemId =
   | "mushroom"
   | "fish"
   | "oysters"
+  | "honey"
   | "wood"
   | "stone"
   | "wildDaisy"
@@ -46,6 +47,7 @@ export const BASIC_ITEMS: readonly ItemDefinition[] = [
   { id: "mushroom", label: "香菇", edible: true }, // 2026-09-01：原本只有 prologue 劇情贈送，這次加了野外採集點，改用具體品種名
   { id: "fish", label: "魚", edible: true },
   { id: "oysters", label: "牡蠣", edible: true },
+  { id: "honey", label: "蜂蜜", edible: true },
   { id: "wood", label: "木材", edible: false },
   { id: "stone", label: "石材", edible: false },
   // 野花——5 個物種各自獨立 item id，未來顏料/染色系統直接對應這裡，

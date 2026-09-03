@@ -188,6 +188,7 @@ import {
   makeWoodPile,
   makeStonePile,
   makeAnimalFeeder,
+  makeBeehive,
   makeOreNode,
   makeMineStaircase,
   makeMinePitRecess,
@@ -206,6 +207,9 @@ import {
   FEEDER_VISUAL,
   isPointInsideFeeder,
   refreshGatherNodes,
+  BEEHIVE_VISUAL,
+  isPointInsideBeehive,
+  isBeehiveUnlocked,
 } from "./game-state";
 import { makeFlowerCluster } from "./wildflowers";
 import { makeMushroomCluster } from "./mushrooms";
@@ -3604,6 +3608,15 @@ export function buildMap(mapName) {
     // 動物早晚進出的三格門口空地(見 npc-runtime.ts 的 hasPastureGrassAt)。
     plateauGroup.add(makeAnimalFeeder(FEEDER_VISUAL));
 
+    // 蜂箱——初始無，storyState.flags["beehive.unlocked"] 為 true 才會
+    // 蓋出來(預計第三天植物學家事件解鎖，見 game-state.ts 該段開頭註解)；
+    // 沒解鎖前這裡完全不放模型，isBlocked() 那邊的碰撞判定
+    // (isPointInsideBeehive)本身也會因為同一個 flag 自動放行，兩邊不用
+    // 各自維護一份「有沒有解鎖」的判斷。
+    if (isBeehiveUnlocked()) {
+      plateauGroup.add(makeBeehive(BEEHIVE_VISUAL.x, BEEHIVE_VISUAL.z));
+    }
+
     // 生活區採集點：靠西側山景的開闊草地，每個半日批次各 5 木、5 石。
     WOOD_NODES.filter((n) => n.map === "livingArea").forEach((n) => {
       const pile = makeWoodPile(n.x, n.z);
@@ -3953,6 +3966,7 @@ export function isBlocked(mapName, x, z) {
   )
     return true;
   if (mapName === "livingArea" && isPointInsideFeeder(x, z)) return true;
+  if (mapName === "livingArea" && isPointInsideBeehive(x, z)) return true;
   if (mapName === "mountain") {
     const shrine = LAYOUT.mountain.summitShrine;
     if (

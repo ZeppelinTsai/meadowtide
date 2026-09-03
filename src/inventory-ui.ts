@@ -46,6 +46,7 @@ const INVENTORY_DESCRIPTIONS: Record<string, string> = {
   harvested: "從農地收成的作物。",
   fish: "從湖泊或海邊釣起的魚。",
   oysters: "從牡蠣架採收的新鮮牡蠣。",
+  honey: "從蜂箱採收的新鮮蜂蜜。",
   wood: "建造與加工常用的木材。",
   stone: "建造與加工常用的石材。",
   copper: "洞窟中取得的銅礦。",
@@ -236,6 +237,15 @@ function inventoryEntries(): InventoryEntry[] {
       tone: "pearl",
       symbol: "貝",
       model: () => makeInventoryItemVisual("oysters"),
+    },
+    {
+      id: "honey",
+      tab: "bag",
+      label: "蜂蜜",
+      amount: inventory.honey,
+      tone: "amber",
+      symbol: "蜜",
+      model: () => makeInventoryItemVisual("honey"),
     },
     {
       id: "wood",

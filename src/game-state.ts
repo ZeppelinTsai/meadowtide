@@ -254,6 +254,10 @@ export const inventory = {
     pinkWoodSorrel: 0,
   } as Record<FlowerSpeciesId, number>,
   oysters: 0,
+  // 蜂蜜——蜂箱系統的產出，見下面 beehiveState/harvestBeehive()；
+  // 新遊戲一律從 0 開始，跟蜂箱本身「初始無」是兩件事分開存(蜂箱
+  // 有沒有蓋出來看 storyState.flags["beehive.unlocked"])。
+  honey: 0,
   pearls: {
     white: 0,
     pink: 0,
@@ -779,6 +783,106 @@ export function isOysterRackReady(index = 0) {
   if (!rackState || rackState.lastHarvestDay !== gameState.currentDay)
     return true;
   return rackState.harvestsToday < OYSTER_HARVESTS_PER_DAY;
+}
+
+// ==============================================================
+// 蜂箱——2026-09-04 預留系統，座標見 layout-maps.ts 的 LAYOUT.beehive
+// (28,39)，花田(FLOWER_BED_TILES)南緣再往南 2 格的開闊草地。跟牡蠣架
+// 一樣是「今天採過了嗎」的每日採收模式(harvestsToday/lastHarvestDay)，
+// 但蜂箱只有一個點，不像牡蠣架有多筏要用 Record 記多把 key，單一物件
+// 就夠；单点碰撞/互動半徑則抄動物投餵機 FEEDER_VISUAL 那一套。
+//
+// 「初始無」是這次刻意的設計：新遊戲一律看不到蜂箱、也採不到蜂蜜，
+// 預計第三天植物學家事件劇情解鎖(事件本身還沒寫，之後應該在事件結尾
+// 呼叫 unlockBeehive())。isBeehiveUnlocked() 讀 storyState.flags 裡的
+// "beehive.unlocked"，這個 flag 本來就會跟著 storyState 一起存讀檔
+// (見 story/story-state.ts 的 exportStoryState/restoreStoryState)，
+// 不用額外幫它寫一條存檔欄位。
+//
+// 舊存檔遷移：Zeppelin 自己手上已經玩到第三天以後的存檔，不想因為這次
+// 才加的解鎖事件還沒寫就得重玩——input-save.ts 的 loadGame() 讀檔時，
+// 如果這個 flag 不存在、且存檔天數已經 >= 3，直接補上 flag(視同「早就
+// 解鎖過了」)。之後真的把第三天事件寫出來時，事件觸發條件記得加上
+// `!isBeehiveUnlocked()`，不然已經被這條遷移補過 flag 的玩家會被劇情
+// 重播一次。
+// ==============================================================
+export function isBeehiveUnlocked() {
+  return storyState.flags["beehive.unlocked"] === true;
+}
+
+export function unlockBeehive() {
+  storyState.flags["beehive.unlocked"] = true;
+}
+
+export const BEEHIVE_VISUAL = Object.freeze({
+  x: LAYOUT.beehive.x,
+  z: LAYOUT.beehive.z,
+  interactionRadius: 1.7,
+});
+
+export function isPointInsideBeehive(x: number, z: number) {
+  if (!isBeehiveUnlocked()) return false; // 還沒蓋出來，不占碰撞格
+  return (
+    Math.abs(x - BEEHIVE_VISUAL.x) <= 0.34 &&
+    Math.abs(z - BEEHIVE_VISUAL.z) <= 0.34
+  );
+}
+
+export const HONEY_HARVESTS_PER_DAY = 1;
+export const HONEY_YIELD_MIN = 2;
+export const HONEY_YIELD_MAX = 4;
+export const beehiveState: { harvestsToday: number; lastHarvestDay: number } = {
+  harvestsToday: 0,
+  lastHarvestDay: -1,
+};
+
+function hasBloomingFlowers() {
+  return Object.values(flowerBedState).some((bed) => bed.stage >= 2);
+}
+
+export function harvestBeehive() {
+  if (!isBeehiveUnlocked()) return;
+  if (beehiveState.lastHarvestDay !== gameState.currentDay) {
+    beehiveState.harvestsToday = 0;
+    beehiveState.lastHarvestDay = gameState.currentDay;
+  }
+  if (!hasBloomingFlowers()) {
+    gameState.harvestFeedback = {
+      kind: "empty",
+      title: "蜂箱",
+      text: "附近沒有花，蜜蜂沒東西可採。",
+      until: gameState.elapsed + 2.6,
+    };
+    return;
+  }
+  if (beehiveState.harvestsToday >= HONEY_HARVESTS_PER_DAY) {
+    gameState.harvestFeedback = {
+      kind: "empty",
+      title: "蜂箱",
+      text: "今天已經採過蜂蜜了，明天再來看看。",
+      until: gameState.elapsed + 2.6,
+    };
+    return;
+  }
+
+  const yieldCount =
+    HONEY_YIELD_MIN +
+    Math.floor(Math.random() * (HONEY_YIELD_MAX - HONEY_YIELD_MIN + 1));
+  inventory.honey += yieldCount;
+  beehiveState.harvestsToday++;
+  gameState.harvestFeedback = {
+    kind: "success",
+    title: "蜂箱",
+    text: "蜂蜜 ×" + yieldCount,
+    count: yieldCount,
+    until: gameState.elapsed + 2.6,
+  };
+}
+
+export function isBeehiveReady() {
+  if (!isBeehiveUnlocked() || !hasBloomingFlowers()) return false;
+  if (beehiveState.lastHarvestDay !== gameState.currentDay) return true;
+  return beehiveState.harvestsToday < HONEY_HARVESTS_PER_DAY;
 }
 
 // ==============================================================

@@ -199,6 +199,7 @@ function resetPrologueStartingItems() {
   inventory.wood = 0;
   inventory.stone = 0;
   inventory.oysters = 0;
+  inventory.honey = 0;
   inventory.copper = 0;
   inventory.silver = 0;
   inventory.gold = 0;
