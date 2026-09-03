@@ -1620,10 +1620,10 @@ export function animate(now) {
     gameState.houseLampBulbMat.emissiveIntensity = nightFactor;
     gameState.houseLampLight.intensity = nightFactor * 1.6;
   }
-  if (gameState.houseCeilingLampLight) {
-    gameState.houseCeilingLampBulbMat.emissiveIntensity = nightFactor;
-    gameState.houseCeilingLampLight.intensity = nightFactor * 2.2;
-  }
+  gameState.houseCeilingLampLights.forEach((light, i) => {
+    gameState.houseCeilingLampBulbMats[i].emissiveIntensity = nightFactor;
+    light.intensity = nightFactor * 2.2;
+  });
 
   // 過場鏡頭系統(cutscene-camera.ts)：有排定的鏡頭清單在播，或正處於
   // F4 手動調整模式，這裡回傳的值會取代下面「自動跟玩家/船」的鏡頭

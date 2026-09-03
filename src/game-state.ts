@@ -150,8 +150,11 @@ export const gameState = {
   // 2026-08-26 加的頂燈(makeCeilingLamp)——桌燈(houseLampLight)範圍只有
   // 2.4，房子放大之後照不到整個空間，頂燈用更大的 distance 補主空間的
   // 整體照明，晝夜邏輯(game-loop.ts)跟桌燈同一套 nightFactor 開關。
-  houseCeilingLampLight: null as THREE.PointLight | null,
-  houseCeilingLampBulbMat: null as THREE.MeshStandardMaterial | null,
+  // 2026-09-03：Zeppelin 反饋單一頂燈太暗，隔間兩側(house 的臥室/主空間，
+  // generalStore 的雜貨店/休憩區)各需要一盞，改成陣列裝兩盞燈，
+  // game-loop.ts 的夜間亮度迴圈跟著改成逐一套用。
+  houseCeilingLampLights: [] as THREE.PointLight[],
+  houseCeilingLampBulbMats: [] as THREE.MeshStandardMaterial[],
   ePressed: false,
   lastFrame: 0, // main.ts 啟動迴圈時會用 performance.now() 設一次
   prevDay: 0,

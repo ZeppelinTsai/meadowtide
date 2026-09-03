@@ -293,7 +293,7 @@ export function buildMap(mapName) {
 
   let plateauGroup = gameState.mapGroup;
 
-  if (mapName === "house") {
+  if (mapName === "house" || mapName === "generalStore") {
     const ground = new THREE.Mesh(
       new THREE.BoxGeometry(cols * TILE, 0.2, rows * TILE),
       new THREE.MeshStandardMaterial({ color: 0xc9b48a }),
@@ -3037,9 +3037,9 @@ export function buildMap(mapName) {
 
   gameState.houseLampLight = null;
   gameState.houseLampBulbMat = null;
-  gameState.houseCeilingLampLight = null;
-  gameState.houseCeilingLampBulbMat = null;
-  if (mapName === "house") {
+  gameState.houseCeilingLampLights = [];
+  gameState.houseCeilingLampBulbMats = [];
+  if (mapName === "house" || mapName === "generalStore") {
     // 桌燈跟著餐桌一起搬到新格局的位置(x=11,z=6，見 layout-maps.ts 的
     // house.furniture)，2026-08-26 房子放大前後桌子座標不一樣，這裡要
     // 跟著換，不然燈會插在空地上、桌子底下沒燈。
@@ -3050,20 +3050,25 @@ export function buildMap(mapName) {
     gameState.houseLampBulbMat = lamp.bulbMat;
 
     // 2026-08-26 新增頂燈——掛在天花板高度(牆高 1.4，稍微退一點避免跟
-    // 牆頂共面 z-fighting)，擺在主空間中央(x=8 大約是新格局的水平中心，
-    // z=6 跟餐桌同排)，distance=7 的涵蓋範圍蓋住主要活動區；臥室隔間
-    // 擋住視線+光線，暫時沒有另外配一盞，之後要加再說。
-    const ceilingLamp = makeCeilingLamp();
-    ceilingLamp.group.position.set(8, 1.36, 6);
-    plateauGroup.add(ceilingLamp.group);
-    gameState.houseCeilingLampLight = ceilingLamp.light;
-    gameState.houseCeilingLampBulbMat = ceilingLamp.bulbMat;
+    // 牆頂共面 z-fighting)。2026-09-03：Zeppelin 反饋單一盞(x=8 置中)
+    // 太暗，尤其是隔間另一側(house 臥室／generalStore 雜貨店那半邊)
+    // 幾乎照不到，改成隔間(x=7)左右各一盞：x=3 蓋西側(house 臥室／
+    // generalStore 雜貨店貨架區)，x=11 蓋東側(house 餐廳／generalStore
+    // 休憩區兼接待中心)，兩盞都跟原本一樣 z=6、距地板 1.36，
+    // distance=7 個別涵蓋自己那一側。
+    [3, 11].forEach((lampX) => {
+      const ceilingLamp = makeCeilingLamp();
+      ceilingLamp.group.position.set(lampX, 1.36, 6);
+      plateauGroup.add(ceilingLamp.group);
+      gameState.houseCeilingLampLights.push(ceilingLamp.light);
+      gameState.houseCeilingLampBulbMats.push(ceilingLamp.bulbMat);
+    });
   }
 
   avenueLeafMaterials.length = 0;
   map.tiles.forEach((row, z) => {
     row.forEach((tile, x) => {
-      if (tile === 1 && mapName === "house") {
+      if (tile === 1 && (mapName === "house" || mapName === "generalStore")) {
         const winEntry = (map.windows || []).find(
           (w) => w.x === x && w.z === z,
         );
@@ -4444,6 +4449,28 @@ export const events = [
         x: LAYOUT.house.doorX,
         z: LAYOUT.house.z + LAYOUT.house.d + 1,
       }),
+  })),
+  // 雜貨店——2026-09-03 Zeppelin 指定的開發用捷徑傳送點，跟 shrine (4,2)
+  // 那組「先送過去方便建模/測試」的做法同一套：舊城鎮(149,26)/(150,26)
+  // 兩格踩一下直接送進雜貨店室內(MAPS.generalStore)，兩格對齊室內門口
+  // 本來就是 2 格寬(7,13)/(8,13)。不是真的接到雜貨店建築(generalStore
+  // 那棟，build-map.ts villageHouseByRole)的實際大門位置——那個之後真的
+  // 要做雜貨店外觀/NPC 時再對齊。室內門口踩回去，(7,13)->(149,27)、
+  // (8,13)->(150,27)，跟兩個觸發點分別錯開一格，不會一踏出門就立刻
+  // 反彈回來。
+  ...Array.from({ length: 2 }, (_, i) => ({
+    map: "oldVillage",
+    x: 149 + i,
+    z: 26,
+    trigger: "touch",
+    action: () => loadMap("generalStore", { ...MAPS.generalStore.playerStart }),
+  })),
+  ...Array.from({ length: 2 }, (_, i) => ({
+    map: "generalStore",
+    x: 7 + i,
+    z: 13,
+    trigger: "touch",
+    action: () => loadMap("oldVillage", { x: 149 + i, z: 27 }),
   })),
   // 生活區南側海岸(x=37~46，z=42 整排，地圖最南端) <-> 港口北端
   // (碼頭附近)——z=37~42 這段南側延伸地形已經在 layout-maps.ts 補上

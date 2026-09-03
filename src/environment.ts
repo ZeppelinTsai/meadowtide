@@ -5,7 +5,7 @@ import { gameState } from "./game-state";
 // 集合會同時關掉天氣粒子(weather-particles.ts 的 isOutdoorMap 判斷)跟
 // 星空/流星層(scene-sky.ts 的 skyDome/meteorLayer 那幾處 isOutdoorMap
 // 判斷)，不用兩邊分開改。
-export const INDOOR_MAPS = new Set(["house", "stalactiteCave", "mountainCave"]);
+export const INDOOR_MAPS = new Set(["house", "generalStore", "stalactiteCave", "mountainCave"]);
 
 export function isOutdoorMap(mapName = gameState.currentMapName) {
   return !INDOOR_MAPS.has(mapName);

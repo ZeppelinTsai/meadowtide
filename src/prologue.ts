@@ -565,7 +565,7 @@ export function endExternalGuidedWalk() {
 function guideGroundY(mapName: string, x: number, z: number): number {
   // Interior floors are built at Y=0. Falling through to living-area groundY()
   // re-applies the outdoor plateau height after loadMap positioned the player.
-  if (mapName === "house") return 0;
+  if (mapName === "house" || mapName === "generalStore") return 0;
   if (mapName === "port") return portGroundY(x, z);
   if (mapName === "oldVillage") return oldVillageGroundY(x, z) + 0.03;
   if (mapName === "mountain")
