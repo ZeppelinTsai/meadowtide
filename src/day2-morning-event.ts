@@ -686,6 +686,15 @@ const pigmentCg = (text: string) => ({
   ...artist(text),
   cg: "day2Artist-01",
 });
+// 2026-09-04：Zeppelin 給了研磨顏料戲後半的差分圖(她抬頭看向主角、
+// 提議花田那幾句)，跟 pigmentCg() 同一個寫法，只是換一張 cg——
+// setDialogCg() 偵測到 currentCgId 從 day2Artist-01 換成 -02 時，會自動
+// 走「差分轉場」那個半秒交叉淡入淡出分支(不是黑幕重新進場)，不用額外
+// 處理轉場。
+const pigmentCg2 = (text: string) => ({
+  ...artist(text),
+  cg: "day2Artist-02",
+});
 
 // 上山採花的傳送落點——劇本給的座標，跟 VILLAGE_TOUR 那種場景標記同一
 // 種「直接寫死、來源是 Zeppelin 給的劇本」寫法。
@@ -849,14 +858,19 @@ function startPigmentScene() {
               pigmentCg("「不過……」"),
               pigmentCg("「每次缺顏料都爬一趟山，好像也不是辦法。」"),
               "[看向主角]",
-              pigmentCg("「牧場不是有空地嗎？」"),
-              pigmentCg("「你可以考慮種一片自己的花田。」"),
+              // 從這句開始換成 day2Artist-02 差分(她抬頭看向主角的表情)，
+              // 到這場戲結束為止都用這張，跟前面研磨顏料的 day2Artist-01
+              // 分開。
+              pigmentCg2("「牧場不是有空地嗎？」"),
+              pigmentCg2("「你可以考慮種一片自己的花田。」"),
               // 系統提示保留 cg，不然這一句會把 setDialogCg 呼叫成 null，
-              // 中間硬插一次淡出/淡入，跟前後的差分連續戲不搭。花圃/種植
-              // 系統本身還沒做(見 docs/decisions/wildflower-gathering-
-              // system.md 第6節)，這句先純粹是敘事，沒有真的解鎖機制。
-              { ...systemDialog("野花與部分花卉可以種植"), cg: "day2Artist-01" },
-              pigmentCg("「到時候，我可能會常去找你。」"),
+              // 中間硬插一次淡出/淡入，跟前後的差分連續戲不搭。
+              // 2026-09-04：花田系統(livingArea 小花園原址，見
+              // game-state.ts 的 flowerBedState/plantFlowerBed())已經
+              // 上線，這句提示現在對應真的可種/可收的花圃，不再只是
+              // 純敘事鋪陳。
+              { ...systemDialog("野花與部分花卉可以種植"), cg: "day2Artist-02" },
+              pigmentCg2("「到時候，我可能會常去找你。」"),
             ],
             completeArtistPersonalEvent,
           );
