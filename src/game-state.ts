@@ -16,6 +16,7 @@ import {
   type PearlRarity,
 } from "./pearl-system";
 import { getRelationship } from "./affection";
+import { playRandomSfx, HONEY_HARVEST_SFX } from "./sfx";
 import { storyState } from "./story/story-state";
 import type { ToolId } from "./tool-catalog";
 import {
@@ -873,6 +874,7 @@ export function harvestBeehive() {
     Math.floor(Math.random() * (HONEY_YIELD_MAX - HONEY_YIELD_MIN + 1));
   inventory.honey += yieldCount;
   beehiveState.harvestsToday++;
+  playRandomSfx(HONEY_HARVEST_SFX);
   gameState.harvestFeedback = {
     kind: "success",
     title: "蜂箱",

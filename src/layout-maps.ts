@@ -1857,15 +1857,25 @@ export const MAPS = {
       // 實牆、不能真的走過去。
       { type: "bathroom-door", x: 1, z: 0, nonBlocking: true },
       // 貨架區(一般商品)——四座置物櫃台沿西牆排成一列。
-      { type: "counter", x: 1, z: 3, variant: "storage" },
-      { type: "counter", x: 1, z: 5, variant: "storage" },
-      { type: "counter", x: 1, z: 7, variant: "storage" },
-      { type: "counter", x: 1, z: 9, variant: "storage" },
-      // 收報台——之後村長會站在這裡賣東西，先佔位，還沒接 NPC。
-      { type: "counter", x: 4, z: 2, variant: "storage" },
-      // 冰箱(冷藏商品)——擺在收報台旁邊，跟平面圖「收報台右邊是冰箱」
-      // 的相對位置一致。
-      { type: "fridge", x: 6, z: 2 },
+      { type: "store-shelf", x: 1, z: 3 },
+      { type: "store-shelf", x: 4, z: 1 },
+      { type: "store-shelf", x: 5, z: 1 },
+      { type: "store-shelf", x: 1, z: 5 },
+      { type: "store-shelf", x: 1, z: 7 },
+      { type: "store-shelf", x: 1, z: 9 },
+      // 2026-09-03 第四輪反饋：Zeppelin 對照實際進遊戲的畫面調整——
+      // 原本(4,2)那座佔位用的收報台拿掉，冰箱搬到房間右上角(7,1，
+      // 緊貼隔間拆掉後空出來的東牆邊)，改用一排 L 形木櫃台
+      // ((3,5)→(6,5)轉(6,5)→(6,1))當真正的收銀櫃台，店員站在 L 形
+      // 內側。2026-09-03 第五輪反饋：L 形內側轉角(5,4)原本放的收銀機
+      // 佔位台子也拿掉了——先空著，之後有專門的收銀機模型再放，
+      // 不再借用 counter 湊。
+      // 冰箱(冷藏商品)——房間右上角，緊貼隔間拆掉後空出來的東牆邊。
+      { type: "display-fridge", x: 7, z: 1 },
+      // L 形木櫃台——drawer 變體是素面木頭抽屜櫃(不像 storage 頂著兩罐
+      // 陶罐)，讀起來比較像「可以站在後面工作的櫃台」而不是貨架。
+      { type: "system-counter", x: 3, z: 5, w: 4, d: 1, variant: "register" },
+      { type: "system-counter", x: 6, z: 1, w: 1, d: 4 },
       // 展示桌(特價品/活動)——房間中段，不配椅子，跟休憩區的餐桌區分開。
       { type: "table", x: 4, z: 8 },
       { type: "rug", x: 4, z: 9, nonBlocking: true },

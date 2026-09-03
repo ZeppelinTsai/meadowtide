@@ -6,6 +6,7 @@ import {
   type ComicCueKind,
   type ComicCueSpec,
 } from "./comic-cue-logic";
+import { playRandomSfx, COMIC_CUE_SFX } from "./sfx";
 
 export type { ComicCueKind, ComicCueSpec } from "./comic-cue-logic";
 
@@ -105,6 +106,9 @@ export function showComicCue(spec?: ComicCueSpec | null) {
     ? gameState.player
     : npcs.find((npc) => npc.id === spec.actorId)?.mesh;
   if (!actor?.parent) return;
+  // 音效跟視覺分格符號綁在一起觸發，畫面沒真的顯示(找不到 actor)就不
+  // 該憑空響一聲，所以擺在上面那個 return 之後。
+  playRandomSfx(COMIC_CUE_SFX[spec.kind]);
   const sprite = new THREE.Sprite(
     new THREE.SpriteMaterial({
       map: cueTexture(spec.kind),

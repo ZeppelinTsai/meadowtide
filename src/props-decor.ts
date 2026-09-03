@@ -1109,6 +1109,84 @@ export function makeFurniture(item) {
         g.add(lid);
       });
     }
+  } else if (item.type === "system-counter") {
+    const width = item.w || 1;
+    const depth = item.d || 1;
+    const cabinetMat = new THREE.MeshStandardMaterial({ color: 0xa97a4e, roughness: 0.82 });
+    const topMat = new THREE.MeshStandardMaterial({ color: 0xe0d2b5, roughness: 0.42 });
+    const cabinet = new THREE.Mesh(new THREE.BoxGeometry(width + 0.02, 0.58, depth + 0.02), cabinetMat);
+    cabinet.position.y = 0.29;
+    cabinet.castShadow = true;
+    cabinet.receiveShadow = true;
+    g.add(cabinet);
+    const worktop = new THREE.Mesh(new THREE.BoxGeometry(width + 0.08, 0.07, depth + 0.08), topMat);
+    worktop.position.y = 0.615;
+    worktop.castShadow = true;
+    worktop.receiveShadow = true;
+    g.add(worktop);
+    const seamMat = new THREE.MeshStandardMaterial({ color: 0x765337 });
+    const panelCount = Math.max(width, depth);
+    for (let i = 1; i < panelCount; i++) {
+      const seam = new THREE.Mesh(new THREE.BoxGeometry(width > depth ? 0.018 : width + 0.035, 0.48, width > depth ? depth + 0.035 : 0.018), seamMat);
+      seam.position.set(width > depth ? -width / 2 + i : 0, 0.29, width > depth ? 0 : -depth / 2 + i);
+      g.add(seam);
+    }
+    if (item.variant === "register") {
+      const register = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.2, 0.3), new THREE.MeshStandardMaterial({ color: 0xd8d0bd, roughness: 0.5 }));
+      register.position.set(0.5, 0.76, 0);
+      register.rotation.x = -0.12;
+      register.castShadow = true;
+      g.add(register);
+    }
+  } else if (item.type === "store-shelf") {
+    const wood = new THREE.MeshStandardMaterial({ color: 0x765137, roughness: 0.86 });
+    const back = new THREE.Mesh(new THREE.BoxGeometry(0.82, 1.18, 0.08), wood);
+    back.position.set(0, 0.59, -0.28); back.castShadow = true; g.add(back);
+    [0.08, 0.42, 0.76, 1.1].forEach((y, row) => {
+      const shelf = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.055, 0.5), wood);
+      shelf.position.set(0, y, -0.04); shelf.castShadow = true; g.add(shelf);
+      if (row < 3) [-0.27, 0, 0.27].forEach((x, i) => {
+        const product = new THREE.Mesh(row % 2 ? new THREE.BoxGeometry(0.15, 0.2, 0.13) : new THREE.CylinderGeometry(0.07, 0.075, 0.19, 8), new THREE.MeshStandardMaterial({ color: [0x6f8f78, 0xc89349, 0xb85d46, 0xd6c598][(row * 3 + i) % 4], flatShading: true }));
+        product.position.set(x, y + 0.12, -0.02); product.castShadow = true; g.add(product);
+      });
+    });
+  } else if (item.type === "display-fridge") {
+    const frameMat = new THREE.MeshStandardMaterial({ color: 0x526267, metalness: 0.55, roughness: 0.28 });
+    const insideMat = new THREE.MeshStandardMaterial({ color: 0xdce7e4, roughness: 0.45 });
+    const glassMat = new THREE.MeshStandardMaterial({ color: 0xaed7df, transparent: true, opacity: 0.24, roughness: 0.12, metalness: 0.08, depthWrite: false });
+    const caseBody = new THREE.Mesh(new THREE.BoxGeometry(0.82, 1.32, 0.05), insideMat);
+    caseBody.position.set(0, 0.66, -0.31);
+    caseBody.castShadow = true;
+    caseBody.receiveShadow = true;
+    g.add(caseBody);
+    [-0.37, 0.37].forEach((x) => {
+      const post = new THREE.Mesh(new THREE.BoxGeometry(0.065, 1.25, 0.055), frameMat);
+      post.position.set(x, 0.66, 0.355);
+      post.castShadow = true;
+      g.add(post);
+    });
+    [0.055, 1.285].forEach((y) => {
+      const rail = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.065, 0.055), frameMat);
+      rail.position.set(0, y, 0.355);
+      g.add(rail);
+    });
+    [0.32, 0.62, 0.92].forEach((y, row) => {
+      const shelf = new THREE.Mesh(new THREE.BoxGeometry(0.68, 0.025, 0.5), frameMat);
+      shelf.position.set(0, y, 0.02);
+      g.add(shelf);
+      [-0.23, 0, 0.23].forEach((x, i) => {
+        const product = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.06, 0.2, 8), new THREE.MeshStandardMaterial({ color: [0x6c9eb0, 0xe6c866, 0x82a66d, 0xc87868][(row + i) % 4], flatShading: true }));
+        product.position.set(x, y + 0.11, 0.13);
+        product.castShadow = true;
+        g.add(product);
+      });
+    });
+    const door = new THREE.Mesh(new THREE.BoxGeometry(0.7, 1.16, 0.025), glassMat);
+    door.position.set(0, 0.67, 0.37);
+    g.add(door);
+    const handle = new THREE.Mesh(new THREE.BoxGeometry(0.035, 0.42, 0.045), frameMat);
+    handle.position.set(0.28, 0.7, 0.4);
+    g.add(handle);
   } else if (item.type === "fridge") {
     const bodyMat = new THREE.MeshStandardMaterial({
       color: 0xdbe4e1,

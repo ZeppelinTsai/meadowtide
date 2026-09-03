@@ -97,3 +97,68 @@ export const FISH_BITE_SFX = [
 ];
 export const RELATIONSHIP_EVENT_SFX =
   "kenney_interface-sounds/Audio/confirmation_004.ogg";
+
+// ==============================================================
+// 2026-09-03 Zeppelin 要求開始「盤點各方面操作、補音效」，先從這兩塊
+// 開始：漫畫演出(comic-cue.ts 的 ?!｜|||…等分格符號)跟蜂蜜收成。
+// 這裡先只配檔名(現有的 kenney_interface-sounds 素材裡最貼近語意的
+// 命名)，都還沒實際聽過內容——播放失敗只會在 console 警告、不影響遊戲
+// (見檔案開頭說明)，之後聽過覺得不搭再直接換路徑即可。
+// ==============================================================
+
+// 漫畫演出音效——對應 comic-cue-logic.ts 的 ComicCueKind，每種反應各挑
+// 一組風格接近的變化版本，showComicCue() 觸發時依 kind 對應播放。
+export const COMIC_CUE_SFX: Record<
+  "!" | "?" | "..." | "panicDrops" | "sweatFace" | "gloom",
+  string[]
+> = {
+  // 驚訝／發現——短促上揚的撥弦聲＋一聲鐘鳴，模擬「叮！」的恍然大悟感。
+  "!": [
+    "kenney_interface-sounds/Audio/pluck_001.ogg",
+    "kenney_interface-sounds/Audio/pluck_002.ogg",
+    "kenney_interface-sounds/Audio/bong_001.ogg",
+  ],
+  // 疑惑——素材包裡就有直接命名為 question 的一組，語意最直接。
+  "?": [
+    "kenney_interface-sounds/Audio/question_001.ogg",
+    "kenney_interface-sounds/Audio/question_002.ogg",
+    "kenney_interface-sounds/Audio/question_003.ogg",
+    "kenney_interface-sounds/Audio/question_004.ogg",
+  ],
+  // 語塞／欲言又止——只用很輕的一聲滴答標記停頓，不做太搶戲的音效。
+  "...": [
+    "kenney_interface-sounds/Audio/tick_001.ogg",
+    "kenney_interface-sounds/Audio/tick_002.ogg",
+    "kenney_interface-sounds/Audio/tick_004.ogg",
+  ],
+  // 慌張冒冷汗滴——error 那組音色比較躁、有點手忙腳亂的感覺，貼近
+  // 「哇哇哇」的驚慌感，跟下面單純一滴汗(sweatFace)的沉穩感做區隔。
+  panicDrops: [
+    "kenney_interface-sounds/Audio/error_001.ogg",
+    "kenney_interface-sounds/Audio/error_002.ogg",
+    "kenney_interface-sounds/Audio/error_003.ogg",
+    "kenney_interface-sounds/Audio/error_004.ogg",
+  ],
+  // 單顆尷尬汗滴——直接借「drop」語意，跟畫面上那滴水滴呼應。
+  sweatFace: [
+    "kenney_interface-sounds/Audio/drop_001.ogg",
+    "kenney_interface-sounds/Audio/drop_002.ogg",
+    "kenney_interface-sounds/Audio/drop_003.ogg",
+  ],
+  // 陰鬱／「|||」——借用「縮小視窗」的音色，呼應角色情緒往下縮的感覺，
+  // 音效包裡沒有真的「洩氣長音」可以用，先這樣佔位。
+  gloom: [
+    "kenney_interface-sounds/Audio/minimize_001.ogg",
+    "kenney_interface-sounds/Audio/minimize_002.ogg",
+    "kenney_interface-sounds/Audio/minimize_003.ogg",
+  ],
+};
+
+// 蜂蜜收成——採到蜂蜜那一刻的提示音，借「glass」那組(掀開蜂箱蓋/裝進
+// 玻璃罐的清脆感)。跟牡蠣架同一種「單點資源，按 E 採收」的互動，牡蠣架
+// 目前也還沒配音效，先只做蜂蜜這個是照 Zeppelin 這次明確點名的範圍。
+export const HONEY_HARVEST_SFX = [
+  "kenney_interface-sounds/Audio/glass_001.ogg",
+  "kenney_interface-sounds/Audio/glass_002.ogg",
+  "kenney_interface-sounds/Audio/glass_003.ogg",
+];
