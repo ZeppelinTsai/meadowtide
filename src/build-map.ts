@@ -3340,7 +3340,11 @@ export function buildMap(mapName) {
     if (validZ.length) {
       const dataMinZ = validZ[0],
         dataMaxZ = validZ[validZ.length - 1],
-        minZ = -7;
+        // 2026-09-04：跟牧草地北擴一樣，這片東側海面(緊貼東側海岸線的
+        // 海面網格)北緣本來是寫死 -7，NORTH_CLIFF_Z/NORTH_TERRAIN_EXTENSION
+        // 那次北擴 5 格時漏掉沒跟著動，導致新北側平台再往北一點就看不到
+        // 海面。同步 -5，維持跟其他北擴地形一致的緩衝量。
+        minZ = -7 - 5;
       const maxZ = rows - 1 + SOUTH_TERRAIN_EXTENSION;
       const minX = Math.min(...westXByZ.filter((v) => v !== null));
       // 海的可玩／碰撞範圍仍由 tile 決定；網格向東額外延伸，最大拉遠也看不到盡頭。

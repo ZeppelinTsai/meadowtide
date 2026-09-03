@@ -57,13 +57,15 @@ export const LAYOUT = {
   // 整組往北挪 5 格(barn.z -2→-7、NORTH_CLIFF_Z、NORTH_TERRAIN_EXTENSION
   // 同步 -5/+5，見 scene-sky.ts)，挪出來的 5 排空間直接併回牧草地——
   // 南緣(z+height-1=13)刻意維持原值不動，只有北緣往外長，房子/農田/
-  // 池塘/果樹等其餘區域完全不受影響。北側平台(z<0)本來就是
+  // 池塘等其餘區域完全不受影響。北側平台(z<0)本來就是
   // isBlocked()(build-map.ts)特別放行的可走區域，不需要真的擴張
   // tiles 陣列本身。
+  // 2026-09-04：果園(orchard)跟東側海面(build-map.ts 的 minZ)這次補一起
+  // 往北移/擴，見各自欄位旁的註解。
   pasture: { x: 17, z: -7, width: 15, height: 21 }, // 延伸到小屋左右，外緣由渲染做不規則化
   orchard: {
     x: 28,
-    z: -1,
+    z: -1 - 5, // 2026-09-04 跟牧草地北擴同一批，果園也往北移 5 格
     columns: 3,
     rows: 4,
     spacingX: 2,
