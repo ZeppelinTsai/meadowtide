@@ -44,11 +44,16 @@ import { FACING_ANGLE } from "./humanoid";
 // ==============================================================
 
 // 窗口用絕對 elapsed 表示，跟 day2-morning-event.ts 的
-// DAY_TWO_MORNING_WINDOW_START/END 同一套算法："第三天"顯示給玩家看
-// 是 currentDay+1(見 save-slot-ui.ts 的 slotSummaryText())，currentDay
-// 本身 0-indexed，所以"第三天"＝currentDay===2。
-export const DAY_THREE_MORNING_WINDOW_START = dayLength * (2 + 10 / 24);
-export const DAY_THREE_MORNING_WINDOW_END = dayLength * (2 + 10.5 / 24);
+// DAY_TWO_MORNING_WINDOW_START/END 同一套算法。2026-09-04 Zeppelin
+// 調整：原本排在"第三天"10:00，改成提前到"第二天"接近尾聲的 15:00——
+// 避免變成「每天早上固定巡兩隻村民」的公式化節奏(這正是 Zeppelin 原始
+// 劇本裡自己吐槽的那個問題)。"第二天"顯示給玩家看是 currentDay+1(見
+// save-slot-ui.ts 的 slotSummaryText())，currentDay 本身 0-indexed，
+// 所以"第二天"＝currentDay===1，不是 0(那會變成"第一天")。檔名/變數
+// 沿用 dayThree／DAY_THREE 前綴不改，避免牽動一整串既有匯出名稱，純粹
+// 是命名跟劇情時間點暫時對不上，不影響行為。
+export const DAY_THREE_MORNING_WINDOW_START = dayLength * (1 + 15 / 24);
+export const DAY_THREE_MORNING_WINDOW_END = dayLength * (1 + 15.5 / 24);
 
 // due 旗標的道理跟 dayTwoMorningEvent.due 完全一樣(見該處註解)：睡覺/N
 // 鍵快轉一次跳過整個窗口時，靠 game-clock.ts 比較「這次前進的 elapsed
@@ -65,7 +70,7 @@ export function canStartDayThreeMorningEvent(): boolean {
   if (dialogQueue.length || gameState.cutsceneActive) return false;
   if (dayThreeMorningEvent.due) return true;
   const hour = gameState.currentPhase * TIME_CONFIG.gameHoursPerDay;
-  return gameState.currentDay === 2 && hour >= 10 && hour < 10.5;
+  return gameState.currentDay === 1 && hour >= 15 && hour < 15.5;
 }
 
 // 存讀檔用：跟 resetDayTwoMorningEvent() 同一個理由——萬一存檔當下
