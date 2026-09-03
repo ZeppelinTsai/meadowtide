@@ -9,7 +9,7 @@
 | item id (`FlowerSpeciesId`) | 中文名稱 | 對應顏料色 | 花頭造型 |
 |---|---|---|---|
 | `wildDaisy` | 白雛菊 | 白 | 黃色花心圓盤 + 細長白色花瓣，扁平放射狀 |
-| `redPoppy` | 紅罌粟花 | 紅 | 4 片大紅花瓣呈杯狀微捲 + 深色花心 |
+| `redPoppy` | 朱紅花 | 紅 | 4 片大紅花瓣呈杯狀微捲 + 深色花心 |
 | `dandelion` | 蒲公英 | 黃 | 密集細瘦黃色花瓣，比雛菊密、微拱起 |
 | `blueDayflower` | 藍露草 | 藍 | 兩片大藍花瓣朝上 + 一片小花瓣朝下，明顯不對稱 |
 | `pinkWoodSorrel` | 粉紅酢漿草 | 粉 | 5 片小粉花瓣的花 + 3 片心形葉 |
@@ -37,7 +37,7 @@
 |---|---|---|---|---|
 | 生活區山腳 | `LAYOUT.livingArea.gatherZone`（zone=`mountainSide`） | 高密度 | 3 | 白雛菊、蒲公英 |
 | 山區平台1 | `LAYOUT.mountain.foot` | 中密度 | 3 | 白雛菊、粉紅酢漿草 |
-| 山區平台2 | `LAYOUT.mountain.waist` | 中密度 | 3 | 蒲公英、紅罌粟花、粉紅酢漿草、藍露草 |
+| 山區平台2 | `LAYOUT.mountain.waist` | 中密度 | 3 | 蒲公英、朱紅花、粉紅酢漿草、藍露草 |
 
 每個節點的物種在每次刷新時從對應池子隨機挑一個（`FLOWER_ZONE_SPECIES`/`FLOWER_NODES_PER_ZONE`，都是 `game-state.ts` 內未匯出的模組常數，只給 `refreshGatherNodes()` 自己用），不是固定配置。
 

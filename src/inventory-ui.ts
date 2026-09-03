@@ -55,7 +55,7 @@ const INVENTORY_DESCRIPTIONS: Record<string, string> = {
   starCrystal: "帶有星光的稀有晶礦。",
   godCrystal: "蘊含特殊力量的珍貴晶礦。",
   wildDaisy: "山腳與山區平台常見的白色小花。",
-  redPoppy: "鮮紅醒目的野生罌粟花。",
+  redPoppy: "鮮紅醒目的野生朱紅花。",
   dandelion: "黃色花瓣密集的蒲公英。",
   blueDayflower: "只在山區高處看得到的藍色野花。",
   pinkWoodSorrel: "帶心形葉片的粉紅酢漿草花。",

@@ -26,7 +26,7 @@ export interface FlowerSpeciesDefinition {
 
 export const FLOWER_SPECIES: readonly FlowerSpeciesDefinition[] = [
   { id: "wildDaisy", label: "白雛菊", pigmentColor: "白" },
-  { id: "redPoppy", label: "紅罌粟花", pigmentColor: "紅" },
+  { id: "redPoppy", label: "朱紅花", pigmentColor: "紅" },
   { id: "dandelion", label: "蒲公英", pigmentColor: "黃" },
   { id: "blueDayflower", label: "藍露草", pigmentColor: "藍" },
   { id: "pinkWoodSorrel", label: "粉紅酢漿草", pigmentColor: "粉" },
@@ -174,7 +174,7 @@ function makeWildDaisyHead(): THREE.Group {
 }
 
 // --------------------------------------------------------------
-// 紅罌粟花——4 片大紅花瓣呈杯狀微捲 + 深色花心。
+// 朱紅花——4 片大紅花瓣呈杯狀微捲 + 深色花心。
 // --------------------------------------------------------------
 function makeRedPoppyHead(): THREE.Group {
   const g = new THREE.Group();

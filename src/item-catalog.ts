@@ -53,7 +53,7 @@ export const BASIC_ITEMS: readonly ItemDefinition[] = [
   // 野花——5 個物種各自獨立 item id，未來顏料/染色系統直接對應這裡，
   // 見 docs/decisions/wildflower-gathering-system.md。
   { id: "wildDaisy", label: "白雛菊", edible: false },
-  { id: "redPoppy", label: "紅罌粟花", edible: false },
+  { id: "redPoppy", label: "朱紅花", edible: false },
   { id: "dandelion", label: "蒲公英", edible: false },
   { id: "blueDayflower", label: "藍露草", edible: false },
   { id: "pinkWoodSorrel", label: "粉紅酢漿草", edible: false },

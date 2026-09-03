@@ -49,7 +49,7 @@ const SYMBOLS: Record<string, string> = {
   wood: "木",
   stone: "石",
   wildDaisy: "雛",
-  redPoppy: "罌",
+  redPoppy: "朱",
   dandelion: "蒲",
   blueDayflower: "露",
   pinkWoodSorrel: "酢",

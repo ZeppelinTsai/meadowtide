@@ -1033,7 +1033,7 @@ export const MUSHROOM_NODES_PER_ZONE = 1;
 // 生活區山腳(高密度)/山區平台1(中密度)/山區平台2(中密度)各 3 節點。
 // 2026-09-01 拿掉 summit(山頂已經有神社/鳥居/長椅等地標，Zeppelin 反饋
 // 野花節點會被擋到，乾脆不放)：藍露草原本是 summit 唯一產地，改併進
-// waist(山區平台2)的物種池，跟紅罌粟花一起、不單獨開新區。每個節點的
+// waist(山區平台2)的物種池，跟朱紅花一起、不單獨開新區。每個節點的
 // 物種在刷新時從對應池子隨機挑一個，不是固定配置。
 const FLOWER_ZONE_SPECIES: Record<
   "mountainSide" | "foot" | "waist",
