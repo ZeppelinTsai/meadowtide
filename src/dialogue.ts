@@ -204,6 +204,15 @@ export function renderDialogLine(line) {
   const nextCgId = line.cg || null;
   const previousCgId = currentCgId;
   const isNewCg = Boolean(nextCgId) && nextCgId !== previousCgId;
+  // 2026-09-05 Zeppelin 反饋：差分切換瞬間會先看到下一句文字才被隱藏鍵
+  // 蓋掉。這裡把「觸發隱藏」提到「寫入新文字」之前執行，搭配上面
+  // setDialogUiVisualHidden 的 instant 模式，讓對話框在新文字寫進 DOM
+  // 的當下就已經是 opacity:0，不會有任何一格閃現的機會。
+  if (isNewCg) {
+    holdDialogUiHiddenForCg(
+      previousCgId ? CG_DIFFERENTIAL_HOLD_MS : CG_FIRST_REVEAL_HOLD_MS,
+    );
+  }
   dialogTextEl.textContent = translateText(line.text);
   setDialogCg(nextCgId);
   setDialogPortrait(line.hidePortrait ? null : line.speaker || null);
@@ -216,16 +225,6 @@ export function renderDialogLine(line) {
     dialogNameEl.style.display = "block";
   } else {
     dialogNameEl.style.display = "none";
-  }
-  // 2026-09-05 Zeppelin：CG 第一次出現/換差分時，強制先讓玩家看一段
-  // 「乾淨」的全螢幕 CG，對話框自己延後浮現，不是靠玩家自己想到去按
-  // 隱藏鍵。沿用同一套 dialogUiPeek 機制：自動觸發隱藏、倒數結束後
-  // 自動還原；玩家等不及的話，這段等待期間做任何操作一樣會提前還原
-  // (見 holdDialogUiHiddenForCg() 與 input-save.ts 的全域監聽)。
-  if (isNewCg) {
-    holdDialogUiHiddenForCg(
-      previousCgId ? CG_DIFFERENTIAL_HOLD_MS : CG_FIRST_REVEAL_HOLD_MS,
-    );
   }
 }
 export function closeDialogUi() {
@@ -251,10 +250,26 @@ export function closeDialogUi() {
 // 順便吃掉那次輸入，不會同時又被當成「按 E 繼續」處理掉一句對話)。
 // ==============================================================
 export let dialogUiTemporarilyHidden = false;
-function setDialogUiVisualHidden(hidden: boolean) {
+// instant=true 用在 CG 自動觸發隱藏(見 holdDialogUiHiddenForCg)：先加上
+// dialogUiPeek--instant 關掉 transition，再切 dialogUiPeek，強制瀏覽器
+// 用這一輪就套用 opacity:0(中間插一次 offsetHeight 讀取逼出同步重排)，
+// 而不是照原本 0.25s 淡出——不然差分切換那瞬間，新文字其實已經寫進
+// DOM、只是還在淡出動畫途中，玩家會先閃一下看到才被蓋掉。玩家手動按
+// 隱藏鍵/Esc/右鍵(instant 預設 false)維持原本平滑淡出手感不變。
+function setDialogUiVisualHidden(hidden: boolean, instant = false) {
   dialogUiTemporarilyHidden = hidden;
+  if (instant) {
+    dialogEl.classList.add("dialogUiPeek--instant");
+    dialogChoicesEl.classList.add("dialogUiPeek--instant");
+    void dialogEl.offsetHeight; // 強制重排，逼瀏覽器先吃到「沒有 transition」這件事
+  }
   dialogEl.classList.toggle("dialogUiPeek", hidden);
   dialogChoicesEl.classList.toggle("dialogUiPeek", hidden);
+  if (instant) {
+    void dialogEl.offsetHeight; // 逼這次瞬間 opacity:0 先套用，才移除 instant class
+    dialogEl.classList.remove("dialogUiPeek--instant");
+    dialogChoicesEl.classList.remove("dialogUiPeek--instant");
+  }
 }
 export function toggleDialogUiPeek() {
   setDialogUiVisualHidden(!dialogUiTemporarilyHidden);
@@ -301,7 +316,7 @@ const CG_DIFFERENTIAL_HOLD_MS = 1200;
 let dialogUiAutoHoldToken = 0;
 function holdDialogUiHiddenForCg(ms: number) {
   const token = ++dialogUiAutoHoldToken;
-  setDialogUiVisualHidden(true);
+  setDialogUiVisualHidden(true, true);
   window.setTimeout(() => {
     // 玩家自己提前用任何操作還原掉的話，dialogUiTemporarilyHidden 早就
     // 是 false 了；等待期間又切到下一輪 CG 的話 token 也對不上——這兩種

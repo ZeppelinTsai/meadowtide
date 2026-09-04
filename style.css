@@ -390,6 +390,17 @@ body.cutscene-presentation #hud {
   pointer-events: none;
   transition: opacity 0.25s ease;
 }
+/* 2026-09-05 Zeppelin 反饋：CG 差分切換瞬間會先閃一下下一句文字，
+   才被隱藏鍵蓋掉——因為上面這個 transition 是「淡出」，切換的那 0.25s
+   之間新文字其實已經寫進 DOM、只是正在淡出途中，玩家眼睛還是看得到。
+   CG 自動觸發的隱藏(holdDialogUiHiddenForCg)改用這個 instant 版本，
+   在同一個 tick 內強制沒有過渡地瞬間藏起來，等新文字寫入時對話框早就
+   opacity:0 了；玩家手動按隱藏鍵/Esc/右鍵則維持原本平滑淡出，體感
+   不變。 */
+#dialog.dialogUiPeek--instant,
+#dialogChoices.dialogUiPeek--instant {
+  transition: none !important;
+}
 /* 2026-09-05 Zeppelin 要求：外觀盡量比照 #dialogName(人名牌)，一樣是
    貼在 #dialog 外面、bottom:100% 的「小標籤」，只是換到右上角(right
    而不是 left)，跟名牌左右對稱。字級用同一組 cqh 公式，保證跟名牌／
