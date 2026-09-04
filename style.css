@@ -375,6 +375,35 @@ body.cutscene-presentation #hud {
   gap: 15px;
   box-sizing: border-box;
 }
+/* 對話框「暫時隱藏」——見 dialogue.ts toggleDialogUiPeek() 的完整說明。
+   用 opacity+pointer-events 而不是 display:none，淡出/淡入才有過渡；
+   隱藏鍵本身是 #dialog 的子元素，一起淡出後自然變得點不到，玩家只能
+   靠「做任何操作」(input-save.ts 的全域監聽)還原，不會卡在藏起來的
+   狀態出不來。 */
+#dialog.dialogUiPeek,
+#dialogChoices.dialogUiPeek {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s ease;
+}
+#dialogHideToggle {
+  position: absolute;
+  top: 8px;
+  right: 10px;
+  z-index: 4;
+  font: inherit;
+  font-size: 15px;
+  color: rgba(245, 197, 66, 0.75);
+  background: rgba(15, 15, 20, 0.7);
+  border: 1px solid rgba(245, 197, 66, 0.5);
+  border-radius: 999px;
+  padding: 4px 14px;
+  cursor: pointer;
+}
+#dialogHideToggle:hover {
+  color: #f5c542;
+  border-color: #f5c542;
+}
 .dialogChoiceBtn {
   font: inherit;
   font-size: 22px;

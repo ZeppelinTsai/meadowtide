@@ -142,6 +142,7 @@ import {
   handleChoiceDigitKey,
   advanceChoicePage,
   resolveChoice,
+  restoreDialogUiVisibility,
 } from "./dialogue";
 import {
   loadMap,
@@ -766,6 +767,34 @@ export function loadGame(
 }
 (window as any).saveGame = saveGame;
 (window as any).loadGame = loadGame;
+
+// 對話框「暫時隱藏」還原——見 dialogue.ts toggleDialogUiPeek() 的完整
+// 說明。捕捉階段(capture:true)、且是這個檔案第一個註冊的監聽，確保
+// 玩家藏起對話框後，不管接下來按什麼鍵/點哪裡，這裡都搶先跑到、把
+// 對話框還原、並吃掉這次輸入(preventDefault+stopImmediatePropagation)
+// ——不會讓同一次按鍵「還原了對話框」又「順便被當成 E 推進了一句
+// 對話」，那樣玩家等於平白錯過一句台詞。只要沒有處於隱藏狀態，
+// restoreDialogUiVisibility() 直接回傳 false、完全不影響任何既有輸入
+// 流程。
+addEventListener(
+  "keydown",
+  (event) => {
+    if (!restoreDialogUiVisibility()) return;
+    event.preventDefault();
+    event.stopImmediatePropagation();
+  },
+  true,
+);
+addEventListener(
+  "pointerdown",
+  (event) => {
+    if (!restoreDialogUiVisibility()) return;
+    event.preventDefault();
+    event.stopImmediatePropagation();
+  },
+  true,
+);
+
 // 這個 keydown 區塊裡 F8／F4／F9／C 都是開發用熱鍵（序幕預覽、鏡頭調整
 // 模式、event-system 概念驗證、記錄鏡頭座標），一律用 import.meta.env.DEV
 // 擋掉——Vite 在 `npm run build` 產出的正式版裡這個值是 false，所以正式

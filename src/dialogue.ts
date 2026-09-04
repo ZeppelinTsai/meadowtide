@@ -22,6 +22,7 @@ export const dialogPortraitEl = document.getElementById(
 export const dialogPortraitPlaceholderEl = document.getElementById(
   "dialogPortraitPlaceholder",
 );
+export const dialogHideToggleEl = document.getElementById("dialogHideToggle");
 export const cgOverlayEl = document.getElementById("cgOverlay");
 export const cgImgEl = document.getElementById("cgImg") as HTMLImageElement;
 // 換差分用的第二張圖，平常疊在 cgImg 上面但透明——見 style.css #cgImgNext
@@ -212,6 +213,44 @@ export function closeDialogUi() {
   dialogNameEl.style.display = "none";
   setDialogPortrait(null);
   setDialogCg(null);
+  restoreDialogUiVisibility();
+}
+
+// ==============================================================
+// 對話框「暫時隱藏」——2026-09-05 Zeppelin 反饋：CG 全螢幕時，如果
+// 演出主體構圖偏下方，會被 #dialog(固定佔螢幕下方 30vh)擋住看不清楚。
+// 加一個貼在對話框右上角的隱藏鍵，玩家可以按一下把對話框(含名牌/
+// 立繪/繼續提示/選項面板)整組暫時藏起來看 CG 全貌；藏起來之後「做
+// 任何操作」(任一按鍵/點擊)都會自動還原，不用記得再按一次隱藏鍵，
+// 也不用做「按住看/放開還」那種容易誤觸的手感。這裡刻意只動 CSS
+// 顯示層級(dialogUiPeek class)，完全不碰 dialogQueue/advanceDialogSequence
+// 等對話狀態機——單純是「暫時別擋我的臉」，不是關掉對話。真正還原
+// 觸發點在 input-save.ts 的全域輸入監聽(捕捉階段跑在最前面，還原時
+// 順便吃掉那次輸入，不會同時又被當成「按 E 繼續」處理掉一句對話)。
+// ==============================================================
+export let dialogUiTemporarilyHidden = false;
+function setDialogUiVisualHidden(hidden: boolean) {
+  dialogUiTemporarilyHidden = hidden;
+  dialogEl.classList.toggle("dialogUiPeek", hidden);
+  dialogChoicesEl.classList.toggle("dialogUiPeek", hidden);
+}
+export function toggleDialogUiPeek() {
+  setDialogUiVisualHidden(!dialogUiTemporarilyHidden);
+}
+// 按鈕本身是 #dialog 的子元素，藏起來的同時自己也會跟著淡出、變得點
+// 不到——這是刻意的，後續只能靠「做任何操作」還原(見上面模組註解)，
+// 不用另外處理「再點一次按鈕」的還原路徑。stopPropagation 是避免這次
+// click 又被 window 上的全域指標監聽(input-save.ts)當成一般點擊處理。
+dialogHideToggleEl?.addEventListener("click", (event) => {
+  event.stopPropagation();
+  toggleDialogUiPeek();
+});
+// 回傳有沒有「真的做了還原」，方便呼叫端(input-save.ts)決定要不要把
+// 這次輸入吃掉、不再往下傳給「按 E 繼續」之類的一般對話推進邏輯。
+export function restoreDialogUiVisibility(): boolean {
+  if (!dialogUiTemporarilyHidden) return false;
+  setDialogUiVisualHidden(false);
+  return true;
 }
 export function showDialog(text) {
   const wasOpen = !(

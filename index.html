@@ -407,6 +407,12 @@
       <div id="dialogPortraitPlaceholder"></div>
       <div id="dialogText"></div>
       <div id="dialogContinue">按 E 繼續 ▾</div>
+      <!-- 2026-09-05：CG 全螢幕時演出主體構圖偏下會被這個框擋住，加一顆
+           右上角隱藏鍵讓玩家暫時把整個對話框藏起來看清楚；藏起來後做任何
+           操作(按鍵/點擊)都會自動還原，見 dialogue.ts toggleDialogUiPeek()。 -->
+      <button id="dialogHideToggle" type="button" aria-label="暫時隱藏對話框">
+        隱藏
+      </button>
     </div>
     <!-- 選項面板獨立在 #dialog 外面(不是內部子元素)：#dialog 有 transform，
          會讓內部 position:fixed 子元素的定位基準變成 #dialog 的 box 而不是

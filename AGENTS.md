@@ -72,6 +72,15 @@
   對話框的立繪/CG 載入都用 `Image().onerror` 偵測檔案存不存在，跟 BGM
   載入失敗的處理邏輯一樣：只在 console 警告、不中斷對話，圖檔還沒生成時
   版位就是空的，之後直接把 PNG 丟進資料夾就會自動生效，不用改程式碼。
+- **CG 構圖：演出主體不要放在畫面下半。** `#dialog` 對話框固定貼在螢幕
+  底部、佔高度 30vh，`#cgImg`/`#cgImgNext` 是 `object-fit:cover` 的全螢幕
+  CG（見 style.css `#cgOverlay` 一段），CG 一出現，對話框幾乎同時跟著蓋
+  上去——構圖如果把主體(臉、關鍵動作)畫在下半部，會直接被對話框擋住，
+  玩家根本來不及看清楚。2026-09-05 Zeppelin 反饋：生成/構圖新的 CG 時，
+  主體要放在畫面上半到三分之二之間，下半留給對話框蓋掉也沒差的背景/
+  留白。玩家端另外加了 `#dialogHideToggle`(對話框右上角「隱藏」鍵，見
+  dialogue.ts `toggleDialogUiPeek()`)可以暫時把對話框整組藏起來看 CG 全貌，
+  但那是補救手段，構圖本身還是要先避開下半部，不要依賴玩家自己去點隱藏。
 - **使用 npm**：`npm run dev` 啟動 Vite；`npm run build` 先跑 TypeScript
   檢查再建置；`npm run preview` 預覽產物。Three.js 固定為 npm 套件 `0.128.0`，
   不要改回 CDN，也不要使用高版本才有的 API。
