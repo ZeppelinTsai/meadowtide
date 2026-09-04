@@ -87,6 +87,12 @@ export const dayTwoMorningEvent = {
   // 兩回事，不會互相干擾。true 的時候 walkArtistToWaitSpot() 自己的
   // rAF 迴圈直接控制她的 mesh，包含呼叫 animateWalk()。
   artistSoloWalking: false,
+  // 2026-09-04：主角自己走一小段的旗標(walkPlayerTo())——跟上面
+  // artistSoloWalking 同一招，讓 game-loop.ts 主迴圈那段「每幀無條件
+  // 呼叫 animateWalk(gameState.player,...)/reapplyProloguePlayerY()」
+  // 的邏輯暫時讓路，不要跟 walkPlayerTo() 自己的 rAF 迴圈搶著改玩家
+  // 的 position/動畫，同一套「順移」問題見 game-loop.ts 對應註解。
+  playerSoloWalking: false,
 };
 
 // 窗口本身用絕對 elapsed 表示（day===1、hour∈[8,8.5)），跟
@@ -898,6 +904,16 @@ function walkPlayerTo(target: { x: number; z: number }, onDone: () => void) {
     return;
   }
   gameState.player.rotation.y = Math.atan2(dx, dz) + Math.PI;
+  // 2026-09-04 修正 Zeppelin 反饋「開頭演出主角驚嘆號那段是平移過去，
+  // 沒有正常走路」：問題不在這支函式本身(下面本來就有呼叫
+  // animateWalk())，而是 game-loop.ts 主迴圈每幀無條件呼叫
+  // animateWalk(gameState.player, gameState.isMoving, ...)——cutscene
+  // 期間 isMoving 停在進場前的舊值(通常是 false)，兩邊同一幀搶著改
+  // 手腳角度；還有 reapplyProloguePlayerY() 也會每幀把 Y 蓋回演出鎖
+  // 之前記的舊高度，蓋掉這裡剛算好的走路彈跳量。跟 walkArtistToWait
+  // Spot()/artistSoloWalking 同一招，設這個旗標讓主迴圈那兩段暫時
+  // 讓路，見 game-loop.ts 對應註解。
+  dayTwoMorningEvent.playerSoloWalking = true;
   // 跟 game-loop.ts 日常排程 NPC 同一個走路速度(1.6 格/秒)，走起來的
   // 節奏才會跟遊戲平常的走路速度一致，不會忽快忽慢。
   const speed = 1.6;
@@ -919,6 +935,7 @@ function walkPlayerTo(target: { x: number; z: number }, onDone: () => void) {
     if (t < 1) {
       requestAnimationFrame(step);
     } else {
+      dayTwoMorningEvent.playerSoloWalking = false;
       onDone();
     }
   }

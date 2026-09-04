@@ -536,7 +536,15 @@ export function animate(now) {
   // 室內與礦坑會暫停世界時間(gameState.elapsed)，但玩家仍能在場景內移動。
   // 走路若使用世界時間當相位，就會只平移、不擺手腳；視覺動畫改讀持續前進
   // 的 effectElapsed。是否播放仍由 isMoving 決定，選單／對話 dt=0 時不會踏步。
-  else
+  //
+  // 2026-09-04：dayTwoMorningEvent.playerSoloWalking 為真時整段跳過——
+  // day2-morning-event.ts 的 walkPlayerTo() 這時候正用它自己的 rAF
+  // 迴圈直接控制玩家 mesh(含呼叫 animateWalk())，這裡的 gameState.
+  // isMoving 在 cutscene 期間停在進場前的舊值(通常是 false)，兩邊同一
+  // 幀搶著改手腳角度，玩起來就是 Zeppelin 反饋的「開頭演出主角驚嘆號
+  // 那段是平移過去、沒有正常走路」——跟下面 artistSoloWalking 那段
+  // 「別插手」是同一套邏輯，只是這裡管的是玩家自己而不是 NPC。
+  else if (!dayTwoMorningEvent.playerSoloWalking)
     animateWalk(gameState.player, gameState.isMoving, gameState.effectElapsed);
   // 2026-08-26 第六輪反饋「主角剛落地是陷進碼頭的」——角色步行動畫與
   // animateSit() 都會直接覆寫 position.y 成走路/待機用的小幅 bob 值，
@@ -544,7 +552,12 @@ export function animate(now) {
   // 因此每幀都被蓋掉，看起來像整段演出都陷進場景。這裡蓋回去，是
   // no-op 除非 cutsceneActive 為真，見 prologue.ts 的
   // reapplyProloguePlayerY() 註解。
-  reapplyProloguePlayerY();
+  //
+  // 2026-09-04：同樣理由跳過 playerSoloWalking 期間——這裡會把 Y 蓋回
+  // cutsceneActive 設為 true 之前記的舊高度(lastPlayerY)，蓋掉
+  // walkPlayerTo() 自己剛算好的走路彈跳量+地形高度，跟上面 animateWalk
+  // 那段是同一顆蟲的另一半。
+  if (!dayTwoMorningEvent.playerSoloWalking) reapplyProloguePlayerY();
   // 序幕演出期間 Y 高度完全由 updatePrologueCutscene() 自己決定(甲板/
   // 跳板斜度都不是地形高度)，這裡跳過地形疊加，避免被拉回海平面/碼頭高度。
   if (!gameState.cutsceneActive) {
