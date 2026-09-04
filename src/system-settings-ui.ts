@@ -1,8 +1,20 @@
-import { gameSettings, toggleMasterMuted, updateSettings } from "./settings";
+import { gameSettings, toggleMasterMuted, updateSettings, SpeedLevel } from "./settings";
 import { showUiToast } from "./ui-toast";
 import { getLocale, setLocale, translateText } from "./i18n";
 
 const RESOLUTIONS = ["1280x720", "1600x900", "1920x1080"];
+// 2026-09-05 Zeppelin 要求：「播放速度」(對話自動播放，見 dialogue.ts
+// scheduleDialogAutoPlayAdvance)跟「行走速度」(見 game-loop.ts
+// WALK_SPEED_BY_LEVEL)這兩個新設定都用慢/一般/快三檔。刻意不透過
+// translateText()/ui-translations.ts 查表——那邊的 "一般" 這個詞已經被
+// 借去當「一般」設定分組標題翻成 "General" 用，兩邊語意不同(一個是
+// 「一般設定分組」，一個是「一般速度」)，共用同一個 key 查表在英日文
+// 版會顯示錯的字，這裡直接按目前語言給對照表，不會撞到既有翻譯。
+const SPEED_LEVEL_LABELS: Record<"zh" | "ja" | "en", Record<SpeedLevel, string>> = {
+  zh: { slow: "慢", normal: "一般", fast: "快" },
+  ja: { slow: "遅い", normal: "普通", fast: "速い" },
+  en: { slow: "Slow", normal: "Normal", fast: "Fast" },
+};
 
 function makeGroup(title: string) {
   const group = document.createElement("div");
@@ -242,7 +254,43 @@ export function mountSystemSettings(container: HTMLElement) {
       showUiToast("Controller", label);
     },
   );
-  controlGroup.append(controller);
+  const walkSpeedLabels = SPEED_LEVEL_LABELS[getLocale()];
+  const walkSpeed = makeCycleRow<SpeedLevel>(
+    translateText("行走速度"),
+    (["slow", "normal", "fast"] as SpeedLevel[]).map((level) => ({
+      value: level,
+      label: walkSpeedLabels[level],
+    })),
+    gameSettings.walkSpeed,
+    (walkSpeed, label) => {
+      updateSettings({ walkSpeed });
+      showUiToast(translateText("行走速度"), label);
+    },
+  );
+  controlGroup.append(controller, walkSpeed);
+
+  const dialogueGroup = makeGroup("對話");
+  const textSpeedLabels = SPEED_LEVEL_LABELS[getLocale()];
+  const textSpeed = makeCycleRow<SpeedLevel>(
+    translateText("播放速度"),
+    (["slow", "normal", "fast"] as SpeedLevel[]).map((level) => ({
+      value: level,
+      // 「快」對播放速度來說就是 Zeppelin 說的「直接顯示」──自動播放
+      // 讀完不停留、立刻推進下一句(見 dialogue.ts 的
+      // AUTO_PLAY_SPEED_MULTIPLIER)，這裡額外標註清楚，不是只顯示
+      // 「快」兩個字讓人猜。
+      label:
+        level === "fast"
+          ? `${textSpeedLabels[level]}（${translateText("直接顯示")}）`
+          : textSpeedLabels[level],
+    })),
+    gameSettings.textSpeed,
+    (textSpeed, label) => {
+      updateSettings({ textSpeed });
+      showUiToast(translateText("播放速度"), label);
+    },
+  );
+  dialogueGroup.append(textSpeed);
 
   const audioGroup = makeGroup("音量");
   const muteToggle = makeToggleRow(
@@ -260,6 +308,12 @@ export function mountSystemSettings(container: HTMLElement) {
     muteToggle,
   );
 
-  container.append(generalGroup, displayGroup, controlGroup, audioGroup);
+  container.append(
+    generalGroup,
+    displayGroup,
+    controlGroup,
+    dialogueGroup,
+    audioGroup,
+  );
   return container.querySelector<HTMLElement>("button, input, [data-cycle-control]");
 }

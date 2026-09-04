@@ -356,8 +356,12 @@ body.cutscene-presentation #hud {
     left: 12px;
     padding: 5px 14px;
   }
-  #dialogHideToggle {
+  #dialogTopRightControls {
     right: 12px;
+    gap: 6px;
+  }
+  #dialogHideToggle,
+  #dialogAutoPlayToggle {
     padding: 5px 14px;
   }
   #dialogContinue {
@@ -405,11 +409,20 @@ body.cutscene-presentation #hud {
    貼在 #dialog 外面、bottom:100% 的「小標籤」，只是換到右上角(right
    而不是 left)，跟名牌左右對稱。字級用同一組 cqh 公式，保證跟名牌／
    內文等比例縮放、也符合本專案「UI 文字最終字級不得小於 18px」的
-   規定(見 AGENTS.md)。 */
-#dialogHideToggle {
+   規定(見 AGENTS.md)。「自動播放」鍵加在「暫時隱藏」左邊，兩顆共用
+   #dialogTopRightControls 這個 flex 容器統一定位，不用個別算寬度、
+   互相對齊靠 gap 就好。 */
+#dialogTopRightControls {
   position: absolute;
   bottom: 100%;
   right: 18px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  z-index: 3;
+}
+#dialogHideToggle,
+#dialogAutoPlayToggle {
   font: inherit;
   font-size: 20px;
   font-size: calc((100cqh - 40px) / 4.11);
@@ -419,15 +432,25 @@ body.cutscene-presentation #hud {
   padding: 6px 20px;
   color: #f5c542;
   cursor: pointer;
-  z-index: 3;
 }
-#dialogHideToggle:hover {
+#dialogHideToggle:hover,
+#dialogAutoPlayToggle:hover {
   background: rgba(0, 0, 0, 0.9);
+}
+/* 自動播放開啟時反白(金底深字)，一眼就能看出目前是「開」還是「關」，
+   跟系統設定裡開關列(makeToggleRow 的 .is-on)同一套視覺語言。 */
+#dialogAutoPlayToggle.is-on {
+  background: #f5c542;
+  color: #1a1408;
+}
+#dialogAutoPlayToggle.is-on:hover {
+  background: #ffd35c;
 }
 /* 快捷鍵提示(Esc/右鍵，或手把按鍵字母)——維持跟按鈕本體同一個字級，
    不縮小字體，避免違反本專案「UI 文字最終字級不得小於 18px」的規定
    (見 AGENTS.md)，只用透明度做出次要文字的視覺區隔。 */
-#dialogHideToggleHint {
+#dialogHideToggleHint,
+#dialogAutoPlayToggleHint {
   opacity: 0.7;
 }
 .dialogChoiceBtn {

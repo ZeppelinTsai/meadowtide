@@ -145,6 +145,7 @@ import {
   restoreDialogUiVisibility,
   toggleDialogUiPeek,
   dialogUiTemporarilyHidden,
+  toggleDialogAutoPlay,
 } from "./dialogue";
 import {
   loadMap,
@@ -846,6 +847,28 @@ addEventListener(
       return;
     event.preventDefault();
     event.stopPropagation();
+  },
+  true,
+);
+// 對話「自動播放」開關——2026-09-05 Zeppelin 要求，鍵鼠用 P 鍵(手把是
+// 互動鍵旁邊那顆，見 gamepad-input.ts 的 wantsAutoPlayToggle)，跟畫面
+// 右上角的按鈕(dialogue.ts 的 dialogAutoPlayToggleEl click 監聽)三路
+// 同一個 toggleDialogAutoPlay()。只在連續對話進行中(dialogQueue 有
+// 內容)且沒有二選一提示時才生效，避免跟其他場景下的 P 鍵用途(目前沒
+// 有，但保留同樣的守門條件跟其他對話快捷鍵一致)衝突。
+addEventListener(
+  "keydown",
+  (event) => {
+    if (
+      event.key.toLowerCase() !== "p" ||
+      event.repeat ||
+      activeChoice ||
+      !dialogQueue.length
+    )
+      return;
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    toggleDialogAutoPlay();
   },
   true,
 );

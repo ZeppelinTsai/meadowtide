@@ -12,12 +12,13 @@ import {
   isNpcIdentityId,
   setNpcNameStage,
 } from "./npc-name-reveal";
-import { cancelButtonPromptFor } from "./context-interaction";
+import { cancelButtonPromptFor, gamepadPromptFor } from "./context-interaction";
 import {
   getLastInputDevice,
   getEffectiveControllerLayout,
   onInputPresentationChanged,
 } from "./input-device";
+import { gameSettings } from "./settings";
 
 export const dialogEl = document.getElementById("dialog");
 export const dialogTextEl = document.getElementById("dialogText");
@@ -31,6 +32,12 @@ export const dialogPortraitPlaceholderEl = document.getElementById(
 export const dialogHideToggleEl = document.getElementById("dialogHideToggle");
 export const dialogHideToggleHintEl = document.getElementById(
   "dialogHideToggleHint",
+);
+export const dialogAutoPlayToggleEl = document.getElementById(
+  "dialogAutoPlayToggle",
+);
+export const dialogAutoPlayToggleHintEl = document.getElementById(
+  "dialogAutoPlayToggleHint",
 );
 export const cgOverlayEl = document.getElementById("cgOverlay");
 export const cgImgEl = document.getElementById("cgImg") as HTMLImageElement;
@@ -182,6 +189,7 @@ export function normalizeDialogLine(line) {
 }
 export function renderDialogLine(line) {
   clearComicCueAdvanceTimer();
+  clearDialogAutoPlayTimer();
   const hideDialogText = !shouldDisplayDialogText(line);
   showComicCue(line.comicCue || null);
   if (hideDialogText) {
@@ -208,11 +216,12 @@ export function renderDialogLine(line) {
   // 蓋掉。這裡把「觸發隱藏」提到「寫入新文字」之前執行，搭配上面
   // setDialogUiVisualHidden 的 instant 模式，讓對話框在新文字寫進 DOM
   // 的當下就已經是 opacity:0，不會有任何一格閃現的機會。
-  if (isNewCg) {
-    holdDialogUiHiddenForCg(
-      previousCgId ? CG_DIFFERENTIAL_HOLD_MS : CG_FIRST_REVEAL_HOLD_MS,
-    );
-  }
+  const cgHoldMs = isNewCg
+    ? previousCgId
+      ? CG_DIFFERENTIAL_HOLD_MS
+      : CG_FIRST_REVEAL_HOLD_MS
+    : 0;
+  if (isNewCg) holdDialogUiHiddenForCg(cgHoldMs);
   dialogTextEl.textContent = translateText(line.text);
   setDialogCg(nextCgId);
   setDialogPortrait(line.hidePortrait ? null : line.speaker || null);
@@ -226,9 +235,16 @@ export function renderDialogLine(line) {
   } else {
     dialogNameEl.style.display = "none";
   }
+  // 2026-09-05 Zeppelin 要求：自動播放——開著的話這句話停留夠久(至少
+  // 蓋過上面的 CG 強制停留，見 cgHoldMs)之後自動推進下一句，不用一直
+  // 按 E/點擊。只在「連續對話」(dialogQueue 有內容)才生效，單句
+  // showDialog() 不會自動關掉；二選一提示(activeChoice)是另一套獨立
+  // 狀態，不會被這裡影響，會照常停下來等玩家選。
+  if (dialogQueue.length) scheduleDialogAutoPlayAdvance(line, cgHoldMs);
 }
 export function closeDialogUi() {
   clearComicCueAdvanceTimer();
+  clearDialogAutoPlayTimer();
   showComicCue(null);
   dialogEl.style.display = "none";
   dialogNameEl.style.display = "none";
@@ -325,6 +341,94 @@ function holdDialogUiHiddenForCg(ms: number) {
     setDialogUiVisualHidden(false);
   }, ms);
 }
+
+// ==============================================================
+// 對話「自動播放」——2026-09-05 Zeppelin 要求：加在暫時隱藏鍵左邊的
+// 另一顆按鈕，開啟後每句話停留一段可閱讀時間就自動推進，不用一直按
+// E/點擊。這遊戲沒有打字機逐字動畫(文字整句瞬間出現)，所以這裡抓的
+// 純粹是「這句話大概要多久看完」，玩家隨時可以手動按 E/點擊提前跳過
+// (advanceDialogSequence 本來就會在下一次 renderDialogLine 把這裡的
+// 計時器清掉，見 clearDialogAutoPlayTimer)。跟系統設定的「播放速度」
+// (system-settings-ui.ts，慢/一般/快)連動，「快」是玩家說的「直接
+// 顯示」──不停留、讀完立刻自動推進，但仍然會被下面 Math.max() 卡住，
+// 不會提早蓋過 CG 強制停留(cgHoldMs)，CG 停留時間跟閱讀速度是兩件事。
+// ==============================================================
+export let dialogAutoPlayEnabled = false;
+let dialogAutoPlayTimer = null;
+function clearDialogAutoPlayTimer() {
+  if (dialogAutoPlayTimer) {
+    clearTimeout(dialogAutoPlayTimer);
+    dialogAutoPlayTimer = null;
+  }
+}
+const AUTO_PLAY_BASE_MS = 700; // 起始停頓，句子再短也留一點反應時間
+const AUTO_PLAY_PER_CHAR_MS = 65; // 每字概抓的閱讀時間(不分中日英文細算)
+const AUTO_PLAY_MAX_MS = 6000; // 停太久不合理，超長句子封頂
+const AUTO_PLAY_SPEED_MULTIPLIER: Record<typeof gameSettings.textSpeed, number> = {
+  slow: 1.6,
+  normal: 1,
+  fast: 0, // 玩家說的「直接顯示」：讀完不停留，立刻自動推進
+};
+function autoPlayReadDelayMs(displayedText: string) {
+  const multiplier = AUTO_PLAY_SPEED_MULTIPLIER[gameSettings.textSpeed] ?? 1;
+  if (multiplier <= 0) return 0;
+  const raw = AUTO_PLAY_BASE_MS + displayedText.length * AUTO_PLAY_PER_CHAR_MS;
+  return Math.min(AUTO_PLAY_MAX_MS, raw * multiplier);
+}
+function scheduleDialogAutoPlayAdvance(line: unknown, holdMs: number) {
+  clearDialogAutoPlayTimer();
+  if (!dialogAutoPlayEnabled || !dialogQueue.length) return;
+  const delay = Math.max(holdMs, autoPlayReadDelayMs(dialogTextEl.textContent || ""));
+  dialogAutoPlayTimer = window.setTimeout(() => {
+    dialogAutoPlayTimer = null;
+    // 等待期間玩家可能自己手動推進了(dialogQueue[dialogIndex] 已經換成
+    // 別行)，或整段對話已經結束關閉、或自動播放中途被關掉——這幾種情況
+    // 都不該再推進一次。
+    const isCurrentLine =
+      dialogQueue.length > 0 && dialogQueue[dialogIndex] === line;
+    if (!dialogAutoPlayEnabled || !isCurrentLine) return;
+    advanceDialogSequence();
+  }, delay);
+}
+function syncDialogAutoPlayToggleVisual() {
+  dialogAutoPlayToggleEl?.classList.toggle("is-on", dialogAutoPlayEnabled);
+  dialogAutoPlayToggleEl?.setAttribute("aria-pressed", String(dialogAutoPlayEnabled));
+}
+export function toggleDialogAutoPlay() {
+  dialogAutoPlayEnabled = !dialogAutoPlayEnabled;
+  syncDialogAutoPlayToggleVisual();
+  if (!dialogAutoPlayEnabled) {
+    clearDialogAutoPlayTimer();
+  } else if (dialogQueue.length) {
+    // 對話講到一半才開啟自動播放：幫「目前正顯示的這句」補上計時器，
+    // 不用等玩家按一次 E 才開始生效。這個當下不會有新的 CG 差分要等
+    // (isNewCg 只在 renderDialogLine 剛渲染那句話時才有意義)，只算
+    // 純閱讀時間即可。
+    scheduleDialogAutoPlayAdvance(dialogQueue[dialogIndex], 0);
+  }
+}
+dialogAutoPlayToggleEl?.addEventListener("click", (event) => {
+  event.stopPropagation();
+  toggleDialogAutoPlay();
+});
+// 快捷鍵提示比照 renderDialogHideToggleHint()：鍵鼠顯示 P 鍵，手把顯示
+// 對應按鍵字母——沿用「secondary」(互動鍵 R)那顆實體鍵的對照表，因為
+// 這顆鍵在對話進行中原本就不做事(見 context-interaction-ui.ts 的
+// blocked() 檔在 dialogQueue.length > 0 時擋掉所有情境互動)，借用剛好
+// 不會撞到任何既有功能，見 gamepad-input.ts 的 wantsAutoPlayToggle。
+function renderDialogAutoPlayToggleHint() {
+  if (!dialogAutoPlayToggleHintEl) return;
+  const device = getLastInputDevice();
+  if (device === "gamepad") {
+    const layout = getEffectiveControllerLayout();
+    dialogAutoPlayToggleHintEl.textContent = `(${gamepadPromptFor("secondary", layout)})`;
+    return;
+  }
+  dialogAutoPlayToggleHintEl.textContent = "(P)";
+}
+renderDialogAutoPlayToggleHint();
+onInputPresentationChanged(renderDialogAutoPlayToggleHint);
+
 export function showDialog(text) {
   const wasOpen = !(
     dialogEl.style.display === "none" || !dialogEl.style.display

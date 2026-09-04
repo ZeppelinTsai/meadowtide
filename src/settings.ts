@@ -1,3 +1,5 @@
+export type SpeedLevel = "slow" | "normal" | "fast";
+
 export type GameSettings = {
   masterVolume: number;
   musicVolume: number;
@@ -6,6 +8,13 @@ export type GameSettings = {
   windowResolution: string;
   locale: "zh" | "ja" | "en";
   controllerLayout: "auto" | "nintendo" | "xbox";
+  // 2026-09-05 Zeppelin 要求：對話自動播放的「讀完停留多久才自動推進下
+  // 一句」快慢(見 dialogue.ts 的 autoPlayReadDelayMs)，跟主角走路速度
+  // (見 game-loop.ts 的 WALK_SPEED_BY_LEVEL)，各自獨立設定、互不影響。
+  // "fast" 對 textSpeed 來說是使用者說的「直接顯示」──不停留、讀完立刻
+  // 自動推進，不是加快打字機效果(這遊戲本來就沒有打字機逐字動畫)。
+  textSpeed: SpeedLevel;
+  walkSpeed: SpeedLevel;
 };
 
 const STORAGE_KEY = "meadowtide.settings";
@@ -17,7 +26,10 @@ const DEFAULTS: GameSettings = {
   windowResolution: "1280x720",
   locale: "zh",
   controllerLayout: "auto",
+  textSpeed: "normal",
+  walkSpeed: "normal",
 };
+const SPEED_LEVELS: SpeedLevel[] = ["slow", "normal", "fast"];
 const listeners = new Set<(settings: GameSettings) => void>();
 
 function clampVolume(value: unknown, fallback: number) {
@@ -43,6 +55,12 @@ function loadSettings(): GameSettings {
       controllerLayout: ["auto", "nintendo", "xbox"].includes(saved.controllerLayout)
         ? saved.controllerLayout
         : DEFAULTS.controllerLayout,
+      textSpeed: SPEED_LEVELS.includes(saved.textSpeed)
+        ? saved.textSpeed
+        : DEFAULTS.textSpeed,
+      walkSpeed: SPEED_LEVELS.includes(saved.walkSpeed)
+        ? saved.walkSpeed
+        : DEFAULTS.walkSpeed,
     };
   } catch {
     return { ...DEFAULTS };

@@ -4,7 +4,7 @@ import {
   isUiNavigationActive,
 } from "./ui-focus-navigation";
 import { markGamepadInput } from "./input-device";
-import { dialogQueue } from "./dialogue";
+import { dialogQueue, activeChoice, toggleDialogAutoPlay } from "./dialogue";
 
 // ==============================================================
 // 搖桿輸入(移動 + 互動鍵)——2026-08-26。
@@ -71,6 +71,7 @@ const prevQuickDpad = { up: false, down: false, left: false, right: false };
 let prevUiConfirm = false;
 let prevUiTransfer = false;
 let prevCancelButton = false;
+let prevAutoPlayToggleButton = false;
 let prevZoomIn = false;
 let prevZoomOut = false;
 
@@ -103,6 +104,7 @@ function releaseAllGamepadInputs() {
   rightStickY = 0;
   prevUiConfirm = false;
   prevCancelButton = false;
+  prevAutoPlayToggleButton = false;
   prevZoomIn = false;
   prevZoomOut = false;
   prevRightStickButton = false;
@@ -291,6 +293,19 @@ export function pollGamepad() {
     if (!cancelButton && prevCancelButton) dispatchKey("keyup", "Escape");
   }
   prevCancelButton = cancelButton;
+  // 2026-09-05：對話「自動播放」開關(dialogue.ts toggleDialogAutoPlay)
+  // 借用互動鍵旁邊那顆按鈕(button[3]，Xbox Y / Nintendo X，跟鍵盤 R 同一
+  // 顆邏輯鍵)——這顆鍵在對話進行中原本就不做事：context-interaction-ui.ts
+  // 的 blocked() 在 dialogQueue.length > 0 時會擋掉所有情境互動，包含 R
+  // 觸發的 secondary 互動，所以借來用不會撞到既有功能。只在連續對話
+  // (dialogQueue 有內容)且沒有二選一提示時才生效，跟上面 Escape 隱藏鍵
+  // 同樣的邊緣觸發寫法(只在按下那一刻觸發一次，不是按著就一直切換)。
+  const autoPlayToggleButton = !!pad.buttons[3]?.pressed;
+  const wantsAutoPlayToggle = dialogQueue.length > 0 && !activeChoice;
+  if (wantsAutoPlayToggle && autoPlayToggleButton && !prevAutoPlayToggleButton) {
+    toggleDialogAutoPlay();
+  }
+  prevAutoPlayToggleButton = autoPlayToggleButton;
   syncKey("q", !!pad.buttons[8]?.pressed);
   syncKey("m", !!pad.buttons[10]?.pressed); // L3: map
 

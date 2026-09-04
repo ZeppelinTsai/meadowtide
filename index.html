@@ -407,15 +407,28 @@
       <div id="dialogPortraitPlaceholder"></div>
       <div id="dialogText"></div>
       <div id="dialogContinue">按 E 繼續 ▾</div>
-      <!-- 2026-09-05：CG 全螢幕時演出主體構圖偏下會被這個框擋住，加一顆
-           右上角隱藏鍵讓玩家暫時把整個對話框藏起來看清楚；藏起來後做任何
-           操作(按鍵/點擊)都會自動還原，見 dialogue.ts toggleDialogUiPeek()。
-           右鍵/Esc(手把是取消鍵)也能直接觸發，跟遊戲其他地方「取消」的
-           手感一致；旁邊的提示文字會依目前輸入裝置自動換成鍵盤/滑鼠或
-           手把按鍵，見 dialogue.ts renderDialogHideToggleHint()。 -->
-      <button id="dialogHideToggle" type="button" aria-label="暫時隱藏對話框">
-        隱藏 <span id="dialogHideToggleHint"></span>
-      </button>
+      <!-- 2026-09-05：右上角兩顆控制鍵，由左到右是「自動播放」跟
+           「暫時隱藏」，外觀共用同一套(比照 #dialogName 人名牌)樣式，見
+           style.css 的 #dialogTopRightControls。
+           自動播放：開啟後每句話停留一段可閱讀時間(依系統設定的「播放
+           速度」調整，見 system-settings-ui.ts)就自動推進下一句，不用
+           一直按 E/點擊；碰到二選一提示會照常停下來等玩家選。P 鍵/
+           手把 R 鍵(對應互動鍵旁邊那顆，見下方提示)可以切換，見
+           dialogue.ts toggleDialogAutoPlay()。
+           暫時隱藏：CG 全螢幕時演出主體構圖偏下會被這個框擋住，讓玩家
+           暫時把整個對話框藏起來看清楚；藏起來後做任何操作(按鍵/點擊)
+           都會自動還原，見 dialogue.ts toggleDialogUiPeek()。右鍵/Esc
+           (手把是取消鍵)也能直接觸發，跟遊戲其他地方「取消」的手感
+           一致；旁邊的提示文字會依目前輸入裝置自動換成鍵盤/滑鼠或手把
+           按鍵，見 dialogue.ts renderDialogHideToggleHint()。 -->
+      <div id="dialogTopRightControls">
+        <button id="dialogAutoPlayToggle" type="button" aria-label="自動播放對話">
+          自動 <span id="dialogAutoPlayToggleHint"></span>
+        </button>
+        <button id="dialogHideToggle" type="button" aria-label="暫時隱藏對話框">
+          隱藏 <span id="dialogHideToggleHint"></span>
+        </button>
+      </div>
     </div>
     <!-- 選項面板獨立在 #dialog 外面(不是內部子元素)：#dialog 有 transform，
          會讓內部 position:fixed 子元素的定位基準變成 #dialog 的 box 而不是

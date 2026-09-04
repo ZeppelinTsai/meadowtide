@@ -99,6 +99,7 @@ import {
   tryEatPastureGrass,
 } from "./props";
 import { dialogQueue } from "./dialogue";
+import { gameSettings } from "./settings";
 import { isBlocked, events } from "./build-map";
 import {
   dayTwoMorningEvent,
@@ -175,6 +176,16 @@ import {
   prologueRefs,
   southIndoorWallMeshes,
 } from "./scene-registries";
+
+// 2026-09-05 Zeppelin 要求：系統設定「行走速度」慢/一般/快——見下面
+// animate() 內 moveSpeed 的取值處跟 settings.ts 的 GameSettings.walkSpeed
+// 註解。"normal" 固定等於原本唯一寫死的 15，保證玩家不特別調整設定的
+// 話手感跟今天完全一樣。
+const WALK_SPEED_BY_LEVEL: Record<"slow" | "normal" | "fast", number> = {
+  slow: 9,
+  normal: 15,
+  fast: 21,
+};
 
 // 釣魚 QTE 浮動 HUD 用——可重複利用的 Vector3，每幀 project(camera) 前
 // 覆寫座標即可，不用每幀 new，跟 scene-sky.ts 的 SUN_MASK_PROJECTED_POINT
@@ -440,7 +451,13 @@ export function animate(now) {
       dz /= inputLen;
     }
 
-    const moveSpeed = 15; // 格/秒
+    // 2026-09-05 Zeppelin 要求：系統設定加「行走速度」慢/一般/快三檔。
+    // 15 格/秒是原本唯一寫死的速度，維持當「一般」檔，玩家不特別調整的
+    // 話手感跟今天完全一樣；慢/快是實測抓出來的相對幅度(約 ±40%)，不是
+    // Zeppelin 原本隨口提的 1/5/10──那組數字比 15 這個既有基準小了一整
+    // 個量級，直接套用「快」反而會比現在的「一般」還慢，所以這裡改成
+    // 校準過的實際數值，見 WALK_SPEED_BY_LEVEL。
+    const moveSpeed = WALK_SPEED_BY_LEVEL[gameSettings.walkSpeed]; // 格/秒
     const stepX = dx * moveSpeed * dt,
       stepZ = dz * moveSpeed * dt;
     const canTraverseVillageHeight = (fromX, fromZ, toX, toZ) => {
