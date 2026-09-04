@@ -3,6 +3,7 @@ import { initTitleScreen } from "./title-screen";
 import { initPauseMenu } from "./pause-menu";
 import "./inventory-ui";
 import "./quick-item-ui";
+import "./view-controls-ui";
 import "./map-menu";
 import { initUiFocusNavigation } from "./ui-focus-navigation";
 import { setLocale, translateDocument, onLocaleChanged } from "./i18n";

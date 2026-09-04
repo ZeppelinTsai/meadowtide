@@ -127,6 +127,7 @@ import {
   getActiveSaveSlot,
 } from "./input-save";
 import { updateMusic } from "./music";
+import { capturePendingPhotoIfAny } from "./photo";
 import {
   isCameraAdjustModeActive,
   updateCameraShots,
@@ -2189,6 +2190,9 @@ export function animate(now) {
   const gameplayCamera = getGameplayCamera(camera);
   updatePlanarWaterReflection(gameplayCamera, gameState.animationFrameCount);
   renderer.render(scene, gameplayCamera);
+  // 拍照要在這幀畫面剛畫完、下一幀清掉緩衝區之前立刻擷取——見 photo.ts
+  // 開頭「擷取時機的限制」說明，這裡呼叫必須緊接在 renderer.render() 後面。
+  capturePendingPhotoIfAny(getActiveSaveSlot());
 }
 
 addEventListener("resize", () => {

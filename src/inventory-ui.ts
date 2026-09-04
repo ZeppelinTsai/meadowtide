@@ -26,8 +26,22 @@ import { getNpcDisplayName } from "./npc-name-reveal";
 import { makeToolModel } from "./tool-models";
 import { PEARL_DEFINITIONS } from "./pearl-system";
 import { FLOWER_SPECIES } from "./wildflowers";
+import {
+  getPhotos,
+  deletePhoto,
+  photoCaptionLabel,
+  onPhotosChanged,
+  type PhotoRecord,
+} from "./photo";
+import { getActiveSaveSlot } from "./input-save";
 
-type InventoryTab = "bag" | "storage" | "tools" | "animals" | "villagers";
+type InventoryTab =
+  | "bag"
+  | "storage"
+  | "tools"
+  | "animals"
+  | "villagers"
+  | "photos";
 type InventoryEntry = {
   id: string;
   tab: InventoryTab;
@@ -72,6 +86,7 @@ const TABS: { id: InventoryTab; label: string }[] = [
   { id: "tools", label: "工具" },
   { id: "animals", label: "動物" },
   { id: "villagers", label: "村民" },
+  { id: "photos", label: "相簿" },
 ];
 
 const overlay = document.getElementById("inventoryOverlay") as HTMLDivElement;
@@ -93,6 +108,61 @@ contentMenu.className = "inventory-content-menu";
 contentMenu.hidden = true;
 contentMenu.setAttribute("role", "menu");
 panel.appendChild(contentMenu);
+
+// 相簿放大燈箱——掛在 document.body 而不是 panel 底下，避免受
+// inventoryPanel 自己的定位/堆疊環境影響 position:fixed 的表現。
+const photoLightbox = document.createElement("div");
+photoLightbox.id = "photoLightbox";
+photoLightbox.hidden = true;
+photoLightbox.innerHTML = `
+  <button type="button" id="photoLightboxClose" aria-label="關閉">關閉</button>
+  <figure>
+    <img id="photoLightboxImage" alt="" />
+    <figcaption class="photo-lightbox-caption" id="photoLightboxCaption"></figcaption>
+    <button type="button" id="photoLightboxDelete" class="view-control-button" aria-label="刪除這張照片">刪除照片</button>
+  </figure>
+`;
+document.body.appendChild(photoLightbox);
+const photoLightboxImage = photoLightbox.querySelector<HTMLImageElement>(
+  "#photoLightboxImage",
+)!;
+const photoLightboxCaption = photoLightbox.querySelector<HTMLElement>(
+  "#photoLightboxCaption",
+)!;
+const photoLightboxDelete = photoLightbox.querySelector<HTMLButtonElement>(
+  "#photoLightboxDelete",
+)!;
+let lightboxPhotoId: string | null = null;
+function closePhotoLightbox() {
+  photoLightbox.hidden = true;
+  photoLightboxImage.src = "";
+  lightboxPhotoId = null;
+}
+function openPhotoLightbox(photo: PhotoRecord) {
+  lightboxPhotoId = photo.id;
+  photoLightboxImage.src = photo.dataUrl;
+  photoLightboxCaption.textContent = translateText(photoCaptionLabel(photo));
+  photoLightbox.hidden = false;
+}
+photoLightbox
+  .querySelector("#photoLightboxClose")
+  ?.addEventListener("click", closePhotoLightbox);
+photoLightboxDelete.addEventListener("click", () => {
+  if (!lightboxPhotoId) return;
+  deletePhoto(getActiveSaveSlot(), lightboxPhotoId);
+  closePhotoLightbox();
+});
+photoLightbox.addEventListener("click", (event) => {
+  if (event.target === photoLightbox) closePhotoLightbox();
+});
+addEventListener("keydown", (event) => {
+  if (event.key === "Escape" && !photoLightbox.hidden) closePhotoLightbox();
+});
+// 拍照發生在 game-loop.ts 的 animate() 裡，跟這裡的渲染時機不同步；album
+// 分頁開著的時候，拍到新照片要立刻反映在格子裡，用事件解耦，不用互相 import。
+onPhotosChanged(() => {
+  if (open && TABS[activeTabIndex].id === "photos") renderInventory();
+});
 
 let open = false;
 let activeTabIndex = 0;
@@ -694,7 +764,7 @@ export function renderInventory(focusFirstCard = false) {
   const activeId = TABS[activeTabIndex].id;
   grid.classList.toggle(
     "inventory-grid-info",
-    activeId === "villagers" || activeId === "tools",
+    activeId === "villagers" || activeId === "tools" || activeId === "photos",
   );
   if (activeId === "tools") {
     renderTools();
@@ -706,6 +776,10 @@ export function renderInventory(focusFirstCard = false) {
   }
   if (activeId === "villagers") {
     renderVillagers();
+    return;
+  }
+  if (activeId === "photos") {
+    renderPhotos();
     return;
   }
 
@@ -1084,6 +1158,45 @@ function renderVillagers() {
       );
     card.addEventListener("focus", describeRelationship);
     card.addEventListener("click", describeRelationship);
+    grid.appendChild(card);
+  });
+}
+
+function renderPhotos() {
+  const photos = getPhotos(getActiveSaveSlot()).slice().reverse();
+  if (!photos.length) {
+    const empty = document.createElement("div");
+    empty.className = "photo-empty-hint";
+    empty.textContent = translateText(
+      "還沒有照片——切到第一人稱視角，按拍照鈕試試看。",
+    );
+    grid.appendChild(empty);
+    showEntryDescription();
+    return;
+  }
+  photos.forEach((photo) => {
+    const card = document.createElement("button");
+    card.type = "button";
+    card.className = "photo-card";
+    card.setAttribute(
+      "aria-label",
+      translateText(photoCaptionLabel(photo)),
+    );
+    const image = document.createElement("img");
+    image.src = photo.dataUrl;
+    image.alt = "";
+    const caption = document.createElement("span");
+    caption.className = "photo-card-caption";
+    caption.textContent = translateText(photoCaptionLabel(photo));
+    card.append(image, caption);
+    const openThis = () => {
+      selectInfoCard(card, photoCaptionLabel(photo), "點擊放大檢視，放大後可刪除。");
+      openPhotoLightbox(photo);
+    };
+    card.addEventListener("focus", () =>
+      showEntryDescription(photoCaptionLabel(photo), "點擊放大檢視，放大後可刪除。"),
+    );
+    card.addEventListener("click", openThis);
     grid.appendChild(card);
   });
 }
