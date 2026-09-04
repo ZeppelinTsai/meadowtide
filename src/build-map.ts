@@ -3293,13 +3293,15 @@ export function buildMap(mapName) {
         // 不是整張地圖平均往上調（那樣會讓其他區域也一起變擁擠）。石頭
         // 的機率寬度(0.03)保持不變，只是門檻跟著花的門檻一起平移，不然
         // 花田附近機率整段往上抬之後，石頭反而會被排擠到幾乎抽不到。
+        // 2026-09-04 二次調整，Zeppelin 反饋密度還要再拉高：花田附近的
+        // 花機率從 16%(0.26 門檻) 再拉到 50%(0.6 門檻)。
         const GARDEN_FLOWER_MARGIN = 5;
         const nearGarden =
           x >= LAYOUT.garden.x - GARDEN_FLOWER_MARGIN &&
           x < LAYOUT.garden.x + LAYOUT.garden.width + GARDEN_FLOWER_MARGIN &&
           z >= LAYOUT.garden.z - GARDEN_FLOWER_MARGIN &&
           z < LAYOUT.garden.z + LAYOUT.garden.height + GARDEN_FLOWER_MARGIN;
-        const flowerThreshold = nearGarden ? 0.26 : 0.14;
+        const flowerThreshold = nearGarden ? 0.6 : 0.14;
         if (r < 0.1) {
           const m = makeGrassTuft(x + (r - 0.5) * 0.4, z + (r - 0.5) * 0.4, r);
           m.position.y += gy;
