@@ -9,7 +9,7 @@ import {
   isInsideLakeShape,
 } from "./layout-maps";
 import { npcDefs } from "./npc-defs";
-import { makeCaptain, makeCarpenter, makeHumanoid, makeMayor, makeArtist } from "./humanoid";
+import { makeCaptain, makeCarpenter, makeHumanoid, makeMayor, makeArtist, makeBotanist } from "./humanoid";
 import { makeAnimal } from "./props";
 
 // 9) NPC 群 — 現在每個 NPC 多帶兩個欄位：path（A* 算出的格子序列）
@@ -34,7 +34,9 @@ export const npcs = npcDefs.map((def) => {
           ? makeCaptain()
           : def.id === "artist"
           ? makeArtist()
-          : def.id === "chef"
+          : def.id === "botanist"
+            ? makeBotanist()
+            : def.id === "chef"
             ? new THREE.Group() // 暫時不建立廚師模型；保留空節點供任務狀態查找。
             : makeHumanoid({ shirt: def.shirt, hair: def.hair });
   mesh.position.set(def.home.x, 0, def.home.z);

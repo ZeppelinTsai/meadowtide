@@ -12,6 +12,7 @@ import {
   makeCarpenter,
   makeCaptain,
   makeArtist,
+  makeBotanist,
   makeHumanoid,
 } from "./humanoid";
 
@@ -69,6 +70,7 @@ function loadCharacter(key: string) {
     carpenter: makeCarpenter,
     captain: makeCaptain,
     artist: makeArtist,
+    botanist: makeBotanist,
     humanoid: () => makeHumanoid({}),
   };
   const model = (factory[key] || makeMarineBiologist)();

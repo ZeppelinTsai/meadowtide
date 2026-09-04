@@ -216,9 +216,11 @@ export function addDefaultHumanoidSmile(
         hairCap.scale.set(1.03, 0.68, 1.04);
         hairCap.position.set(0, 1.125, 0.015);
         group.add(hairCap);
+        // 2026-09-04 Zeppelin 反饋：丸子頭原本偏一邊(x=-0.13)，改到
+        // 正背後中央(x=0)，z 維持正值(人形正臉在負 z，正值就是背後)。
         const bun = new THREE.Mesh(new THREE.DodecahedronGeometry(0.135, 0), hairMat);
         bun.scale.set(1.05, 0.85, 0.9);
-        bun.position.set(-0.13, 1.02, 0.15);
+        bun.position.set(0, 1.02, 0.15);
         group.add(bun);
         for (const side of [-1, 1]) {
           const temple = new THREE.Mesh(
@@ -572,6 +574,161 @@ export function makeArtist() {
 
   group.parts = parts;
   group.scale.setScalar(humanoidScale(1.381));
+  return group;
+}
+
+// 2026-09-04：克拉拉(植物學家)——Zeppelin 給的角色概念圖：軍綠色麻花
+// 辮＋芥末黃短版夾克＋白襯衫深綠立領＋棕色吊帶褲(繫皮帶)＋深綠短靴＋
+// 腰間望遠鏡與側背包。低模風格畫不出概念圖的插畫細節，這裡抓輪廓跟
+// 色塊：短版夾克(敞開露出襯衫+領子，同 makeArtist() 的雙片式做法)、
+// 一股垂在左肩前方的辮子(用漸縮圓柱堆疊，深淺兩色交錯模擬編髮紋理)、
+// 髮尾繫黃色蝴蝶結呼應外套色系、腰帶兩側掛望遠鏡跟側背包。
+export function makeBotanist() {
+  const group: any = new THREE.Group();
+  const parts: any = {};
+  const mat = (color: number) => new THREE.MeshStandardMaterial({ color, flatShading: true });
+  const skinMat = mat(0xf0c39c);
+  const hairMat = mat(0x2f5c46), darkHairMat = mat(0x1e3a2c);
+  const shirtMat = mat(0xf3ecd9), jacketMat = mat(0xdba934), collarMat = mat(0x3f6b52);
+  const trouserMat = mat(0x6b4a34), leatherMat = mat(0x4a3222), brassMat = mat(0xb78332);
+  const bootMat = mat(0x33483a), binocMat = mat(0x264a3d), bowMat = mat(0xe8b923);
+
+  const pelvis = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.22, 0.16, 8), trouserMat);
+  pelvis.position.y = 0.49; group.add(pelvis);
+  const torso = new THREE.Mesh(new THREE.CylinderGeometry(0.155, 0.2, 0.4, 8), shirtMat);
+  torso.position.y = 0.75; torso.castShadow = true; group.add(torso);
+
+  // 短版芥末黃外套——跟 makeArtist() 敞開背心同一招，左右各一片蓋住襯衫
+  // 兩側，中間留出白襯衫跟立領，下擺只到腰帶上緣(概念圖是短版夾克)。
+  for (const side of [-1, 1]) {
+    const panel = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.34, 0.08), jacketMat);
+    panel.position.set(side * 0.135, 0.79, 0.015); panel.rotation.z = side * -0.06;
+    panel.castShadow = true; group.add(panel);
+    const collarPiece = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.05, 0.02), collarMat);
+    collarPiece.position.set(side * 0.055, 0.955, -0.1); collarPiece.rotation.z = side * 0.5;
+    group.add(collarPiece);
+  }
+
+  const belt = new THREE.Mesh(new THREE.CylinderGeometry(0.215, 0.215, 0.06, 8), leatherMat);
+  belt.position.y = 0.51; group.add(belt);
+  const buckle = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.04, 0.015), brassMat);
+  buckle.position.set(0, 0.51, -0.215); group.add(buckle);
+
+  // 側背包(右腰)。
+  const pouch = new THREE.Mesh(new THREE.BoxGeometry(0.13, 0.16, 0.06), leatherMat);
+  pouch.position.set(0.185, 0.36, -0.06); pouch.rotation.z = -0.06; group.add(pouch);
+  const pouchFlap = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.05, 0.065), leatherMat);
+  pouchFlap.position.set(0.185, 0.42, -0.06); pouchFlap.rotation.z = -0.06; group.add(pouchFlap);
+
+  // 望遠鏡皮套(左腰)——概念圖裡她隨身帶著的觀察工具。
+  const binocHolster = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.05, 0.16, 6), leatherMat);
+  binocHolster.position.set(-0.2, 0.34, -0.04); group.add(binocHolster);
+  for (const side of [-1, 1]) {
+    const barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.026, 0.03, 0.13, 6), binocMat);
+    barrel.position.set(-0.2 + side * 0.028, 0.4, -0.04); group.add(barrel);
+  }
+  const binocTrim = new THREE.Mesh(new THREE.TorusGeometry(0.03, 0.006, 5, 8), brassMat);
+  binocTrim.rotation.x = Math.PI / 2; binocTrim.position.set(-0.2, 0.455, -0.04); group.add(binocTrim);
+
+  function makeLeg(side: number) {
+    const pivot = new THREE.Group(); pivot.position.set(side * 0.1, 0.44, 0);
+    const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.082, 0.4, 7), trouserMat);
+    leg.position.y = -0.2; leg.castShadow = true; pivot.add(leg);
+    const cuffRoll = new THREE.Mesh(new THREE.CylinderGeometry(0.098, 0.098, 0.06, 7), trouserMat);
+    cuffRoll.position.y = -0.395; pivot.add(cuffRoll);
+    const boot = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.16, 0.21), bootMat);
+    boot.position.set(0, -0.48, -0.03); boot.castShadow = true; pivot.add(boot);
+    const sole = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.03, 0.23), leatherMat);
+    sole.position.set(0, -0.565, -0.035); pivot.add(sole);
+    group.add(pivot); return pivot;
+  }
+  parts.legL = makeLeg(-1); parts.legR = makeLeg(1);
+
+  function makeArm(side: number) {
+    const pivot = new THREE.Group(); pivot.position.set(side * 0.225, 0.88, 0);
+    const sleeve = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.06, 0.16, 7), jacketMat);
+    sleeve.position.y = -0.08; sleeve.castShadow = true; pivot.add(sleeve);
+    const cuffRoll = new THREE.Mesh(new THREE.CylinderGeometry(0.062, 0.062, 0.03, 7), jacketMat);
+    cuffRoll.position.y = -0.165; pivot.add(cuffRoll);
+    const forearm = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.04, 0.24, 7), skinMat);
+    forearm.position.y = -0.31; pivot.add(forearm);
+    const hand = new THREE.Mesh(new THREE.SphereGeometry(0.052, 7, 5), skinMat);
+    hand.scale.set(0.85, 1.15, 0.75); hand.position.y = -0.44; pivot.add(hand);
+    group.add(pivot); return pivot;
+  }
+  parts.armL = makeArm(-1); parts.armR = makeArm(1);
+
+  const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.062, 0.072, 0.11, 7), skinMat);
+  neck.position.y = 1.0; group.add(neck);
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.2, 10, 8), skinMat);
+  head.scale.set(0.93, 1.06, 0.92); head.position.y = 1.155; head.castShadow = true; group.add(head);
+  const nose = new THREE.Mesh(new THREE.ConeGeometry(0.025, 0.06, 6), skinMat);
+  nose.rotation.x = Math.PI / 2; nose.position.set(0, 1.14, -0.19); group.add(nose);
+  for (const side of [-1, 1]) {
+    const eye = new THREE.Mesh(new THREE.SphereGeometry(0.017, 6, 4), mat(0x5a3a1f));
+    eye.scale.set(1, 0.65, 0.4); eye.position.set(side * 0.068, 1.185, -0.185); group.add(eye);
+    const brow = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.013, 0.011), darkHairMat);
+    brow.position.set(side * 0.069, 1.218, -0.185); brow.rotation.z = side * -0.1; group.add(brow);
+  }
+  addDefaultHumanoidSmile(group, 1.11, -0.19, 0x854b3c);
+
+  // 頭頂瀏海+髮蓋，深軍綠色。2026-09-04 Zeppelin 反饋：原本角度太低
+  // 蓋到眼睛，thetaLength 從 0.62π 收到 0.5π(半球)、位置抬高，讓髮緣
+  // 停在眉毛(y≈1.218~1.225)上面。
+  const hairCap = new THREE.Mesh(new THREE.SphereGeometry(0.21, 9, 7, 0, Math.PI * 2, 0, Math.PI * 0.5), hairMat);
+  hairCap.scale.set(1.02, 0.82, 1.0); hairCap.position.set(0, 1.25, 0.01); group.add(hairCap);
+  const fringe = new THREE.Mesh(new THREE.SphereGeometry(0.205, 8, 6, 0, Math.PI * 2, 0, Math.PI * 0.3), hairMat);
+  fringe.scale.set(1, 0.7, 0.9); fringe.position.set(0, 1.27, -0.05); group.add(fringe);
+
+  // 兩側鬢髮+後腦勺——上一版試過用 phiStart/phiLength 把整顆頭髮做成
+  // 一體成形、只挖掉正臉那一塊，結果角度算錯，變成正面幾乎全禿(比
+  // 「後腦勺一條縫」還嚴重)。這個算法沒辦法臨場看畫面校正，風險太
+  // 高，退回三塊拼接的做法；問題不是「拼接」本身，是上一輪三塊之間
+  // 只是「剛好貼齊」，縫隙没留餘量——這次把鬢髮跟後腦勺都加大、加深
+  // (垂直/水平範圍都拉開)，讓三塊之間確實重疊一截，而不是邊界對邊界。
+  function makeSideHair(side: number, bulk: number) {
+    const flap = new THREE.Mesh(new THREE.SphereGeometry(0.11, 7, 6), hairMat);
+    flap.scale.set(0.6 * bulk, 1.7, 1.05);
+    flap.position.set(side * 0.175, 1.1, 0.02);
+    flap.rotation.z = side * 0.08;
+    group.add(flap);
+  }
+  makeSideHair(-1, 1);
+  makeSideHair(1, 1.3);
+
+  const backHair = new THREE.Mesh(new THREE.SphereGeometry(0.2, 10, 8), hairMat);
+  backHair.scale.set(1.05, 1.15, 0.75);
+  backHair.position.set(0, 1.14, 0.07);
+  group.add(backHair);
+
+  // 單股辮子垂在胸前，起點刻意藏進上面加大的鬢髮裡(y=1.2 在鬢髮的
+  // 垂直範圍內)、z 從耳側後方(+0.02，比鬢髮更靠後一點)開始，隨著往下
+  // 每一節同時往內收(bx 變小)、往前掃到胸前(bz 變負)，這條斜向移動
+  // 路徑才是「從後往前梳」的視覺重點，不是單純平移一條圓柱。
+  // 漸縮圓柱堆疊、深淺兩色交錯模擬編髮紋理，髮尾繫一個黃色蝴蝶結
+  // (呼應外套色系，也是概念圖裡的細節)。
+  let bx = 0.18, by = 1.2, bz = 0.02;
+  const braidSegments = 7;
+  for (let i = 0; i < braidSegments; i++) {
+    const t = i / (braidSegments - 1);
+    const seg = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.045 - t * 0.02, 0.05 - t * 0.02, 0.11, 6),
+      i % 2 === 0 ? hairMat : darkHairMat,
+    );
+    seg.position.set(bx, by, bz);
+    seg.rotation.set(-0.15, 0, -(0.1 + t * 0.1));
+    group.add(seg);
+    by -= 0.09; bz -= 0.028; bx -= 0.013;
+  }
+  const braidTip = new THREE.Mesh(new THREE.ConeGeometry(0.025, 0.05, 6), hairMat);
+  braidTip.position.set(bx, by + 0.03, bz); braidTip.rotation.x = Math.PI; group.add(braidTip);
+  const bow = new THREE.Mesh(new THREE.TorusGeometry(0.032, 0.011, 5, 8), bowMat);
+  bow.rotation.y = Math.PI / 2; bow.position.set(bx, by, bz); group.add(bow);
+  const bowKnot = new THREE.Mesh(new THREE.SphereGeometry(0.014, 6, 4), bowMat);
+  bowKnot.position.set(bx, by, bz); group.add(bowKnot);
+
+  group.parts = parts;
+  group.scale.setScalar(humanoidScale(1.37));
   return group;
 }
 
