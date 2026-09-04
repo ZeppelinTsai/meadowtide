@@ -516,7 +516,15 @@ function walkArtistToWaitSpot(onDone: () => void) {
     // 跟 walkPlayerTo()、game-loop.ts 逐幀釘位那幾段同一個順序：
     // animateWalk() 會直接覆蓋 position.y 成踏步彈跳量，一定要先呼叫、
     // 再用 += 疊加地形高度。
-    animateWalk(mesh, t < 1, gameState.elapsed);
+    // 2026-09-04 三修：這裡本來吃 gameState.elapsed 當動畫相位——但
+    // beginMountainRoute() 呼叫這支函式的當下已經 setTimePauseSource
+    // ("guidedGameplay", true)，isWorldTimePaused() 只要 activeSources
+    // 不是空集合就一律凍結 elapsed(不管是哪個來源)，等於整段走路期間
+    // Math.sin(elapsed*10) 都是同一個值，腿角度定格在某個彎曲姿勢不動，
+    // 疊加 x/z 平滑內插，看起來就是「腳沒動、人整個平移過去」。跟主角
+    // 那邊 walkPlayerTo() 是同一顆蟲，改吃不受暫停影響的 effectElapsed
+    // (見 game-loop.ts「不受暫停影響，純視覺效果一律吃這個」那則說明)。
+    animateWalk(mesh, t < 1, gameState.effectElapsed);
     mesh.position.y +=
       oldVillageGroundY(mesh.position.x, mesh.position.z) + 0.03;
     if (t < 1) {
@@ -926,7 +934,13 @@ function walkPlayerTo(target: { x: number; z: number }, onDone: () => void) {
     // 跟本檔案其他地方、game-loop.ts 逐幀釘位那幾段同一個順序：
     // animateWalk() 會直接覆蓋 position.y 成踏步彈跳量，一定要先呼叫、
     // 再用 += 疊加地形高度，見 game-loop.ts 2026-09-04 那則說明。
-    animateWalk(gameState.player, t < 1, gameState.elapsed);
+    // 2026-09-04 三修：Zeppelin 反饋修完 playerSoloWalking 衝突之後
+    // 還是平移——這裡本來吃 gameState.elapsed，但 startArtistPersonalEvent()
+    // 一開場就 setTimePauseSource("rubyEvent", true)，整個事件期間
+    // isWorldTimePaused() 恆真，elapsed 完全凍結，animateWalk 用它當
+    // 相位等於腿角度整段定格在同一姿勢，跟 walkArtistToWaitSpot() 那邊
+    // 同一顆蟲。改吃不受暫停影響的 effectElapsed 才會真的擺動。
+    animateWalk(gameState.player, t < 1, gameState.effectElapsed);
     gameState.player.position.y +=
       oldVillageGroundY(
         gameState.player.position.x,

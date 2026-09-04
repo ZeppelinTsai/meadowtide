@@ -1127,7 +1127,7 @@ export function animate(now) {
         // 才發現同一個坑。
         n.mesh.position.x = CARPENTER_EVENT_WAIT_POS.x;
         n.mesh.position.z = CARPENTER_EVENT_WAIT_POS.z;
-        animateWalk(n.mesh, false, gameState.elapsed);
+        animateWalk(n.mesh, false, gameState.effectElapsed);
         n.mesh.position.y += characterGroundY(
           "oldVillage",
           CARPENTER_EVENT_WAIT_POS.x,
@@ -1151,7 +1151,13 @@ export function animate(now) {
       // （不是疊加），所以地形高度一定要在呼叫它之後再加回去——跟主角
       // 那邊 animateWalk() 先跑、才 += characterGroundY() 的順序完全一樣；
       // 順序顛倒的話這裡剛算好的地形高度下一行就會被彈跳量整個蓋掉。
-      animateWalk(n.mesh, moving, gameState.elapsed);
+      // 2026-09-04：這裡原本吃 gameState.elapsed 當動畫相位——escort
+      // trail 跟隨(村長/木匠)通常發生在 guidedGameplay/rubyEvent 這類
+      // 時間暫停期間，isWorldTimePaused() 只要有任一暫停來源就恆真，
+      // elapsed 整段凍結，腿角度定格不動、疊加位置平滑內插，看起來就
+      // 是「平移」。改吃不受暫停影響的 effectElapsed，跟主角
+      // walkPlayerTo() 那顆蟲同一套修法。
+      animateWalk(n.mesh, moving, gameState.effectElapsed);
       n.mesh.position.y += characterGroundY(
         gameState.currentMapName,
         trailPoint.x,
@@ -1200,7 +1206,7 @@ export function animate(now) {
       n.mesh.position.x = ARTIST_EVENT_WAIT_POS.x;
       n.mesh.position.z = ARTIST_EVENT_WAIT_POS.z;
       n.mesh.rotation.y = 0; // 面朝上
-      animateWalk(n.mesh, false, gameState.elapsed);
+      animateWalk(n.mesh, false, gameState.effectElapsed);
       n.mesh.position.y += characterGroundY(
         "oldVillage",
         ARTIST_EVENT_WAIT_POS.x,
@@ -1223,7 +1229,7 @@ export function animate(now) {
       n.mesh.position.x = botanistQuest.scenePos.x;
       n.mesh.position.z = botanistQuest.scenePos.z;
       n.mesh.rotation.y = botanistQuest.scenePos.rotY;
-      animateWalk(n.mesh, false, gameState.elapsed);
+      animateWalk(n.mesh, false, gameState.effectElapsed);
       n.mesh.position.y += characterGroundY(
         "livingArea",
         botanistQuest.scenePos.x,
@@ -1298,7 +1304,8 @@ export function animate(now) {
     }
     // 跟上面 escort 分支同理：animateWalk 會蓋掉 position.y，地形高度要在
     // 呼叫它之後再疊加回去，不能先設好高度再讓 animateWalk 蓋掉。
-    animateWalk(n.mesh, moving, gameState.elapsed);
+    // 2026-09-04：同上，改吃 effectElapsed，避免時間暫停期間腿角度凍結。
+    animateWalk(n.mesh, moving, gameState.effectElapsed);
     n.mesh.position.y += characterGroundY(
       gameState.currentMapName,
       n.mesh.position.x,
