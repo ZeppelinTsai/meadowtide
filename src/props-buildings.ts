@@ -33,6 +33,8 @@ import {
   foamMeshes,
 
   windmillRotors,
+  lighthouseBeamRotors,
+  lighthouseBeamMaterials,
   pastureGrassBlades,
   avenueLeafMaterials,
   seasonalTreeLeafMaterials,
@@ -757,6 +759,180 @@ export function makeGangplank(length, width = 0.62) {
 // 參考港灣圖的完整港區組件：石造內港、北側商店、中央渡輪與東側小艇棧橋。
 // 沙灘不在這裡重做，仍由 port tiles 的 8 走共用 makeSand() 管線。
 
+// 港口防波堤末端的小型燈塔。原點位於海平面，岩石與圓形基座先把塔身托出
+// 水面；西側(本地 -X)留一扇門朝向 x=21 的既有可走防波堤。
+function makePortLighthouse(area: { x: number; z: number; scale?: number }) {
+  const lighthouse = new THREE.Group();
+  const stoneMat = new THREE.MeshStandardMaterial({
+    color: 0x777b78,
+    roughness: 1,
+    flatShading: true,
+  });
+  const whiteMat = new THREE.MeshStandardMaterial({
+    color: 0xe8e3d4,
+    roughness: 0.88,
+    flatShading: true,
+  });
+  const redMat = new THREE.MeshStandardMaterial({
+    color: 0xa83b2d,
+    roughness: 0.84,
+    flatShading: true,
+  });
+  const metalMat = new THREE.MeshStandardMaterial({
+    color: 0x4f5554,
+    roughness: 0.76,
+    metalness: 0.22,
+  });
+  const darkMat = new THREE.MeshStandardMaterial({
+    color: 0x49372d,
+    roughness: 0.94,
+  });
+
+  [
+    [-0.5, 0.05, 0.25, 0.38],
+    [0.46, 0.03, 0.18, 0.34],
+    [0.16, 0.02, -0.48, 0.31],
+    [-0.2, 0.01, -0.42, 0.28],
+  ].forEach(([x, y, z, scale], index) => {
+    const rock = new THREE.Mesh(new THREE.DodecahedronGeometry(scale, 0), stoneMat);
+    rock.position.set(x, y, z);
+    rock.rotation.set(index * 0.31, index * 0.73, index * 0.17);
+    rock.scale.y = 0.72;
+    rock.castShadow = true;
+    lighthouse.add(rock);
+  });
+
+  const foundation = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.66, 0.76, 0.28, 12),
+    stoneMat,
+  );
+  foundation.position.y = 0.25;
+  foundation.castShadow = true;
+  foundation.receiveShadow = true;
+  lighthouse.add(foundation);
+
+  const tower = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.32, 0.5, 1.62, 12),
+    whiteMat,
+  );
+  tower.position.y = 1.17;
+  tower.castShadow = true;
+  tower.receiveShadow = true;
+  lighthouse.add(tower);
+
+  [0.45, 1.88].forEach((y, index) => {
+    const band = new THREE.Mesh(
+      new THREE.CylinderGeometry(index ? 0.39 : 0.51, index ? 0.39 : 0.51, 0.1, 12),
+      redMat,
+    );
+    band.position.y = y;
+    lighthouse.add(band);
+  });
+
+  const door = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.54, 0.27), darkMat);
+  door.position.set(-0.47, 0.76, 0);
+  lighthouse.add(door);
+  const windowMat = new THREE.MeshStandardMaterial({
+    color: 0xffd27a,
+    emissive: new THREE.Color(0xffb347),
+    emissiveIntensity: 0,
+  });
+  const windowMesh = new THREE.Mesh(
+    new THREE.BoxGeometry(0.045, 0.2, 0.18),
+    windowMat,
+  );
+  windowMesh.position.set(-0.37, 1.43, 0);
+  lighthouse.add(windowMesh);
+  windowMats.push(windowMat);
+
+  const gallery = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.54, 0.54, 0.12, 16),
+    stoneMat,
+  );
+  gallery.position.y = 2.02;
+  gallery.castShadow = true;
+  lighthouse.add(gallery);
+
+  const railRadius = 0.48;
+  for (let i = 0; i < 10; i++) {
+    const angle = (i / 10) * Math.PI * 2;
+    const post = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.018, 0.018, 0.34, 5),
+      metalMat,
+    );
+    post.position.set(
+      Math.cos(angle) * railRadius,
+      2.22,
+      Math.sin(angle) * railRadius,
+    );
+    lighthouse.add(post);
+  }
+  [2.12, 2.35].forEach((y) => {
+    const rail = new THREE.Mesh(
+      new THREE.TorusGeometry(railRadius, 0.018, 5, 20),
+      metalMat,
+    );
+    rail.rotation.x = Math.PI / 2;
+    rail.position.y = y;
+    lighthouse.add(rail);
+  });
+
+  const lanternGlass = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.3, 0.3, 0.48, 10),
+    new THREE.MeshStandardMaterial({
+      color: 0xffd98a,
+      emissive: new THREE.Color(0xffbd55),
+      emissiveIntensity: 0.15,
+      transparent: true,
+      opacity: 0.68,
+    }),
+  );
+  lanternGlass.position.y = 2.34;
+  lighthouse.add(lanternGlass);
+  windowMats.push(lanternGlass.material as THREE.MeshStandardMaterial);
+
+  const lanternLight = new THREE.PointLight(0xffc266, 0, 8, 1.7);
+  lanternLight.position.y = 2.36;
+  lighthouse.add(lanternLight);
+  outdoorLampLights.push(lanternLight);
+
+  const roof = new THREE.Mesh(new THREE.ConeGeometry(0.48, 0.52, 10), redMat);
+  roof.position.y = 2.83;
+  roof.castShadow = true;
+  lighthouse.add(roof);
+  const finial = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.025, 0.025, 0.24, 6),
+    metalMat,
+  );
+  finial.position.y = 3.16;
+  lighthouse.add(finial);
+
+  // 半透明錐體只在夜間顯示；整個群組繞 Y 軸緩慢旋轉，成為港口導航光束。
+  const beamRotor = new THREE.Group();
+  beamRotor.position.y = 2.36;
+  const beamMat = new THREE.MeshBasicMaterial({
+    color: 0xffe0a0,
+    transparent: true,
+    opacity: 0,
+    depthWrite: false,
+    side: THREE.DoubleSide,
+    blending: THREE.AdditiveBlending,
+  });
+  const beam = new THREE.Mesh(
+    new THREE.ConeGeometry(0.7, 7, 16, 1, true),
+    beamMat,
+  );
+  beam.rotation.z = Math.PI / 2;
+  beam.position.x = 3.5;
+  beamRotor.add(beam);
+  lighthouse.add(beamRotor);
+  lighthouseBeamRotors.push(beamRotor);
+  lighthouseBeamMaterials.push(beamMat);
+
+  lighthouse.position.set(area.x, 0, area.z);
+  lighthouse.scale.setScalar(area.scale ?? 1);
+  return lighthouse;
+}
 export function makePortScene() {
   const group = new THREE.Group();
   const port = LAYOUT.port;
@@ -1245,6 +1421,8 @@ export function makePortScene() {
   dock.position.set(port.smallBoatDock.x, 0.13, port.smallBoatDock.z);
   dock.rotation.y = Math.PI / 2;
   group.add(dock);
+
+  group.add(makePortLighthouse(port.lighthouse));
 
 
   return group;

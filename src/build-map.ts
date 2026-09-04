@@ -63,6 +63,8 @@ import {
   outdoorLampLights,
   foamMeshes,
   windmillRotors,
+  lighthouseBeamRotors,
+  lighthouseBeamMaterials,
   lakeShoreColliders,
   fishSchool,
   pastureGrassBlades,
@@ -3357,6 +3359,8 @@ export function buildMap(mapName) {
   // 海面：支援頂點著色（浪頭捲到最高點時自動染白模擬碎浪），網格加密讓
   // 捲浪的幾何細節看得出來；只涵蓋 tile 9 的範圍，動畫在 animate() 逐頂點更新
   windmillRotors.length = 0;
+  lighthouseBeamRotors.length = 0;
+  lighthouseBeamMaterials.length = 0;
   gameState.oceanMesh = null;
   gameState.lakeMesh = null;
   lakeShoreColliders.length = 0;

@@ -105,6 +105,8 @@ export const prologueRefs: {
       export const outdoorLampLights = [];
       export const foamMeshes = []; // 沙灘跟海交界的拍岸泡沫，animate() 裡逐幀讓它忽明忽暗
       export const windmillRotors = [];
+      export const lighthouseBeamRotors: import("three").Group[] = [];
+      export const lighthouseBeamMaterials: import("three").MeshBasicMaterial[] = [];
       export const lakeShoreColliders = []; // 湖岸石頭的圓形碰撞，建圖時與石頭位置同步
       export const fishSchool = []; // 每條魚各自保存尺寸、速度、橢圓半徑、游移與深度參數
       // 天梯(makeCelestialSpiralStaircase()/makeCelestialSparkles()，

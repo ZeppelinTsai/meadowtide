@@ -161,6 +161,8 @@ import {
   outdoorLampLights,
   foamMeshes,
   windmillRotors,
+  lighthouseBeamRotors,
+  lighthouseBeamMaterials,
   fishSchool,
   pastureGrassBlades,
   gatherNodeMeshes,
@@ -2021,6 +2023,13 @@ export function animate(now) {
 
   windmillRotors.forEach((rotor) => {
     rotor.rotation.z -= frameDt * 0.62; // 純視覺，對話中不暫停
+  });
+  lighthouseBeamRotors.forEach((rotor) => {
+    rotor.rotation.y += frameDt * 0.42;
+    rotor.visible = nightFactor > 0.04;
+  });
+  lighthouseBeamMaterials.forEach((material) => {
+    material.opacity = nightFactor * 0.22;
   });
 
   // 真魚通常會直線巡游一段、短暫停留，再改成橫向或縱向的新路線；

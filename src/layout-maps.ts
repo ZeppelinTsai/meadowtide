@@ -809,6 +809,8 @@ export const LAYOUT = {
     southBeach: { x: 0, z: 30, width: 21, depth: 30 },
     southBeachStairs: { x: 7, z: 29, width: 7, depth: 3 },
     smallBoatDock: { x: 21, z: 27, length: 9 },
+    // 小燈塔位於防波堤通行格(x=21)右側海緣，玩家仍能走到塔旁。
+    lighthouse: { x: 22.4, z: 28, scale: 1 },
     shops: [
       { x: 9, z: 12, w: 3, d: 2, seed: 0.22 },
       { x: 13, z: 12, w: 4, d: 2, seed: 0.47 },
