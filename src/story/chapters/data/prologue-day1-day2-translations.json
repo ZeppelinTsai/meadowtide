@@ -730,9 +730,9 @@
     "text_ja": "「取り出したら、使い方を教えてあげる。南の浜辺で試してみてください。そっちの方が安全です。」"
   },
   {
-    "text": "「裝備釣竿後，面向水邊按下 E，就能拋竿。魚上鉤時會出現提示，根據提示操作即可。」",
-    "text_en": "\"After equipping the fishing rod, face the water and press E to cast the rod. A prompt will appear when the fish takes the bait, just follow the prompts.\"",
-    "text_ja": "「釣り竿を装備したら、水に向かってEを押して竿を投げます。魚が餌を食べるとプロンプトが表示されます。プロンプトに従ってください。」"
+    "text": "「竿子先裝備上，面向水邊按 E 甩出去就行。等魚上鉤，看提示按對就好，沒什麼難的。」",
+    "text_en": "\"Get the rod equipped, face the water, and hit E to cast — easy. Once a fish bites, just follow the prompt. Nothing to it.\"",
+    "text_ja": "「竿を構えて、水に向かってEを押せば投げられる。魚が食いついたらプロンプトどおりにやればいい。難しくない。」"
   },
   {
     "text": "「先試一次，我在旁邊看著。」",
@@ -750,14 +750,14 @@
     "text_ja": "「魚が釣れたよ！牧場小屋に戻りましょう。」"
   },
   {
-    "text": "「接下來是料理。我先教你烤蔬菜、海鮮湯和烤蘑菇串三道食譜。」",
-    "text_en": "\"The next step is cooking. I will teach you three recipes of grilled vegetables, seafood soup and grilled mushroom skewers.\"",
-    "text_ja": "「次のステップは料理です。野菜のグリル、魚介のスープ、キノコの串焼きの 3 つのレシピを教えます。」"
+    "text": "「說到吃的，我教你幾道菜當賠罪吧——烤蔬菜、海鮮湯，還有烤蘑菇串，先學這三道。」",
+    "text_en": "\"Speaking of food — let me teach you a few dishes to make up for earlier. Grilled vegetables, seafood soup, and grilled mushroom skewers. Start with these three.\"",
+    "text_ja": "「食べ物といえば、さっきのお詫びに料理を教えましょう——焼き野菜、海鮮スープ、それにキノコの串焼き。まずはこの三つから。」"
   },
   {
-    "text": "「爐灶就在屋子的右上角，走近調查後，挑其中任何一道做出來就好。」",
-    "text_en": "\"The stove is in the upper right corner of the house. After you get closer and investigate, just choose any one of them and make it.\"",
-    "text_ja": "「ストーブは家の右上にあります。近づいて調べたら、どれかを選んで作ってください。」"
+    "text": "「爐灶就在屋子裡，一進門應該就找得到。走近它，挑一道你想做的試試看。」",
+    "text_en": "\"The stove's inside the house — you should spot it as soon as you walk in. Get close to it and pick whichever dish you'd like to try.\"",
+    "text_ja": "「かまどは家の中にあります。入ればすぐ見つかるはずです。近づいて、作りたい料理を選んでみてください。」"
   },
   {
     "text": "「廚房現在只有最基本的炊具，能做的料理還不多。先試著做一份料理吧。」",
@@ -785,9 +785,9 @@
     "text_ja": "「今週はあと数名が島に来るはずです。誰かが到着したら牧場に行ってお知らせします。」"
   },
   {
-    "text": "「按下 Tab ，或是按下右蘑菇頭，可以切換成第一人稱視角。」",
-    "text_en": "\"Press Tab or press the right mushroom head to switch to the first-person perspective.\"",
-    "text_ja": "「Tab キーを押すか、右のキノコの頭を押すと、一人称視点に切り替わります。」"
+    "text": "「按下 Tab，或是按下右蘑菇頭，可以切換成第一人稱視角，想看仔細一點的時候用得上。」",
+    "text_en": "\"Press Tab, or the right stick, to switch to first-person view — handy when you want a closer look at something.\"",
+    "text_ja": "「Tabキー、または右スティックを押すと一人称視点に切り替わります。何かをじっくり見たいときに便利です。」"
   },
   {
     "text": "「那麼，歡迎來到島上，牧場主。」",
