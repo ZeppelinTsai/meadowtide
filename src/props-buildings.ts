@@ -974,12 +974,19 @@ export function makePortScene() {
   // 盡頭，跟外海用同一塊水面、同一組頂點，不會再有中間那道縫。
   // 航道在南碼頭／南沙灘以前只從 x=21 開始；到沙灘區後退到
   // southBeach 的東緣，乾地上方不再殘留一層水面。
+  const basinEastX = port.basin.x + port.basin.width;
   const southQuayEastX = port.southQuay.x + port.southQuay.width;
   addWater(
-    southQuayEastX,
+    basinEastX,
     port.beachDepth + 1,
+    oceanViewEdge - basinEastX,
+    port.southQuay.z - port.beachDepth - 1,
+  );
+  addWater(
+    southQuayEastX,
+    port.southQuay.z,
     oceanViewEdge - southQuayEastX,
-    port.southBeach.z - port.beachDepth - 1,
+    port.southBeach.z - port.southQuay.z,
   );
   addWater(
     port.southBeach.x + port.southBeach.width,
