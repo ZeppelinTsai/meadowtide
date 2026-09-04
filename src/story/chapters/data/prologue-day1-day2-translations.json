@@ -1,17 +1,17 @@
 [
   {
     "text": "村長",
-    "text_en": "village chief",
+    "text_en": "Mayor",
     "text_ja": "村長"
   },
   {
     "text": "船長",
-    "text_en": "captain",
+    "text_en": "Captain",
     "text_ja": "船長"
   },
   {
     "text": "[村長交給主角九包蘿蔔種子]",
-    "text_en": "[The village chief hands the protagonist nine packets of radish seeds]",
+    "text_en": "[The Mayor hands the protagonist nine packets of radish seeds]",
     "text_ja": "【村長が主人公に大根の種を9袋渡す】"
   },
   {
@@ -51,7 +51,7 @@
   },
   {
     "text": "[船長前往倉庫取釣竿]",
-    "text_en": "[The captain goes to the warehouse to get the fishing rod]",
+    "text_en": "[The Captain goes to the warehouse to get the fishing rod]",
     "text_ja": "[船長は釣り竿を取りに倉庫へ行きます]"
   },
   {
@@ -81,13 +81,13 @@
   },
   {
     "text": "『這裡曾有肥沃的田地、豐饒的海洋，以及一年四季都有人來訪的牧場。』",
-    "text_en": "“There were once fertile fields, bountiful oceans, and pastures that people visited all year round. 』",
+    "text_en": "\"There were once fertile fields, bountiful oceans, and pastures that people visited all year round.\"",
     "text_ja": "「かつては肥沃な野原、豊かな海、そして牧草地があり、人々は一年中そこを訪れていました。」"
   },
   {
     "text": "『我們正在尋找一位新的牧場主，和島上的人一起，讓這片土地再次熱鬧起來。』",
-    "text_en": "“We are looking for a new rancher to join the islanders and make the land lively again. 』",
-    "text_ja": "「私たちは島民に加わってこの土地を再び活気づけてくれる新しい牧場主を探しています。 』"
+    "text_en": "\"We are looking for a new rancher to join the islanders and make the land lively again.\"",
+    "text_ja": "「私たちは島民に加わってこの土地を再び活気づけてくれる新しい牧場主を探しています。」"
   },
   {
     "text": "「前面就到了，東西收一收吧！」",
@@ -101,7 +101,7 @@
   },
   {
     "text": "「我是梅貝爾，這座島的村長。島上的人現在不多，所以雜貨店也暫時由我照看。」",
-    "text_en": "\"I am Mabel, the village chief of this island. There are not many people on the island right now, so I will take care of the grocery store for the time being.\"",
+    "text_en": "\"I am Mabel, the Mayor of this island. There are not many people on the island right now, so I will take care of the grocery store for the time being.\"",
     "text_ja": "「私はこの島の村長、メイベルです。今は島に人が少ないので、しばらくは私が食料品店を担当します。」"
   },
   {
@@ -116,7 +116,7 @@
   },
   {
     "text": "[村長帶主角來到島上的廣場]",
-    "text_en": "[The village chief takes the protagonist to the square on the island]",
+    "text_en": "[The Mayor takes the protagonist to the square on the island]",
     "text_ja": "【村長が主人公を島の広場に連れて行く】"
   },
   {
@@ -186,7 +186,7 @@
   },
   {
     "text": "[村長短暫停頓]",
-    "text_en": "[The village chief pauses briefly]",
+    "text_en": "[The Mayor pauses briefly]",
     "text_ja": "[村長はしばし立ち止まる]"
   },
   {
@@ -246,7 +246,7 @@
   },
   {
     "text": "[村長蹲下來看了看剛播種的土地]",
-    "text_en": "[The village chief squatted down and looked at the newly sown land]",
+    "text_en": "[The Mayor squatted down and looked at the newly sown land]",
     "text_ja": "［村長はしゃがみ、新しく蒔かれた土地を眺めた］"
   },
   {
@@ -281,7 +281,7 @@
   },
   {
     "text": "[村長望向空蕩蕩的圍欄]",
-    "text_en": "[The village chief looks at the empty fence]",
+    "text_en": "[The Mayor looks at the empty fence]",
     "text_ja": "[村長は空の柵を見つめる]"
   },
   {
@@ -291,7 +291,7 @@
   },
   {
     "text": "[村長苦笑了一下]",
-    "text_en": "[The village chief smiles bitterly]",
+    "text_en": "[The Mayor smiles bitterly]",
     "text_ja": "［村長苦笑］"
   },
   {
@@ -326,7 +326,7 @@
   },
   {
     "text": "[村長看向荒蕪的花園，又回頭看了看剛播種的田地]",
-    "text_en": "[The village chief looks at the deserted garden and then looks back at the newly sown fields]",
+    "text_en": "[The Mayor looks at the deserted garden and then looks back at the newly sown fields]",
     "text_ja": "【村長は荒れ果てた庭を眺め、そして新たに種を蒔いた畑を振り返る】"
   },
   {
@@ -341,7 +341,7 @@
   },
   {
     "text": "[村長轉向主角，笑了笑]",
-    "text_en": "[The village chief turns to the protagonist and smiles]",
+    "text_en": "[The Mayor turns to the protagonist and smiles]",
     "text_ja": "［村長は主人公に向き直り微笑む］"
   },
   {
@@ -366,7 +366,7 @@
   },
   {
     "text": "[村長愣住]",
-    "text_en": "[The village chief is stunned]",
+    "text_en": "[The Mayor is stunned]",
     "text_ja": "［村長は唖然とする］"
   },
   {
@@ -376,17 +376,17 @@
   },
   {
     "text": "「對不起，我居然忘了最重要的事。島上現在還沒有餐館，總不能讓你餓著等蘿蔔長大。」",
-    "text_en": "\"I'm sorry, I forgot the most important thing. There is no restaurant on the island yet, so we can't let you wait for the carrots to grow hungry.\"",
-    "text_ja": "「ごめんなさい、一番大事なことを忘れていました。島にはまだレストランがないので、ニンジンがお腹を空かせるのを待たせるわけにはいきません。」"
+    "text_en": "\"I'm sorry, I forgot the most important thing. There is no restaurant on the island yet, so we can't let you wait for the radishes to grow hungry.\"",
+    "text_ja": "「ごめんなさい、一番大事なことを忘れていました。島にはまだレストランがないので、大根がお腹を空かせるのを待たせるわけにはいきません。」"
   },
   {
     "text": "[村長交給主角三條魚、三根蘿蔔和三朵蘑菇]",
-    "text_en": "[The village chief gives the protagonist three fish, three radishes and three mushrooms]",
+    "text_en": "[The Mayor gives the protagonist three fish, three radishes and three mushrooms]",
     "text_ja": "[村長は主人公に魚3匹、大根3個、キノコ3個を与える]"
   },
   {
     "text": "「這些是我早上向船長買來的補給。你先拿去應急吧。」",
-    "text_en": "\"These are the supplies I bought from the captain this morning. You should take them for emergencies first.\"",
+    "text_en": "\"These are the supplies I bought from the Captain this morning. You should take them for emergencies first.\"",
     "text_ja": "「これは今朝船長から買った物資です。まず緊急用に持って行ってください。」"
   },
   {
@@ -401,7 +401,7 @@
   },
   {
     "text": "[村長停頓了一下]",
-    "text_en": "[The village chief pauses]",
+    "text_en": "[The Mayor pauses]",
     "text_ja": "[村長が立ち止まる]"
   },
   {
@@ -411,7 +411,7 @@
   },
   {
     "text": "「真不好意思。我們去問問船長吧，他現在應該還在港口。」",
-    "text_en": "\"I'm so sorry. Let's ask the captain. He should still be in port now.\"",
+    "text_en": "\"I'm so sorry. Let's ask the Captain. He should still be in port now.\"",
     "text_ja": "「申し訳ありません。船長に聞いてみましょう。今はまだ港にいるはずです。」"
   },
   {
@@ -431,12 +431,12 @@
   },
   {
     "text": "[村長將島嶼地圖交給主角]",
-    "text_en": "[The village chief hands the island map to the protagonist]",
+    "text_en": "[The Mayor hands the island map to the protagonist]",
     "text_ja": "【村長が主人公に島の地図を渡す】"
   },
   {
     "text": "[村長進入同行狀態。港口在東邊；黃色地板代表可進入區域]",
-    "text_en": "[The village chief enters the companion state. The port is to the east; yellow floors represent accessible areas]",
+    "text_en": "[The Mayor enters the companion state. The port is to the east; yellow floors represent accessible areas]",
     "text_ja": "【村長が仲間状態に。港は東にあります。黄色の床はアクセシブルなエリアを表します]"
   },
   {
@@ -461,7 +461,7 @@
   },
   {
     "text": "[村長進入同行狀態]",
-    "text_en": "[The village chief enters the accompanying state]",
+    "text_en": "[The Mayor enters the accompanying state]",
     "text_ja": "【村長同行状態に入る】"
   },
   {
@@ -476,7 +476,7 @@
   },
   {
     "text": "[歐文背著工具包走下船，船長正在搬他的行李]",
-    "text_en": "[Owen walks off the ship carrying his tool bag, while the captain is moving his luggage]",
+    "text_en": "[Owen walks off the ship carrying his tool bag, while the Captain is moving his luggage]",
     "text_ja": "[船長が荷物を移動している間、オーウェンは道具袋を持って船から降りる]"
   },
   {
@@ -681,7 +681,7 @@
   },
   {
     "text": "「這支釣竿，其實是上一任村長留下的。」",
-    "text_en": "\"This fishing rod was actually left behind by the previous village chief.\"",
+    "text_en": "\"This fishing rod was actually left behind by the previous Mayor.\"",
     "text_ja": "「この釣り竿、実は前の村長が置き忘れたものなんです。」"
   },
   {
@@ -701,7 +701,7 @@
   },
   {
     "text": "「妳接下他的村長工作以後，也沒什麼空來釣魚。現在交給新牧場主，正好。」",
-    "text_en": "\"After you took over his job as village chief, you didn't have much time to fish. Now it's just right to hand it over to the new rancher.\"",
+    "text_en": "\"After you took over his job as Mayor, you didn't have much time to fish. Now it's just right to hand it over to the new rancher.\"",
     "text_ja": "「あなたが村長の仕事を引き継いだ後、あなたはあまり漁をする時間がありませんでした。今は新しい牧場主にそれを引き継ぐのが適切です。」"
   },
   {
@@ -721,7 +721,7 @@
   },
   {
     "text": "「說起來，我還沒跟你自我介紹是吧。我叫赫克托，是這艘補給船的船長。」",
-    "text_en": "\"Speaking of which, I haven't introduced myself to you yet, have I? My name is Hector, and I'm the captain of this supply ship.\"",
+    "text_en": "\"Speaking of which, I haven't introduced myself to you yet, have I? My name is Hector, and I'm the Captain of this supply ship.\"",
     "text_ja": "「そういえば、まだ自己紹介をしていませんね。私の名前はヘクトル、この補給船の船長です」"
   },
   {
@@ -737,7 +737,7 @@
   {
     "text": "「先試一次，我在旁邊看著。」",
     "text_en": "\"Try it first, I'll watch from the side.\"",
-    "text_ja": "「まずはやってみてください、私は横から見てます。��"
+    "text_ja": "「まずはやってみてください、私は横から見てます。」"
   },
   {
     "text": "「別在意，第一次失手很正常。看準魚咬鉤的提示，再試一次吧。」",
@@ -811,7 +811,7 @@
   },
   {
     "text": "[船長正在把歐文的行李搬下來]",
-    "text_en": "[The captain is unloading Owen's luggage]",
+    "text_en": "[The Captain is unloading Owen's luggage]",
     "text_ja": "[船長がオーウェンの荷物を降ろしている]"
   },
   {
@@ -1212,7 +1212,7 @@
   {
     "text": "「我想試試看，用這座島自己的顏色。」",
     "text_en": "\"I want to try it and use the island's own colors.\"",
-    "text_ja": "「島独自の色を使ってやってみたい」。"
+    "text_ja": "「島独自の色を使ってやってみたい」"
   },
   {
     "text": "[主角看向窗外／山的方向，一臉躍躍欲試]",
