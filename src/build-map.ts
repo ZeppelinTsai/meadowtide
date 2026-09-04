@@ -3295,10 +3295,20 @@ export function buildMap(mapName) {
         // 花田附近機率整段往上抬之後，石頭反而會被排擠到幾乎抽不到。
         // 2026-09-04 二次調整，Zeppelin 反饋密度還要再拉高：花田附近的
         // 花機率從 16%(0.26 門檻) 再拉到 50%(0.6 門檻)。
+        // 2026-09-04 三次調整，Zeppelin 截圖抓到 [livingArea] (34,41) 那格
+        // 太過去了——東側緣衝帶原本跟其他三邊一樣是 5 格，導致越過花田
+        // 右緣(x=33)一路長到 x=37。改成東側單獨用一個更小的上限，最多
+        // 只到 x=33 這格(花田右緣的下一格)，不再往東延伸；西/南/北三邊
+        // 緩衝帶不受影響，維持原本 5 格。
         const GARDEN_FLOWER_MARGIN = 5;
+        const GARDEN_FLOWER_MAX_X = LAYOUT.garden.x + LAYOUT.garden.width + 1; // 34(不含)，即最遠到 x=33
         const nearGarden =
           x >= LAYOUT.garden.x - GARDEN_FLOWER_MARGIN &&
-          x < LAYOUT.garden.x + LAYOUT.garden.width + GARDEN_FLOWER_MARGIN &&
+          x <
+            Math.min(
+              LAYOUT.garden.x + LAYOUT.garden.width + GARDEN_FLOWER_MARGIN,
+              GARDEN_FLOWER_MAX_X,
+            ) &&
           z >= LAYOUT.garden.z - GARDEN_FLOWER_MARGIN &&
           z < LAYOUT.garden.z + LAYOUT.garden.height + GARDEN_FLOWER_MARGIN;
         const flowerThreshold = nearGarden ? 0.6 : 0.14;
@@ -3307,13 +3317,34 @@ export function buildMap(mapName) {
           m.position.y += gy;
           gameState.mapGroup.add(m);
         } else if (r < flowerThreshold) {
-          const m = makeFlower(
-            x + (r - 0.5) * 0.4,
-            z + (r - 0.5) * 0.4,
-            FLOWER_COLORS[Math.floor(r * 100) % 4],
-          );
-          m.position.y += gy;
-          gameState.mapGroup.add(m);
+          if (nearGarden) {
+            // Zeppelin 要求「一格擠一點、顏色不同」——比照 makeGardenBed()
+            // 花圃簇擁的做法，同一格內插好幾株不同顏色的花，而不是單株，
+            // 看起來像一叢花而不是稀疏散落的單株。只在花田周邊套用，其他
+            // 區域(else 分支)維持原本單株邏輯，外觀不受影響。
+            const clusterCount = 3;
+            for (let i = 0; i < clusterCount; i++) {
+              const cr = hash2(x * 11.3 + i * 2.7, z * 5.9 + i * 4.1);
+              const fx = x + (cr - 0.5) * 0.6;
+              const fz =
+                z + (hash2(z * 11.3 + i * 2.7, x * 5.9 + i * 4.1) - 0.5) * 0.6;
+              const m = makeFlower(
+                fx,
+                fz,
+                FLOWER_COLORS[Math.floor(cr * 97) % FLOWER_COLORS.length],
+              );
+              m.position.y += gy;
+              gameState.mapGroup.add(m);
+            }
+          } else {
+            const m = makeFlower(
+              x + (r - 0.5) * 0.4,
+              z + (r - 0.5) * 0.4,
+              FLOWER_COLORS[Math.floor(r * 100) % 4],
+            );
+            m.position.y += gy;
+            gameState.mapGroup.add(m);
+          }
         } else if (r < flowerThreshold + 0.03) {
           const m = makeStone(x + (r - 0.5) * 0.4, z + (r - 0.5) * 0.4, r);
           m.position.y += gy;
