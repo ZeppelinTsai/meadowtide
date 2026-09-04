@@ -5,6 +5,52 @@ export interface StoryAuditResult {
   warnings: string[];
 }
 
+export interface StoryTranslationRow {
+  text: string;
+  text_en: string;
+  text_ja: string;
+}
+
+// 2026-09-04 補充：STORY_SCRIPT_TRANSLATIONS(src/story-script-translations.ts)
+// 是用「原文中文」直接當 key 查表，兩筆原文字面一模一樣時，後面那筆會
+// 悄悄蓋掉前面那筆的翻譯，不會有任何錯誤或警告——起因是 Zeppelin 問起
+// 這個結構的風險，檢查當下這批 267 句劇情剛好沒撞到，但劇情台詞(尤其
+// 短句反應、舞台指示)天生比固定的 UI 術語表更容易重複，機率不是 0，
+// 而且壞掉的時候是靜默的，所以在這裡補一道自動檢查，之後加新的一天／
+// 新角色台詞時，story-audit 會自動抓出來，不用再手動寫腳本比對。
+export function auditStoryTranslations(
+  rows: readonly StoryTranslationRow[],
+): StoryAuditResult {
+  const errors: string[] = [];
+  const warnings: string[] = [];
+  const firstSeenAt = new Map<string, number>();
+
+  rows.forEach((row, index) => {
+    if (!row.text || !row.text.trim()) {
+      errors.push(`翻譯第 ${index + 1} 筆缺少原文 text`);
+      return;
+    }
+    const firstIndex = firstSeenAt.get(row.text);
+    if (firstIndex !== undefined) {
+      errors.push(
+        `翻譯原文重複(第 ${firstIndex + 1} 筆與第 ${index + 1} 筆)：「${row.text}」——` +
+          `STORY_SCRIPT_TRANSLATIONS 用原文當 key 查表，重複會讓其中一筆翻譯被悄悄蓋掉，` +
+          `請改其中一筆原文讓它變成唯一(或確認兩筆真的該共用同一句翻譯後合併成一筆)`,
+      );
+    } else {
+      firstSeenAt.set(row.text, index);
+    }
+    if (!row.text_en || !row.text_en.trim()) {
+      warnings.push(`翻譯第 ${index + 1} 筆缺少英文翻譯：「${row.text}」`);
+    }
+    if (!row.text_ja || !row.text_ja.trim()) {
+      warnings.push(`翻譯第 ${index + 1} 筆缺少日文翻譯：「${row.text}」`);
+    }
+  });
+
+  return { errors: [...new Set(errors)], warnings };
+}
+
 const ID_PATTERN = /^[a-z][a-z0-9]*(?:\.[a-z][a-z0-9_]*)+$/;
 
 function walkSteps(
