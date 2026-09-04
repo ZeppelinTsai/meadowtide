@@ -655,6 +655,18 @@ export function makeRedWindmill(area) {
   door.position.set(0, 0.34, 1.01);
   group.add(door);
 
+  // 從塔身正面伸到扇葉輪轂的主軸。原本 rotor 整組懸在 z=1.2，塔身在
+  // 這個高度的正面只到約 z=0.75，低角度看會明顯斷開；主軸後端刻意
+  // 插進塔身、前端插進 hub，旋轉時也不會露出縫隙。
+  const rotorAxle = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.095, 0.095, 0.64, 10),
+    woodMat,
+  );
+  rotorAxle.rotation.x = Math.PI / 2;
+  rotorAxle.position.set(0, 2.14, 0.9);
+  rotorAxle.castShadow = true;
+  group.add(rotorAxle);
+
   const rotor = new THREE.Group();
   // 整組轉軸往塔身正面外推，保留葉片厚度與屋身間隙，避免旋轉時穿模。
   rotor.position.set(0, 2.14, 1.2);
