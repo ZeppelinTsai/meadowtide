@@ -112,10 +112,24 @@ function loadCharacter(key: string) {
 // (要蹲低或轉到特定角度才明顯)，光靠人工檢查不可靠，所以每次切換角色
 // 都自動量一次目前姿勢下最低點的世界座標 Y，跟預期的地面(0)比對，量出
 // 明顯落差就直接標紅字提醒，不用等截圖給 Zeppelin 才發現。
+// 2026-09-04 補充：主角(男/女)一度誤報「鞋子陷進地下 0.070」，查出來
+// 不是腿的問題——makeAdventurerHero() 右手掛了一根 visible=false 的釣竿
+// (parts.rod，用於之後的釣魚動畫)，長度延伸到手掌下方 0.56 個單位。
+// THREE.Box3().setFromObject() 預設不管 visible 旗標，照樣把隱藏物件的
+// 幾何體算進包圍盒，於是這根「看不見」的竿子把最低點量歪了。改用
+// traverseVisible()只收集看得見的 mesh，跟遊戲畫面實際渲染的結果一致；
+// 這樣才不會把「隱藏道具」誤判成「鞋子沒站好」。
 function checkGroundContact(model: THREE.Object3D) {
   const el = document.getElementById("groundCheck");
   if (!el) return;
-  const box = new THREE.Box3().setFromObject(model);
+  const box = new THREE.Box3();
+  model.traverseVisible((obj) => {
+    const mesh = obj as THREE.Mesh;
+    if ((mesh as any).isMesh && mesh.geometry) {
+      box.expandByObject(mesh);
+    }
+  });
+  if (box.isEmpty()) return;
   const footY = box.min.y;
   const off = Math.abs(footY);
   if (off < 0.015) {

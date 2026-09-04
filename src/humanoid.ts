@@ -1585,9 +1585,9 @@ export function makeMarineBiologist() {
         // 2026-09-04 Zeppelin 反饋：跟山神同一個問題——hairCap 跟下面垂到
         // 腰下的長髮束(見下方 forEach)中間露出膚色，補一顆往外(+Z)推的
         // napeHair 接起來。
-        const napeHair = new THREE.Mesh(new THREE.SphereGeometry(0.16, 9, 7), hairMat);
-        napeHair.scale.set(1.0, 1.3, 0.75);
-        napeHair.position.set(0, 1.05, 0.12);
+        const napeHair = new THREE.Mesh(new THREE.SphereGeometry(0.19, 9, 7), hairMat);
+        napeHair.scale.set(1.35, 1.25, 0.88);
+        napeHair.position.set(0, 1.1, 0.06);
         group.add(napeHair);
         for (const side of [-1, 1]) {
           const eye = new THREE.Mesh(new THREE.SphereGeometry(0.019, 7, 5), eyeMat);
