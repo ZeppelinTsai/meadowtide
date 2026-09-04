@@ -524,7 +524,10 @@ function walkArtistToWaitSpot(onDone: () => void) {
     // 疊加 x/z 平滑內插，看起來就是「腳沒動、人整個平移過去」。跟主角
     // 那邊 walkPlayerTo() 是同一顆蟲，改吃不受暫停影響的 effectElapsed
     // (見 game-loop.ts「不受暫停影響，純視覺效果一律吃這個」那則說明)。
-    animateWalk(mesh, t < 1, gameState.effectElapsed);
+    // 這支函式本身就是獨立的 rAF 鏈，直接使用同一個 now 當動畫相位。
+    // 若讀主迴圈才更新的 effectElapsed，兩條 rAF 在同一幀的先後順序會讓
+    // 這裡反覆讀到上一幀值；事件暫停時視覺上仍可能像只改座標的平移。
+    animateWalk(mesh, t < 1, (now - startTime) / 1000);
     mesh.position.y +=
       oldVillageGroundY(mesh.position.x, mesh.position.z) + 0.03;
     if (t < 1) {
@@ -940,7 +943,9 @@ function walkPlayerTo(target: { x: number; z: number }, onDone: () => void) {
     // isWorldTimePaused() 恆真，elapsed 完全凍結，animateWalk 用它當
     // 相位等於腿角度整段定格在同一姿勢，跟 walkArtistToWaitSpot() 那邊
     // 同一顆蟲。改吃不受暫停影響的 effectElapsed 才會真的擺動。
-    animateWalk(gameState.player, t < 1, gameState.effectElapsed);
+    // 走位與步態共用這支 rAF 收到的 now，避免依賴主迴圈稍後才更新的
+    // effectElapsed；即使遊戲時間暫停，腿與手仍會按真實秒數持續擺動。
+    animateWalk(gameState.player, t < 1, (now - startTime) / 1000);
     gameState.player.position.y +=
       oldVillageGroundY(
         gameState.player.position.x,
@@ -1020,6 +1025,15 @@ function continueArtistPersonalEventDialogue() {
 
 function beginFlowerMountainTrip() {
   loadEventMap("mountain", RUBY_MOUNTAIN_SPOT, () => {
+    // 事件落點不能退回 mountain.playerStart/townArrival (22,65)。即使
+    // loadMap() 因其他換圖流程或安全落點判定改動過位置，黑屏結束前仍以
+    // 這場戲自己的永久落點為準，並同步格座標與正確山區地面高度。
+    gameState.playerGridPos = { ...RUBY_MOUNTAIN_SPOT };
+    gameState.player.position.set(
+      RUBY_MOUNTAIN_SPOT.x,
+      mountainGroundY(RUBY_MOUNTAIN_SPOT.x, RUBY_MOUNTAIN_SPOT.z) + 0.08,
+      RUBY_MOUNTAIN_SPOT.z,
+    );
     gameState.player.rotation.y = 0;
     const artistNpc = npcs.find((n) => n.id === "artist");
     if (artistNpc) {
@@ -1028,10 +1042,13 @@ function beginFlowerMountainTrip() {
       // false——這裡跟劇本要的「讓藝術家直接一起站在旁邊」一樣，明確
       // 蓋回 true 並給她自己的座標，不跟玩家疊在同一格(疊在一起會擋到
       // 玩家，跟 2026-09-03 修的港口見面戲同一個坑)。
+      // buildMap("mountain") 會把整個 npcGroup 設為 hidden；只打開露比
+      // 自己的 mesh 不會顯示任何東西，因此兩層可見性都必須恢復。
+      npcGroup.visible = true;
       artistNpc.mesh.visible = true;
       artistNpc.mesh.position.set(
         RUBY_MOUNTAIN_SPOT.x + 1,
-        mountainGroundY(RUBY_MOUNTAIN_SPOT.x + 1, RUBY_MOUNTAIN_SPOT.z),
+        mountainGroundY(RUBY_MOUNTAIN_SPOT.x + 1, RUBY_MOUNTAIN_SPOT.z) + 0.08,
         RUBY_MOUNTAIN_SPOT.z,
       );
       artistNpc.mesh.rotation.y = Math.PI / 2;
