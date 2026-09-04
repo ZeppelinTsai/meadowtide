@@ -1,0 +1,1337 @@
+[
+  {
+    "text": "村長",
+    "text_en": "village chief",
+    "text_ja": "村長"
+  },
+  {
+    "text": "船長",
+    "text_en": "captain",
+    "text_ja": "船長"
+  },
+  {
+    "text": "[村長交給主角九包蘿蔔種子]",
+    "text_en": "[The village chief hands the protagonist nine packets of radish seeds]",
+    "text_ja": "【村長が主人公に大根の種を9袋渡す】"
+  },
+  {
+    "text": "[主角看向周圍堆滿石頭與樹枝的田地]",
+    "text_en": "[The protagonist looks at the surrounding fields filled with rocks and branches]",
+    "text_ja": "[主人公は石や枝で埋め尽くされた周囲の野原を眺める]"
+  },
+  {
+    "text": "「嗯？你問為什麼只有這一小塊整理好了？」",
+    "text_en": "\"Huh? You ask why only this small piece has been sorted out?\"",
+    "text_ja": "「え？なぜこの小さな部分だけが整理されているのですか？」"
+  },
+  {
+    "text": "[玩家完成九格播種]",
+    "text_en": "[Player completes nine grids of sowing]",
+    "text_ja": "[プレイヤーは 9 つのグリッドの播種を完了します]"
+  },
+  {
+    "text": "[兩人沿著水渠往牧場另一側走]",
+    "text_en": "[The two walk along the water channel to the other side of the pasture]",
+    "text_ja": "[二人は水路に沿って牧草地の反対側へ歩く]"
+  },
+  {
+    "text": "[兩人繼續往前，來到牧場的休憩區]",
+    "text_en": "[The two continue to move forward and arrive at the rest area of the ranch]",
+    "text_ja": "［二人は進み続け、牧場の休憩所に到着］"
+  },
+  {
+    "text": "[兩人進入牧場小屋]",
+    "text_en": "[Two people enter the ranch cabin]",
+    "text_ja": "【牧場の小屋に入る二人】"
+  },
+  {
+    "text": "「在蘿蔔成熟以前，我要吃什麼？」",
+    "text_en": "\"What should I eat before the radishes are ripe?\"",
+    "text_ja": "「大根が熟れる前に何を食べればいいですか？」"
+  },
+  {
+    "text": "[船長前往倉庫取釣竿]",
+    "text_en": "[The captain goes to the warehouse to get the fishing rod]",
+    "text_ja": "[船長は釣り竿を取りに倉庫へ行きます]"
+  },
+  {
+    "text": "[玩家完成一份烤魚]",
+    "text_en": "[The player completes a portion of grilled fish]",
+    "text_ja": "【プレイヤーが焼き魚を完食】"
+  },
+  {
+    "text": "[牧場環視結束]",
+    "text_en": "[End of ranch inspection]",
+    "text_ja": "【牧場視察終了】"
+  },
+  {
+    "text": "[行走與鏡頭教學完成]",
+    "text_en": "[Walking and camera teaching completed]",
+    "text_ja": "【ウォーキングとカメラティーチング完了】"
+  },
+  {
+    "text": "[主角搭船前往小島，拿起手中的招募傳單]",
+    "text_en": "[The protagonist takes a boat to the island and picks up the recruitment flyer]",
+    "text_ja": "【主人公は船に乗って島に行き、募集チラシを受け取る】"
+  },
+  {
+    "text": "『小島牧場主招募中——』",
+    "text_en": "\"Recruiting small island ranchers——\"",
+    "text_ja": "「小さな島の牧場主募集——」"
+  },
+  {
+    "text": "『這裡曾有肥沃的田地、豐饒的海洋，以及一年四季都有人來訪的牧場。』",
+    "text_en": "“There were once fertile fields, bountiful oceans, and pastures that people visited all year round. 』",
+    "text_ja": "「かつては肥沃な野原、豊かな海、そして牧草地があり、人々は一年中そこを訪れていました。」"
+  },
+  {
+    "text": "『我們正在尋找一位新的牧場主，和島上的人一起，讓這片土地再次熱鬧起來。』",
+    "text_en": "“We are looking for a new rancher to join the islanders and make the land lively again. 』",
+    "text_ja": "「私たちは島民に加わってこの土地を再び活気づけてくれる新しい牧場主を探しています。 』"
+  },
+  {
+    "text": "「前面就到了，東西收一收吧！」",
+    "text_en": "\"We're just ahead. Let's collect your things!\"",
+    "text_ja": "「まだ先です。荷物���集めましょう！」"
+  },
+  {
+    "text": "「你就是新來的牧場主吧？歡迎來到這座島。一路上還順利嗎？」",
+    "text_en": "\"You're the new rancher, right? Welcome to the island. How's your journey going?\"",
+    "text_ja": "「あなたは新しい牧場主ですよね？島へようこそ。旅の調子はどうですか？」"
+  },
+  {
+    "text": "「我是梅貝爾，這座島的村長。島上的人現在不多，所以雜貨店也暫時由我照看。」",
+    "text_en": "\"I am Mabel, the village chief of this island. There are not many people on the island right now, so I will take care of the grocery store for the time being.\"",
+    "text_ja": "「私はこの島の村長、メイベルです。今は島に人が少ないので、しばらくは私が食料品店を担当します。」"
+  },
+  {
+    "text": "「這艘船每天上午十點靠岸，下午四點離港。原則上星期一停航——今天是為了接你，才特別跑了一趟。」",
+    "text_en": "\"This ship docks at ten o'clock in the morning and leaves the port at four o'clock in the afternoon. In principle, it does not sail on Mondays - today I made a special trip to pick you up.\"",
+    "text_ja": "「この船は午前10時に入港し、午後4時に出港します。月曜日は原則として出航しておりません。今日は特別にあなたを迎えに行きました。」"
+  },
+  {
+    "text": "「那麼，我們去你的牧場吧，跟我來。」",
+    "text_en": "\"Then let's go to your ranch, follow me.\"",
+    "text_ja": "「それではあなたの牧場に行きましょう、私に従ってください。」"
+  },
+  {
+    "text": "[村長帶主角來到島上的廣場]",
+    "text_en": "[The village chief takes the protagonist to the square on the island]",
+    "text_ja": "【村長が主人公を島の広場に連れて行く】"
+  },
+  {
+    "text": "「這裡是島上的廣場。以前人多的時候，慶典和市集都會在這裡舉辦。」",
+    "text_en": "\"This is the square on the island. In the past, when there were many people, celebrations and markets would be held here.\"",
+    "text_ja": "「ここは島の広場です。昔、人が多かったときはここでお祝い事や市が開かれていました。」"
+  },
+  {
+    "text": "「靠近廣場最南邊的第一間店就是雜貨店。營業時間是上午十點到下午四點，星期一公休。」",
+    "text_en": "\"The first store near the south end of the square is the grocery store. It is open from 10 a.m. to 4 p.m. and is closed on Mondays.\"",
+    "text_ja": "「広場の南端近くの最初の店舗は食料品店です。営業時間は午前 10 時から午後 4 時までで、月曜日が定休日です。」"
+  },
+  {
+    "text": "「沿著城鎮往西北走可以上山。不過今天要看的地方不少，山區就留給你之後慢慢探索吧。」",
+    "text_en": "\"You can go up the mountain by walking northwest from the town. But there are a lot of places to see today, so I'll leave the mountainous area to you to explore slowly later.\"",
+    "text_ja": "「町から北西に歩いて登ることもできます。でも、今日は見どころがたくさんあるので、山間部は後でゆっくり探索してもらいます。」"
+  },
+  {
+    "text": "[兩人接著來到城鎮東北方的牧場]",
+    "text_en": "[The two then came to the pasture northeast of the town]",
+    "text_ja": "[その後二人は町の北東にある牧草地にやって来た]"
+  },
+  {
+    "text": "「到了。這裡就是你未來的牧場。」",
+    "text_en": "\"Here we are. This is your future ranch.\"",
+    "text_ja": "「ここにいます。ここがあなたの未来の牧場です。」"
+  },
+  {
+    "text": "「看起來……確實比我記得的還要荒涼一點。」",
+    "text_en": "\"It... does look a little more desolate than I remembered.\"",
+    "text_ja": "「それは……私が覚えていたより���少し荒涼としたように見えます。」"
+  },
+  {
+    "text": "「房子雖然空了一段時間，但我偶爾都有過來整理，基本生活應該沒有問題。」",
+    "text_en": "\"Although the house has been empty for a while, I occasionally come here to tidy it up, so there should be no problems with basic life.\"",
+    "text_ja": "「しばらく空き家になっていますが、時々片付けに来ているので、基本的な生活には問題ないでしょう。」"
+  },
+  {
+    "text": "「先教你基本的行走。用 W／A／S／D 或方向鍵，就能控制自己的移動。」",
+    "text_en": "\"Teach you the basics of walking first. Use W/A/S/D or the direction keys to control your movement.\"",
+    "text_ja": "「まず歩き方の基本を教えてください。W/A/S/D または方向キーを使って動きをコントロールしてください。」"
+  },
+  {
+    "text": "「滑鼠滾輪可以拉近或拉遠鏡頭；",
+    "text_en": "“The mouse wheel can zoom in or out;",
+    "text_ja": "「マウスホイールはズームインまたはズームアウトできます。"
+  },
+  {
+    "text": "「手把則使用右蘑菇頭上下，調整到你看得舒服的距離吧。」",
+    "text_en": "\"Use the right mushroom head to move the handle up and down, and adjust it to a comfortable distance for you.\"",
+    "text_ja": "「適切なマッシュルームヘッドを使用してハンドルを上下に動かし、快適な距離に調整してください。」"
+  },
+  {
+    "text": "「那麼，跟我來吧。」",
+    "text_en": "\"Then, come with me.\"",
+    "text_ja": "「それでは、私と一緒に来てください。」"
+  },
+  {
+    "text": "「先從這裡開始吧。這是九包蘿蔔種子，你試著種進田裡看看。」",
+    "text_en": "\"Let's start here. Here are nine packets of radish seeds. Try planting them in the field and see.\"",
+    "text_ja": "「ここから始めましょう。ここに大根の種が9袋あります。畑に植えてみて見てください。」"
+  },
+  {
+    "text": "「嗯？你問為什麼只有這片田是乾淨的？」",
+    "text_en": "\"Huh? You ask why this field is the only one that is clean?\"",
+    "text_ja": "「え？なぜこのフィールドだけがきれいなのかと尋ねますか？」"
+  },
+  {
+    "text": "[村長短暫停頓]",
+    "text_en": "[The village chief pauses briefly]",
+    "text_ja": "[村長はしばし立ち止まる]"
+  },
+  {
+    "text": "「……前一位牧場主人離開以後，這裡就一直沒有人正式接手。」",
+    "text_en": "\"...After the previous ranch owner left, no one has officially taken over here.\"",
+    "text_ja": "「……先代の牧場主がいなくなってから、正式にここを引き継ぐ者は誰もいません。」"
+  },
+  {
+    "text": "「我偶爾會過來整理一下，不過人上了年紀，清理這些東西比想像中累。」",
+    "text_en": "\"I occasionally come here to clean it up, but as I get older, cleaning these things is more tiring than I thought.\"",
+    "text_ja": "「たまに掃除に来るんですけど、歳を重ねると掃除って思ったより疲れるんです」"
+  },
+  {
+    "text": "「最後，也只來得及替你整理好這一小塊。」",
+    "text_en": "\"In the end, I only had time to sort out this small piece for you.\"",
+    "text_ja": "「結局、私にはこの小さな部分を整理する時間しかありませんでした。」"
+  },
+  {
+    "text": "[主角連忙搖頭，冒著汗表示自己不是在責怪她]",
+    "text_en": "[The protagonist shakes his head quickly, sweating to show that he is not blaming her]",
+    "text_ja": "[主人公は汗をかきながら素早��首を振り、彼女を責めていないことを示した]"
+  },
+  {
+    "text": "「哈哈，不用急著道歉。至少現在，總算有人願意重新站在這塊田裡了。」",
+    "text_en": "\"Haha, there's no need to apologize in a hurry. At least now, someone is finally willing to stand in this field again.\"",
+    "text_ja": "「ははは、急いで謝る必要はないよ。少なくとも今、ようやくこの分野に再び立とうとする人が現れました。」"
+  },
+  {
+    "text": "「剩下的地方，就交給你按照自己的步調慢慢整理吧。」",
+    "text_en": "\"I'll leave the rest to you to sort out slowly at your own pace.\"",
+    "text_ja": "「残りはあなたのペースでゆっくり解決してください。」"
+  },
+  {
+    "text": "「先按下右下的種子圖示，把種子拿出來。」",
+    "text_en": "\"First press the seed icon on the lower right and take out the seeds.\"",
+    "text_ja": "まず右下の種のアイコンを押して種を取り出します。"
+  },
+  {
+    "text": "「按左右箭頭則可以切換物品，下鍵收進去。」",
+    "text_en": "\"Press the left and right arrows to switch items, and press the down button to store them.\"",
+    "text_ja": "「左右の矢印を押して項目を切り替え、下ボタンを押して保存します。」"
+  },
+  {
+    "text": "「手把則是按十字鍵叫出，左右鍵切換，下鍵收進去」",
+    "text_en": "\"For the handle, press the cross key to call it out, the left and right keys to switch, and the down key to retract it.\"",
+    "text_ja": "「ハンドルは十字キーで呼び出し、左右キーで切り替え、下キーで引っ込みます。」"
+  },
+  {
+    "text": "「站在田地上按下 E，就能播種。來，把這九格都種滿看看。」",
+    "text_en": "\"Stand on the field and press E to sow seeds. Come on, plant all nine grids and see.\"",
+    "text_ja": "「畑に立ってEを押して種をまきます。さあ、9つのグリッドすべてを植えて見てください。」"
+  },
+  {
+    "text": "「沒錯，就是這樣。」",
+    "text_en": "\"Yes, that's it.\"",
+    "text_ja": "「はい、それだけです。」"
+  },
+  {
+    "text": "[村長蹲下來看了看剛播種的土地]",
+    "text_en": "[The village chief squatted down and looked at the newly sown land]",
+    "text_ja": "［村長はしゃがみ、新しく蒔かれた土地を眺めた］"
+  },
+  {
+    "text": "「這片田連著池塘的引水系統。以前經營觀光牧場的時候就留下來了。」",
+    "text_en": "\"This field is connected to the water diversion system of the pond. It was left here when we used to operate a tourist ranch.\"",
+    "text_ja": "「この畑は池の分水システムにつながっています。以前、観光牧場を経営していた時にここに置いてあったのです。」"
+  },
+  {
+    "text": "「這麼久沒有人種東西，我本來還擔心它不能用了。前幾天試過，水倒是還流得很好。」",
+    "text_en": "\"No one has grown anything for so long. I was worried that it wouldn't work. I tried it a few days ago and the water still flows well.\"",
+    "text_ja": "「これほど長い間、何も育ててきた人は誰もいません。うまくいかないのではないかと心配していました。数日前に試してみましたが、水はまだよく出ます。」"
+  },
+  {
+    "text": "「所以播種後不用每天澆水。等作物成熟，就可以直接收成了。」",
+    "text_en": "\"So you don't need to water every day after sowing. Once the crops mature, they can be harvested directly.\"",
+    "text_ja": "「そのため、播種後は毎日水をやる必要はありません。作物が成長したら、直接収穫できます。」"
+  },
+  {
+    "text": "[一座空蕩蕩的動物小屋出現在眼前]",
+    "text_en": "[An empty animal house appears in front of you]",
+    "text_ja": "【目の前に空の動物小屋が現れる】"
+  },
+  {
+    "text": "「這裡是以前的動物小屋。」",
+    "text_en": "\"This is the old animal house.\"",
+    "text_ja": "「ここは古い動物舎です。」"
+  },
+  {
+    "text": "「前一位牧場主人離開的時候，還留下了幾隻牛、羊和雞。」",
+    "text_en": "\"When the previous ranch owner left, he left behind a few cows, sheep and chickens.\"",
+    "text_ja": "「前の牧場主が去ったとき、数頭の牛、羊、鶏を残していきました。」"
+  },
+  {
+    "text": "[村長望向空蕩蕩的圍欄]",
+    "text_en": "[The village chief looks at the empty fence]",
+    "text_ja": "[村長は空の柵を見つめる]"
+  },
+  {
+    "text": "「那陣子我每天都得過來照顧牠們。」",
+    "text_en": "\"I had to come over and take care of them every day during that time.\"",
+    "text_ja": "「その間、私は毎日家に来て彼らの世話をしなければなりませんでした。」"
+  },
+  {
+    "text": "[村長苦笑了一下]",
+    "text_en": "[The village chief smiles bitterly]",
+    "text_ja": "［村長苦笑］"
+  },
+  {
+    "text": "「後來我聯絡了本島認識的牧場，一隻一隻把牠們送走。至少都找到了願意照顧牠們的人。」",
+    "text_en": "\"Later, I contacted the ranches I knew on the island and sent them away one by one. At least I found someone willing to take care of them.\"",
+    "text_ja": "「その後、島内の知り合いの牧場に連絡を取り、一軒ずつ送り返しました。少なくとも、世話をしてくれる人は見つかりました。」"
+  },
+  {
+    "text": "「所以現在這裡是空的。你不用急著把牠們買回來，等牧場穩定一點再說。」",
+    "text_en": "\"So this place is empty now. You don't have to rush to buy them back. We can wait until the pasture becomes more stable.\"",
+    "text_ja": "「ということは、この場所は今は空いています。急いで買い戻す必要はありません。牧草地がより安定するまで待つことができます。」"
+  },
+  {
+    "text": "「等你準備好，我可以從雜貨店聯絡本島的店家。挑選並付款後，動物隔天就會搭船送過來。」",
+    "text_en": "\"When you are ready, I can contact the store on the island from the grocery store. After selecting and paying, the animals will be sent by boat the next day.\"",
+    "text_ja": "「準備ができたら、食料品店から島のお店に連絡します。動物を選んで支払いをしたら、翌日には船で送ります。」"
+  },
+  {
+    "text": "「到時候我再教你怎麼照顧牠們。」",
+    "text_en": "\"I'll teach you how to take care of them then.\"",
+    "text_ja": "「それでは、お手入れの仕方を教えてあげるね。」"
+  },
+  {
+    "text": "「這裡以前是座觀光牧場，所以還留著給遊客吃東西、休息的地方。」",
+    "text_en": "\"This used to be a tourist ranch, so there is still a place for tourists to eat and rest.\"",
+    "text_ja": "「ここはもともと観光牧場だったので、今でも観光客が食事したり休憩したりできる場所が残っています。」"
+  },
+  {
+    "text": "「旁邊那座小花園也是。只是牧場關掉以後，就慢慢荒掉了。」",
+    "text_en": "\"The same goes for the small garden next to it. It's just that after the pasture was closed, it slowly became deserted.\"",
+    "text_ja": "「隣の小さな庭も同様です。ただ、牧草地が閉鎖されてから、徐々に閑散としてきました。」"
+  },
+  {
+    "text": "[村長看向荒蕪的花園，又回頭看了看剛播種的田地]",
+    "text_en": "[The village chief looks at the deserted garden and then looks back at the newly sown fields]",
+    "text_ja": "【村長は荒れ果てた庭を眺め、そして新たに種を蒔いた畑を振り返る】"
+  },
+  {
+    "text": "「我這幾年做的，其實也只是別讓這裡壞得太快。」",
+    "text_en": "\"What I have been trying to do in the past few years is actually to prevent this place from deteriorating too quickly.\"",
+    "text_ja": "「ここ数年、私がやろうとしているのは、実はこの場所の急速な劣化を防ぐことです。」"
+  },
+  {
+    "text": "「真正要讓它重新變成一座牧場，就不是我這把老骨頭做得到的事了。」",
+    "text_en": "\"Really turning it into a pasture is something that my old bones can't do.\"",
+    "text_ja": "「本当にそこを牧草地に変えるなんて、私の老骨にはできないことだよ。」"
+  },
+  {
+    "text": "[村長轉向主角，笑了笑]",
+    "text_en": "[The village chief turns to the protagonist and smiles]",
+    "text_ja": "［村長は主人公に向き直り微笑む］"
+  },
+  {
+    "text": "「所以接下來，要種什麼、養什麼、把這裡變成什麼樣子……就交給你了。」",
+    "text_en": "\"So next, what to plant, what to raise, what to make this place look like... I'll leave it to you.\"",
+    "text_ja": "「じゃあ次は、何を植えて、何を育てて、この場所をどんなふうにするか……お任せします」"
+  },
+  {
+    "text": "「這就是你的住處。家具不多，但爐灶、床和基本用品都還能使用。」",
+    "text_en": "\"This is your place. There isn't much furniture, but the stove, bed, and basic supplies are still functional.\"",
+    "text_ja": "「ここがあなたの場所です。家具はあまりありませんが、ストーブ、ベッド、基本的な備品はまだ機能しています。」"
+  },
+  {
+    "text": "「使用床鋪可以讓時間快速經過。系統會依照當下時間，帶你睡到最近的早上六點，或是休息到今天傍晚六點。」",
+    "text_en": "\"Using a bed can make time pass quickly. The system will take you to sleep until 6 o'clock in the morning or to rest until 6 o'clock in the evening according to the current time.\"",
+    "text_ja": "「ベッドを使うと時間があっという間に過ぎます。現在時刻に合わせて朝6時まで寝たり、夕方6時まで休んだりできるシステムです。」"
+  },
+  {
+    "text": "「大致上就是這些。還有什麼想問的嗎？」",
+    "text_en": "\"That's about it. Is there anything else you want to ask?\"",
+    "text_ja": "「以上です。他に聞きたいことはありますか？」"
+  },
+  {
+    "text": "[村長愣住]",
+    "text_en": "[The village chief is stunned]",
+    "text_ja": "［村長は唖然とする］"
+  },
+  {
+    "text": "「……哎呀。」",
+    "text_en": "\"...Oops.\"",
+    "text_ja": "「……おっと」"
+  },
+  {
+    "text": "「對不起，我居然忘了最重要的事。島上現在還沒有餐館，總不能讓你餓著等蘿蔔長大。」",
+    "text_en": "\"I'm sorry, I forgot the most important thing. There is no restaurant on the island yet, so we can't let you wait for the carrots to grow hungry.\"",
+    "text_ja": "「ごめんなさい、一番大事なことを忘れていました。島にはまだレストランがないので、ニンジンがお腹を空かせるのを待たせるわけにはいきません。」"
+  },
+  {
+    "text": "[村長交給主角三條魚、三根蘿蔔和三朵蘑菇]",
+    "text_en": "[The village chief gives the protagonist three fish, three radishes and three mushrooms]",
+    "text_ja": "[村長は主人公に魚3匹、大根3個、キノコ3個を与える]"
+  },
+  {
+    "text": "「這些是我早上向船長買來的補給。你先拿去應急吧。」",
+    "text_en": "\"These are the supplies I bought from the captain this morning. You should take them for emergencies first.\"",
+    "text_ja": "「これは今朝船長から買った物資です。まず緊急用に持って行ってください。」"
+  },
+  {
+    "text": "「可是吃完之後呢？」",
+    "text_en": "\"But what about after eating?\"",
+    "text_ja": "「でも、食後はどうするの？」"
+  },
+  {
+    "text": "「說得也是，光靠這些撐不了幾天……」",
+    "text_en": "\"You're right, I can't survive just a few days with these alone...\"",
+    "text_ja": "「そうだね、これだけでは数日も生きていけないよ……」"
+  },
+  {
+    "text": "[村長停頓了一下]",
+    "text_en": "[The village chief pauses]",
+    "text_ja": "[村長が立ち止まる]"
+  },
+  {
+    "text": "「糟糕，我是不是連釣竿也忘了準備？」",
+    "text_en": "\"Oops, did I even forget to prepare the fishing rod?\"",
+    "text_ja": "「おっと、釣り竿を用意するのを忘れていませんか？」"
+  },
+  {
+    "text": "「真不好意思。我們去問問船長吧，他現在應該還在港口。」",
+    "text_en": "\"I'm so sorry. Let's ask the captain. He should still be in port now.\"",
+    "text_ja": "「申し訳ありません。船長に聞いてみましょう。今はまだ港にいるはずです。」"
+  },
+  {
+    "text": "「港口在東南方向，黃色地板代表可進入區域。」",
+    "text_en": "\"The port is in the southeast direction, and the yellow floor represents the accessible area.\"",
+    "text_ja": "「港は南東の方向にあり、黄色の床はアクセス可能なエリアを表しています。」"
+  },
+  {
+    "text": "「這張島嶼地圖交給你。按下 M 或 View 就能查看地圖。」",
+    "text_en": "\"This map of the island is given to you. Press M or View to view the map.\"",
+    "text_ja": "「この島の地図はあなたに与えられています。M または View を押して地図を表示してください。」"
+  },
+  {
+    "text": "「可以直接選擇想去的地點，就能快速移動到那裡。」",
+    "text_en": "\"You can directly choose the place you want to go and move there quickly.\"",
+    "text_ja": "「行きたい場所を直接選択して、すぐに移動できます。」"
+  },
+  {
+    "text": "[村長將島嶼地圖交給主角]",
+    "text_en": "[The village chief hands the island map to the protagonist]",
+    "text_ja": "【村長が主人公に島の地図を渡す】"
+  },
+  {
+    "text": "[村長進入同行狀態。港口在東邊；黃色地板代表可進入區域]",
+    "text_en": "[The village chief enters the companion state. The port is to the east; yellow floors represent accessible areas]",
+    "text_ja": "【村長が仲間状態に。港は東にあります。黄色の床はアクセシブルなエリアを表します]"
+  },
+  {
+    "text": "「早安。」",
+    "text_en": "\"Good morning.\"",
+    "text_ja": "「おはようございます。」"
+  },
+  {
+    "text": "「今天有兩位新居民要搬來島上。」",
+    "text_en": "\"Two new residents are moving to the island today.\"",
+    "text_ja": "「今日から2人の新しい住人が島に引っ越してきます。」"
+  },
+  {
+    "text": "「一位是木匠，另一位是藝術家。」",
+    "text_en": "\"One is a carpenter and the other is an artist.\"",
+    "text_ja": "「一人は大工で、もう一人は芸術家です。」"
+  },
+  {
+    "text": "「船差不多要到了，我們一起去港口接他們吧。」",
+    "text_en": "\"The ship is almost here, let's go to the port to pick them up.\"",
+    "text_ja": "「船がもうすぐです。港まで迎えに行きましょう。」"
+  },
+  {
+    "text": "[村長進入同行狀態]",
+    "text_en": "[The village chief enters the accompanying state]",
+    "text_ja": "【村長同行状態に入る】"
+  },
+  {
+    "text": "[畫面淡出，移動至港口]",
+    "text_en": "[Screen fades out and moves to port]",
+    "text_ja": "[画面がフェードアウトし、ポートに移動します]"
+  },
+  {
+    "text": "[船靠岸]",
+    "text_en": "[Ship docks]",
+    "text_ja": "【船着場】"
+  },
+  {
+    "text": "[歐文背著工具包走下船，船長正在搬他的行李]",
+    "text_en": "[Owen walks off the ship carrying his tool bag, while the captain is moving his luggage]",
+    "text_ja": "[船長が荷物を移動している間、オーウェンは道具袋を持って船から降りる]"
+  },
+  {
+    "text": "[另一名背著畫具的陌生女子跟著下船]",
+    "text_en": "[Another strange woman carrying painting supplies disembarks from the boat]",
+    "text_ja": "[画材を運ぶ別の見知らぬ女性が船から降りる]"
+  },
+  {
+    "text": "「歡迎來到島上。」",
+    "text_en": "\"Welcome to the island.\"",
+    "text_ja": "「島へようこそ。」"
+  },
+  {
+    "text": "「你們就是今天抵達的歐文和……」",
+    "text_en": "\"You are Owen and...\"",
+    "text_ja": "「あなたはオーウェン、そして…」"
+  },
+  {
+    "text": "[歐文忽然停下，低頭蹲下敲了敲腳邊的木板]",
+    "text_en": "[Owen suddenly stopped, lowered his head and knelt down to knock on the wooden board at his feet]",
+    "text_ja": "[オーウェンは突然立ち止まり、頭を下げ、ひざまずいて足元の木の板をたたきました]"
+  },
+  {
+    "text": "「……歐文？」",
+    "text_en": "\"...Owen?\"",
+    "text_ja": "「……オーウェン？」"
+  },
+  {
+    "text": "「別踩這裡。」",
+    "text_en": "\"Don't step here.\"",
+    "text_ja": "「ここに足を踏み入れないでください。」"
+  },
+  {
+    "text": "[主角頭上冒出「！」]",
+    "text_en": "[\"!\" appears on the protagonist's head]",
+    "text_ja": "【「！」主人公の頭に現れる】"
+  },
+  {
+    "text": "「這塊木板裡面已經腐掉了。」",
+    "text_en": "\"This board is rotten inside.\"",
+    "text_ja": "「この板は中が腐っている。」"
+  },
+  {
+    "text": "「再拖一個月，誰踩上去誰就下海。」",
+    "text_en": "\"If you wait another month, whoever steps on it will go into the sea.\"",
+    "text_ja": "「あと一ヶ月待ったら、これを踏んだ者は海に沈んでしまいます。」"
+  },
+  {
+    "text": "「咦？有這麼嚴重嗎？我前幾天經過時還好好的……」",
+    "text_en": "\"Eh? Is it that serious? I was fine when I passed by a few days ago...\"",
+    "text_ja": "「え？そんなに大変なの？数日前前を通った時は元気だったのに…」"
+  },
+  {
+    "text": "「表面看不出來才危險。」",
+    "text_en": "\"It's dangerous if you don't see it on the surface.\"",
+    "text_ja": "「表面的に見えないと危ないよ。」"
+  },
+  {
+    "text": "「旁邊這兩塊也要換，底下的支撐最好一起檢查。」",
+    "text_en": "\"The two pieces on the side also need to be replaced. It's best to check the support at the bottom together.\"",
+    "text_ja": "「側面の2本も交換が必要です。底面のサポートも一緒に確認した方が良いです。」"
+  },
+  {
+    "text": "「你才剛下船吧。」",
+    "text_en": "\"You just got off the boat.\"",
+    "text_ja": "「あなたはちょうど船から降りたところです。」"
+  },
+  {
+    "text": "「嗯。」",
+    "text_en": "\"Yeah.\"",
+    "text_ja": "「ええ」"
+  },
+  {
+    "text": "「行李都還在我手上。」",
+    "text_en": "\"I still have all my luggage.\"",
+    "text_ja": "「荷物はまだ全部あるよ。」"
+  },
+  {
+    "text": "[歐文抬頭，這才想起自己是來報到的]",
+    "text_en": "[Owen looks up and then remembers that he is here to report]",
+    "text_ja": "[オーウェンは顔を上げ、自分が報告に来たことを思い出す]"
+  },
+  {
+    "text": "「……抱歉。我是歐文，今天剛到的木匠。」",
+    "text_en": "\"...Sorry. I'm Owen, the carpenter who just arrived today.\"",
+    "text_ja": "「……ごめんなさい。今日来たばかりの大工のオーウェンです。」"
+  },
+  {
+    "text": "「聽說島上有不少房子需要修。現在看來，可能不只房子。」",
+    "text_en": "\"I heard that there are many houses on the island that need to be repaired. Now it seems that there may be more than just houses.\"",
+    "text_ja": "「島には修理が必要な家がたくさんあると聞きました。今では家だけではないのかもしれません。」"
+  },
+  {
+    "text": "「……他一直都是這樣嗎？」",
+    "text_en": "\"...Has he always been like this?\"",
+    "text_ja": "「……彼はいつもこうだったのか？」"
+  },
+  {
+    "text": "「我也是第一次見他……」",
+    "text_en": "\"This is also the first time I've met him...\"",
+    "text_ja": "「私も初めてお会いしました…」"
+  },
+  {
+    "text": "「至少不用擔心他找不到工作。」",
+    "text_en": "\"At least you don't have to worry about him not being able to find a job.\"",
+    "text_ja": "「少なくとも、彼が仕事を見つけられないことを心配する必要はありません。」"
+  },
+  {
+    "text": "「差點忘了。那妳就是另一位申請來島上的藝術家吧？」",
+    "text_en": "\"I almost forgot. So you are another artist who applied to come to the island, right?\"",
+    "text_ja": "「忘れるところだったんですが、あなたもこの島に来ることを志願したアーティストなんですよね？」"
+  },
+  {
+    "text": "「嗯。我是露比，請多指教。」",
+    "text_en": "\"Yes. I'm Ruby, please give me your advice.\"",
+    "text_ja": "「はい。私はルビーです。アドバイスをお願いします。」"
+  },
+  {
+    "text": "[藝術家正式登場]",
+    "text_en": "[Artist’s official appearance]",
+    "text_ja": "【アーティスト正式出演】"
+  },
+  {
+    "text": "「不過我覺得這裡挺漂亮的。」",
+    "text_en": "\"But I think it's quite beautiful here.\"",
+    "text_ja": "「でも、ここはとても美しいと思います。」"
+  },
+  {
+    "text": "「這裡？」",
+    "text_en": "\"Here?\"",
+    "text_ja": "「ここで？」"
+  },
+  {
+    "text": "「木頭被海風吹成這種顏色，很好看。」",
+    "text_en": "\"The wood has been blown into this color by the sea breeze, it's very beautiful.\"",
+    "text_ja": "「海風に吹かれて木がこの色になったんですね。とても綺麗ですよ。」"
+  },
+  {
+    "text": "「……那是劣化。」",
+    "text_en": "\"...That's deterioration.\"",
+    "text_ja": "「……それは劣化ですね」"
+  },
+  {
+    "text": "「我知道。」",
+    "text_en": "\"I know.\"",
+    "text_ja": "「知っています。」"
+  },
+  {
+    "text": "「要換掉。」",
+    "text_en": "\"It needs to be replaced.\"",
+    "text_ja": "「交換する必要があります。」"
+  },
+  {
+    "text": "「我也知道。」",
+    "text_en": "\"I know that too.\"",
+    "text_ja": "「それは私も知っています。」"
+  },
+  {
+    "text": "「……總之，我們先去看看你們住的地方吧。」",
+    "text_en": "\"...Anyway, let's go see where you live first.\"",
+    "text_ja": "「……とにかく、まずはあなたの住んでいる場所を見に行きましょう」"
+  },
+  {
+    "text": "[兩人回到港口]",
+    "text_en": "[The two return to the port]",
+    "text_ja": "【港に戻る二人】"
+  },
+  {
+    "text": "「嗯？新來的牧場主，這麼快就遇到麻煩了？」",
+    "text_en": "\"Huh? A new rancher, are you in trouble so soon?\"",
+    "text_ja": "「え？新人牧場主、そんなに早く大変なの？」"
+  },
+  {
+    "text": "「是我的問題。我忘了替人家準備釣竿，你這裡還有備用的嗎？」",
+    "text_en": "\"It's my problem. I forgot to prepare fishing rods for others. Do you have any spare ones here?\"",
+    "text_ja": "「私の問題です。他の人の釣り竿を用意するのを忘れてしまいました。予備の釣り竿はありますか？」"
+  },
+  {
+    "text": "「這可不是小事。島上沒餐館，再沒有釣竿，今晚真得餓肚子了。」",
+    "text_en": "\"This is no small matter. There are no restaurants on the island, and there are no fishing rods. I will be really hungry tonight.\"",
+    "text_ja": "「これは些細なことではありません。島にはレストランもありませんし、釣り竿もありません。今夜は本当にお腹が空くでしょう。」"
+  },
+  {
+    "text": "「等著，我去倉庫找找。」",
+    "text_en": "\"Wait, I'll go look for it in the warehouse.\"",
+    "text_ja": "「待ってください、倉庫に探しに行きます。」"
+  },
+  {
+    "text": "「找到了，給你吧。」",
+    "text_en": "\"I found it. Here it is for you.\"",
+    "text_ja": "「見つけました。これです。」"
+  },
+  {
+    "text": "[獲得釣竿]",
+    "text_en": "[Get fishing rod]",
+    "text_ja": "【釣り竿を入手】"
+  },
+  {
+    "text": "「真是不好意思。太久沒有新人搬來，我以為自己都準備好了……」",
+    "text_en": "\"I'm so sorry. It's been so long since new people have moved in. I thought I was ready...\"",
+    "text_ja": "「ごめんなさい。新しい人が引っ越してくるのは久しぶりです。もう準備はできていると思ったのですが…」"
+  },
+  {
+    "text": "「這支釣竿，其實是上一任村長留下的。」",
+    "text_en": "\"This fishing rod was actually left behind by the previous village chief.\"",
+    "text_ja": "「この釣り竿、実は前の村長が置き忘れたものなんです。」"
+  },
+  {
+    "text": "「那老傢伙以前總愛拿著它來找我，說港口的魚比巡村時遇到的人好說話。」",
+    "text_en": "\"The old guy always used to come to me with it, saying that the fish in the port were easier to talk to than the people he met when he visited the village.\"",
+    "text_ja": "「おじいさんはいつもそれを持って私のところに来ていました。村に���ったときに出会った人たちよりも港の魚の方が話しやすいと言ってました。」"
+  },
+  {
+    "text": "「……原來你還留著他的東西。」",
+    "text_en": "\"...So you still have his things.\"",
+    "text_ja": "「……ということは、まだ彼のものを持っているんですね」"
+  },
+  {
+    "text": "「我和他認識那麼多年，哪有說丟就丟的道理。」",
+    "text_en": "\"I've known him for so many years, there's no reason to just throw him away.\"",
+    "text_ja": "「私は彼を長年知っているので、彼を簡単に捨てる理由はありません。」"
+  },
+  {
+    "text": "「妳接下他的村長工作以後，也沒什麼空來釣魚。現在交給新牧場主，正好。」",
+    "text_en": "\"After you took over his job as village chief, you didn't have much time to fish. Now it's just right to hand it over to the new rancher.\"",
+    "text_ja": "「あなたが村長の仕事を引き継いだ後、あなたはあまり漁をする時間がありませんでした。今は新しい牧場主にそれを引き継ぐのが適切です。」"
+  },
+  {
+    "text": "「嗯。他要是知道自己的釣竿又派上用場，一定會很高興。」",
+    "text_en": "\"Yeah. He would be very happy if he knew his fishing rod would come in handy again.\"",
+    "text_ja": "「そうだね。自分の釣り竿がまた役に立つと知ったら、彼はとても喜ぶだろうね。」"
+  },
+  {
+    "text": "「妳丈夫要是知道，八成會在那邊得意得不得了。」",
+    "text_en": "\"If your husband knew about it, he would most likely be extremely proud of it.\"",
+    "text_ja": "「もしあなたのご主人がそのことを知っていたら、きっととても誇りに思うでしょう。」"
+  },
+  {
+    "text": "「呵呵，那倒是真的。」",
+    "text_en": "\"Haha, that's true.\"",
+    "text_ja": "「ははは、そうですよ。」"
+  },
+  {
+    "text": "「說起來，我還沒跟你自我介紹是吧。我叫赫克托，是這艘補給船的船長。」",
+    "text_en": "\"Speaking of which, I haven't introduced myself to you yet, have I? My name is Hector, and I'm the captain of this supply ship.\"",
+    "text_ja": "「そういえば、まだ自己紹介をしていませんね。私の名前はヘクトル、この補給船の船長です」"
+  },
+  {
+    "text": "「都拿出來了，我就順便教你怎麼用吧。到南邊的沙灘試試，那裡比較安全。」",
+    "text_en": "\"Now that I've taken it out, I'll teach you how to use it. Try it on the beach in the south, it's safer there.\"",
+    "text_ja": "「取り出したら、使い方を教えてあげる。南の浜辺で試してみてください。そっちの方が安全です。」"
+  },
+  {
+    "text": "「裝備釣竿後，面向水邊按下 E，就能拋竿。魚上鉤時會出現提示，根據提示操作即可。」",
+    "text_en": "\"After equipping the fishing rod, face the water and press E to cast the rod. A prompt will appear when the fish takes the bait, just follow the prompts.\"",
+    "text_ja": "「釣り竿を装備したら、水に向かってEを押して竿を投げます。魚が餌を食べるとプロンプトが表示されます。プロンプトに従ってください。」"
+  },
+  {
+    "text": "「先試一次，我在旁邊看著。」",
+    "text_en": "\"Try it first, I'll watch from the side.\"",
+    "text_ja": "「まずはやってみてください、私は横から見てます。��"
+  },
+  {
+    "text": "「別在意，第一次失手很正常。看準魚咬鉤的提示，再試一次吧。」",
+    "text_en": "\"Don't worry, it's normal to miss the first time. Pay attention to the clues of the fish biting the hook and try again.\"",
+    "text_ja": "「心配しないでください。最初は失敗するのが普通です。魚が針に食いついた手がかりに注意して、もう一度試してください。」"
+  },
+  {
+    "text": "「釣到魚了呢！那我們回牧場小屋去吧。」",
+    "text_en": "\"We caught a fish! Let's go back to the ranch cabin.\"",
+    "text_ja": "「魚が釣れたよ！牧場小屋に戻りましょう。」"
+  },
+  {
+    "text": "「接下來是料理。我先教你烤蔬菜、海鮮湯和烤蘑菇串三道食譜。」",
+    "text_en": "\"The next step is cooking. I will teach you three recipes of grilled vegetables, seafood soup and grilled mushroom skewers.\"",
+    "text_ja": "「次のステップは料理です。野菜のグリル、魚介のスープ、キノコの串焼きの 3 つのレシピを教えます。」"
+  },
+  {
+    "text": "「爐灶就在屋子的右上角，走近調查後，挑其中任何一道做出來就好。」",
+    "text_en": "\"The stove is in the upper right corner of the house. After you get closer and investigate, just choose any one of them and make it.\"",
+    "text_ja": "「ストーブは家の右上にあります。近づいて調べたら、どれかを選んで作ってください。」"
+  },
+  {
+    "text": "「廚房現在只有最基本的炊具，能做的料理還不多。先試著做一份料理吧。」",
+    "text_en": "\"The kitchen now only has the most basic cooking utensils, so it can't do much cooking. Let's try making one dish first.\"",
+    "text_ja": "「今のキッチンには最低限の調理器具しかなく、あまり料理はできません。まずは一品作ってみましょう。」"
+  },
+  {
+    "text": "「很好，聞起來不錯。」",
+    "text_en": "\"Good, smells good.\"",
+    "text_ja": "「いい、いい匂いがする。」"
+  },
+  {
+    "text": "「不同料理除了恢復體力，也可能帶來暫時效果。出門前吃對料理，做事會輕鬆不少。」",
+    "text_en": "\"In addition to restoring physical strength, different dishes may also bring temporary effects. Eating the right food before going out will make things much easier.\"",
+    "text_ja": "「料理を変えると体力が回復するだけでなく、一時的な効果も期待できます。出かける前にきちんとしたものを食べておくと楽になりますよ。」"
+  },
+  {
+    "text": "「種田、釣魚和料理，你都已經會了。剩下的不用急，慢慢來就好。」",
+    "text_en": "\"You already know how to farm, fish, and cook. Don't rush for the rest, just take your time.\"",
+    "text_ja": "「あなたは農作業、魚釣り、料理の仕方をすでに知っています。残りは焦らず、ゆっくり過ごしてください。」"
+  },
+  {
+    "text": "「這一週應該還會有幾個人來到島上。有人抵達時，我會去牧場通知你。」",
+    "text_en": "\"There should be a few more people coming to the island this week. I will go to the ranch to let you know when someone arrives.\"",
+    "text_ja": "「今週はあと数名が島に来るはずです。誰かが到着したら牧場に行ってお知らせします。」"
+  },
+  {
+    "text": "「按下 Tab ，或是按下右蘑菇頭，可以切換成第一人稱視角。」",
+    "text_en": "\"Press Tab or press the right mushroom head to switch to the first-person perspective.\"",
+    "text_ja": "「Tab キーを押すか、右のキノコの頭を押すと、一人称視点に切り替わります。」"
+  },
+  {
+    "text": "「那麼，歡迎來到島上，牧場主。」",
+    "text_en": "\"Well, welcome to the island, rancher.\"",
+    "text_ja": "「それでは、島へようこそ、牧場主さん。」"
+  },
+  {
+    "text": "「好了，我先回鎮上了。有什麼事，再來找我吧。」",
+    "text_en": "\"Okay, I'm going back to town first. If anything happens, come see me.\"",
+    "text_ja": "「分かった、先に街に戻るから、何かあったら会いに来てね。」"
+  },
+  {
+    "text": "主角",
+    "text_en": "Protagonist",
+    "text_ja": "主人公"
+  },
+  {
+    "text": "[歐文背著工具包走下船]",
+    "text_en": "[Owen walks off the boat carrying his tool bag]",
+    "text_ja": "[オーウェンは道具袋を持ってボートから降りる]"
+  },
+  {
+    "text": "[船長正在把歐文的行李搬下來]",
+    "text_en": "[The captain is unloading Owen's luggage]",
+    "text_ja": "[船長がオーウェンの荷物を降ろしている]"
+  },
+  {
+    "text": "[歐文忽然停下][低頭][蹲下來敲了敲腳邊的木板]",
+    "text_en": "[Irving suddenly stops] [lowers head] [squats down and knocks on the wooden board at his feet]",
+    "text_ja": "[アーヴィングは突然立ち止まる] [頭を下げる] [しゃがんで足元の木の板をたたく]"
+  },
+  {
+    "text": "[主角頭上「！」]",
+    "text_en": "[\"!\" on the protagonist's head]",
+    "text_ja": "【「！」主人公の頭の上に】"
+  },
+  {
+    "text": "「咦？有這麼嚴重嗎？」",
+    "text_en": "\"Huh? Is it that serious?\"",
+    "text_ja": "「え？そんなに本気なの？」"
+  },
+  {
+    "text": "「我前幾天經過時還好好的……」",
+    "text_en": "\"It was fine when I passed by a few days ago...\"",
+    "text_ja": "「数日前に前を通った時は良かったのに…」"
+  },
+  {
+    "text": "[歐文沿著木板看了一圈]",
+    "text_en": "[Owen looks around the board]",
+    "text_ja": "[オーウェンはボードを見回す]"
+  },
+  {
+    "text": "「旁邊這兩塊也要換。」",
+    "text_en": "\"The two pieces next to it also need to be replaced.\"",
+    "text_ja": "隣の２個も交換が必要です。"
+  },
+  {
+    "text": "「底下的支撐最好一起檢查。」",
+    "text_en": "\"It's best to check the supports underneath.\"",
+    "text_ja": "「下のサポートを確認するのが最善です。」"
+  },
+  {
+    "text": "[歐文抬頭][這才像突然想起自己是來報到的]",
+    "text_en": "[Owen looks up] [It’s as if he suddenly remembered that he was here to report]",
+    "text_ja": "[オーウェンは顔を上げます] [まるで自分が報告に来たことを突然思い出したかのようです]"
+  },
+  {
+    "text": "「……抱歉。」",
+    "text_en": "\"...I'm sorry.\"",
+    "text_ja": "「……ごめんなさい」"
+  },
+  {
+    "text": "「我是歐文。」",
+    "text_en": "\"I'm Owen.\"",
+    "text_ja": "「私はオーウェンです。」"
+  },
+  {
+    "text": "「今天剛到的木匠。」",
+    "text_en": "\"The carpenter just arrived today.\"",
+    "text_ja": "「今日大工さんが来たばかりです。」"
+  },
+  {
+    "text": "[歐文正式登場]",
+    "text_en": "[Irving officially appears]",
+    "text_ja": "【アーヴィングが正式に登場】"
+  },
+  {
+    "text": "「聽說島上有不少房子需要修。」",
+    "text_en": "\"I heard that there are many houses on the island that need to be repaired.\"",
+    "text_ja": "「島には修理が必要な家がたくさんあると聞きました。」"
+  },
+  {
+    "text": "「現在看來，可能不只房子。」",
+    "text_en": "\"Now it looks like it might be more than just the house.\"",
+    "text_ja": "「今では、それは単なる家ではないようです。」"
+  },
+  {
+    "text": "「差點忘了。」",
+    "text_en": "\"Almost forgot.\"",
+    "text_ja": "「ほとんど忘れていました。」"
+  },
+  {
+    "text": "「那妳就是另一位申請來島上的藝術家吧？」",
+    "text_en": "\"So you are another artist who applied to come to the island, right?\"",
+    "text_ja": "「じゃあ、あなたもこの島に来ることを志願したアーティストなんですよね？」"
+  },
+  {
+    "text": "「我是露比，請多指教。」",
+    "text_en": "\"I'm Ruby, please give me your advice.\"",
+    "text_ja": "「私は���ビーです、アドバイスをお願いします。」"
+  },
+  {
+    "text": "「看下一間好了。」",
+    "text_en": "\"Let's check out the next room.\"",
+    "text_ja": "「隣の部屋を見てみましょう。」"
+  },
+  {
+    "text": "「……屋頂要補，外牆有受潮，不過樑柱還能用。」",
+    "text_en": "\"...The roof needs to be repaired, and the exterior walls are affected by moisture, but the beams and columns are still usable.\"",
+    "text_ja": "「...屋根は修理する必要があり、外壁は湿気の影響を受けていますが、梁と柱はまだ使用できます。」"
+  },
+  {
+    "text": "「不用拆。」",
+    "text_en": "\"No need to dismantle it.\"",
+    "text_ja": "「解体する必要はありません。」"
+  },
+  {
+    "text": "「好，就這棟了。」",
+    "text_en": "\"Okay, this is it.\"",
+    "text_ja": "「よし、これだ。」"
+  },
+  {
+    "text": "「我需要一些材料。」",
+    "text_en": "\"I need some materials.\"",
+    "text_ja": "「いくつかの材料が必要です。」"
+  },
+  {
+    "text": "「山上應該還能找到木材和石材。」",
+    "text_en": "\"You should still be able to find wood and stone on the mountain.\"",
+    "text_ja": "「山にはまだ木や石が見つかるはずです。」"
+  },
+  {
+    "text": "「好，那我去取。」",
+    "text_en": "\"Okay, then I'll go get it.\"",
+    "text_ja": "「分かった、じゃあ取りに行くよ。」"
+  },
+  {
+    "text": "[主角看著他]",
+    "text_en": "[The protagonist looks at him]",
+    "text_ja": "【主人公は彼を見つめる】"
+  },
+  {
+    "text": "「你是不是也想知道山上的材料怎麼採？」",
+    "text_en": "\"Do you also want to know how to collect materials from the mountains?\"",
+    "text_ja": "「山から素材を集める方法も知りたいですか？」"
+  },
+  {
+    "text": "[主角點頭]",
+    "text_en": "[Protagonist nods]",
+    "text_ja": "[主人公はうなずく]"
+  },
+  {
+    "text": "「正好。」",
+    "text_en": "\"Just right.\"",
+    "text_ja": "「ちょうどいいよ。」"
+  },
+  {
+    "text": "「你以後要擴建牧場，也少不了木材和石材。」",
+    "text_en": "\"If you want to expand the pasture in the future, you will need wood and stone.\"",
+    "text_ja": "「将来的に牧草地を拡張したい場合は、木と石が必要になります。」"
+  },
+  {
+    "text": "「我有一把備用的萬用斧，給你吧。」",
+    "text_en": "\"I have a spare all-purpose ax, give it to you.\"",
+    "text_ja": "「万能の斧が余っているので、渡してください。」"
+  },
+  {
+    "text": "「以後你就能自己取得木材跟石材了。」",
+    "text_en": "\"In the future, you will be able to obtain wood and stone by yourself.\"",
+    "text_ja": "将来的には木や石も自分で手に入れることができるようになります。"
+  },
+  {
+    "text": "獲得萬用斧",
+    "text_en": "Get a universal ax",
+    "text_ja": "万能斧を入手"
+  },
+  {
+    "text": "「那麼，我們出發吧。」",
+    "text_en": "\"Then let's go.\"",
+    "text_ja": "「それでは、行きましょう。」"
+  },
+  {
+    "text": "「山從村莊西北的樓梯走就能到了。」",
+    "text_en": "\"The mountain can be reached by walking up the stairs northwest of the village.\"",
+    "text_ja": "「村の北西にある階段を登ると山に行けます。」"
+  },
+  {
+    "text": "「我先不跟你們上山了，這附近我想再逛逛。」",
+    "text_en": "\"I won't go up the mountain with you now. I want to take a stroll around here.\"",
+    "text_ja": "「今は一緒に山には行きません。この辺を散歩したいんです。」"
+  },
+  {
+    "text": "「隔壁那棟房子我蠻喜歡的，先去放行李了。」",
+    "text_en": "\"I really like the house next door. I'm going to put my luggage first.\"",
+    "text_ja": "「隣の家がとても気に入っています。荷物を先に置きます。」"
+  },
+  {
+    "text": "「也好，路上小心。」",
+    "text_en": "\"That's fine, be careful on the road.\"",
+    "text_ja": "「大丈夫、道中気をつけてね。」"
+  },
+  {
+    "text": "獲得道具",
+    "text_en": "Get props",
+    "text_ja": "小道具を入手する"
+  },
+  {
+    "text": "「好，那麼，我教你一下用法吧。」",
+    "text_en": "\"Okay, then, let me teach you how to use it.\"",
+    "text_ja": "「よし、それでは使い方を教えてやろう。」"
+  },
+  {
+    "text": "「走到落枝、石頭旁，然後按下 E 即可獲得材料。」",
+    "text_en": "\"Go to the fallen branches and rocks and press E to get the materials.\"",
+    "text_ja": "「落ちた枝や岩に行き、Eを押して材料を入手してください。」"
+  },
+  {
+    "text": "「先試著收集十份木材和十份石材。」",
+    "text_en": "\"First try to collect ten pieces of wood and ten pieces of stone.\"",
+    "text_ja": "「まず木片と石片を10個集めてみてください。」"
+  },
+  {
+    "text": "「嗯，夠了。」",
+    "text_en": "\"Well, that's enough.\"",
+    "text_ja": "「まあ、それで十分です。」"
+  },
+  {
+    "text": "「第一次用就挺順手的。」",
+    "text_en": "\"It was very easy to use for the first time.\"",
+    "text_ja": "「初めてでもとても使いやすかったです。」"
+  },
+  {
+    "text": "「走吧，回去把房子處理掉。」",
+    "text_en": "\"Let's go back and get rid of the house.\"",
+    "text_ja": "「帰って家を処分しましょう。」"
+  },
+  {
+    "text": "「好，那我要開始修繕了。」",
+    "text_en": "\"Okay, then I'm going to start repairing it.\"",
+    "text_ja": "「はい、それでは修理を始めます。」"
+  },
+  {
+    "text": "「海邊的房子最麻煩的不是雨，是濕氣和鹽。」",
+    "text_en": "\"The most troublesome thing about a beach house is not the rain, but the moisture and salt.\"",
+    "text_ja": "「海の家で一番困るのは雨ではなく湿気と塩分です。」"
+  },
+  {
+    "text": "「外觀看起來沒什麼，裡面可能早就開始腐了。」",
+    "text_en": "\"It doesn't look like much on the outside, but it may have started to rot on the inside.\"",
+    "text_ja": "「外見上はそれほど問題はありませんが、内部が腐り始めている可能性があります。」"
+  },
+  {
+    "text": "[歐文敲了敲拆下來的木料]",
+    "text_en": "[Owen knocks on the dismantled wood]",
+    "text_ja": "[オーウェンは解体された木材をノックする]"
+  },
+  {
+    "text": "「像這塊。」",
+    "text_en": "\"Like this one.\"",
+    "text_ja": "「これが好きです。」"
+  },
+  {
+    "text": "「再晚一點處理，就不是換幾塊木頭能解決的了。」",
+    "text_en": "\"If we deal with it later, it won't be solved by replacing a few pieces of wood.\"",
+    "text_ja": "「後から対処する場合、数本の木材を交換するだけでは解決しません。」"
+  },
+  {
+    "text": "「怎麼？」",
+    "text_en": "\"What?\"",
+    "text_ja": "「何？」"
+  },
+  {
+    "text": "[主角搖頭]",
+    "text_en": "[The protagonist shakes his head]",
+    "text_ja": "［主人公は首を振る］"
+  },
+  {
+    "text": "「放心。」",
+    "text_en": "\"Don't worry.\"",
+    "text_ja": "「心配しないでください。」"
+  },
+  {
+    "text": "「這棟還救得回來。」",
+    "text_en": "\"This building can still be saved.\"",
+    "text_ja": "「この建物はまだ保存できる。」"
+  },
+  {
+    "text": "「不然我也不會選它。」",
+    "text_en": "\"Otherwise I wouldn't have chosen it.\"",
+    "text_ja": "「そうでなかったら、選ばなかったでしょう。」"
+  },
+  {
+    "text": "[繼續施工]",
+    "text_en": "[Construction continues]",
+    "text_ja": "【工事は続く】"
+  },
+  {
+    "text": "「材料夠我先處理最危險的地方了。」",
+    "text_en": "\"There are enough materials for me to deal with the most dangerous areas first.\"",
+    "text_ja": "「最も危険な領域を最初に処理するのに十分な資材があります。」"
+  },
+  {
+    "text": "「剩下的我自己慢慢來。」",
+    "text_en": "\"I'll take care of the rest by myself.\"",
+    "text_ja": "「残りのことは自分でやります。」"
+  },
+  {
+    "text": "「你今天已經幫很多了。」",
+    "text_en": "\"You've helped a lot today.\"",
+    "text_ja": "「今日は大変お世話になりました。」"
+  },
+  {
+    "text": "「謝了。」",
+    "text_en": "\"Thanks.\"",
+    "text_ja": "「ありがとう。」"
+  },
+  {
+    "text": "[看了一眼還沒整理好的屋內]",
+    "text_en": "[Looking at the room that has not yet been tidied up]",
+    "text_ja": "【まだ片付いていない部屋を見て】"
+  },
+  {
+    "text": "「等這裡整理好，再請你進來坐吧。」",
+    "text_en": "\"When the place is tidied up, I'll invite you to come in and sit down.\"",
+    "text_ja": "「場所が片付いたら、中に入って座るように招待します。」"
+  },
+  {
+    "text": "[歐文好感 +30]",
+    "text_en": "[Owen's favor +30]",
+    "text_ja": "【オーウェンの好感度+30】"
+  },
+  {
+    "text": "[個人事件完成]",
+    "text_en": "[Personal event completed]",
+    "text_ja": "【個人イベント終了】"
+  },
+  {
+    "text": "[藝術家站在隔壁空屋前，盯著外牆]",
+    "text_en": "[The artist stands in front of the empty house next door, staring at the exterior wall]",
+    "text_ja": "[アーティストは隣の空き家の前に立ち、外壁を見つめている]"
+  },
+  {
+    "text": "[主角轉頭，注意到隔壁站著一個人]",
+    "text_en": "[The protagonist turns his head and notices a person standing next door]",
+    "text_ja": "[主人公は振り向くと、隣に立っている人に気づきます]"
+  },
+  {
+    "text": "「你覺得這面牆是白色的嗎？」",
+    "text_en": "\"Do you think this wall is white?\"",
+    "text_ja": "「この壁は白いと思いますか？」"
+  },
+  {
+    "text": "「我覺得不是。」",
+    "text_en": "\"I don't think so.\"",
+    "text_ja": "「そうは思いません。」"
+  },
+  {
+    "text": "「有一點灰、一點黃……下面還留著雨水流過的顏色。」",
+    "text_en": "\"It's a little gray, a little yellow... there's still the color of rainwater flowing down underneath.\"",
+    "text_ja": "「少し灰色で、少し黄色で…下に流れてきた雨水の色がまだ残っています。」"
+  },
+  {
+    "text": "[她終於轉過頭]",
+    "text_en": "[She finally turns her head]",
+    "text_ja": "[彼女はついに振り向いた]"
+  },
+  {
+    "text": "「啊。」",
+    "text_en": "\"Ah.\"",
+    "text_ja": "「ああ」"
+  },
+  {
+    "text": "「你是剛才港口那個牧場主。」",
+    "text_en": "\"You are the rancher at the port just now.\"",
+    "text_ja": "「あなたは今、港にいる牧場主です。」"
+  },
+  {
+    "text": "「抱歉，忘了自我介紹。」",
+    "text_en": "\"Sorry, I forgot to introduce myself.\"",
+    "text_ja": "「ごめんなさい、自己紹介を忘れていました。」"
+  },
+  {
+    "text": "「我是今天搬來的藝術家，露比。」",
+    "text_en": "\"I'm the artist moving in today, Ruby.\"",
+    "text_ja": "「私は今日引っ越してくるアーティストのルビーです。」"
+  },
+  {
+    "text": "「其實我本來帶了顏料。」",
+    "text_en": "\"Actually, I brought paint.\"",
+    "text_ja": "「実は絵の具を持ってきたんです。」"
+  },
+  {
+    "text": "「但山上應該會有花。」",
+    "text_en": "\"But there should be flowers on the mountain.\"",
+    "text_ja": "「でも、山には花があるはずです。」"
+  },
+  {
+    "text": "「突然覺得，用帶來的顏料畫這座島，好像有點可惜。」",
+    "text_en": "\"Suddenly I felt that it would be a pity to paint this island with the paint I brought.\"",
+    "text_ja": "「突然、私が持ってきた絵の具でこの島を描くのはもったいないと思ったのです。」"
+  },
+  {
+    "text": "「有些植物可以做成天然顏料。」",
+    "text_en": "\"Some plants can be made into natural pigments.\"",
+    "text_ja": "「一部の植物は天然色素を作ることができます。」"
+  },
+  {
+    "text": "「既然要畫這座島……」",
+    "text_en": "\"Since I want to draw this island...\"",
+    "text_ja": "「この島を描きたいから…」"
+  },
+  {
+    "text": "「我想試試看，用這座島自己的顏色。」",
+    "text_en": "\"I want to try it and use the island's own colors.\"",
+    "text_ja": "「島独自の色を使ってやってみたい」。"
+  },
+  {
+    "text": "[主角看向窗外／山的方向，一臉躍躍欲試]",
+    "text_en": "[The protagonist looks out the window/in the direction of the mountain, with an eager expression on his face]",
+    "text_ja": "[主人公は熱心な表情で窓の外/山の方向を眺める]"
+  },
+  {
+    "text": "「……你該不會也想去看看？」",
+    "text_en": "\"...Would you like to take a look too?\"",
+    "text_ja": "「……あなたも見てみませんか？」"
+  },
+  {
+    "text": "「這樣啊。」",
+    "text_en": "\"That's it.\"",
+    "text_ja": "「それだけ��す。」"
+  },
+  {
+    "text": "[翻找拿出鐮刀]",
+    "text_en": "[rummaging around and taking out the sickle]",
+    "text_ja": "[辺りを歩き回って鎌を取り出す]"
+  },
+  {
+    "text": "「那這把先給你——直接用手拔不太好。」",
+    "text_en": "\"Then I'll give you this one first - it's not a good idea to pull it out directly with your hands.\"",
+    "text_ja": "「では、これを先にあげますが、直接手で引き抜くのはよくありません。」"
+  },
+  {
+    "text": "獲得鐮刀",
+    "text_en": "get sickle",
+    "text_ja": "鎌を手に入れる"
+  },
+  {
+    "text": "「那麼，我們一起去吧。」",
+    "text_en": "\"Then let's go together.\"",
+    "text_ja": "「それでは、一緒に行きましょう。」"
+  },
+  {
+    "text": "「山腳和上面的幾處平台都有野花。」",
+    "text_en": "\"There are wild flowers at the base of the mountain and on several platforms above.\"",
+    "text_ja": "「山のふもととその上のいくつかのプラットフォームには野生の花があります。」"
+  },
+  {
+    "text": "「靠近花叢使用鐮刀，就能採下來。」",
+    "text_en": "\"Use the sickle close to the flowers and you can pick them.\"",
+    "text_ja": "花の近くで鎌を使えば摘むことができます。"
+  },
+  {
+    "text": "「如果可以的話，幫我找三種顏色。」",
+    "text_en": "\"If you can, help me find three colors.\"",
+    "text_ja": "「できれば、3 色を見つけるのを手伝ってください。」"
+  },
+  {
+    "text": "「湊到了，那麼，我們回去吧。」",
+    "text_en": "\"We got it, then, let's go back.\"",
+    "text_ja": "「分かった、それでは戻りましょう。」"
+  },
+  {
+    "text": "「跟我來，我弄給你看。」",
+    "text_en": "\"Come with me and I'll show you.\"",
+    "text_ja": "「一緒に来て、見せてあげるよ。」"
+  },
+  {
+    "text": "[藝術家把其中一朵花揉碎／研磨]",
+    "text_en": "[The artist crushes/grinds one of the flowers]",
+    "text_ja": "[アーティストは花の 1 つを砕く/粉砕する]"
+  },
+  {
+    "text": "「你看。」",
+    "text_en": "\"Look.\"",
+    "text_ja": "「見てください。」"
+  },
+  {
+    "text": "[顏色逐漸滲出]",
+    "text_en": "[Color gradually bleeds]",
+    "text_ja": "【徐々に色がにじみます】"
+  },
+  {
+    "text": "「這就是我想要的。」",
+    "text_en": "\"This is what I want.\"",
+    "text_ja": "「これが私が欲しいものです。」"
+  },
+  {
+    "text": "「商店買得到更穩定、更漂亮的顏料。」",
+    "text_en": "\"Store-bought paints are more stable and prettier.\"",
+    "text_ja": "「市販の絵の具のほうが安定していてきれいです。」"
+  },
+  {
+    "text": "「但這個顏色只屬於這裡。」",
+    "text_en": "\"But this color only belongs here.\"",
+    "text_ja": "「でもこの色はここにしかないよ」"
+  },
+  {
+    "text": "「不過……」",
+    "text_en": "\"But...\"",
+    "text_ja": "「でも…」"
+  },
+  {
+    "text": "「每次缺顏料都爬一趟山，好像也不是辦法。」",
+    "text_en": "\"Climbing a mountain every time I'm short of paint doesn't seem to be an option.\"",
+    "text_ja": "「絵の具が足りなくなるたびに山に登るという選択肢はないようです。」"
+  },
+  {
+    "text": "[看向主角]",
+    "text_en": "[Looks at the protagonist]",
+    "text_ja": "【主人公を見つめる】"
+  },
+  {
+    "text": "「牧場不是有空地嗎？」",
+    "text_en": "\"Isn't there some open space in the ranch?\"",
+    "text_ja": "「牧場に空き地はないですか？」"
+  },
+  {
+    "text": "「你可以考慮種一片自己的花田。」",
+    "text_en": "\"You might consider planting your own flower field.\"",
+    "text_ja": "「あなたも自分の花畑を植えてみてはいかがでしょうか。」"
+  },
+  {
+    "text": "「到時候，我可能會常去找你。」",
+    "text_en": "\"When the time comes, I may come to see you more often.\"",
+    "text_ja": "「その時が来たら、もっと頻繁に会いに行くかもしれません。」"
+  }
+]

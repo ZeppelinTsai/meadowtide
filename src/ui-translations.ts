@@ -1,3 +1,5 @@
+import { STORY_SCRIPT_TRANSLATIONS } from "./story-script-translations";
+
 import type { Locale } from "./i18n";
 
 type DraftTranslations = Record<Exclude<Locale, "zh">, Record<string, string>>;
@@ -7,6 +9,7 @@ type DraftTranslations = Record<Exclude<Locale, "zh">, Record<string, string>>;
 // migrate incrementally without duplicating rendering code in every UI module.
 export const UI_TRANSLATIONS: DraftTranslations = {
   en: {
+    ...STORY_SCRIPT_TRANSLATIONS.en,
     地圖: "Map",
     資訊: "Info",
     選單: "Menu",
@@ -169,6 +172,7 @@ export const UI_TRANSLATIONS: DraftTranslations = {
       "M/L3 opens the map, Q/Nintendo Minus/Xbox View opens Information, and Esc/Start opens the pause menu.",
   },
   ja: {
+    ...STORY_SCRIPT_TRANSLATIONS.ja,
     地圖: "マップ",
     資訊: "情報",
     選單: "メニュー",
