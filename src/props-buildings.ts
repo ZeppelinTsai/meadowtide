@@ -995,11 +995,19 @@ export function makePortScene() {
   // 銜接帶)，邊界彼此不完全對齊，畫面上會看到一條「近海」跟「外海」
   // 的明顯分隔線。改成單一矩形，從船塢邊緣直接鋪到外海視覺延伸的
   // 盡頭，跟外海用同一塊水面、同一組頂點，不會再有中間那道縫。
+  // 航道在南碼頭／南沙灘以前只從 x=21 開始；到沙灘區後退到
+  // southBeach 的東緣，乾地上方不再殘留一層水面。
   addWater(
     port.smallBoatDock.x,
     port.beachDepth + 1,
     oceanViewEdge - port.smallBoatDock.x,
-    port.height - port.beachDepth - 1,
+    port.southBeach.z - port.beachDepth - 1,
+  );
+  addWater(
+    port.southBeach.x + port.southBeach.width,
+    port.southBeach.z,
+    oceanViewEdge - (port.southBeach.x + port.southBeach.width),
+    port.height - port.southBeach.z,
   );
   // 南側水面逐欄從實際岸線後開始，讓沙灘凹凸不會被矩形水面蓋住。
   for (
@@ -1068,7 +1076,7 @@ export function makePortScene() {
   );
   addPlatform(0, port.basin.z - 1, port.smallBoatDock.x, 1);
   addPlatform(0, port.basin.z, port.basin.x, port.basin.height);
-  addPlatform(0, port.southQuay.z, port.smallBoatDock.x, port.southQuay.height);
+  addPlatform(port.southQuay.x, port.southQuay.z, port.southQuay.width, port.southQuay.height);
   for (let i = 0; i < port.stairs.depth; i++) {
     const stepHeight = (port.elevation * (i + 1)) / port.stairs.depth;
     const extendsLeft = true;
@@ -1422,7 +1430,9 @@ export function makePortScene() {
   dock.rotation.y = Math.PI / 2;
   group.add(dock);
 
-  group.add(makePortLighthouse(port.lighthouse));
+  const lighthouse = makePortLighthouse(port.lighthouse);
+  lighthouse.position.y = port.elevation;
+  group.add(lighthouse);
 
 
   return group;

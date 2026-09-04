@@ -805,12 +805,12 @@ export const LAYOUT = {
     // 13→11，同一天再要求多移一格，11→10。跳板長度會跟著這個常數
     // 自動變短，不用手動改 makePortScene() 那邊的算式。
     ferry: { x: 10, z: 22 },
-    southQuay: { z: 27, height: 3 },
-    southBeach: { x: 0, z: 30, width: 21, depth: 30 },
+    southQuay: { x: 0, z: 27, width: 24, height: 3 },
+    southBeach: { x: 0, z: 30, width: 24, depth: 30 },
     southBeachStairs: { x: 7, z: 29, width: 7, depth: 3 },
     smallBoatDock: { x: 21, z: 27, length: 9 },
     // 小燈塔位於防波堤通行格(x=21)右側海緣，玩家仍能走到塔旁。
-    lighthouse: { x: 22.4, z: 28, scale: 1 },
+    lighthouse: { x: 22.4, z: 28, scale: 1, collisionRadius: 0.58 },
     shops: [
       { x: 9, z: 12, w: 3, d: 2, seed: 0.22 },
       { x: 13, z: 12, w: 4, d: 2, seed: 0.47 },
@@ -1521,21 +1521,6 @@ function makePortTiles() {
     for (let x = 0; x < p.width; x++) tiles[z][x] = 9;
   }
 
-  // 港口南側低地沙灘。先完成外海配置再覆寫沙地，確保擴建後的
-  // z=30~58 是可行走沙灘，最南一列仍保底維持外海。
-  // 上界夾在 p.height-1：depth 擴到 30 後 southBeach.z+depth 剛好等於
-  // p.height(=60)，超出陣列最後一排(59)會直接 TypeError。
-  const southOceanFillEndZ = Math.min(
-    p.height - 1,
-    p.southBeach.z + p.southBeach.depth,
-  );
-  for (let x = p.southBeach.x; x < p.southBeach.x + p.southBeach.width; x++) {
-    for (let z = p.southBeach.z; z <= southOceanFillEndZ; z++) tiles[z][x] = 9;
-  }
-  for (let x = p.southBeach.x; x < p.southBeach.x + p.southBeach.width; x++) {
-    const shoreEndZ = portSouthBeachEndZ(x);
-    for (let z = p.southBeach.z; z <= shoreEndZ; z++) tiles[z][x] = 8;
-  }
 
   // 東側誤延伸的平台清回海面。範圍由 LAYOUT 持有，東擴新增欄會由
   // PORT_OCEAN_EXPANSION 直接填海，不需要在這裡寫最右 X 座標。
@@ -1555,6 +1540,25 @@ function makePortTiles() {
     for (let x = 21; x < p.width; x++) tiles[z][x] = 9;
   }
   for (let x = 4; x < p.width; x++) tiles[p.height - 1][x] = 9;
+
+  // 南碼頭向東延伸到燈塔腳下。這段必須在航道填海之後覆寫，否則
+  // x>=21 會被上面的航道迴圈重新變成海，視覺平台與碰撞便會分離。
+  for (let z = p.southQuay.z; z < p.southQuay.z + p.southQuay.height; z++) {
+    for (let x = p.southQuay.x; x < p.southQuay.x + p.southQuay.width; x++)
+      tiles[z][x] = 0;
+  }
+
+  // 港口南側低地沙灘同樣在航道之後覆寫；寬度延伸到燈塔平台下方。
+  // 最南一列仍由上面的外海保底覆寫維持為海。
+  const southOceanFillEndZ = Math.min(
+    p.height - 2,
+    p.southBeach.z + p.southBeach.depth - 1,
+  );
+  for (let x = p.southBeach.x; x < p.southBeach.x + p.southBeach.width; x++) {
+    for (let z = p.southBeach.z; z <= southOceanFillEndZ; z++) tiles[z][x] = 9;
+    const shoreEndZ = portSouthBeachEndZ(x);
+    for (let z = p.southBeach.z; z <= shoreEndZ; z++) tiles[z][x] = 8;
+  }
 
   // 右側木棧橋伸入航道；終端附近停靠小艇。
   for (

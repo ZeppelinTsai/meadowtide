@@ -4021,6 +4021,12 @@ export function isBlocked(mapName, x, z) {
     return true;
   if (mapName === "livingArea" && isPointInsideFeeder(x, z)) return true;
   if (mapName === "livingArea" && isPointInsideBeehive(x, z)) return true;
+  if (
+    mapName === "port" &&
+    Math.hypot(x - LAYOUT.port.lighthouse.x, z - LAYOUT.port.lighthouse.z) <
+      LAYOUT.port.lighthouse.collisionRadius
+  )
+    return true;
   if (mapName === "mountain") {
     const shrine = LAYOUT.mountain.summitShrine;
     if (
