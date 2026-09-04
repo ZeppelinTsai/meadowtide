@@ -139,6 +139,21 @@ export function addDefaultHumanoidSmile(
         return group;
       }
 
+      // 民宿業者／醫生／護士——2026-09-04 Zeppelin 指定用「複製 NPC」的方式
+      // 快速產生外觀：民宿/診所在地圖上都還沒蓋出來(見 next-game-idea 筆記
+      // 的 Deferred 清單)，還沒有座標可以定「家」跟排程，所以先不寫進
+      // npc-defs.ts，只做 makeHumanoid() 換色的外觀佔位版，之後真的要排進
+      // 世界時再補專屬模型跟排程。
+      export function makeGuesthouseManager() {
+        return makeHumanoid({ skin: 0xd9a273, shirt: 0xb1723c, hair: 0x3a2a1e });
+      }
+      export function makeDoctor() {
+        return makeHumanoid({ skin: 0xf0c39c, shirt: 0xeef2f5, hair: 0x2b2420 });
+      }
+      export function makeNurse() {
+        return makeHumanoid({ skin: 0xf0c39c, shirt: 0xffe1e6, hair: 0x4a3527 });
+      }
+
       // 村長專用低多邊形模型。面朝本地 -Z，parts 結構維持與一般 NPC 相同，
       // 讓既有的移動、轉向與走路動畫可以直接沿用。
       export function makeMayor() {
@@ -382,12 +397,6 @@ export function addDefaultHumanoidSmile(
         hammerHandle.position.set(0.18, 0.43, -0.08); hammerHandle.rotation.z = -0.12; group.add(hammerHandle);
         const hammerHead = new THREE.Mesh(new THREE.BoxGeometry(0.13, 0.055, 0.055), metalMat);
         hammerHead.position.set(0.165, 0.565, -0.08); group.add(hammerHead);
-        const tapeMeasure = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 0.055, 10), brassMat);
-        tapeMeasure.rotation.x = Math.PI / 2;
-        tapeMeasure.position.set(0.19, 0.45, -0.205); group.add(tapeMeasure);
-        const tapeHub = new THREE.Mesh(new THREE.CylinderGeometry(0.027, 0.027, 0.061, 8), leatherMat);
-        tapeHub.rotation.x = Math.PI / 2;
-        tapeHub.position.copy(tapeMeasure.position); group.add(tapeHub);
 
         const head = new THREE.Mesh(new THREE.SphereGeometry(0.205, 10, 8), skinMat);
         head.scale.set(0.92, 1.08, 0.92); head.position.y = 1.105;
@@ -422,8 +431,6 @@ export function addDefaultHumanoidSmile(
           brow.position.set(side * 0.072, 1.18, -0.193); brow.rotation.z = side * -0.1; group.add(brow);
         }
         addDefaultHumanoidSmile(group, 1.045, -0.2, 0x63382e);
-        const pencil = new THREE.Mesh(new THREE.CylinderGeometry(0.009, 0.009, 0.17, 6), mat(0xd78a31));
-        pencil.position.set(-0.205, 1.18, -0.015); pencil.rotation.z = -0.32; group.add(pencil);
 
         function makeArm(side) {
           const pivot: any = new THREE.Group(); pivot.position.set(side * 0.255, 0.91, 0);
@@ -505,19 +512,21 @@ export function makeArtist() {
   belt.position.y = 0.51; group.add(belt);
   const buckle = new THREE.Mesh(new THREE.TorusGeometry(0.045, 0.012, 5, 8), brassMat);
   buckle.position.set(0, 0.51, -0.225); buckle.rotation.x = Math.PI / 2; group.add(buckle);
-  const pouch = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.2, 0.07), tealMat);
-  pouch.position.set(0.19, 0.34, -0.08); pouch.rotation.z = -0.08; group.add(pouch);
 
+  // 2026-09-04 Zeppelin 反饋：鞋子卡進地板下面——pivot 在 0.44(髖部)，但
+  // 下面 leg/cuff/boot/sole 一路疊到比 0.44 還深，鞋底停在 y≈-0.1675，
+  // 不是踩在 0 上，整隻腳陷到地下。這裡把整組腿往上移 0.1675，讓鞋底
+  // 剛好落在 y=0(其他角色，例如海洋生物學家/主角，鞋底都精確停在 0)。
   function makeLeg(side: number) {
     const pivot = new THREE.Group(); pivot.position.set(side * 0.105, 0.44, 0);
     const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.105, 0.085, 0.42, 7), trouserMat);
-    leg.position.y = -0.21; leg.castShadow = true; pivot.add(leg);
+    leg.position.y = -0.0425; leg.castShadow = true; pivot.add(leg);
     const cuff = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.09, 0.075, 7), trouserMat);
-    cuff.position.y = -0.405; pivot.add(cuff);
+    cuff.position.y = -0.2375; pivot.add(cuff);
     const boot = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.18, 0.23), tealMat);
-    boot.position.set(0, -0.5, -0.035); boot.castShadow = true; pivot.add(boot);
+    boot.position.set(0, -0.3325, -0.035); boot.castShadow = true; pivot.add(boot);
     const sole = new THREE.Mesh(new THREE.BoxGeometry(0.17, 0.035, 0.25), leatherMat);
-    sole.position.set(0, -0.59, -0.04); pivot.add(sole);
+    sole.position.set(0, -0.4225, -0.04); pivot.add(sole);
     group.add(pivot); return pivot;
   }
   parts.legL = makeLeg(-1); parts.legR = makeLeg(1);
@@ -548,28 +557,30 @@ export function makeArtist() {
   }
   addDefaultHumanoidSmile(group, 1.115, -0.195, 0x854b3c);
 
-  // 右側剃短、左側蓬鬆的橘紅不對稱髮型。
-  const hairCap = new THREE.Mesh(new THREE.SphereGeometry(0.215, 9, 7, 0, Math.PI * 2, 0, Math.PI * 0.62), hairMat);
-  hairCap.scale.set(1.03, 0.8, 1.02); hairCap.position.set(0, 1.24, 0.015); group.add(hairCap);
+  // 左側剃短、右側蓬鬆的橘紅不對稱髮型。2026-09-04 Zeppelin 反饋：原本
+  // 左右反了，這裡把剃短區塊/鬈髮/剃線的 x 座標與對應的 y/z 旋轉整組
+  // 鏡像過來(鏡像 x 需同步反轉 rotation.y、rotation.z，rotation.x 不變)。
+  // 手上的畫筆也依反饋拿掉。2026-09-04 第二輪反饋：瀏海蓋到眼睛、後腦勺
+  // 沒蓋滿——比照植物學家的做法，hairCap 收成半球(thetaLength 0.5π)、
+  // 位置抬高讓髮緣停在眉毛(y≈1.225)上面，再加一顆 backHair 蓋住後腦勺
+  // (不對稱剃髮/鬈髮的左右輪廓不受影響，backHair 置中在兩者後方)。
+  const hairCap = new THREE.Mesh(new THREE.SphereGeometry(0.215, 9, 7, 0, Math.PI * 2, 0, Math.PI * 0.5), hairMat);
+  hairCap.scale.set(1.03, 0.82, 1.0); hairCap.position.set(0, 1.255, 0.015); group.add(hairCap);
+  const fringe = new THREE.Mesh(new THREE.SphereGeometry(0.21, 8, 6, 0, Math.PI * 2, 0, Math.PI * 0.3), hairMat);
+  fringe.scale.set(1, 0.7, 0.9); fringe.position.set(0, 1.275, -0.05); group.add(fringe);
+  const backHair = new THREE.Mesh(new THREE.SphereGeometry(0.205, 10, 8), hairMat);
+  backHair.scale.set(1.05, 1.1, 0.72); backHair.position.set(0, 1.15, 0.075); group.add(backHair);
   const shavedSide = new THREE.Mesh(new THREE.SphereGeometry(0.205, 8, 6), darkHairMat);
-  shavedSide.scale.set(0.16, 0.72, 0.82); shavedSide.position.set(0.18, 1.2, 0.015); group.add(shavedSide);
+  shavedSide.scale.set(0.16, 0.72, 0.82); shavedSide.position.set(-0.18, 1.2, 0.015); group.add(shavedSide);
   for (let i = 0; i < 9; i++) {
     const curl = new THREE.Mesh(new THREE.TorusGeometry(0.065 + (i % 2) * 0.012, 0.025, 5, 8, Math.PI * 1.35), hairMat);
-    curl.rotation.set(Math.PI / 2, (i % 3) * 0.45, -0.5 + (i % 2) * 0.8);
-    curl.position.set(-0.105 - (i % 3) * 0.045, 1.3 - Math.floor(i / 3) * 0.095, -0.01 + (i % 2) * 0.08);
+    curl.rotation.set(Math.PI / 2, -(i % 3) * 0.45, 0.5 - (i % 2) * 0.8);
+    curl.position.set(0.105 + (i % 3) * 0.045, 1.3 - Math.floor(i / 3) * 0.095, -0.01 + (i % 2) * 0.08);
     group.add(curl);
   }
   for (let i = 0; i < 3; i++) {
     const shaveLine = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.012, 0.012), hairMat);
-    shaveLine.position.set(0.19, 1.25 - i * 0.045, -0.075); shaveLine.rotation.z = -0.35; group.add(shaveLine);
-  }
-
-  // 畫筆握在左手，腰包保留為第二個明顯職業輪廓。
-  for (let i = 0; i < 3; i++) {
-    const brush = new THREE.Mesh(new THREE.CylinderGeometry(0.009, 0.009, 0.32 + i * 0.025, 5), leatherMat);
-    brush.position.set(-0.26 + i * 0.025, 0.39, -0.04); brush.rotation.z = -0.18 + i * 0.08; group.add(brush);
-    const bristle = new THREE.Mesh(new THREE.ConeGeometry(0.018, 0.065, 5), paintMats[i]);
-    bristle.position.set(-0.26 + i * 0.025, 0.565 + i * 0.01, -0.04); bristle.rotation.z = brush.rotation.z; group.add(bristle);
+    shaveLine.position.set(-0.19, 1.25 - i * 0.045, -0.075); shaveLine.rotation.z = 0.35; group.add(shaveLine);
   }
 
   group.parts = parts;
@@ -630,16 +641,18 @@ export function makeBotanist() {
   const binocTrim = new THREE.Mesh(new THREE.TorusGeometry(0.03, 0.006, 5, 8), brassMat);
   binocTrim.rotation.x = Math.PI / 2; binocTrim.position.set(-0.2, 0.455, -0.04); group.add(binocTrim);
 
+  // 2026-09-04 Zeppelin 反饋：鞋子卡進地板下面——跟藝術家同一種錯，鞋底
+  // 停在 y≈-0.14，不是 0。整組腿往上移 0.14 讓鞋底精確落在 y=0。
   function makeLeg(side: number) {
     const pivot = new THREE.Group(); pivot.position.set(side * 0.1, 0.44, 0);
     const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.082, 0.4, 7), trouserMat);
-    leg.position.y = -0.2; leg.castShadow = true; pivot.add(leg);
+    leg.position.y = -0.06; leg.castShadow = true; pivot.add(leg);
     const cuffRoll = new THREE.Mesh(new THREE.CylinderGeometry(0.098, 0.098, 0.06, 7), trouserMat);
-    cuffRoll.position.y = -0.395; pivot.add(cuffRoll);
+    cuffRoll.position.y = -0.255; pivot.add(cuffRoll);
     const boot = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.16, 0.21), bootMat);
-    boot.position.set(0, -0.48, -0.03); boot.castShadow = true; pivot.add(boot);
+    boot.position.set(0, -0.34, -0.03); boot.castShadow = true; pivot.add(boot);
     const sole = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.03, 0.23), leatherMat);
-    sole.position.set(0, -0.565, -0.035); pivot.add(sole);
+    sole.position.set(0, -0.425, -0.035); pivot.add(sole);
     group.add(pivot); return pivot;
   }
   parts.legL = makeLeg(-1); parts.legR = makeLeg(1);
@@ -925,8 +938,7 @@ export function makeMarineBiologist() {
   const pantsMat = mat(0x1f4f52), bootMat = mat(0x142f38), soleMat = mat(0xd9a23a);
   const beltMat = mat(0x2a2118), pouchMat = mat(0x5c5a34);
   const backpackMat = mat(0x35343a), tankMat = mat(0x44484f);
-  const goggleFrameMat = mat(0xdfe3e6), goggleLensMat = mat(0x6fb9c8);
-  const tabletMat = mat(0x1c2024), tabletScreenMat = mat(0xbfe0e8);
+  const goggleFrameMat = mat(0xdfe3e6);
   const badgeMat = mat(0x3f8f5c), compassMat = mat(0xb98a3a);
 
   const pelvis = new THREE.Mesh(new THREE.CylinderGeometry(0.205, 0.225, 0.16, 8), pantsMat);
@@ -976,8 +988,7 @@ export function makeMarineBiologist() {
   }
   parts.legL = makeLeg(-1); parts.legR = makeLeg(1);
 
-  // 右手舉著平板(對應人設圖左手拿板子、鏡像成遊戲裡的右手)，左手自然
-  // 垂下——跟船長「一手半握、一手掌心向下」同一種「兩手不對稱」處理。
+  // 雙手自然垂下。原本右手舉平板的不對稱設計已依 Zeppelin 反饋拿掉。
   function makeArm(side: number) {
     const pivot: any = new THREE.Group(); pivot.position.set(side * 0.245, 0.9, 0);
     const sleeve = new THREE.Mesh(new THREE.CylinderGeometry(0.068, 0.058, 0.22, 7), jacketMat);
@@ -988,16 +999,7 @@ export function makeMarineBiologist() {
     forearm.position.y = -0.345; pivot.add(forearm);
     const hand = new THREE.Mesh(new THREE.SphereGeometry(0.05, 7, 5), skinMat);
     hand.scale.set(0.85, 1.05, 0.8); hand.position.y = -0.455; pivot.add(hand);
-    if (side === 1) {
-      // 右手：抬高一點、掌心朝上，撐著平板。
-      pivot.rotation.x = -0.55; pivot.rotation.z = -0.12;
-      const tablet = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.02, 0.22), tabletMat);
-      tablet.position.set(0.02, -0.5, -0.14); tablet.rotation.x = -0.3; pivot.add(tablet);
-      const screen = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.006, 0.16), tabletScreenMat);
-      screen.position.set(0.02, -0.489, -0.14); screen.rotation.x = -0.3; pivot.add(screen);
-    } else {
-      pivot.rotation.z = 0.06; pivot.rotation.x = 0.05;
-    }
+    pivot.rotation.z = side * -0.06; pivot.rotation.x = 0.05;
     group.add(pivot); return pivot;
   }
   parts.armL = makeArm(-1); parts.armR = makeArm(1);
@@ -1032,32 +1034,6 @@ export function makeMarineBiologist() {
     tuft.position.set(x, y, z); tuft.rotation.set(rotationX, 0, rotationZ);
     group.add(tuft);
   });
-
-  // 額頭上推的潛水護目鏡——沒戴在眼睛上，跟人設圖一樣掛在瀏海上緣。
-  for (const side of [-1, 1]) {
-    const lens = new THREE.Mesh(new THREE.TorusGeometry(0.052, 0.017, 6, 10), goggleFrameMat);
-    lens.position.set(side * 0.068, 1.315, -0.145); lens.rotation.x = Math.PI / 2 - 0.15;
-    group.add(lens);
-    const glass = new THREE.Mesh(new THREE.CircleGeometry(0.045, 10), goggleLensMat);
-    glass.position.set(side * 0.068, 1.318, -0.15); glass.rotation.x = -0.15;
-    group.add(glass);
-  }
-  const goggleBridge = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.01, 0.08, 6), goggleFrameMat);
-  goggleBridge.position.set(0, 1.315, -0.145); goggleBridge.rotation.z = Math.PI / 2; group.add(goggleBridge);
-  const goggleStrap = new THREE.Mesh(new THREE.TorusGeometry(0.19, 0.012, 5, 10, Math.PI * 1.1), goggleFrameMat);
-  goggleStrap.position.set(0, 1.3, 0.01); goggleStrap.rotation.set(Math.PI / 2, 0, -Math.PI * 0.55);
-  group.add(goggleStrap);
-
-  // 背後雙氧氣瓶背包——人設圖最顯眼的職業道具，維持原尺寸不縮小。
-  const backpack = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.34, 0.13), backpackMat);
-  backpack.position.set(0, 0.82, 0.16); backpack.castShadow = true; group.add(backpack);
-  for (const side of [-1, 1]) {
-    const tank = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.045, 0.5, 9), tankMat);
-    tank.position.set(side * 0.075, 1.05, 0.2); tank.rotation.x = 0.1; tank.castShadow = true;
-    group.add(tank);
-    const valve = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.03, 0.06, 7), goggleFrameMat);
-    valve.position.set(side * 0.075, 1.31, 0.185); group.add(valve);
-  }
 
   group.parts = parts;
   group.scale.setScalar(humanoidScale(1.381));
@@ -1296,6 +1272,16 @@ export function makeMarineBiologist() {
         hairCap.position.set(0, 1.115, 0.005);
         group.add(hairCap);
         if (female) {
+          // 2026-09-04 Zeppelin 反饋：後腦杓沒蓋到——hairCap 是整顆球沒錯，
+          // 但 scale.y=0.68 把它壓扁成一頂淺淺的帽子，下緣只到 y≈0.965，
+          // 頭部本身骨架卻一路延伸到 y≈0.78，中間這一段在後腦/後頸處露出
+          // 底色，正面被瀏海跟臉部特徵擋住看不出來，從背後看就是一圈裸膚。
+          // 中長髮以後預設都要補這塊——加一顆偏向 +Z(後方)、往下延伸蓋住
+          // 缺口的 napeHair，跟正臉瀏海分開處理，才不會反而把臉蓋住。
+          const napeHair = new THREE.Mesh(new THREE.SphereGeometry(0.19, 9, 7), hairMat);
+          napeHair.scale.set(1.0, 0.78, 0.62);
+          napeHair.position.set(0, 0.96, 0.13);
+          group.add(napeHair);
           // 側編髮與低側馬尾位於角色本地 +X（正面觀看時的畫面左側）。
           for (let i = 0; i < 4; i++) {
             const braid = new THREE.Mesh(
@@ -1596,6 +1582,13 @@ export function makeMarineBiologist() {
         hairCap.scale.set(1.03, 0.68, 0.76);
         hairCap.position.set(0, 1.285, 0.018);
         group.add(hairCap);
+        // 2026-09-04 Zeppelin 反饋：跟山神同一個問題——hairCap 跟下面垂到
+        // 腰下的長髮束(見下方 forEach)中間露出膚色，補一顆往外(+Z)推的
+        // napeHair 接起來。
+        const napeHair = new THREE.Mesh(new THREE.SphereGeometry(0.16, 9, 7), hairMat);
+        napeHair.scale.set(1.0, 1.3, 0.75);
+        napeHair.position.set(0, 1.05, 0.12);
+        group.add(napeHair);
         for (const side of [-1, 1]) {
           const eye = new THREE.Mesh(new THREE.SphereGeometry(0.019, 7, 5), eyeMat);
           eye.scale.set(1.1, 0.62, 0.34);
@@ -1745,6 +1738,14 @@ export function makeMarineBiologist() {
         hairCap.scale.set(1.05, 0.68, 1.05);
         hairCap.position.set(0, 1.115, 0.005);
         group.add(hairCap);
+        // 2026-09-04 Zeppelin 反饋：後腦勺露出一圈膚色——hairCap 跟下面的
+        // 長髮束(見下方 for 迴圈)中間有落差，兩側(耳朵後方)也沒東西接住，
+        // 補一顆往外(+Z)推、夠寬夠高的 napeHair 把兩段接起來，見 AGENTS.md
+        // 「中長髮」那條筆記。
+        const napeHair = new THREE.Mesh(new THREE.SphereGeometry(0.19, 9, 7), hairMat);
+        napeHair.scale.set(1.15, 1.05, 0.68);
+        napeHair.position.set(0, 0.93, 0.13);
+        group.add(napeHair);
 
         // 頭頂半束髮髻，以紅繩繫綁，插一小截樹枝與葉片作裝飾（突出裝飾，
         // 不計入基準高度）。
@@ -1920,6 +1921,37 @@ export function makeMarineBiologist() {
         if (humanoid.userData?.holdingItem) applyHeldItemPose(p);
         else { p.armL.rotation.x *= 0.75; p.armR.rotation.x *= 0.75; p.armL.rotation.z += (-0.12 - p.armL.rotation.z) * 0.2; p.armR.rotation.z += (0.12 - p.armR.rotation.z) * 0.2; }
         humanoid.rotation.x *= 0.78; humanoid.position.y = -0.03;
+      }
+
+      // 2026-09-04：使用道具的兩個姿勢——雙手前伸(鋤地/澆水/釣竿那類水平
+      // 動作)跟雙手上舉(揮斧頭/採果那類過頭動作)。跟 animateSit 同一招，
+      // 每幀呼叫、用線性緩動(乘一個係數)慢慢逼近目標角度，不是瞬間切過去。
+      // rotation.x = π/2 是手臂從垂下(0)往前擺 90°(水平朝前，人形正面朝
+      // -Z 的慣例下就是伸向鏡頭前方)；rotation.x 再往上到接近 π 就是舉過頭頂
+      // (刻意留一點沒滿 π，讓手臂略朝前而不是完全垂直，比較像「伸手去拿」
+      // 而不是立正舉手)。雙腿順帶鬆回站立中立姿勢，避免殘留前一個動作
+      // (走路/坐下)的姿勢。
+      export function animateToolForward(humanoid: any) {
+        const p = humanoid.parts;
+        if (!p?.armL || !p?.armR) return;
+        if (p.legL) p.legL.rotation.x *= 0.8;
+        if (p.legR) p.legR.rotation.x *= 0.8;
+        const targetX = Math.PI / 2;
+        p.armL.rotation.x += (targetX - p.armL.rotation.x) * 0.3;
+        p.armR.rotation.x += (targetX - p.armR.rotation.x) * 0.3;
+        p.armL.rotation.z += (0 - p.armL.rotation.z) * 0.3;
+        p.armR.rotation.z += (0 - p.armR.rotation.z) * 0.3;
+      }
+      export function animateToolOverhead(humanoid: any) {
+        const p = humanoid.parts;
+        if (!p?.armL || !p?.armR) return;
+        if (p.legL) p.legL.rotation.x *= 0.8;
+        if (p.legR) p.legR.rotation.x *= 0.8;
+        const targetX = Math.PI * 0.94;
+        p.armL.rotation.x += (targetX - p.armL.rotation.x) * 0.3;
+        p.armR.rotation.x += (targetX - p.armR.rotation.x) * 0.3;
+        p.armL.rotation.z += (0 - p.armL.rotation.z) * 0.3;
+        p.armR.rotation.z += (0 - p.armR.rotation.z) * 0.3;
       }
       export const FACING_ANGLE = {
         up: 0,

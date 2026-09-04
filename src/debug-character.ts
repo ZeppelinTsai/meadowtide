@@ -13,7 +13,18 @@ import {
   makeCaptain,
   makeArtist,
   makeBotanist,
+  makeMountainGuardian,
+  makeGoddess,
+  makeGuesthouseManager,
+  makeDoctor,
+  makeNurse,
+  makeHeroPlayer,
   makeHumanoid,
+  animateWalk,
+  animateRun,
+  animateSit,
+  animateToolForward,
+  animateToolOverhead,
 } from "./humanoid";
 
 const scene = new THREE.Scene();
@@ -71,6 +82,13 @@ function loadCharacter(key: string) {
     captain: makeCaptain,
     artist: makeArtist,
     botanist: makeBotanist,
+    mountainGuardian: makeMountainGuardian,
+    goddess: makeGoddess,
+    guesthouseManager: makeGuesthouseManager,
+    doctor: makeDoctor,
+    nurse: makeNurse,
+    heroMale: () => makeHeroPlayer("male"),
+    heroFemale: () => makeHeroPlayer("female"),
     humanoid: () => makeHumanoid({}),
   };
   const model = (factory[key] || makeMarineBiologist)();
@@ -82,11 +100,56 @@ function loadCharacter(key: string) {
   });
   scene.add(model);
   current = model;
+  // 換角色時姿勢/位置重置，不然殘留上一隻的坐下/跑步姿勢或位移。
+  current.position.set(0, 0, 0);
+  current.rotation.set(0, 0, 0);
+  checkGroundContact(model);
+}
+
+// 2026-09-04 Zeppelin 反饋：植物學家/藝術家做出來時鞋子陷進地板下面
+// (makeLeg 裡 pivot 高度跟 leg/boot/sole 疊起來的總深度沒對齊，鞋底沒有
+// 精確停在 y=0)。這是純算術錯誤，肉眼在正常鏡頭角度下不一定看得出來
+// (要蹲低或轉到特定角度才明顯)，光靠人工檢查不可靠，所以每次切換角色
+// 都自動量一次目前姿勢下最低點的世界座標 Y，跟預期的地面(0)比對，量出
+// 明顯落差就直接標紅字提醒，不用等截圖給 Zeppelin 才發現。
+function checkGroundContact(model: THREE.Object3D) {
+  const el = document.getElementById("groundCheck");
+  if (!el) return;
+  const box = new THREE.Box3().setFromObject(model);
+  const footY = box.min.y;
+  const off = Math.abs(footY);
+  if (off < 0.015) {
+    el.textContent = `✓ 鞋底貼地 (最低點 y=${footY.toFixed(3)})`;
+    el.style.color = "#7fd88f";
+  } else if (footY < 0) {
+    el.textContent = `⚠ 鞋子陷進地下 ${off.toFixed(3)} 個單位 (最低點 y=${footY.toFixed(3)})——去 makeLeg() 檢查 pivot 高度跟 leg/boot/sole 疊加總深度是否對得上`;
+    el.style.color = "#ff8a80";
+  } else {
+    el.textContent = `⚠ 懸空 ${off.toFixed(3)} 個單位 (最低點 y=${footY.toFixed(3)})——去 makeLeg() 檢查同一件事`;
+    el.style.color = "#ffcf6b";
+  }
 }
 
 const select = document.getElementById("characterSelect") as HTMLSelectElement;
 select.addEventListener("change", () => loadCharacter(select.value));
 loadCharacter(select.value);
+
+// 動作測試——沿用遊戲本身的 animateWalk/animateRun/animateSit，不是另外
+// 兜一套；沒有 parts.legL/legR/armL/armR 的角色(目前所有低模都有)呼叫了
+// 也只是靜靜不動，不會報錯。表情目前沒有對應系統，先不做按鈕(見頁面上
+// 的說明文字)。
+type AnimMode = "idle" | "walk" | "run" | "sit" | "toolForward" | "toolOverhead";
+let animMode: AnimMode = "idle";
+const animButtons = document.querySelectorAll<HTMLButtonElement>("#animButtons button[data-anim]");
+animButtons.forEach((btn) => {
+  btn.addEventListener("click", () => {
+    animMode = btn.dataset.anim as AnimMode;
+    animButtons.forEach((b) => b.classList.toggle("active", b === btn));
+  });
+});
+(document.querySelector('#animButtons button[data-anim="idle"]') as HTMLButtonElement)?.classList.add("active");
+
+const autoRotateBox = document.getElementById("autoRotate") as HTMLInputElement;
 
 window.addEventListener("resize", () => {
   camera.aspect = window.innerWidth / window.innerHeight;
@@ -94,9 +157,19 @@ window.addEventListener("resize", () => {
   renderer.setSize(window.innerWidth, window.innerHeight);
 });
 
+const clock = new THREE.Clock();
 function animate() {
   requestAnimationFrame(animate);
-  if (current) current.rotation.y += 0.004; // 慢慢自轉，不用手動拖也看得到全身
+  const t = clock.getElapsedTime();
+  if (current) {
+    if (autoRotateBox?.checked) current.rotation.y += 0.004; // 慢慢自轉，不用手動拖也看得到全身
+    if (animMode === "walk") animateWalk(current, true, t);
+    else if (animMode === "run") animateRun(current, true, t);
+    else if (animMode === "sit") animateSit(current);
+    else if (animMode === "toolForward") animateToolForward(current);
+    else if (animMode === "toolOverhead") animateToolOverhead(current);
+    else animateWalk(current, false, t); // 待機：沿用 walk 的「停下來」分支，手腳慢慢鬆回中立姿勢
+  }
   controls.update();
   renderer.render(scene, camera);
 }

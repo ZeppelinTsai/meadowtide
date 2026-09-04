@@ -12,6 +12,10 @@
       }
       #ui select { font-size: 14px; margin-left: 6px; }
       #ui p { margin: 6px 0 0; opacity: 0.7; font-size: 12px; }
+      #ui button { font-size: 13px; margin-right: 4px; padding: 3px 8px; cursor: pointer;
+        background: #2a3644; color: #eee; border: 1px solid #445266; border-radius: 4px; }
+      #ui button.active { background: #4f7cff; border-color: #4f7cff; }
+      #expressionNote { max-width: 260px; }
       canvas { display: block; }
     </style>
   </head>
@@ -25,9 +29,33 @@
         <option value="captain">船長</option>
         <option value="artist">藝術家</option>
         <option value="botanist">植物學家(新)</option>
+        <option value="mountainGuardian">山神(既有)</option>
+        <option value="goddess">海神／女神(既有)</option>
+        <option value="guesthouseManager">民宿業者(新,通用款套色)</option>
+        <option value="doctor">醫生(新,通用款套色)</option>
+        <option value="nurse">護士(新,通用款套色)</option>
+        <option value="heroMale">主角(男)</option>
+        <option value="heroFemale">主角(女)</option>
         <option value="humanoid">通用 NPC</option>
       </select>
+      <div id="animButtons" style="margin-top:8px">
+        動作：
+        <button type="button" data-anim="idle">待機</button>
+        <button type="button" data-anim="walk">走路</button>
+        <button type="button" data-anim="run">跑步</button>
+        <button type="button" data-anim="sit">坐下</button>
+        <button type="button" data-anim="toolForward">雙手前伸</button>
+        <button type="button" data-anim="toolOverhead">雙手上舉</button>
+      </div>
+      <label style="display:block;margin-top:6px">
+        <input type="checkbox" id="autoRotate" checked /> 自動旋轉
+      </label>
+      <p id="groundCheck" style="font-weight:bold">量測中…</p>
       <p>滑鼠拖曳旋轉／滾輪縮放，這頁不吃遊戲存檔、不影響正式遊戲。</p>
+      <p id="expressionNote">目前 3D 角色沒有表情系統(臉是固定一個微笑的幾何體，
+        所有角色共用同一招)；表情規劃在企劃書裡是走 2D AI 生成的對話立繪/CG
+        那條線，不是這裡的低模。這頁先做「動作」測試，表情要不要也在 3D 上做，
+        看你怎麼想。</p>
     </div>
     <script type="module" src="/src/debug-character.ts"></script>
   </body>
