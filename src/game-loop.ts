@@ -254,73 +254,6 @@ function sampleCarpenterEscortTrail(distanceBehind: number) {
   return carpenterEscortTrail[0];
 }
 
-// 2026-09-04：露比上山採花這段(day2-morning-event.ts
-// beginFlowerMountainWalk())改成跟木匠/村長那段上山教學同一種「玩家
-// 自由走、NPC 用 escort trail 跟著」寫法，不再是黑屏傳送——這裡完全
-// 比照上面 carpenterEscortTrail/sampleCarpenterEscortTrail 那組，只是
-// 單人版(只跟露比一個)，觸發條件換成 artistQuest.stage ===
-// "walkingToMountain"。跟 carpenter 版一樣只在 oldVillage 有效——一旦
-// 玩家踩過山門進到 mountain，這條 trail 就清空停用，改由
-// settleArtistAtFlowerSpot() 接手(把她安置在入口附近，再用
-// walkArtistTo() 走到 RUBY_MOUNTAIN_SPOT)。
-let artistMountainEscortTrail: EscortTrailPoint[] = [];
-let artistMountainEscortTrailMap = "";
-
-function updateArtistMountainEscortTrail() {
-  if (
-    artistQuest.stage !== "walkingToMountain" ||
-    gameState.currentMapName !== "oldVillage" ||
-    !gameState.player
-  ) {
-    artistMountainEscortTrail.length = 0;
-    artistMountainEscortTrailMap = "";
-    return;
-  }
-  if (artistMountainEscortTrailMap !== gameState.currentMapName) {
-    artistMountainEscortTrailMap = gameState.currentMapName;
-    const artistNpc = npcs.find((npc) => npc.id === "artist");
-    artistMountainEscortTrail = [artistNpc?.mesh, gameState.player]
-      .filter(Boolean)
-      .map((mesh: any) => ({
-        x: mesh.position.x,
-        z: mesh.position.z,
-        rotation: mesh.rotation.y,
-      }));
-  }
-  const newest = artistMountainEscortTrail[artistMountainEscortTrail.length - 1];
-  const playerPoint = {
-    x: gameState.player.position.x,
-    z: gameState.player.position.z,
-    rotation: gameState.player.rotation.y,
-  };
-  if (
-    !newest ||
-    Math.hypot(playerPoint.x - newest.x, playerPoint.z - newest.z) >= 0.045
-  )
-    artistMountainEscortTrail.push(playerPoint);
-  if (artistMountainEscortTrail.length > 260) artistMountainEscortTrail.shift();
-}
-
-function sampleArtistMountainEscortTrail(distanceBehind: number) {
-  if (!artistMountainEscortTrail.length) return null;
-  let remaining = distanceBehind;
-  for (let i = artistMountainEscortTrail.length - 1; i > 0; i--) {
-    const newer = artistMountainEscortTrail[i];
-    const older = artistMountainEscortTrail[i - 1];
-    const segment = Math.hypot(newer.x - older.x, newer.z - older.z);
-    if (segment >= remaining) {
-      const t = segment > 0 ? remaining / segment : 0;
-      return {
-        x: THREE.MathUtils.lerp(newer.x, older.x, t),
-        z: THREE.MathUtils.lerp(newer.z, older.z, t),
-        rotation: newer.rotation,
-      };
-    }
-    remaining -= segment;
-  }
-  return artistMountainEscortTrail[0];
-}
-
 let mayorPrologueTrail: EscortTrailPoint[] = [];
 let mayorPrologueTrailMap = "";
 
@@ -1020,7 +953,6 @@ export function animate(now) {
   // --- NPC：先看行程表要去哪，再用 A* 決定「怎麼走」 ---
   const npcSpeed = 1.6;
   updateCarpenterEscortTrail();
-  updateArtistMountainEscortTrail();
   updateMayorPrologueTrail();
 
   // 第二天 08:00-08:30 強制觸發，不管玩家人在哪張地圖/哪個位置——跟下面
@@ -1212,36 +1144,6 @@ export function animate(now) {
         trailPoint.x,
         trailPoint.z,
       );
-      return;
-    }
-    // 2026-09-04：露比上山採花這段改成用走的——舊城鎮到山門這一段自由
-    // 移動期間，跟上面 isCarpenterEscortActor 那段同一招，用
-    // escort trail 讓她跟在玩家後面，蓋掉下面「別插手」分支跟更下面的
-    // 日常排程 A* 系統(不然她 npc-defs.ts 的 map==="oldVillage" 會讓
-    // 預設分支接手，憑空走去跟這段劇情無關的日常排程地點)。
-    if (
-      artistQuest.stage === "walkingToMountain" &&
-      n.id === "artist" &&
-      gameState.currentMapName === "oldVillage"
-    ) {
-      const trailPoint = sampleArtistMountainEscortTrail(0.9);
-      if (trailPoint) {
-        const moved = Math.hypot(
-          trailPoint.x - n.mesh.position.x,
-          trailPoint.z - n.mesh.position.z,
-        );
-        npcGroup.visible = true;
-        n.mesh.visible = true;
-        n.mesh.position.x = trailPoint.x;
-        n.mesh.position.z = trailPoint.z;
-        n.mesh.rotation.y = trailPoint.rotation;
-        animateWalk(n.mesh, moved > 0.008, gameState.elapsed);
-        n.mesh.position.y += characterGroundY(
-          "oldVillage",
-          trailPoint.x,
-          trailPoint.z,
-        );
-      }
       return;
     }
     // 2026-09-04：露比離隊後自己走去 ARTIST_EVENT_WAIT_POS 那段

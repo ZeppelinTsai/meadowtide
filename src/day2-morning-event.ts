@@ -482,18 +482,9 @@ function finishVillageHouseTour() {
 // 搶著改她的 position，改成一個新的簡單旗標
 // dayTwoMorningEvent.artistSoloWalking（見上面宣告旁的說明），比繼續
 // 沿用語意不完全對得上的 holding 更明確、不會有上述的時序問題。
-// 2026-09-04 抽成通用版：原本只服務 ARTIST_EVENT_WAIT_POS(舊城鎮定
-// 點)，露比上山採花這段改成用走的之後(見下面 beginFlowerMountainWalk/
-// settleArtistAtFlowerSpot)，山上那段「入口走到花叢定點」的短距離收尾
-// 也要用同一套「自己算好、自己套用」的獨立 rAF 動畫，差別只在目的地
-// 座標跟地形高度函式(oldVillageGroundY vs mountainGroundY)，直接參數化
-// 兩者，避免整段複製貼上兩份。
-function walkArtistTo(
-  target: { x: number; z: number },
-  groundY: (x: number, z: number) => number,
-  onDone: () => void,
-) {
+function walkArtistToWaitSpot(onDone: () => void) {
   const artistNpc = npcs.find((n) => n.id === "artist");
+  const target = { x: ARTIST_EVENT_WAIT_POS.x, z: ARTIST_EVENT_WAIT_POS.z };
   if (!artistNpc) {
     onDone();
     return;
@@ -520,7 +511,8 @@ function walkArtistTo(
     // animateWalk() 會直接覆蓋 position.y 成踏步彈跳量，一定要先呼叫、
     // 再用 += 疊加地形高度。
     animateWalk(mesh, t < 1, gameState.elapsed);
-    mesh.position.y += groundY(mesh.position.x, mesh.position.z) + 0.03;
+    mesh.position.y +=
+      oldVillageGroundY(mesh.position.x, mesh.position.z) + 0.03;
     if (t < 1) {
       requestAnimationFrame(step);
     } else {
@@ -529,9 +521,6 @@ function walkArtistTo(
     }
   }
   requestAnimationFrame(step);
-}
-function walkArtistToWaitSpot(onDone: () => void) {
-  walkArtistTo(ARTIST_EVENT_WAIT_POS, oldVillageGroundY, onDone);
 }
 
 function beginMountainRoute() {
@@ -766,19 +755,6 @@ export function canTriggerDayTwoTouchEvent(map: string, x: number, z: number) {
   // 露比個人事件的採花自由活動階段，比照木匠/村長採集教學同款鎖法——
   // 玩家這時候人在 mountain 到處走，不要讓其他劇情觸碰點在半路上插隊。
   if (artistQuest.stage === "gatheringFlowers") return false;
-  // 2026-09-04：露比上山採花這段改成用走的之後，舊城鎮到山門這一小段
-  // 自由移動期間，也要跟下面 mountainRoute 分支同一招——只放行山門
-  // 本身的觸碰點(讓 WORLD_MAP_TRANSITIONS 正常把玩家帶進 mountain)，
-  // 半路上不小心踩到其他劇情觸碰點的話不該插隊。
-  if (artistQuest.stage === "walkingToMountain") {
-    const gate = LAYOUT.oldVillage.mountainGate;
-    return (
-      map === "oldVillage" &&
-      z === gate.z &&
-      x >= gate.x - 1 &&
-      x <= gate.x + gate.width - 2
-    );
-  }
   if (dayTwoMorningEvent.phase === "mountainRoute") {
     const gate = LAYOUT.oldVillage.mountainGate;
     return (
@@ -1007,58 +983,30 @@ function continueArtistPersonalEventDialogue() {
       systemDialog("獲得鐮刀"),
       artist("「那麼，我們一起去吧。」"),
     ],
-    beginFlowerMountainWalk,
+    beginFlowerMountainTrip,
   );
 }
 
-// 2026-09-04 Zeppelin 反饋「主角沒有用走路的過去」——原本這裡是
-// loadEventMap() 黑屏直接傳送到 RUBY_MOUNTAIN_SPOT，改成比照
-// beginMountainRoute()(木匠/村長那段上山教學)同一套做法：解除演出鎖，
-// 讓玩家自由走去山門，藝術家用 escort trail 跟在後面(見 game-loop.ts
-// 的 updateArtistMountainEscortTrail)，實際踩過山門才會走進 mountain
-// 地圖(WORLD_MAP_TRANSITIONS 既有的一般地圖銜接，不是這裡另外寫的)。
-// 進山之後的收尾(從入口走到 RUBY_MOUNTAIN_SPOT 這一小段)交給
-// settleArtistAtFlowerSpot()，由 updateRubyEvent() 每幀輪詢
-// gameState.currentMapName 是否已經變成 "mountain" 來觸發。
-function beginFlowerMountainWalk() {
-  // 不用另外呼叫 setTimePauseSource("guidedGameplay", true)——
-  // startArtistPersonalEvent() 一開場就設了 setTimePauseSource(
-  // "rubyEvent", true)，涵蓋整段個人事件(intro 一路到
-  // completeArtistPersonalEvent() 才關掉)，這裡不需要也不該再疊一個
-  // 沒有對應關閉時機的 guidedGameplay 來源，不然事件結束後遊戲時間會
-  // 卡死不動。
-  artistQuest.stage = "walkingToMountain";
-  gameState.cutsceneActive = false;
-}
-
-// 玩家踩過山門、實際進到 mountain 地圖後才會被 updateRubyEvent() 呼叫
-// 一次(見該函式)。這裡先把藝術家「安置」在地圖入口附近(跟
-// startMountainGatheringTutorial() 用 holdNpcsAt 把村長/木匠釘在
-// LAYOUT.mountain.townArrival 旁同一個道理——escort trail 只在
-// oldVillage 有效，過門那一刻起她本來就不會再跟著玩家的即時座標)，
-// 再用 walkArtistTo() 讓她自己從入口走到 RUBY_MOUNTAIN_SPOT 站定，
-// 走到了才進對話、進 gatheringFlowers，跟原本傳送版一樣的收尾台詞。
-function settleArtistAtFlowerSpot() {
-  artistQuest.stage = "walkingToFlowerSpot";
-  gameState.cutsceneActive = true;
-  const artistNpc = npcs.find((n) => n.id === "artist");
-  if (artistNpc) {
-    const arrival = LAYOUT.mountain.townArrival;
-    artistNpc.mesh.visible = true;
-    artistNpc.mesh.position.set(
-      arrival.x + 1,
-      mountainGroundY(arrival.x + 1, arrival.z),
-      arrival.z,
-    );
-    artistNpc.mesh.rotation.y = Math.PI / 2;
-    artistNpc.path = null;
-    artistNpc.lastTargetKey = null;
-  }
-  walkArtistTo(RUBY_MOUNTAIN_SPOT, mountainGroundY, () => {
-    // 原本傳送版是直接把她面向設成 Math.PI/2(側對玩家、面向花叢那側)，
-    // 用走的版本走到定點後保留這個設計好的最終朝向，不要留在剛剛走路
-    // 時面朝的方向(那只是路徑方向，跟劇本設計的站姿無關)。
-    if (artistNpc) artistNpc.mesh.rotation.y = Math.PI / 2;
+function beginFlowerMountainTrip() {
+  loadEventMap("mountain", RUBY_MOUNTAIN_SPOT, () => {
+    gameState.player.rotation.y = 0;
+    const artistNpc = npcs.find((n) => n.id === "artist");
+    if (artistNpc) {
+      // loadMap() 換圖時會照 npc.map===目前地圖名 重設 visible，露比的
+      // npc-defs.ts map 是 "oldVillage"，換到 mountain 會被蓋成
+      // false——這裡跟劇本要的「讓藝術家直接一起站在旁邊」一樣，明確
+      // 蓋回 true 並給她自己的座標，不跟玩家疊在同一格(疊在一起會擋到
+      // 玩家，跟 2026-09-03 修的港口見面戲同一個坑)。
+      artistNpc.mesh.visible = true;
+      artistNpc.mesh.position.set(
+        RUBY_MOUNTAIN_SPOT.x + 1,
+        mountainGroundY(RUBY_MOUNTAIN_SPOT.x + 1, RUBY_MOUNTAIN_SPOT.z),
+        RUBY_MOUNTAIN_SPOT.z,
+      );
+      artistNpc.mesh.rotation.y = Math.PI / 2;
+      artistNpc.path = null;
+      artistNpc.lastTargetKey = null;
+    }
     showDialogSequence(
       [
         artist("「山腳和上面的幾處平台都有野花。」"),
@@ -1195,18 +1143,6 @@ function completeArtistPersonalEvent() {
 // game-loop.ts 每幀呼叫，跟 updateDayTwoWalkFollowers() 平行、各管各的
 // 狀態機——採花進度輪詢 + HUD 更新 + 湊滿三色自動觸發回程。
 export function updateRubyEvent() {
-  // 玩家自由走過山門、WORLD_MAP_TRANSITIONS 已經把地圖切成 mountain
-  // 了才觸發一次——這裡只是輪詢地圖名稱，不是觸碰事件，跟
-  // updateDayTwoWalkFollowers() 判斷 dayTwoMorningEvent.phase ===
-  // "mountainRoute" && currentMapName === "mountain" 同一招。
-  // settleArtistAtFlowerSpot() 進來第一行就會把 stage 切成
-  // "walkingToFlowerSpot"，下一幀這個條件自然不再成立，不會重複觸發。
-  if (
-    artistQuest.stage === "walkingToMountain" &&
-    gameState.currentMapName === "mountain"
-  ) {
-    settleArtistAtFlowerSpot();
-  }
   if (artistQuest.stage === "gatheringFlowers") {
     renderFlowerColorObjective();
     if (gatheredFlowerColors().length >= 3) {
