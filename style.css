@@ -356,6 +356,10 @@ body.cutscene-presentation #hud {
     left: 12px;
     padding: 5px 14px;
   }
+  #dialogHideToggle {
+    right: 12px;
+    padding: 5px 14px;
+  }
   #dialogContinue {
     right: 12px;
     bottom: 6px;
@@ -386,23 +390,28 @@ body.cutscene-presentation #hud {
   pointer-events: none;
   transition: opacity 0.25s ease;
 }
+/* 2026-09-05 Zeppelin 要求：外觀盡量比照 #dialogName(人名牌)，一樣是
+   貼在 #dialog 外面、bottom:100% 的「小標籤」，只是換到右上角(right
+   而不是 left)，跟名牌左右對稱。字級用同一組 cqh 公式，保證跟名牌／
+   內文等比例縮放、也符合本專案「UI 文字最終字級不得小於 18px」的
+   規定(見 AGENTS.md)。 */
 #dialogHideToggle {
   position: absolute;
-  top: 8px;
-  right: 10px;
-  z-index: 4;
+  bottom: 100%;
+  right: 18px;
   font: inherit;
-  font-size: 15px;
-  color: rgba(245, 197, 66, 0.75);
-  background: rgba(15, 15, 20, 0.7);
-  border: 1px solid rgba(245, 197, 66, 0.5);
-  border-radius: 999px;
-  padding: 4px 14px;
+  font-size: 20px;
+  font-size: calc((100cqh - 40px) / 4.11);
+  background: rgba(15, 15, 20, 0.92);
+  border: 2px solid #f5c542;
+  border-radius: 6px;
+  padding: 6px 20px;
+  color: #f5c542;
   cursor: pointer;
+  z-index: 3;
 }
 #dialogHideToggle:hover {
-  color: #f5c542;
-  border-color: #f5c542;
+  background: rgba(0, 0, 0, 0.9);
 }
 .dialogChoiceBtn {
   font: inherit;
