@@ -192,8 +192,11 @@ export function renderDialogLine(line) {
     }, 1400);
     return;
   }
+  const nextCgId = line.cg || null;
+  const previousCgId = currentCgId;
+  const isNewCg = Boolean(nextCgId) && nextCgId !== previousCgId;
   dialogTextEl.textContent = translateText(line.text);
-  setDialogCg(line.cg || null);
+  setDialogCg(nextCgId);
   setDialogPortrait(line.hidePortrait ? null : line.speaker || null);
   if (line.name || line.speaker) {
     const npc = npcs.find((n) => n.id === line.speaker);
@@ -204,6 +207,16 @@ export function renderDialogLine(line) {
     dialogNameEl.style.display = "block";
   } else {
     dialogNameEl.style.display = "none";
+  }
+  // 2026-09-05 Zeppelin：CG 第一次出現/換差分時，強制先讓玩家看一段
+  // 「乾淨」的全螢幕 CG，對話框自己延後浮現，不是靠玩家自己想到去按
+  // 隱藏鍵。沿用同一套 dialogUiPeek 機制：自動觸發隱藏、倒數結束後
+  // 自動還原；玩家等不及的話，這段等待期間做任何操作一樣會提前還原
+  // (見 holdDialogUiHiddenForCg() 與 input-save.ts 的全域監聽)。
+  if (isNewCg) {
+    holdDialogUiHiddenForCg(
+      previousCgId ? CG_DIFFERENTIAL_HOLD_MS : CG_FIRST_REVEAL_HOLD_MS,
+    );
   }
 }
 export function closeDialogUi() {
@@ -251,6 +264,24 @@ export function restoreDialogUiVisibility(): boolean {
   if (!dialogUiTemporarilyHidden) return false;
   setDialogUiVisualHidden(false);
   return true;
+}
+// CG 第一次出現時比較大的視覺投資，多留一點時間；同一場戲換差分只是
+// 表情/姿勢的小變化，玩家已經看過底圖，留短一點就好——量級比照既有
+// comicCue 泡泡的 1400ms「停頓感」(見上面 renderDialogLine 的
+// comicCueAdvanceTimer)，不要突兀地比其他停頓長或短太多。
+const CG_FIRST_REVEAL_HOLD_MS = 3000;
+const CG_DIFFERENTIAL_HOLD_MS = 1200;
+let dialogUiAutoHoldToken = 0;
+function holdDialogUiHiddenForCg(ms: number) {
+  const token = ++dialogUiAutoHoldToken;
+  setDialogUiVisualHidden(true);
+  window.setTimeout(() => {
+    // 玩家自己提前用任何操作還原掉的話，dialogUiTemporarilyHidden 早就
+    // 是 false 了；等待期間又切到下一輪 CG 的話 token 也對不上——這兩種
+    // 情況都不該再把它蓋回去隱藏。
+    if (token !== dialogUiAutoHoldToken) return;
+    setDialogUiVisualHidden(false);
+  }, ms);
 }
 export function showDialog(text) {
   const wasOpen = !(
