@@ -88,6 +88,7 @@ import {
   chefQuest,
   artistQuest,
   botanistQuest,
+  oceanographerQuest,
   MAPS,
 } from "./layout-maps";
 import { tryShareChefMeal, mergeChefMealIntoChatLine } from "./chef-quest";
@@ -96,6 +97,7 @@ import {
   resetDayTwoMorningEvent,
 } from "./day2-morning-event";
 import { resetBotanistEvent } from "./day3-morning-event";
+import { oceanographerEvent, resetOceanographerEvent } from "./oceanographer-event";
 import {
   canQuickSaveDuringPrologue,
   canUsePrologueKitchen,
@@ -346,7 +348,7 @@ export function getSaveSlotSummaries(): SaveSlotSummary[] {
 export function saveGame(slot = "default") {
   npcs.forEach((npc) => getRelationship(npc.id));
   const data = {
-    version: 16,
+    version: 17,
     savedAt: Date.now(),
     playerProfile: {
       name: gameState.playerName,
@@ -382,9 +384,12 @@ export function saveGame(slot = "default") {
     // scenePos 是演出中途才有意義的暫時值，跟座標一起存也無妨(readGame
     // 那邊會在還原時清成 null，不會拿舊座標播錯場景)。
     botanistQuest: { ...botanistQuest },
+    oceanographerQuest: { ...oceanographerQuest },
+    oceanographerEvent: { ...oceanographerEvent },
     dayTwoMorningEvent: { ...dayTwoMorningEvent },
     oysterRackState: JSON.parse(JSON.stringify(oysterRackState)),
     oysterRackSlots: gameState.oysterRackSlots,
+    oysterFarmingUnlocked: gameState.oysterFarmingUnlocked,
     beehiveState: { ...beehiveState },
     feederUnits: gameState.feederUnits,
     pastureGrazeSettledDay: gameState.pastureGrazeSettledDay,
@@ -625,6 +630,18 @@ export function loadGame(
     // 露比事實上一直沒有等效的還原點，克拉拉這裡直接學木匠那段做對。
     if (botanistNpc) botanistNpc.mesh.visible = botanistQuest.stage === "complete";
   }
+  resetOceanographerEvent();
+  if (data.oceanographerEvent) Object.assign(oceanographerEvent, data.oceanographerEvent);
+  if (data.oceanographerQuest) {
+    Object.assign(oceanographerQuest, data.oceanographerQuest);
+    if (oceanographerQuest.stage === "intro") oceanographerQuest.stage = "not_started";
+  }
+  oceanographerQuest.scenePos = null;
+  const oceanographerNpc = npcs.find((n) => n.id === "marine_biologist");
+  if (oceanographerNpc) oceanographerNpc.mesh.visible = oceanographerQuest.stage === "complete";
+  gameState.oysterFarmingUnlocked =
+    data.oysterFarmingUnlocked === true || oceanographerQuest.stage === "complete";
+
   resetDayTwoMorningEvent();
   if (data.dayTwoMorningEvent) {
     Object.assign(dayTwoMorningEvent, data.dayTwoMorningEvent);

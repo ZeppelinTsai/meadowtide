@@ -133,6 +133,20 @@ export const npcDefs = [
     ],
   },
   {
+    id: "marine_biologist",
+    map: "oldVillage",
+    name: "海洋學家",
+    shirt: 0x2b5c92,
+    hair: 0x18234a,
+    home: { x: LAYOUT.oldVillage.plaza.x + 8, z: LAYOUT.oldVillage.plaza.z + 4 },
+    schedule: [
+      { t: 0.25, ...pos(LAYOUT.oldVillage.plaza.x + 8, LAYOUT.oldVillage.plaza.z + 4) },
+      { t: 0.45, ...pos(LAYOUT.oldVillage.plaza.x + 7, LAYOUT.oldVillage.plaza.z + 6) },
+      { t: 0.7, ...pos(LAYOUT.oldVillage.plaza.x + 10, LAYOUT.oldVillage.plaza.z + 5) },
+      { t: 0.92, ...pos(LAYOUT.oldVillage.plaza.x + 8, LAYOUT.oldVillage.plaza.z + 4) },
+    ],
+  },
+  {
     // 克拉拉(植物學家)——第三天個人事件登場前先不存在於世界(見
     // npc-runtime.ts 的初始 visible=false，跟廚師/藝術家同一招)。日常
     // 排程站點特意跟村長(+9/+11)、廚師(+12/+11)、藝術家(+12/+7)錯開，

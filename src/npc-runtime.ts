@@ -9,7 +9,7 @@ import {
   isInsideLakeShape,
 } from "./layout-maps";
 import { npcDefs } from "./npc-defs";
-import { makeCaptain, makeCarpenter, makeHumanoid, makeMayor, makeArtist, makeBotanist } from "./humanoid";
+import { makeCaptain, makeCarpenter, makeHumanoid, makeMayor, makeArtist, makeBotanist, makeMarineBiologist } from "./humanoid";
 import { makeAnimal } from "./props";
 
 // 9) NPC 群 — 現在每個 NPC 多帶兩個欄位：path（A* 算出的格子序列）
@@ -36,13 +36,15 @@ export const npcs = npcDefs.map((def) => {
           ? makeArtist()
           : def.id === "botanist"
             ? makeBotanist()
+            : def.id === "marine_biologist"
+              ? makeMarineBiologist()
             : def.id === "chef"
             ? new THREE.Group() // 暫時不建立廚師模型；保留空節點供任務狀態查找。
             : makeHumanoid({ shirt: def.shirt, hair: def.hair });
   mesh.position.set(def.home.x, 0, def.home.z);
   // 露比在正式登島／招募事件觸發前不存在於世界，避免在舊城鎮 (170,11) 預先出現。
   // 克拉拉(植物學家)同一招：第三天個人事件登場前也先不存在。
-  if (def.id === "chef" || def.id === "artist" || def.id === "botanist")
+  if (def.id === "chef" || def.id === "artist" || def.id === "botanist" || def.id === "marine_biologist")
     mesh.visible = false;
   npcGroup.add(mesh);
   return {

@@ -1,5 +1,5 @@
 import { gameState, dayLength, getSeasonIndex, rollWeatherForSeason, SEASON_NAMES, WEATHER_NAMES, growCropsForNewDay, growFlowerBedForNewDay } from "./game-state";
-import { carpenterQuest, CARPENTER_CONSTRUCTION_DAYS, chefQuest, CHEF_RENOVATION_DAYS, botanistQuest } from "./layout-maps";
+import { carpenterQuest, CARPENTER_CONSTRUCTION_DAYS, chefQuest, CHEF_RENOVATION_DAYS, botanistQuest, oceanographerQuest } from "./layout-maps";
 import { updateAvenueTreeColors, updateSeasonalTreeColors, updateSeasonalGroundColors } from "./props";
 import { syncFarmVisuals, syncFlowerBedVisuals } from "./farm-visuals";
 import { scheduleNextMeteor } from "./scene-sky";
@@ -14,6 +14,11 @@ import {
   DAY_THREE_MORNING_WINDOW_START,
   DAY_THREE_MORNING_WINDOW_END,
 } from "./day3-morning-event";
+import {
+  oceanographerEvent,
+  OCEANOGRAPHER_EVENT_WINDOW_START,
+  OCEANOGRAPHER_EVENT_WINDOW_END,
+} from "./oceanographer-event";
 
 export function beginNewDay(day) {
         gameState.currentSeason = getSeasonIndex(day);
@@ -98,6 +103,13 @@ export function beginNewDay(day) {
         );
       }
 
+      function crossedOceanographerWindow(oldElapsed, newElapsed) {
+        return (
+          newElapsed >= OCEANOGRAPHER_EVENT_WINDOW_START &&
+          oldElapsed < OCEANOGRAPHER_EVENT_WINDOW_END
+        );
+      }
+
       export function updateGameClock(delta) {
         if (!(delta > 0)) return 0;
         const oldElapsed = gameState.elapsed;
@@ -131,6 +143,13 @@ export function beginNewDay(day) {
           crossedDayThreeMorningWindow(oldElapsed, gameState.elapsed)
         ) {
           dayThreeMorningEvent.due = true;
+        }
+        if (
+          oceanographerQuest.stage === "not_started" &&
+          botanistQuest.stage === "complete" &&
+          crossedOceanographerWindow(oldElapsed, gameState.elapsed)
+        ) {
+          oceanographerEvent.due = true;
         }
         return crossedDays;
       }

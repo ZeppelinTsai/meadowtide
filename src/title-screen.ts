@@ -20,6 +20,9 @@ import { resetStoryState } from "./story/story-state";
 import { resetNpcNameRevealState } from "./npc-name-reveal";
 import { resetAnimalInteractionState } from "./animal-interactions";
 import { resetDayTwoMorningEvent } from "./day2-morning-event";
+import { resetBotanistEvent } from "./day3-morning-event";
+import { resetOceanographerEvent } from "./oceanographer-event";
+import { botanistQuest, oceanographerQuest } from "./layout-maps";
 import { resetRelationships } from "./affection";
 import { scene } from "./scene-sky";
 import { hideLoadingScreen } from "./loading-screen";
@@ -275,6 +278,12 @@ export function initTitleScreen() {
     resetNpcNameRevealState();
     resetAnimalInteractionState();
     resetDayTwoMorningEvent();
+    resetBotanistEvent();
+    resetOceanographerEvent();
+    botanistQuest.stage = "not_started";
+    botanistQuest.scenePos = null;
+    oceanographerQuest.stage = "not_started";
+    oceanographerQuest.scenePos = null;
     resetRelationships();
     // 2026-09-04：這裡原本沒清 weatherSchedules——標題畫面的天氣預覽、
     // 或同一頁先讀過別的存檔又回來開新遊戲，都會讓 gameState.weatherSchedules
@@ -285,6 +294,7 @@ export function initTitleScreen() {
     gameState.weatherSchedules = {};
     gameState.ownedAnimals = [];
     gameState.oysterRackSlots = 1;
+    gameState.oysterFarmingUnlocked = false;
     inventory.pearls.white = 0;
     inventory.pearls.pink = 0;
     inventory.pearls.purple = 0;

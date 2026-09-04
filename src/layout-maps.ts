@@ -97,6 +97,7 @@ export const LAYOUT = {
   // 「有沒有蓋出來」由 storyState.flags["beehive.unlocked"] 控制
   // (見 game-state.ts)，這裡只先佔位。
   beehive: { x: 28, z: 39 },
+  oysterFarm: { x: 46, z: 14, spacing: 2 },
   farm: {
     x: 5,
     z: 17 + NORTH_EXPANSION,
@@ -2692,6 +2693,16 @@ export const DAY_THREE_BEEHIVE_SCENE = {
 // 有克拉拉一個人，不需要整份 Record，直接放單一物件就夠），劇本裡每次
 // 場景切換(黑屏傳送)都會更新這個值；event 沒在跑的時候是 null。
 export const botanistQuest = {
+  stage: "not_started" as "not_started" | "intro" | "complete",
+  scenePos: null as { x: number; z: number; rotY: number } | null,
+};
+
+export const OCEANOGRAPHER_COAST_SCENE = {
+  player: { x: LAYOUT.oysterFarm.x - 3, z: LAYOUT.oysterFarm.z },
+  oceanographer: { x: LAYOUT.oysterFarm.x - 2, z: LAYOUT.oysterFarm.z },
+};
+
+export const oceanographerQuest = {
   stage: "not_started" as "not_started" | "intro" | "complete",
   scenePos: null as { x: number; z: number; rotY: number } | null,
 };

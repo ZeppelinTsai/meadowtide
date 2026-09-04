@@ -105,3 +105,8 @@ Save v12 adds inventory.pearls and oysterRackSlots. Missing pearl counts safely 
 ## Save format v14
 
 Save v14 adds `lastGiftDay` to each existing relationship record. Legacy saves default every NPC to `-1`, meaning no gift has been given today. Relationship data remains the single save source for affection, daily conversation, and daily gifting.
+
+
+## Save format v17
+
+Save v17 adds the day-three oceanographer event state and the oyster-farming unlock flag. Interrupted event playback restarts safely from not_started; completed oceanographer events imply that oyster farming is unlocked.

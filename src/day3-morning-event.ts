@@ -45,18 +45,16 @@ import { FACING_ANGLE } from "./humanoid";
 
 // 窗口用絕對 elapsed 表示，跟 day2-morning-event.ts 的
 // DAY_TWO_MORNING_WINDOW_START/END 同一套算法。2026-09-04 Zeppelin
-// 調整：事件排在「第二天」10:00，演出結束後把時鐘推進到 12:00；14:00
+// 調整：事件排在「第三天」10:00，演出結束後把時鐘推進到 12:00；14:00
 // 留給後續海洋學家事件。
-// "第二天"顯示給玩家看是 currentDay+1(見
+// "第三天"顯示給玩家看是 currentDay+1(見
 // save-slot-ui.ts 的 slotSummaryText())，currentDay 本身 0-indexed，
-// 所以"第二天"＝currentDay===1，不是 0(那會變成"第一天")。檔名/變數
+// 所以"第三天"＝currentDay===2。檔名/變數
 // 沿用 dayThree／DAY_THREE 前綴不改，避免牽動一整串既有匯出名稱，純粹
 // 是命名跟劇情時間點暫時對不上，不影響行為。
-export const DAY_THREE_MORNING_WINDOW_START = dayLength * (1 + 10 / 24);
-export const DAY_THREE_MORNING_WINDOW_END = dayLength * (1 + 10.5 / 24);
+export const DAY_THREE_MORNING_WINDOW_START = dayLength * (2 + 10 / 24);
+export const DAY_THREE_MORNING_WINDOW_END = dayLength * (2 + 10.5 / 24);
 
-// 僅預留時段，不接入 due/runner；等海洋學家事件實作時再由它消費。
-export const OCEANOGRAPHER_EVENT_RESERVED_START = dayLength * (1 + 14 / 24);
 
 // due 旗標的道理跟 dayTwoMorningEvent.due 完全一樣(見該處註解)：睡覺/N
 // 鍵快轉一次跳過整個窗口時，靠 game-clock.ts 比較「這次前進的 elapsed
@@ -73,7 +71,7 @@ export function canStartDayThreeMorningEvent(): boolean {
   if (dialogQueue.length || gameState.cutsceneActive) return false;
   if (dayThreeMorningEvent.due) return true;
   const hour = gameState.currentPhase * TIME_CONFIG.gameHoursPerDay;
-  return gameState.currentDay === 1 && hour >= 10 && hour < 10.5;
+  return gameState.currentDay === 2 && hour >= 10 && hour < 10.5;
 }
 
 // 存讀檔用：跟 resetDayTwoMorningEvent() 同一個理由——萬一存檔當下

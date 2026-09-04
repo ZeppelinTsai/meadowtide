@@ -69,6 +69,7 @@ import {
   artistQuest,
   ARTIST_EVENT_WAIT_POS,
   botanistQuest,
+  oceanographerQuest,
   SOUTHERNMOST_AVENUE_TREE_Z,
   aStar,
   portGroundY,
@@ -113,6 +114,10 @@ import {
   canStartDayThreeMorningEvent,
   startDayThreeMorningEvent,
 } from "./day3-morning-event";
+import {
+  canStartOceanographerEvent,
+  startOceanographerEvent,
+} from "./oceanographer-event";
 import {
   collidesAt,
   keys,
@@ -981,6 +986,10 @@ export function animate(now) {
     startDayThreeMorningEvent();
   }
 
+  if (canStartOceanographerEvent()) {
+    startOceanographerEvent();
+  }
+
   if (
     isPrologueSeekingRod() &&
     gameState.currentMapName === "port" &&
@@ -1213,6 +1222,24 @@ export function animate(now) {
         "oldVillage",
         ARTIST_EVENT_WAIT_POS.x,
         ARTIST_EVENT_WAIT_POS.z,
+      );
+      return;
+    }
+    if (
+      oceanographerQuest.stage === "intro" &&
+      n.id === "marine_biologist" &&
+      gameState.currentMapName === "livingArea" &&
+      oceanographerQuest.scenePos
+    ) {
+      npcGroup.visible = true;
+      n.mesh.visible = true;
+      n.mesh.position.x = oceanographerQuest.scenePos.x;
+      n.mesh.position.z = oceanographerQuest.scenePos.z;
+      n.mesh.rotation.y = oceanographerQuest.scenePos.rotY;
+      n.mesh.position.y = characterGroundY(
+        "livingArea",
+        oceanographerQuest.scenePos.x,
+        oceanographerQuest.scenePos.z,
       );
       return;
     }

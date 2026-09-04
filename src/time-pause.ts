@@ -29,7 +29,8 @@ export type TimePauseSource =
   | "storyEvent"
   | "guidedGameplay"
   | "rubyEvent"
-  | "botanistEvent";
+  | "botanistEvent"
+  | "oceanographerEvent";
 
 const activeSources = new Set<TimePauseSource>();
 

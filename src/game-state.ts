@@ -113,6 +113,7 @@ export const gameState = {
   // emissiveIntensity，達到「還能採就發光、採完就暗下來」的效果。
   oysterGlowMats: [] as THREE.MeshStandardMaterial[],
   oysterRackSlots: 1,
+  oysterFarmingUnlocked: false,
   castAnimEnd: 0,
   catchAnim: null as {
     mesh: THREE.Object3D;
@@ -724,27 +725,27 @@ export function growFlowerBedForNewDay() {
 // context-interaction-and-navigation.md 的「Nearby fishing fallback」）。
 export const OYSTER_RACK_LAYOUTS = [
   {
-    visual: { x: 46, z: 14 },
+    visual: { x: LAYOUT.oysterFarm.x, z: LAYOUT.oysterFarm.z },
     interactionTiles: [
-      [43, 14],
-      [44, 14],
-      [45, 14],
+      [LAYOUT.oysterFarm.x - 3, LAYOUT.oysterFarm.z],
+      [LAYOUT.oysterFarm.x - 2, LAYOUT.oysterFarm.z],
+      [LAYOUT.oysterFarm.x - 1, LAYOUT.oysterFarm.z],
     ],
   },
   {
-    visual: { x: 46, z: 16 },
+    visual: { x: LAYOUT.oysterFarm.x, z: LAYOUT.oysterFarm.z + LAYOUT.oysterFarm.spacing },
     interactionTiles: [
-      [43, 16],
-      [44, 16],
-      [45, 16],
+      [LAYOUT.oysterFarm.x - 3, LAYOUT.oysterFarm.z + LAYOUT.oysterFarm.spacing],
+      [LAYOUT.oysterFarm.x - 2, LAYOUT.oysterFarm.z + LAYOUT.oysterFarm.spacing],
+      [LAYOUT.oysterFarm.x - 1, LAYOUT.oysterFarm.z + LAYOUT.oysterFarm.spacing],
     ],
   },
   {
-    visual: { x: 46, z: 18 },
+    visual: { x: LAYOUT.oysterFarm.x, z: LAYOUT.oysterFarm.z + LAYOUT.oysterFarm.spacing * 2 },
     interactionTiles: [
-      [43, 18],
-      [44, 18],
-      [45, 18],
+      [LAYOUT.oysterFarm.x - 3, LAYOUT.oysterFarm.z + LAYOUT.oysterFarm.spacing * 2],
+      [LAYOUT.oysterFarm.x - 2, LAYOUT.oysterFarm.z + LAYOUT.oysterFarm.spacing * 2],
+      [LAYOUT.oysterFarm.x - 1, LAYOUT.oysterFarm.z + LAYOUT.oysterFarm.spacing * 2],
     ],
   },
 ] as const;
@@ -762,7 +763,12 @@ export function setOysterRackSlots(value: number) {
   gameState.oysterRackSlots = normalizeOysterRackSlots(value);
 }
 
+export function unlockOysterFarming() {
+  gameState.oysterFarmingUnlocked = true;
+}
+
 export function getActiveOysterRackLayouts() {
+  if (!gameState.oysterFarmingUnlocked) return [];
   return OYSTER_RACK_LAYOUTS.slice(
     0,
     normalizeOysterRackSlots(gameState.oysterRackSlots),
