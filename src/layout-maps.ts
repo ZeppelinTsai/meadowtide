@@ -2649,6 +2649,17 @@ export const artistQuest = {
     | "not_started"
     | "waiting_oldVillage"
     | "intro"
+    // 2026-09-04 Zeppelin 反饋「主角沒有用走路的過去」——上山採花這段
+    // 原本是黑屏傳送(loadEventMap)，改成跟木匠/村長那段上山教學同款的
+    // 「玩家自由走、藝術家用 escort trail 跟著」，見
+    // day2-morning-event.ts 的 beginFlowerMountainWalk()/
+    // settleArtistAtFlowerSpot()。walkingToMountain 涵蓋舊城鎮內自由
+    // 走到山門這段；walkingToFlowerSpot 是踏進 mountain 地圖後，從入口
+    // 走到 RUBY_MOUNTAIN_SPOT 這段短距離的收尾動畫，兩段分開是因為前者
+    // 靠 escort trail(只在 oldVillage 有效)，後者靠 walkArtistTo() 的
+    // 獨立 rAF 動畫，機制不同。
+    | "walkingToMountain"
+    | "walkingToFlowerSpot"
     | "gatheringFlowers"
     | "returning"
     | "complete",

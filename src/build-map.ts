@@ -3286,11 +3286,25 @@ export function buildMap(mapName) {
         if (x >= 14 && x <= 16) return; // 坡道走廊留乾淨，不要長裝飾把路擋亂
         const r = hash2(x * 3.1, z * 7.7);
         const gy = groundY(x, z);
+        // 2026-09-04 Zeppelin 要求：花田(LAYOUT.garden)附近的草地多擺一些
+        // 純裝飾小花——花田本身(insideArea 那行)不長任何裝飾，保持乾淨
+        // 好種植，但外圍留一圈緩衝帶，把裝飾花的機率大幅拉高，看起來像
+        // 花從花田自然「溢出」到周圍草地，離花田越遠再退回原本的機率，
+        // 不是整張地圖平均往上調（那樣會讓其他區域也一起變擁擠）。石頭
+        // 的機率寬度(0.03)保持不變，只是門檻跟著花的門檻一起平移，不然
+        // 花田附近機率整段往上抬之後，石頭反而會被排擠到幾乎抽不到。
+        const GARDEN_FLOWER_MARGIN = 5;
+        const nearGarden =
+          x >= LAYOUT.garden.x - GARDEN_FLOWER_MARGIN &&
+          x < LAYOUT.garden.x + LAYOUT.garden.width + GARDEN_FLOWER_MARGIN &&
+          z >= LAYOUT.garden.z - GARDEN_FLOWER_MARGIN &&
+          z < LAYOUT.garden.z + LAYOUT.garden.height + GARDEN_FLOWER_MARGIN;
+        const flowerThreshold = nearGarden ? 0.26 : 0.14;
         if (r < 0.1) {
           const m = makeGrassTuft(x + (r - 0.5) * 0.4, z + (r - 0.5) * 0.4, r);
           m.position.y += gy;
           gameState.mapGroup.add(m);
-        } else if (r < 0.14) {
+        } else if (r < flowerThreshold) {
           const m = makeFlower(
             x + (r - 0.5) * 0.4,
             z + (r - 0.5) * 0.4,
@@ -3298,7 +3312,7 @@ export function buildMap(mapName) {
           );
           m.position.y += gy;
           gameState.mapGroup.add(m);
-        } else if (r < 0.17) {
+        } else if (r < flowerThreshold + 0.03) {
           const m = makeStone(x + (r - 0.5) * 0.4, z + (r - 0.5) * 0.4, r);
           m.position.y += gy;
           gameState.mapGroup.add(m);
