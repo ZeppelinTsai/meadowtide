@@ -4,6 +4,7 @@ import {
   isUiNavigationActive,
 } from "./ui-focus-navigation";
 import { markGamepadInput } from "./input-device";
+import { dialogQueue } from "./dialogue";
 
 // ==============================================================
 // 搖桿輸入(移動 + 互動鍵)——2026-08-26。
@@ -183,6 +184,14 @@ export function pollGamepad() {
 
   const confirmButton = !!pad.buttons[0]?.pressed;
   const cancelButton = !!pad.buttons[1]?.pressed;
+  // 2026-09-05：對話框「暫時隱藏」(dialogue.ts toggleDialogUiPeek)也要
+  // 吃取消鍵(手把 B/Xbox、A/Nintendo)，但一般讀對話(dialogQueue 有內容)
+  // 不會被 isUiNavigationActive() 判定成 UI 導覽模式——那個只認標題/
+  // 暫停/物品欄/地圖/二選一選單這幾種，導致這顆鍵原本只有在真的跳出
+  // 選單/選項時才送 Escape，單純讀對話按下去完全沒反應(Zeppelin 回報
+  // 「隱藏按手把B沒用」)。這裡另外併一個條件，對話框開著也算數，不影響
+  // 下面 uiNavigation 分支原本掌管的方向鍵/確認鍵那些邏輯。
+  const wantsCancelEscape = uiNavigation || dialogQueue.length > 0;
   if (uiNavigation) {
     leftStickX = 0;
     leftStickZ = 0;
@@ -256,8 +265,6 @@ export function pollGamepad() {
     if (transferButton && !prevUiTransfer) dispatchKey("keydown", "x");
     if (!transferButton && prevUiTransfer) dispatchKey("keyup", "x");
     prevUiTransfer = transferButton;
-    if (cancelButton && !prevCancelButton) dispatchKey("keydown", "Escape");
-    if (!cancelButton && prevCancelButton) dispatchKey("keyup", "Escape");
   } else {
     (Object.keys(prevUiDirection) as Array<keyof typeof prevUiDirection>).forEach(
       (key) => {
@@ -278,6 +285,10 @@ export function pollGamepad() {
     syncKey("e", !!pad.buttons[2]?.pressed);
     syncKey("r", !!pad.buttons[3]?.pressed);
     syncKey("f", !!pad.buttons[1]?.pressed); // physical east: Nintendo A / Xbox B
+  }
+  if (wantsCancelEscape) {
+    if (cancelButton && !prevCancelButton) dispatchKey("keydown", "Escape");
+    if (!cancelButton && prevCancelButton) dispatchKey("keyup", "Escape");
   }
   prevCancelButton = cancelButton;
   syncKey("q", !!pad.buttons[8]?.pressed);
