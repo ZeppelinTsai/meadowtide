@@ -266,29 +266,6 @@ export function makeBarn({
 
 // 旗桿——一支木桿+一面小三角旗，學校前庭用。
 
-export function makeDock() {
-  const group = new THREE.Group();
-  const plankMat = new THREE.MeshStandardMaterial({ color: 0x8a6a45 });
-  for (let i = 0; i < 5; i++) {
-    const plank = new THREE.Mesh(
-      new THREE.BoxGeometry(0.9, 0.06, 0.9),
-      plankMat,
-    );
-    plank.position.set(i * 0.95, 0.05, 0);
-    plank.castShadow = true;
-    plank.receiveShadow = true;
-    group.add(plank);
-  }
-  const boat = new THREE.Mesh(
-    new THREE.BoxGeometry(1.1, 0.22, 0.45),
-    new THREE.MeshStandardMaterial({ color: 0x9c5a3a }),
-  );
-  boat.position.set(3.2, 0.02, 0.65);
-  boat.rotation.y = 0.3;
-  boat.castShadow = true;
-  group.add(boat);
-  return group;
-}
 
 // 城鎮港口的商船——刻意比木匠抵達那艘小船大上一圈、外形也更「商用」：
 // 斜切艏尖＋艏斜桅、加高船艏、煙囪、舷緣扶手、舷窗、甲板堆貨箱、船艙
@@ -997,10 +974,11 @@ export function makePortScene() {
   // 盡頭，跟外海用同一塊水面、同一組頂點，不會再有中間那道縫。
   // 航道在南碼頭／南沙灘以前只從 x=21 開始；到沙灘區後退到
   // southBeach 的東緣，乾地上方不再殘留一層水面。
+  const southQuayEastX = port.southQuay.x + port.southQuay.width;
   addWater(
-    port.smallBoatDock.x,
+    southQuayEastX,
     port.beachDepth + 1,
-    oceanViewEdge - port.smallBoatDock.x,
+    oceanViewEdge - southQuayEastX,
     port.southBeach.z - port.beachDepth - 1,
   );
   addWater(
@@ -1074,7 +1052,7 @@ export function makePortScene() {
     port.eastOceanCutout.x,
     port.basin.z - port.beachDepth - 2,
   );
-  addPlatform(0, port.basin.z - 1, port.smallBoatDock.x, 1);
+  addPlatform(0, port.basin.z - 1, port.basin.x + port.basin.width, 1);
   addPlatform(0, port.basin.z, port.basin.x, port.basin.height);
   addPlatform(port.southQuay.x, port.southQuay.z, port.southQuay.width, port.southQuay.height);
   for (let i = 0; i < port.stairs.depth; i++) {
@@ -1425,10 +1403,6 @@ export function makePortScene() {
   prologueRefs.gangplankRestRotationZ = gangplank.rotation.z;
   prologueRefs.gangplankRestPosition = gangplank.position.clone();
 
-  const dock = makeDock();
-  dock.position.set(port.smallBoatDock.x, 0.13, port.smallBoatDock.z);
-  dock.rotation.y = Math.PI / 2;
-  group.add(dock);
 
   const lighthouse = makePortLighthouse(port.lighthouse);
   lighthouse.position.y = port.elevation;

@@ -808,7 +808,7 @@ export const LAYOUT = {
     southQuay: { x: 0, z: 27, width: 24, height: 3 },
     southBeach: { x: 0, z: 30, width: 24, depth: 30 },
     southBeachStairs: { x: 7, z: 29, width: 7, depth: 3 },
-    smallBoatDock: { x: 21, z: 27, length: 9 },
+
     // 小燈塔位於防波堤通行格(x=21)右側海緣，玩家仍能走到塔旁。
     lighthouse: { x: 22.4, z: 28, scale: 1, collisionRadius: 0.58 },
     shops: [
@@ -1560,13 +1560,6 @@ function makePortTiles() {
     for (let z = p.southBeach.z; z <= shoreEndZ; z++) tiles[z][x] = 8;
   }
 
-  // 右側木棧橋伸入航道；終端附近停靠小艇。
-  for (
-    let z = p.smallBoatDock.z;
-    z < p.smallBoatDock.z + p.smallBoatDock.length;
-    z++
-  )
-    tiles[z][p.smallBoatDock.x] = 5;
 
   p.shops.forEach((shop) => {
     for (let z = shop.z; z < shop.z + shop.d; z++) {
