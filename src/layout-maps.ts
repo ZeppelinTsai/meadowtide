@@ -467,8 +467,15 @@ export const LAYOUT = {
     // 把它做漂亮會跟「這間需要修」的敘事衝突，等木匠劇情真的做到
     // 那一步再回頭一起處理。
     houses: [
-      // 學校——雙倍寬度，磚紅屋頂+暖色牆面，屋頂鐘塔+旗桿是最醒目
-      // 的地標。
+      // 2026-09-05 Zeppelin 全盤重新配置城鎮 10 棟房子(西→東、北→南)：
+      //   第一排：社區中心／醫院／醫生家／護士家
+      //   第二排：木匠家／藝術家家／雜貨店(離廣場最近那棟)
+      //   第三排：海洋學家家／植物學家家／民宿
+      // 這次重排順便把舊的「role 標籤跟中文註解對不上」的debt清乾淨——
+      // 原本 x36,z13 role:"carpenter" 卻寫著「老師家」註解、x36,z23
+      // role:"teacher" 卻寫著「木匠家」註解，兩邊註解互相搬過去而已，
+      // role 本身沒有跑錯(build-map.ts 的裝飾/木匠劇情邏輯都是照 role
+      // 字串找房子，一路都是對的)，現在 role 跟註解終於一致。
       {
         x: 35,
         z: 4,
@@ -476,7 +483,7 @@ export const LAYOUT = {
         w: 4,
         d: 3,
         doorX: 36.5,
-        role: "school",
+        role: "communityCenter",
         wallColor: 0xe4c9a0,
         roofColor: 0x7a2e2e,
       },
@@ -516,7 +523,11 @@ export const LAYOUT = {
         wallColor: 0xdce8dc,
         roofColor: 0x8a5a42,
       },
-      // 老師家——暖芥末黃牆面，門口一疊書本裝飾。
+      // 木匠家——暖芥末黃牆面。role:"carpenter" 這棟故意不在 build-map.ts
+      // 的靜態門口裝飾清單裡(木匠有自己一套「施工告示牌/入住後發光
+      // 窗戶」的劇情 stage 動態疊加邏輯，跟 CARPENTER_HOUSE/
+      // CARPENTER_DOORSTEP 這組座標綁在一起，見下面木匠事件那段)，
+      // 不要另外幫它加靜態裝飾，會跟施工中的敘事衝突。
       {
         x: 36,
         z: 13,
@@ -528,7 +539,13 @@ export const LAYOUT = {
         wallColor: 0xd8c078,
         roofColor: 0x5a4530,
       },
-      // 海洋學家家——藍綠牆面+風化灰藍屋頂，門口掛一個簡化船舵裝飾。
+      // 藝術家家(露比)——2026-09-05 從原本(42,23)搬到這裡，跟她 Day2
+      // 個人事件實際發生的位置(ARTIST_EVENT_WAIT_POS=142,18，換算回這
+      // 排西擴前座標正好是 42,13)對齊，之前 role 標籤跟事件實際站位
+      // 對不上的問題就此解決。牆色帶灰黃底、偏舊白，呼應她 Day2 那段
+      // 「你覺得這面牆是白色的嗎？有一點灰、一點黃……下面還留著雨水
+      // 流過的顏色」——原本粉調牆面(0xd6a0c4)一眼就是粉紫色，跟台詞
+      // 邏輯對不上；梅紫屋頂延續原本設定不變，台詞只提到牆。
       {
         x: 42,
         z: 13,
@@ -536,12 +553,14 @@ export const LAYOUT = {
         w: 3,
         d: 3,
         doorX: 43,
-        role: "oceanographer",
-        wallColor: 0x9fc4c9,
-        roofColor: 0x33525c,
+        role: "artist",
+        wallColor: 0xd6d0b8,
+        roofColor: 0x5a3a6a,
       },
-      // 雜貨店兼行政中心——雙倍寬度，整個城鎮視覺上的商業/行政門面：
-      // 遮陽棚+吊招牌。
+      // 雜貨店兼行政中心——雙倍寬度，第二排離廣場(plaza.x=58 起)最近
+      // 的一棟，整個城鎮視覺上的商業/行政門面：遮陽棚+吊招牌。座標
+      // 沒動(本來就在這，2026-09-03 那組開發用捷徑傳送點才是真的沒對
+      // 齊，見下面 build-map.ts GENERAL_STORE_DOORSTEP 那段)。
       {
         x: 48,
         z: 13,
@@ -553,7 +572,9 @@ export const LAYOUT = {
         wallColor: 0xd9a94a,
         roofColor: 0x2f6b63,
       },
-      // 木匠家——木匠事件用的「還沒整修好」空屋，見上方說明。
+      // 海洋學家家——2026-09-05 從(42,13)搬到這裡，把原本第二排中間
+      // 的位置讓給藝術家家。藍綠牆面+風化灰藍屋頂、門口簡化船舵裝飾
+      // 都原封不動搬過來，只是換了地址。
       {
         x: 36,
         z: 23,
@@ -561,11 +582,17 @@ export const LAYOUT = {
         w: 3,
         d: 3,
         doorX: 37,
-        role: "teacher",
-        wallColor: 0xb8aa91,
-        roofColor: 0x51443f,
+        role: "oceanographer",
+        wallColor: 0x9fc4c9,
+        roofColor: 0x33525c,
       },
-      // 藝術家家——粉調牆面+梅紫屋頂，門口擺一個簡化畫架。
+      // 植物學家家(克拉拉)——2026-09-05 新增，第三天早上個人事件
+      // (day3-morning-event.ts/botanistQuest)登場前她本來就沒有一棟
+      // 城鎮房子，這是第一次補上。淺草綠牆+深綠屋頂呼應她在
+      // npc-defs.ts 的角色識別色(shirt: 0x6b8f5a)，跟其他 9 棟房子的
+      // 色系都不重複。門口裝飾先留白，之後想加花缽/種子袋之類的道具
+      // 再回頭補(build-map.ts 目前沒有 villageHouseByRole("botanist")
+      // 的裝飾區塊)。
       {
         x: 42,
         z: 23,
@@ -573,9 +600,9 @@ export const LAYOUT = {
         w: 3,
         d: 3,
         doorX: 43,
-        role: "artist",
-        wallColor: 0xd6a0c4,
-        roofColor: 0x5a3a6a,
+        role: "botanist",
+        wallColor: 0xdde5c4,
+        roofColor: 0x4a6b3a,
       },
       // 民宿——雙倍寬度，門口一支吊招牌+一盞燈籠，比住宅群更有「迎賓」
       // 的存在感。
@@ -2561,6 +2588,19 @@ MAPS.livingArea.tiles[HOUSE_FRONT_TREE.z][HOUSE_FRONT_TREE.x] = 0;
 // 宣告要放在 events 陣列前面：events 是一般陣列常值，裡面的座標會立刻
 // 求值（不像函式內容那樣延後執行），晚宣告會直接撞到 TDZ 錯誤。
 // ==============================================================
+// 雜貨店正門口——2026-09-05 補上，取代 build-map.ts events 陣列裡原本
+// 硬寫死座標(149,26)/(150,26)的開發用捷徑傳送點：那組數字是雜貨店還
+// 沒做外觀時「先送過去方便建模/測試」的暫定值，跟雜貨店實際建築
+// (LAYOUT.oldVillage.houses 裡 role:"generalStore" 那棟)完全對不上，
+// 一直沒有回頭校準。跟 CARPENTER_HOUSE/CARPENTER_DOORSTEP 同一招，用
+// find(role) 動態算，房子之後再搬家這裡不用跟著手動改數字。
+const generalStoreHouseEntry = LAYOUT.oldVillage.houses.find(
+  (h) => h.role === "generalStore",
+);
+export const GENERAL_STORE_DOORSTEP = {
+  x: generalStoreHouseEntry.doorX,
+  z: generalStoreHouseEntry.z + generalStoreHouseEntry.d,
+};
 export const CARPENTER_HOUSE = { ...LAYOUT.oldVillage.carpenterHouse };
 export const CARPENTER_DOORSTEP = {
   x: LAYOUT.oldVillage.carpenterHouse.doorX,

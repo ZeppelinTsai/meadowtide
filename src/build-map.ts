@@ -33,6 +33,7 @@ import {
   COAST_ROAD_HALF_WIDTH,
   lakeEdgeFactor,
   CARPENTER_DOORSTEP,
+  GENERAL_STORE_DOORSTEP,
   ARTIST_EVENT_WAIT_POS,
   SHRINE_PATH_START_X,
   SHRINE_PATH_LENGTH,
@@ -182,7 +183,6 @@ import {
   makeFlagpole,
   makeBellCupola,
   makeMedicalSign,
-  makeBookStack,
   makeEasel,
   makeShipWheelEmblem,
   makeHangingSignboard,
@@ -2913,9 +2913,15 @@ export function buildMap(mapName) {
     plateauGroup.add(bench1, bench2);
 
     // 城鎮 10 棟房子的門口/屋頂裝飾——每個對應 LAYOUT.oldVillage.houses
-    // 裡的一個 role，讓房子從外觀就看得出用途(學校/醫院/醫生/護士/
-    // 老師/海洋學家/雜貨店兼行政中心/藝術家/民宿)，木匠家(role:
-    // "carpenter")不在這裡處理，維持劇情自己的施工牌/發光窗戶邏輯。
+    // 裡的一個 role，讓房子從外觀就看得出用途(社區中心/醫院/醫生/
+    // 護士/海洋學家/雜貨店兼行政中心/藝術家/民宿)，木匠家(role:
+    // "carpenter")跟植物學家家(role:"botanist")都不在這裡處理：木匠
+    // 維持劇情自己的施工牌/發光窗戶邏輯，植物學家家目前還沒有對應的
+    // 門口裝飾(2026-09-05 她的房子才剛補進 houses[]，之後想加花缽/
+    // 種子袋之類的道具再回頭補這個區塊)。
+    // 2026-09-05：原本這裡有一個 role:"teacher" 的書本裝飾區塊，那個
+    // role 已經隨這次城鎮重新配置一起退場(原本掛著這個 role 的房子
+    // 改成海洋學家家了)，一併移除，不要留著吃不到 house 的死程式碼。
     const villageHouseByRole = (role) =>
       LAYOUT.oldVillage.houses.find((h) => h.role === role);
     const villageHouseFront = (h) => ({
@@ -2924,13 +2930,13 @@ export function buildMap(mapName) {
       frontZ: h.z + (h.d - 1) / 2 + (h.d / 2) * 0.98,
     });
 
-    const school = villageHouseByRole("school");
-    if (school) {
-      const { centerX, centerZ, frontZ } = villageHouseFront(school);
+    const communityCenter = villageHouseByRole("communityCenter");
+    if (communityCenter) {
+      const { centerX, centerZ, frontZ } = villageHouseFront(communityCenter);
       const cupola = makeBellCupola(centerX, centerZ);
       cupola.position.y = 1.3 + 0.85 + oldVillageGroundY(centerX, centerZ);
       plateauGroup.add(cupola);
-      const flagX = centerX - school.w / 2 + 0.3;
+      const flagX = centerX - communityCenter.w / 2 + 0.3;
       const flagZ = frontZ + 0.35;
       const flagpole = makeFlagpole(flagX, flagZ, 1.8, 0x7a2e2e);
       flagpole.position.y += oldVillageGroundY(flagX, flagZ);
@@ -2955,16 +2961,6 @@ export function buildMap(mapName) {
         plateauGroup.add(sign);
       },
     );
-
-    const teacher = villageHouseByRole("teacher");
-    if (teacher) {
-      const { frontZ } = villageHouseFront(teacher);
-      const booksX = teacher.doorX + 0.5,
-        booksZ = frontZ + 0.25;
-      const books = makeBookStack(booksX, booksZ);
-      books.position.y += oldVillageGroundY(booksX, booksZ);
-      plateauGroup.add(books);
-    }
 
     const oceanographer = villageHouseByRole("oceanographer");
     if (oceanographer) {
@@ -4452,18 +4448,19 @@ export const events = [
         z: LAYOUT.house.z + LAYOUT.house.d + 1,
       }),
   })),
-  // 雜貨店——2026-09-03 Zeppelin 指定的開發用捷徑傳送點，跟 shrine (4,2)
-  // 那組「先送過去方便建模/測試」的做法同一套：舊城鎮(149,26)/(150,26)
-  // 兩格踩一下直接送進雜貨店室內(MAPS.generalStore)，兩格對齊室內門口
-  // 本來就是 2 格寬(7,13)/(8,13)。不是真的接到雜貨店建築(generalStore
-  // 那棟，build-map.ts villageHouseByRole)的實際大門位置——那個之後真的
-  // 要做雜貨店外觀/NPC 時再對齊。室內門口踩回去，(7,13)->(149,27)、
-  // (8,13)->(150,27)，跟兩個觸發點分別錯開一格，不會一踏出門就立刻
-  // 反彈回來。
+  // 雜貨店——2026-09-03 Zeppelin 先指定了一組開發用捷徑傳送點(硬寫死
+  // 舊城鎮(149,26)/(150,26))，跟 shrine (4,2) 那組「先送過去方便建模/
+  // 測試」的做法同一套，方便當時雜貨店外觀還沒做好時先能測室內。
+  // 2026-09-05：雜貨店外觀(role:"generalStore"那棟)其實已經做好一段
+  // 時間了，這組捷徑座標卻一直沒回頭校準，z=26 離房子實際位置(z=13
+  // 那排)差了 13 格，等於玩家踩到的傳送點跟門口實際看起來完全對不上。
+  // 改用 GENERAL_STORE_DOORSTEP(layout-maps.ts，find(role) 動態算，房子
+  // 之後再搬家這裡不用跟著手動改數字)算出真正貼在門口的兩格。室內門口
+  // 踩回去對稱地跟兩個觸發點分別錯開一格，不會一踏出門就立刻反彈回來。
   ...Array.from({ length: 2 }, (_, i) => ({
     map: "oldVillage",
-    x: 149 + i,
-    z: 26,
+    x: Math.floor(GENERAL_STORE_DOORSTEP.x) + i,
+    z: GENERAL_STORE_DOORSTEP.z,
     trigger: "touch",
     action: () => loadMap("generalStore", { ...MAPS.generalStore.playerStart }),
   })),
@@ -4472,7 +4469,11 @@ export const events = [
     x: 7 + i,
     z: 13,
     trigger: "touch",
-    action: () => loadMap("oldVillage", { x: 149 + i, z: 27 }),
+    action: () =>
+      loadMap("oldVillage", {
+        x: Math.floor(GENERAL_STORE_DOORSTEP.x) + i,
+        z: GENERAL_STORE_DOORSTEP.z + 1,
+      }),
   })),
   // 生活區南側海岸(x=37~46，z=42 整排，地圖最南端) <-> 港口北端
   // (碼頭附近)——z=37~42 這段南側延伸地形已經在 layout-maps.ts 補上
