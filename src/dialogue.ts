@@ -12,6 +12,12 @@ import {
   isNpcIdentityId,
   setNpcNameStage,
 } from "./npc-name-reveal";
+import { cancelButtonPromptFor } from "./context-interaction";
+import {
+  getLastInputDevice,
+  getEffectiveControllerLayout,
+  onInputPresentationChanged,
+} from "./input-device";
 
 export const dialogEl = document.getElementById("dialog");
 export const dialogTextEl = document.getElementById("dialogText");
@@ -23,6 +29,9 @@ export const dialogPortraitPlaceholderEl = document.getElementById(
   "dialogPortraitPlaceholder",
 );
 export const dialogHideToggleEl = document.getElementById("dialogHideToggle");
+export const dialogHideToggleHintEl = document.getElementById(
+  "dialogHideToggleHint",
+);
 export const cgOverlayEl = document.getElementById("cgOverlay");
 export const cgImgEl = document.getElementById("cgImg") as HTMLImageElement;
 // 換差分用的第二張圖，平常疊在 cgImg 上面但透明——見 style.css #cgImgNext
@@ -258,6 +267,24 @@ dialogHideToggleEl?.addEventListener("click", (event) => {
   event.stopPropagation();
   toggleDialogUiPeek();
 });
+// 2026-09-05 Zeppelin 要求：隱藏鍵旁邊要標出目前能用的快捷鍵，鍵鼠是
+// Esc/右鍵(跟 input-save.ts 既有的「取消」手感一致，見下面新增的
+// keydown/pointerdown 監聽)，手把要自動換成對應的按鍵字母。用
+// input-device.ts 既有的 getLastInputDevice()/getEffectiveControllerLayout()
+// 判斷目前輸入裝置，onInputPresentationChanged() 訂閱切換(例如玩家中途
+// 拔滑鼠改用手把)即時更新文字，不用整個對話框重繪。
+function renderDialogHideToggleHint() {
+  if (!dialogHideToggleHintEl) return;
+  const device = getLastInputDevice();
+  if (device === "gamepad") {
+    const layout = getEffectiveControllerLayout();
+    dialogHideToggleHintEl.textContent = `(${cancelButtonPromptFor(layout)})`;
+    return;
+  }
+  dialogHideToggleHintEl.textContent = "(Esc/右鍵)";
+}
+renderDialogHideToggleHint();
+onInputPresentationChanged(renderDialogHideToggleHint);
 // 回傳有沒有「真的做了還原」，方便呼叫端(input-save.ts)決定要不要把
 // 這次輸入吃掉、不再往下傳給「按 E 繼續」之類的一般對話推進邏輯。
 export function restoreDialogUiVisibility(): boolean {

@@ -143,6 +143,8 @@ import {
   advanceChoicePage,
   resolveChoice,
   restoreDialogUiVisibility,
+  toggleDialogUiPeek,
+  dialogUiTemporarilyHidden,
 } from "./dialogue";
 import {
   loadMap,
@@ -791,6 +793,59 @@ addEventListener(
     if (!restoreDialogUiVisibility()) return;
     event.preventDefault();
     event.stopImmediatePropagation();
+  },
+  true,
+);
+
+// 對話框「暫時隱藏」的啟動鍵——Esc/滑鼠右鍵，跟這個檔案原本「取消」
+// 的手感完全一致(二選一提示的 Escape/右鍵取消就是同一套邏輯，見下面
+// activeChoice 那段)。手把不用另外處理：gamepad-input.ts 的 cancelButton
+// 讀 pad.buttons[1]，按下去會直接合成一次 window 級的 Escape keydown，
+// 這裡的監聽本來就吃得到，不用重複判斷手把輸入。上面那組「還原」監聽
+// 只在已經藏起來時動作(dialogUiTemporarilyHidden)，這裡反過來只在
+// 「還沒藏起來、且真的有對話在進行」時動作，兩者狀態互斥、不會搶著跑；
+// activeChoice 開著時 Escape/右鍵已經是「取消選項」的既有語意，這裡明
+// 確排除，不要蓋掉那個行為。
+addEventListener(
+  "keydown",
+  (event) => {
+    if (
+      event.key !== "Escape" ||
+      dialogUiTemporarilyHidden ||
+      activeChoice ||
+      !dialogQueue.length
+    )
+      return;
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    toggleDialogUiPeek();
+  },
+  true,
+);
+addEventListener(
+  "pointerdown",
+  (event) => {
+    if (
+      event.button !== 2 ||
+      dialogUiTemporarilyHidden ||
+      activeChoice ||
+      !dialogQueue.length
+    )
+      return;
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    toggleDialogUiPeek();
+  },
+  true,
+);
+// 右鍵觸發隱藏的同時要擋掉瀏覽器原生的右鍵選單，不然選單會蓋在畫面上。
+addEventListener(
+  "contextmenu",
+  (event) => {
+    if (dialogUiTemporarilyHidden || activeChoice || !dialogQueue.length)
+      return;
+    event.preventDefault();
+    event.stopPropagation();
   },
   true,
 );

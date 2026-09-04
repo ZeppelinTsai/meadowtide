@@ -413,6 +413,12 @@ body.cutscene-presentation #hud {
 #dialogHideToggle:hover {
   background: rgba(0, 0, 0, 0.9);
 }
+/* 快捷鍵提示(Esc/右鍵，或手把按鍵字母)——維持跟按鈕本體同一個字級，
+   不縮小字體，避免違反本專案「UI 文字最終字級不得小於 18px」的規定
+   (見 AGENTS.md)，只用透明度做出次要文字的視覺區隔。 */
+#dialogHideToggleHint {
+  opacity: 0.7;
+}
 .dialogChoiceBtn {
   font: inherit;
   font-size: 22px;
