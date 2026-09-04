@@ -407,7 +407,7 @@ export function makeRestArea(area) {
   makeLounger(5.85, 3.45, 0.18);
 
   // 可交互座椅；位置只由 LAYOUT.restArea.chair 提供。
-  g.add(makeBench(area.chair.offsetX, area.chair.offsetZ, area.chair.rotation));
+  g.add(makeBench(area.chair.offsetX, area.chair.offsetZ, area.chair.rotation, area.chair.sittable === true));
 
   // 靠海側留一棵遮蔭樹，讓個人休息區讀起來更舒適。
   const shade = makeTree(6.65, 4.5);
@@ -766,7 +766,7 @@ export function makeStreetLamp(x, z, towardRoad) {
 // 廣場長椅——兩片木板(座面/椅背)+ 兩支金屬椅腳，跟路燈同一套低模語彙
 // (簡單方塊拼接)，facing 決定椅背朝哪個方向(玩家會從椅背對面走近)。
 
-export function makeBench(x, z, facing = 0) {
+export function makeBench(x, z, facing = 0, sittable = false) {
   const group = new THREE.Group();
   const woodMat = new THREE.MeshStandardMaterial({
     color: 0x8a6a45,
@@ -793,6 +793,7 @@ export function makeBench(x, z, facing = 0) {
   });
   group.position.set(x, 0, z);
   group.rotation.y = facing;
+  group.userData.sittable = sittable;
   return group;
 }
 
@@ -924,6 +925,7 @@ export function makeFurniture(item) {
       g.add(leg);
     });
     if (item.rot) g.rotation.y = item.rot;
+    g.userData.sittable = item.sittable === true;
   } else if (item.type === "rug") {
     const rug = new THREE.Mesh(
       new THREE.BoxGeometry(1.3, 0.02, 1.3),

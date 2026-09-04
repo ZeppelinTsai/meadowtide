@@ -88,7 +88,7 @@ export const LAYOUT = {
     z: 24,
     width: 8,
     height: 6,
-    chair: { offsetX: 2, offsetZ: 4, rotation: 0, playerRotation: Math.PI },
+    chair: { offsetX: 2, offsetZ: 4, rotation: 0, playerRotation: Math.PI, sittable: true },
   },
   garden: { x: 25, z: 31, width: 8, height: 7 },
   // 蜂箱系統預留點——花田(garden)南緣 z=37 再往南 2 格的開闊草地，
@@ -1798,10 +1798,10 @@ export const MAPS = {
       // 旋轉角度沿用舊格局「面向桌子」那組換算：南側 rot=PI、東側
       // rot=-PI/2，北側/西側對稱補上 rot=0／rot=PI/2。
       { type: "table", x: 11, z: 6 },
-      { type: "chair", x: 11, z: 5, rot: 0 },
-      { type: "chair", x: 11, z: 7, rot: Math.PI },
-      { type: "chair", x: 12, z: 6, rot: -Math.PI / 2 },
-      { type: "chair", x: 10, z: 6, rot: Math.PI / 2 },
+      { type: "chair", sittable: true, x: 11, z: 5, rot: 0 },
+      { type: "chair", sittable: true, x: 11, z: 7, rot: Math.PI },
+      { type: "chair", sittable: true, x: 12, z: 6, rot: -Math.PI / 2 },
+      { type: "chair", sittable: true, x: 10, z: 6, rot: Math.PI / 2 },
       { type: "rug", x: 9, z: 6, nonBlocking: true }, // 餐廳地毯
     ],
     playerStart: { x: 8, z: 12 },
@@ -1882,10 +1882,10 @@ export const MAPS = {
       // 休憩區兼接待中心(x=8~14)——原餐桌椅原地保留當休憩座位，
       // 靠門口加一座櫃台當接待櫃台。
       { type: "table", x: 11, z: 6 },
-      { type: "chair", x: 11, z: 5, rot: 0 },
-      { type: "chair", x: 11, z: 7, rot: Math.PI },
-      { type: "chair", x: 12, z: 6, rot: -Math.PI / 2 },
-      { type: "chair", x: 10, z: 6, rot: Math.PI / 2 },
+      { type: "chair", sittable: true, x: 11, z: 5, rot: 0 },
+      { type: "chair", sittable: true, x: 11, z: 7, rot: Math.PI },
+      { type: "chair", sittable: true, x: 12, z: 6, rot: -Math.PI / 2 },
+      { type: "chair", sittable: true, x: 10, z: 6, rot: Math.PI / 2 },
       { type: "rug", x: 9, z: 6, nonBlocking: true },
       { type: "counter", x: 12, z: 11, variant: "storage" },
     ],

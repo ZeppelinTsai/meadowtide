@@ -29,6 +29,7 @@ import {
 import { flowerSpeciesLabel, isFlowerSpeciesId } from "./wildflowers";
 import { mushroomSpeciesLabel } from "./mushrooms";
 import { animals, npcs } from "./npc-runtime";
+import { seatTargetsForMap, sitOnSeat, type SeatTarget } from "./seat-system";
 import { renderer, camera, scene } from "./scene-sky";
 import {
   getGameplayCamera,
@@ -144,7 +145,24 @@ function contains(root: THREE.Object3D, obj: THREE.Object3D) {
 function legacyAction(id: string, label: string): ContextAction {
   return { id, label, slot: "primary", execute: runLegacyPrimaryInteraction };
 }
-function targetForAnimal(id: string): WorldTarget | null {
+function targetForSeat(seat: SeatTarget): WorldTarget | null {
+  if (seat.map !== gameState.currentMapName || gameState.isSitting || !seat.object.parent)
+    return null;
+  const getPosition = () => {
+    if (!seat.object.parent || seat.map !== gameState.currentMapName) return null;
+    const world = new THREE.Vector3();
+    seat.object.getWorldPosition(world);
+    return { x: world.x, z: world.z };
+  };
+  return {
+    id: seat.id,
+    object: seat.object,
+    radius: 1.15,
+    actions: [{ id: "sit", label: "坐下", slot: "primary", execute: () => sitOnSeat(seat) }],
+    getPosition,
+    isValid: () => Boolean(seat.object.parent) && seat.map === gameState.currentMapName && !gameState.isSitting,
+  };
+}function targetForAnimal(id: string): WorldTarget | null {
   const animal = animals.find((a) => a.id === id);
   if (!animal || !animal.mesh.visible) return null;
   const carried = getCarriedAnimalId() === id;
@@ -509,6 +527,10 @@ function allTargets() {
       const t = targetForAnimal(a.id);
       if (t) list.push(t);
     });
+  seatTargetsForMap(gameState.currentMapName).forEach((seat) => {
+    const target = targetForSeat(seat);
+    if (target) list.push(target);
+  });
   npcs.forEach((n) => {
     const t = targetForNpc(n.id);
     if (t) list.push(t);
@@ -562,6 +584,10 @@ function refreshSelectedTarget(target: WorldTarget) {
     return targetForFishing();
   if (target.id === "held-item") return targetForHeldItem();
   if (target.id === "house-stove") return targetForStove();
+  if (target.id.includes(":seat:")) {
+    const seat = seatTargetsForMap(gameState.currentMapName).find((candidate) => candidate.id === target.id);
+    return seat ? targetForSeat(seat) : null;
+  }
   if (target.id.startsWith("animal:"))
     return targetForAnimal(target.id.slice(7));
   if (target.id.startsWith("npc:")) return targetForNpc(target.id.slice(4));

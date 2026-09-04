@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { rebuildSeatTargets } from "./seat-system";
 import { hash2 } from "./utils";
 import {
   gameState,
@@ -2421,7 +2422,7 @@ export function buildMap(mapName) {
         mountain.summit.x + Math.floor(mountain.summit.width / 2);
       const summitCenterZ =
         mountain.summit.z + Math.floor(mountain.summit.depth / 2);
-      const bench = makeBench(summitCenterX - 5, summitCenterZ - 2, Math.PI);
+      const bench = makeBench(summitCenterX - 5, summitCenterZ - 2, Math.PI, true);
       bench.position.y += mountain.summit.elevation;
       gameState.mapGroup.add(bench);
       const summitShrine = mountain.summitShrine;
@@ -2462,7 +2463,7 @@ export function buildMap(mapName) {
       // 的樹，也不蓋在主要動線上，看起來像特地圍起來的休息角落。
       const footRestX = mountain.foot.x + Math.floor(mountain.foot.width / 2);
       const footRestZ = mountain.foot.z + Math.floor(mountain.foot.depth / 2);
-      const footBench = makeBench(footRestX + 2, footRestZ, Math.PI / 2);
+      const footBench = makeBench(footRestX + 2, footRestZ, Math.PI / 2, true);
       footBench.position.y += mountainGroundY(footRestX + 2, footRestZ);
       gameState.mapGroup.add(footBench);
       const campfire = makeCampfireRing(footRestX, footRestZ);
@@ -2900,8 +2901,8 @@ export function buildMap(mapName) {
     plateauGroup.add(lamp1, lamp2);
     const bench1Pos = { x: 26 + plazaShiftX, z: 12 };
     const bench2Pos = { x: 30 + plazaShiftX, z: 14 };
-    const bench1 = makeBench(bench1Pos.x, bench1Pos.z, 0);
-    const bench2 = makeBench(bench2Pos.x, bench2Pos.z, Math.PI);
+    const bench1 = makeBench(bench1Pos.x, bench1Pos.z, 0, true);
+    const bench2 = makeBench(bench2Pos.x, bench2Pos.z, Math.PI, true);
     bench1.position.y += oldVillageGroundY(bench1Pos.x, bench1Pos.z);
     bench2.position.y += oldVillageGroundY(bench2Pos.x, bench2Pos.z);
     [bench1, bench2].forEach((prop) =>
@@ -3896,6 +3897,7 @@ export function buildMap(mapName) {
   // pastureGrassBlades)，這裡統一套一次目前季節色，不必每個分支自己記得
   // 呼叫——舊城鎮那片地板先前就是漏了這一步，換季後仍停在建圖當下的顏色。
   updateSeasonalGroundColors();
+  rebuildSeatTargets(gameState.mapGroup, mapName);
   scene.add(gameState.mapGroup);
   gameState.currentMapName = mapName;
   npcGroup.position.y = 0;

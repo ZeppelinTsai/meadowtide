@@ -88,7 +88,6 @@ import {
   chefQuest,
   artistQuest,
   botanistQuest,
-  REST_CHAIR,
   MAPS,
 } from "./layout-maps";
 import { tryShareChefMeal, mergeChefMealIntoChatLine } from "./chef-quest";
@@ -118,6 +117,7 @@ import { createDevPhase1ProbeEvent } from "./story/chapters/dev-phase1-probe";
 import { storyState } from "./story/story-state";
 import { getStoryEvent } from "./story/story-registry";
 import { openCookingMenu } from "./cooking-ui";
+import { standFromSeat } from "./seat-system";
 import {
   isFirstPersonModeActive,
   recordFirstPersonCameraShot,
@@ -1204,35 +1204,9 @@ addEventListener("keydown", (e) => {
   // 教學若需要玩家自由操作，應先結束 cutsceneActive 再進入玩法等待階段。
   if (gameState.cutsceneActive) return;
 
-  if (gameState.isSitting) {
-    gameState.isSitting = false;
-    return;
-  }
+  if (standFromSeat()) return;
 
   if (!consumeLegacyPrimaryBypass() && executeContextInteraction("primary")) return;
-
-  if (
-    gameState.currentMapName === "livingArea" &&
-    gameState.fishingState === "idle" &&
-    Math.hypot(
-      gameState.player.position.x - REST_CHAIR.x,
-      gameState.player.position.z - REST_CHAIR.z,
-    ) <= 1.25
-  ) {
-    gameState.isSitting = true;
-    gameState.isMoving = false;
-    gameState.player.position.set(
-      REST_CHAIR.x,
-      groundY(REST_CHAIR.x, REST_CHAIR.z) - 0.03,
-      REST_CHAIR.z,
-    );
-    gameState.player.rotation.y = REST_CHAIR.playerRotation;
-    gameState.playerGridPos = {
-      x: Math.round(REST_CHAIR.x),
-      z: Math.round(REST_CHAIR.z),
-    };
-    return;
-  }
 
   const scripted = events
     .filter(
