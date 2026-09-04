@@ -122,6 +122,17 @@ function loadCharacter(key: string) {
 function checkGroundContact(model: THREE.Object3D) {
   const el = document.getElementById("groundCheck");
   if (!el) return;
+  // 2026-09-04 抓到真正的蟲：這頁測出來的「鞋子陷進地下」數字每次重整
+  // 都不一樣(同一隻角色，同一個 idle 姿勢，量出 0.320、0.508...)，數字
+  // 亂跳但 humanoid.ts 的幾何本身經獨立複算完全正常(footY≈0)——查出來
+  // 是專案釘住的舊版 three(0.128.0，見 vite.config.ts 註解)裡，Box3.
+  // expandByObject() 不會像新版那樣自動幫子物件呼叫
+  // updateWorldMatrix()，這裡卻從沒手動呼叫過，量到的其實是「還沒真正
+  // 套用 position/rotation 疊加」的過期 matrixWorld，量出來的高度自然
+  // 是垃圾值、而且跟場景裡其他物件當下的更新順序有關，才會每次不一樣。
+  // 换角色時明確呼叫一次 updateMatrixWorld(true)，逼整棵樹(含 makeLeg()
+  // 那些 pivot 群組)重新算好世界矩陣，再量包圍盒才會準。
+  model.updateMatrixWorld(true);
   const box = new THREE.Box3();
   model.traverseVisible((obj) => {
     const mesh = obj as THREE.Mesh;
