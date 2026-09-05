@@ -628,19 +628,19 @@ export function makeFence(minX, maxX, minZ, maxZ) {
   }
   for (let x = minX; x <= maxX; x++) {
     post(x, minZ);
-    post(x, maxZ);
+    if (maxZ !== minZ) post(x, maxZ);
   }
-  for (let z = minZ; z <= maxZ; z++) {
+  for (let z = minZ + 1; z < maxZ; z++) {
     post(minX, z);
-    post(maxX, z);
+    if (maxX !== minX) post(maxX, z);
   }
   for (let x = minX; x < maxX; x++) {
     railX(x, x + 1, minZ);
-    railX(x, x + 1, maxZ);
+    if (maxZ !== minZ) railX(x, x + 1, maxZ);
   }
   for (let z = minZ; z < maxZ; z++) {
     railZ(z, z + 1, minX);
-    railZ(z, z + 1, maxX);
+    if (maxX !== minX) railZ(z, z + 1, maxX);
   }
   return g;
 }

@@ -23,6 +23,12 @@ export const DECORATIVE_STAIR_WIDTH = 3;
 export const LANDMARK_TORII_SCALE = 2;
 export const LAYOUT = {
   livingArea: {
+    fences: [
+      { x1: 0, x2: 18, z1: 42, z2: 42 },
+      { x1: 24, x2: 33, z1: 42, z2: 42 },
+      { x1: 33, x2: 33, z1: 37, z2: 42 },
+      { x1: 24, x2: 24, z1: 37, z2: 42 },
+    ],
     oldVillageGate: { x: 20, z: 42, width: 3 },
     prologueArrival: { player: { x: 21, z: 41 }, mayor: { x: 20, z: 41 } },
     portGate: { x: 34, z: 42, width: 14 },
@@ -96,7 +102,7 @@ export const LAYOUT = {
   // 林蔭道(x≈20-23)/任何建築範圍內。座標本身跟遊戲進度無關，蜂箱
   // 「有沒有蓋出來」由 storyState.flags["beehive.unlocked"] 控制
   // (見 game-state.ts)，這裡只先佔位。
-  beehive: { x: 28, z: 39 },
+  beehive: { x: 29, z: 39 },
   oysterFarm: { x: 46, z: 14, spacing: 2 },
   farm: {
     x: 5,
@@ -2673,10 +2679,7 @@ export const DAY_THREE_BOTANIST_ARRIVAL = {
   botanist: { x: HOUSE_ROAD_X, z: HOUSE_ROAD_START_Z + 3 },
 };
 
-// 蜂箱那塊空地——BEEHIVE_VISUAL(game-state.ts)本來就固定站在
-// LAYOUT.beehive(28,39)，這裡直接沿用同一組數字算演出站位：主角
-// (27,39)面右、克拉拉(29,39)面左，蜂箱夾在正中間，跟 Zeppelin 給的
-// 座標吻合(不是巧合——蜂箱本來就已經照這個劇本的需要放好了)。
+// 蜂箱空地的演出站位跟隨 LAYOUT.beehive，主角在左、克拉拉在右。
 export const DAY_THREE_BEEHIVE_SCENE = {
   player: { x: LAYOUT.beehive.x - 1, z: LAYOUT.beehive.z },
   botanist: { x: LAYOUT.beehive.x + 1, z: LAYOUT.beehive.z },

@@ -3717,6 +3717,9 @@ export function buildMap(mapName) {
     // 鳥浴盆都是純裝飾、跟真正的花田(flowerBedGroup)疊在一起反而顯得
     // 多餘，整個拿掉，只留圍籬圈住同一塊地。makeSmallGarden() 函式本身
     // 留著沒刪，之後如果想在別處放同一套裝飾小花園還能直接用。
+    for (const fence of LAYOUT.livingArea.fences) {
+      plateauGroup.add(makeFence(fence.x1, fence.x2, fence.z1, fence.z2));
+    }
     plateauGroup.add(makeRestArea(LAYOUT.restArea));
     plateauGroup.add(
       makeFence(
@@ -4021,6 +4024,16 @@ export function isBlocked(mapName, x, z) {
     return true;
   if (mapName === "livingArea" && isPointInsideFeeder(x, z)) return true;
   if (mapName === "livingArea" && isPointInsideBeehive(x, z)) return true;
+  if (
+    mapName === "livingArea" &&
+    LAYOUT.livingArea.fences.some((fence) =>
+      x >= fence.x1 - 0.18 &&
+      x <= fence.x2 + 0.18 &&
+      z >= fence.z1 - 0.18 &&
+      z <= fence.z2 + 0.18,
+    )
+  )
+    return true;
   if (
     mapName === "port" &&
     Math.hypot(x - LAYOUT.port.lighthouse.x, z - LAYOUT.port.lighthouse.z) <
