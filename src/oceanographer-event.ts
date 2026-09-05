@@ -15,10 +15,14 @@ import { addAffectionReward } from "./affection";
 import { announceHomeVisitorThenRun } from "./ui-toast";
 import { FACING_ANGLE } from "./humanoid";
 import { botanistQuest } from "./layout-maps";
+import { lockEventClock } from "./event-clock";
 
 export const OCEANOGRAPHER_EVENT_WINDOW_START = dayLength * (2 + 14 / 24);
 export const OCEANOGRAPHER_EVENT_WINDOW_END = dayLength * (2 + 16 / 24);
 export const oceanographerEvent = { due: false };
+const DAY_THREE_EVENT_DAY = 2;
+const OCEANOGRAPHER_EVENT_START_HOUR = 14;
+const OCEANOGRAPHER_EVENT_END_HOUR = 16;
 
 const marine = (text: string, revealNameAfter?: { npcId: string; stage: 1 }) => ({
   text,
@@ -55,6 +59,7 @@ function placeOceanographer(x: number, z: number, rotY: number) {
 }
 
 export function startOceanographerEvent() {
+  lockEventClock(DAY_THREE_EVENT_DAY, OCEANOGRAPHER_EVENT_START_HOUR);
   oceanographerQuest.stage = "intro";
   oceanographerEvent.due = false;
   announceHomeVisitorThenRun(() => {
@@ -217,8 +222,6 @@ function completeOceanographerEvent() {
   oceanographerQuest.stage = "complete";
   oceanographerQuest.scenePos = null;
   setTimePauseSource("oceanographerEvent", false);
-  const endPhase = 16 / TIME_CONFIG.gameHoursPerDay;
-  gameState.elapsed = gameState.currentDay * dayLength + dayLength * endPhase;
-  gameState.currentPhase = endPhase;
+  lockEventClock(DAY_THREE_EVENT_DAY, OCEANOGRAPHER_EVENT_END_HOUR);
   gameState.cutsceneActive = false;
 }

@@ -1,13 +1,13 @@
 import * as THREE from "three";
 import {
   cropState,
-  dayLength,
   gameState,
   inventory,
   learnRecipes,
   STONE_NODES,
   WOOD_NODES,
 } from "./game-state";
+import { lockEventClock } from "./event-clock";
 import {
   LAYOUT,
   isOnMountainStair,
@@ -250,16 +250,13 @@ const PROLOGUE_MAYOR_X = 3;
 const PROLOGUE_MAYOR_Z = 22;
 export const PROLOGUE_CAPTAIN_X = 5;
 export const PROLOGUE_CAPTAIN_Z = 21;
-const PROLOGUE_HOUR = 10;
-const PROLOGUE_PHASE = PROLOGUE_HOUR / 24;
-const FREE_TIME_PHASE = 15 / 24;
+const PROLOGUE_DAY = 0;
+const PROLOGUE_HOUR = 8;
+const FREE_TIME_HOUR = 10;
 const PROLOGUE_FADE_SECONDS = 1;
 
 function lockPrologueDateTime() {
-  gameState.elapsed = dayLength * PROLOGUE_PHASE;
-  gameState.currentDay = 0;
-  gameState.currentPhase = PROLOGUE_PHASE;
-  gameState.currentSeason = 0;
+  lockEventClock(PROLOGUE_DAY, PROLOGUE_HOUR);
 }
 
 function lockPrologueZoom() {
@@ -703,8 +700,7 @@ function finishPrologue() {
   completeStoryEvent("main.prologue.arrival");
   gameState.cutsceneActive = false;
   setTimePauseSource("event", false);
-  gameState.elapsed = dayLength * FREE_TIME_PHASE;
-  gameState.currentPhase = FREE_TIME_PHASE;
+  lockEventClock(PROLOGUE_DAY, FREE_TIME_HOUR);
 }
 
 let fishingSequenceStarted = false;

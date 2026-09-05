@@ -27,6 +27,7 @@ import { addAffectionReward } from "./affection";
 import { announceHomeVisitorThenRun } from "./ui-toast";
 import { FLOWER_SPECIES, type FlowerSpeciesId } from "./wildflowers";
 import { animateWalk, FACING_ANGLE } from "./humanoid";
+import { lockEventClock } from "./event-clock";
 
 // ==============================================================
 // 第二天早上劇本——Zeppelin 2026-09-02 給的完整版：村長來敲門 → 一起去
@@ -100,6 +101,9 @@ export const dayTwoMorningEvent = {
 // game-clock.ts 可以直接拿來跟前後兩次 elapsed 比較區間、不用重複定義。
 export const DAY_TWO_MORNING_WINDOW_START = dayLength * (1 + 8 / 24);
 export const DAY_TWO_MORNING_WINDOW_END = dayLength * (1 + 8.5 / 24);
+const DAY_TWO_EVENT_DAY = 1;
+const DAY_TWO_EVENT_START_HOUR = 8;
+const DAY_TWO_EVENT_END_HOUR = 10;
 
 export function canStartDayTwoMorningEvent(): boolean {
   if (dayTwoMorningEvent.triggered) return false;
@@ -158,6 +162,7 @@ function releaseHold() {
 }
 
 export function startDayTwoMorningEvent() {
+  lockEventClock(DAY_TWO_EVENT_DAY, DAY_TWO_EVENT_START_HOUR);
   dayTwoMorningEvent.triggered = true;
   dayTwoMorningEvent.due = false;
   dayTwoMorningEvent.phase = "port";
@@ -1168,24 +1173,14 @@ function startPigmentScene() {
   );
 }
 
-// 露比個人事件整場戲(port 相遇→木匠戲→黑屏接上→山上採花→回村研磨顏
-// 料)跑下來，遊戲內時間其實只是被 setTimePauseSource("rubyEvent", true)
-// 暫停在木匠戲結束的時間點，不會照實際跑的時間流逝——事件結束後直接
-// 解除暫停，時間感會很奇怪(明明劇情演了大半天，時鐘卻還停在早上)。
-// Zeppelin 要求「露比事件結束後強制時間改到1500」，比照 prologue.ts
-// 序章結束時同款寫法(FREE_TIME_PHASE = 15/24，見那邊 beginStage("done")
-// 收尾那段)——差別是序章發生在第 0 天，直接用 dayLength*phase 就好；
-// 這裡是第二天以後，要保留 gameState.currentDay 這個日期部分，只改
-// 「這一天內的時刻」，不然會把 elapsed 拉回第 0 天，等於倒退好幾天。
-const RUBY_EVENT_END_PHASE = 15 / 24; // 15:00
+// 第二天整段劇情固定佔用 08:00～10:00。使用劇情指定的第 2 天，不讀
+// 事件期間可能暫時失去同步的 currentDay，避免收尾把 elapsed 寫回第 1 天。
 function completeArtistPersonalEvent() {
   addAffectionReward("artist", "personalEvent");
   artistQuest.stage = "complete";
   gameState.cutsceneActive = false;
   setTimePauseSource("rubyEvent", false);
-  gameState.elapsed =
-    gameState.currentDay * dayLength + dayLength * RUBY_EVENT_END_PHASE;
-  gameState.currentPhase = RUBY_EVENT_END_PHASE;
+  lockEventClock(DAY_TWO_EVENT_DAY, DAY_TWO_EVENT_END_HOUR);
 }
 
 // game-loop.ts 每幀呼叫，跟 updateDayTwoWalkFollowers() 平行、各管各的

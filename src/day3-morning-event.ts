@@ -14,6 +14,7 @@ import { setTimePauseSource } from "./time-pause";
 import { addAffectionReward } from "./affection";
 import { announceHomeVisitorThenRun } from "./ui-toast";
 import { FACING_ANGLE } from "./humanoid";
+import { lockEventClock } from "./event-clock";
 
 // ==============================================================
 // 第三天早上劇本——克拉拉(植物學家)個人事件。Zeppelin 2026-09-04 給的
@@ -54,6 +55,9 @@ import { FACING_ANGLE } from "./humanoid";
 // 是命名跟劇情時間點暫時對不上，不影響行為。
 export const DAY_THREE_MORNING_WINDOW_START = dayLength * (2 + 10 / 24);
 export const DAY_THREE_MORNING_WINDOW_END = dayLength * (2 + 10.5 / 24);
+const DAY_THREE_EVENT_DAY = 2;
+const BOTANIST_EVENT_START_HOUR = 10;
+const BOTANIST_EVENT_END_HOUR = 12;
 
 
 // due 旗標的道理跟 dayTwoMorningEvent.due 完全一樣(見該處註解)：睡覺/N
@@ -106,6 +110,7 @@ const heroHive = (text: string) => ({ ...hero(text), cg: "day3Botanist-01" });
 const heroHive2 = (text: string) => ({ ...hero(text), cg: "day3Botanist-02" });
 
 export function startDayThreeMorningEvent() {
+  lockEventClock(DAY_THREE_EVENT_DAY, BOTANIST_EVENT_START_HOUR);
   botanistQuest.stage = "intro"; // 立刻推進，防止 announceHomeVisitorThenRun 延遲期間重複觸發
   dayThreeMorningEvent.due = false;
   announceHomeVisitorThenRun(() => {
@@ -325,9 +330,6 @@ function completeBotanistEvent() {
   botanistQuest.stage = "complete";
   botanistQuest.scenePos = null;
   setTimePauseSource("botanistEvent", false);
-  const eventEndPhase = 12 / TIME_CONFIG.gameHoursPerDay;
-  gameState.elapsed =
-    gameState.currentDay * dayLength + dayLength * eventEndPhase;
-  gameState.currentPhase = eventEndPhase;
+  lockEventClock(DAY_THREE_EVENT_DAY, BOTANIST_EVENT_END_HOUR);
   gameState.cutsceneActive = false;
 }
