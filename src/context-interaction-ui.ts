@@ -32,9 +32,13 @@ import { animals, npcs } from "./npc-runtime";
 import { seatTargetsForMap, sitOnSeat, type SeatTarget } from "./seat-system";
 import { renderer, camera, scene } from "./scene-sky";
 import {
+  dragFirstPersonLook,
   getGameplayCamera,
   isFirstPersonModeActive,
 } from "./first-person-camera";
+import { WorldPointerGesture } from "./world-pointer-gesture";
+import { canTakePhoto, requestTakePhoto } from "./photo";
+import { isGameplayPaused } from "./time-pause";
 import { isCameraAdjustModeActive } from "./cutscene-camera";
 import { isInventoryOpen } from "./inventory-ui";
 import { activeChoice, dialogQueue } from "./dialogue";
@@ -81,8 +85,7 @@ type WorldTarget = {
   getPosition: () => { x: number; z: number } | null;
   isValid: () => boolean;
 };
-const INTERACTION_RADIUS = 2.25,
-  DRAG_THRESHOLD = 9;
+const INTERACTION_RADIUS = 2.25;
 const raycaster = new THREE.Raycaster(),
   pointer = new THREE.Vector2(),
   groundPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
@@ -92,8 +95,8 @@ let pointedId: string | null = null,
   currentActions: ContextAction[] = [];
 let root: HTMLElement | null = null,
   bypassLegacy = false,
-  bypassLegacySecondary = false,
-  down: { x: number; y: number; pointerId: number } | null = null;
+  bypassLegacySecondary = false;
+const worldGesture = new WorldPointerGesture();
 const activePointers = new Set<number>();
 const destinationMarker = new THREE.Mesh(
   new THREE.RingGeometry(0.14, 0.22, 24),
@@ -129,6 +132,7 @@ function blocked(allowActiveFishing = false) {
     gameState.cutsceneActive ||
     isCameraAdjustModeActive() ||
     isInventoryOpen() ||
+    isGameplayPaused() ||
     dialogQueue.length > 0 ||
     Boolean(activeChoice) ||
     (!allowActiveFishing && gameState.fishingState !== "idle")
@@ -880,10 +884,6 @@ export function refreshShortcutLabels() {
   if (root) root.dataset.signature = "";
 }
 function handleWorldClick(clientX: number, clientY: number) {
-  if (isFirstPersonModeActive()) {
-    if (!blocked(true)) dispatchPrimaryInteraction();
-    return;
-  }
   if (blocked()) return;
   updateRay(clientX, clientY);
   const target = targetFromRay();
@@ -939,7 +939,15 @@ function runContinuousPrimary() {
   action.execute();
   selectedTarget = null;
 }
+function updateWorldPhotoHold() {
+  if (blocked()) { worldGesture.cancel(); return; }
+  if (worldGesture.takeLongPress(performance.now()) && canTakePhoto()) {
+    cancelPlayerNavigation();
+    requestTakePhoto();
+  }
+}
 function frame() {
+  updateWorldPhotoHold();
   if (highlight && performance.now() > highlightTimer) {
     scene.remove(highlight);
     highlight.geometry.dispose();
@@ -959,49 +967,57 @@ export function initContextInteraction() {
   addEventListener("controller-layout-changed", refreshShortcutLabels);
   addEventListener("keydown", markKeyboardMouseInput);
   addEventListener("pointerdown", markKeyboardMouseInput);
-  renderer.domElement.addEventListener("pointermove", (event) => {
-    if (
-      down &&
-      Math.hypot(event.clientX - down.x, event.clientY - down.y) >
-        DRAG_THRESHOLD
-    )
+  const canvas = renderer.domElement;
+  canvas.style.touchAction = "none";
+  canvas.addEventListener("pointermove", (event) => {
+    if (blocked()) { worldGesture.cancel(); return; }
+    const delta = worldGesture.move(event.pointerId, event.clientX, event.clientY);
+    if (delta) {
+      if (isFirstPersonModeActive()) dragFirstPersonLook(delta.x, delta.y);
       return;
+    }
     updateRay(event.clientX, event.clientY);
     pointedId = targetFromRay()?.id || null;
   });
-  renderer.domElement.addEventListener("pointerdown", (event) => {
+  canvas.addEventListener("pointerdown", (event) => {
     activePointers.add(event.pointerId);
     if (activePointers.size > 1) {
-      down = null;
+      worldGesture.cancel();
+      continuousPrimaryHeld = false;
       return;
     }
-    if (event.button !== 0) return;
-    if (isFirstPersonModeActive()) {
-      down = null;
-      if (!blocked(true)) dispatchPrimaryInteraction();
-      return;
-    }
-    if (blocked()) return;
-    down = { x: event.clientX, y: event.clientY, pointerId: event.pointerId };
+    if (!event.isPrimary || event.button !== 0 || blocked()) return;
+    worldGesture.begin(event.pointerId, event.clientX, event.clientY,
+      performance.now(), isFirstPersonModeActive());
+    canvas.setPointerCapture(event.pointerId);
   });
-  renderer.domElement.addEventListener("pointerup", (event) => {
+  canvas.addEventListener("pointerup", (event) => {
     activePointers.delete(event.pointerId);
-    if (!down || event.pointerId !== down.pointerId) return;
-    const start = down;
-    down = null;
-    if (
-      Math.hypot(event.clientX - start.x, event.clientY - start.y) >
-      DRAG_THRESHOLD
-    )
-      return;
-    handleWorldClick(event.clientX, event.clientY);
+    // Include the release coordinate before deciding whether this was a hold.
+    worldGesture.move(event.pointerId, event.clientX, event.clientY);
+    updateWorldPhotoHold();
+    const tap = worldGesture.end(event.pointerId, event.clientX, event.clientY);
+    if (tap) handleWorldClick(tap.x, tap.y);
   });
-  renderer.domElement.addEventListener("pointercancel", (event) => {
+  const cancelWorldPointer = (event: PointerEvent) => {
     activePointers.delete(event.pointerId);
-    down = null;
-  });
-  renderer.domElement.addEventListener("pointerleave", () => {
-    pointedId = null;
+    worldGesture.cancel();
+    continuousPrimaryHeld = false;
+    continuousLastTriggerKey = "";
+  };
+  canvas.addEventListener("pointercancel", cancelWorldPointer);
+  canvas.addEventListener("lostpointercapture", cancelWorldPointer);
+  canvas.addEventListener("pointerleave", () => { pointedId = null; });
+  const resetWorldPointers = () => {
+    activePointers.clear();
+    worldGesture.cancel();
+    continuousPrimaryHeld = false;
+    continuousLastTriggerKey = "";
+  };
+  addEventListener("blur", resetWorldPointers);
+  document.addEventListener("visibilitychange", resetWorldPointers);
+  canvas.addEventListener("contextmenu", (event) => {
+    if (isFirstPersonModeActive()) event.preventDefault();
   });
   onNavigationDestinationChanged((destination) => {
     if (!destination) {
@@ -1043,7 +1059,7 @@ export function initContextInteraction() {
     continuousLastTriggerKey = "";
   });
   renderer.domElement.addEventListener("pointerdown", (event) => {
-    if (event.button !== 0) return;
+    if (event.button !== 0 || isFirstPersonModeActive() || activePointers.size > 1 || blocked()) return;
     continuousPrimaryHeld = true;
     continuousLastTriggerKey = "";
   });

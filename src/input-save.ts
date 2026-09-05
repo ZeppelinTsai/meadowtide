@@ -124,6 +124,7 @@ import {
   isFirstPersonModeActive,
   recordFirstPersonCameraShot,
   toggleFirstPersonMode,
+  zoomFirstPerson,
 } from "./first-person-camera";
 import {
   beginCameraAdjustMode,
@@ -1196,8 +1197,12 @@ addEventListener("wheel", (e) => {
       ))
   )
     return;
+  if (zoomFirstPerson(e.deltaY)) {
+    e.preventDefault();
+    return;
+  }
   setCameraZoom(gameState.zoom * Math.exp(e.deltaY * 0.001));
-});
+}, { passive: false });
 
 let pinchStartDistance = 0;
 let pinchStartZoom = gameState.zoom;

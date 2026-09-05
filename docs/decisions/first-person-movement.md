@@ -9,10 +9,15 @@ locks. First-person mode must not implement a second movement pipeline.
 
 - `W/S` or left-stick up/down moves forward/backward relative to camera yaw.
 - `A/D` or left-stick left/right strafes relative to camera yaw.
-- Mouse movement while pointer-locked and the right stick turn left/right and
-  look up/down.
-- First-person left click executes the same primary context interaction as default
-  keyboard `E`; it never starts point-and-click navigation.
+- Dragging with mouse, pen, or one finger and the right stick turn left/right
+  and look up/down. The cursor remains available instead of being pointer-locked.
+- A short first-person click/tap uses the normal point-and-click navigation and
+  interaction pipeline. Holding for 600 ms without dragging takes a photo.
+- The mouse wheel, LT/RT, and the holdable on-screen −/+ controls change the
+  first-person camera field of view continuously.
+- The on-screen camera controls follow the last input device: keyboard/mouse
+  shows Tab, wheel, and hold-screen hints; gamepad shows LB/RB/LT/RT (or
+  Nintendo L/R/ZL/ZR).
 - `Tab`/R3 keeps the existing first-person toggle behavior.
 
 `src/first-person-movement.ts` is the pure coordinate transform from local FPS

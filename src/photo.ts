@@ -11,6 +11,9 @@
 import { gameState, SEASON_NAMES } from "./game-state";
 import { isFirstPersonModeActive } from "./first-person-camera";
 import { renderer } from "./scene-sky";
+import { isGameplayPaused } from "./time-pause";
+import { activeChoice, dialogQueue } from "./dialogue";
+import { isCameraAdjustModeActive } from "./cutscene-camera";
 
 export interface PhotoRecord {
   id: string;
@@ -82,7 +85,13 @@ export function canTakePhoto() {
   return (
     Boolean(gameState.player) &&
     isFirstPersonModeActive() &&
-    !gameState.titlePresentationActive
+    !gameState.titlePresentationActive &&
+    !gameState.cutsceneActive &&
+    gameState.fishingState === "idle" &&
+    !dialogQueue.length &&
+    !activeChoice &&
+    !isCameraAdjustModeActive() &&
+    !isGameplayPaused()
   );
 }
 

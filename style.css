@@ -1128,7 +1128,7 @@ canvas {
   background: rgba(25, 28, 24, 0.28);
   border: 1px solid rgba(218, 188, 124, 0.22);
   border-radius: 999px;
-  font-size: 13px;
+  font-size: 18px;
 }
 .animal-status-item.done {
   color: #2d2417;
@@ -1136,13 +1136,13 @@ canvas {
   border-color: rgba(242, 208, 140, 0.9);
 }
 .animal-status-item small {
-  font-size: 12px;
+  font-size: 18px;
   font-weight: 700;
   letter-spacing: 0.08em;
 }
 .animal-relationship-meta {
   color: rgba(232, 224, 205, 0.7);
-  font-size: 15px;
+  font-size: 18px;
 }
 .map-menu-header {
   display: flex;
@@ -2144,7 +2144,7 @@ canvas {
   border-radius: 50%;
   background: #f2b84b;
   color: #4a3427;
-  font-size: 16px;
+  font-size: 18px;
   font-weight: 700;
   letter-spacing: 0.04em;
 }
@@ -2959,10 +2959,28 @@ canvas {
   border-radius: 10px;
   box-shadow: 0 3px 0 rgba(104, 69, 39, 0.72);
   font: inherit;
-  font-size: 16px;
+  font-size: 18px;
   font-weight: 700;
   cursor: pointer;
   white-space: nowrap;
+}
+#photoZoomControls {
+  display: flex;
+  gap: 10px;
+}
+#photoZoomControls[hidden] {
+  display: none;
+}
+#photoZoomControls .view-control-button {
+  min-width: 52px;
+  padding-inline: 12px;
+  font-size: 24px;
+}
+.view-control-button small {
+  margin-left: 6px;
+  font-size: 18px;
+  font-weight: 700;
+  opacity: 0.72;
 }
 .view-control-button:hover,
 .view-control-button:focus-visible {
@@ -3022,7 +3040,7 @@ canvas {
   background: rgba(0, 0, 0, 0.1);
 }
 .photo-card .photo-card-caption {
-  font-size: 14px;
+  font-size: 18px;
   color: #573b27;
   text-align: center;
 }
@@ -3061,7 +3079,7 @@ canvas {
 #photoLightbox .photo-lightbox-caption {
   margin-top: 12px;
   color: #fff5df;
-  font-size: 16px;
+  font-size: 18px;
   text-align: center;
 }
 #photoLightboxDelete {
@@ -3078,7 +3096,7 @@ canvas {
   border-radius: 10px;
   box-shadow: 0 3px 0 rgba(104, 69, 39, 0.72);
   font: inherit;
-  font-size: 16px;
+  font-size: 18px;
   font-weight: 700;
   cursor: pointer;
 }
@@ -3092,6 +3110,6 @@ canvas {
 .photo-empty-hint {
   padding: 24px;
   color: #7a5c3e;
-  font-size: 16px;
+  font-size: 18px;
   text-align: center;
 }

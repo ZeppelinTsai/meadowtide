@@ -6,7 +6,6 @@ import {
 import { markGamepadInput } from "./input-device";
 import { dialogQueue, activeChoice, toggleDialogAutoPlay } from "./dialogue";
 import { requestTakePhoto } from "./photo";
-import { isFirstPersonModeActive } from "./first-person-camera";
 
 // ==============================================================
 // 搖桿輸入(移動 + 互動鍵)——2026-08-26。
@@ -74,7 +73,6 @@ let prevUiConfirm = false;
 let prevUiTransfer = false;
 let prevCancelButton = false;
 let prevAutoPlayToggleButton = false;
-let prevPhotoButton = false;
 let prevZoomIn = false;
 let prevZoomOut = false;
 
@@ -108,7 +106,6 @@ function releaseAllGamepadInputs() {
   prevUiConfirm = false;
   prevCancelButton = false;
   prevAutoPlayToggleButton = false;
-  prevPhotoButton = false;
   prevZoomIn = false;
   prevZoomOut = false;
   prevRightStickButton = false;
@@ -310,29 +307,23 @@ export function pollGamepad() {
     toggleDialogAutoPlay();
   }
   prevAutoPlayToggleButton = autoPlayToggleButton;
-  // 2026-09-05：同一顆鍵(button[3])在第一人稱視角、且沒有對話搶用時
-  // (wantsAutoPlayToggle 為 false)拿來拍照——見 photo.ts 開頭說明。跟上面
-  // 自動播放切換共用同一個 pressed 讀值，只是邊緣觸發旗標各自獨立。
-  if (
-    !wantsAutoPlayToggle &&
-    isFirstPersonModeActive() &&
-    autoPlayToggleButton &&
-    !prevPhotoButton
-  ) {
-    requestTakePhoto();
-  }
-  prevPhotoButton = autoPlayToggleButton;
   syncKey("q", !!pad.buttons[8]?.pressed);
   syncKey("m", !!pad.buttons[10]?.pressed); // L3: map
 
   const leftShoulder = !!pad.buttons[4]?.pressed;
   const rightShoulder = !!pad.buttons[5]?.pressed;
-  if (leftShoulder !== prevShoulder.left) {
-    dispatchKey(leftShoulder ? "keydown" : "keyup", "[");
-    prevShoulder.left = leftShoulder;
+  if (uiNavigation) {
+    if (leftShoulder && !prevShoulder.left) dispatchKey("keydown", "[");
+    if (rightShoulder && !prevShoulder.right) dispatchKey("keydown", "]");
+  } else if (!dialogQueue.length && !activeChoice) {
+    if (leftShoulder && !prevShoulder.left) dispatchKey("keydown", "Tab");
+    if (rightShoulder && !prevShoulder.right) requestTakePhoto();
   }
-  if (rightShoulder !== prevShoulder.right) {
-    dispatchKey(rightShoulder ? "keydown" : "keyup", "]");
-    prevShoulder.right = rightShoulder;
-  } // A 鍵(Xbox 手把)＝互動鍵
+  if (!leftShoulder && prevShoulder.left) {
+    dispatchKey("keyup", "[");
+    dispatchKey("keyup", "Tab");
+  }
+  if (!rightShoulder && prevShoulder.right) dispatchKey("keyup", "]");
+  prevShoulder.left = leftShoulder;
+  prevShoulder.right = rightShoulder;
 }

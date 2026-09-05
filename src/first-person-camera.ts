@@ -52,6 +52,8 @@ const LOOK_SPEED = 1.9;
 const MOUSE_SENSITIVITY = 0.0022;
 const EYE_HEIGHT = 0.82;
 const MAX_PITCH = THREE.MathUtils.degToRad(82);
+const MIN_FOV = 28;
+const MAX_FOV = 90;
 
 let active = false;
 let yaw = 0;
@@ -77,6 +79,17 @@ export function getFirstPersonYaw() {
   return yaw;
 }
 
+export function zoomFirstPerson(delta: number) {
+  if (!active) return false;
+  firstPersonCamera.fov = THREE.MathUtils.clamp(
+    firstPersonCamera.fov * Math.exp(delta * 0.001),
+    MIN_FOV,
+    MAX_FOV,
+  );
+  firstPersonCamera.updateProjectionMatrix();
+  return true;
+}
+
 export function toggleFirstPersonMode() {
   if (!gameState.player) return;
   active = !active;
@@ -87,7 +100,7 @@ export function toggleFirstPersonMode() {
     yaw = gameState.player.rotation.y;
     pitch = 0;
     recordedFirstPersonShots = [];
-    renderer.domElement.requestPointerLock?.();
+    // Keep the cursor available for click navigation and touch gestures.
     console.info(
       "[第一人稱鏡頭記錄] 已開啟——移動／轉動到想要的構圖後按 C 記錄，Tab 離開。",
     );
@@ -154,11 +167,15 @@ export function getGameplayCamera(defaultCamera: THREE.Camera) {
   return active ? firstPersonCamera : defaultCamera;
 }
 
+export function dragFirstPersonLook(dx: number, dy: number) {
+  if (!active) return;
+  yaw -= dx * MOUSE_SENSITIVITY;
+  pitch = THREE.MathUtils.clamp(pitch - dy * MOUSE_SENSITIVITY, -MAX_PITCH, MAX_PITCH);
+}
+
 addEventListener("mousemove", (event) => {
   if (!active || document.pointerLockElement !== renderer.domElement) return;
-  yaw -= event.movementX * MOUSE_SENSITIVITY;
-  pitch -= event.movementY * MOUSE_SENSITIVITY;
-  pitch = THREE.MathUtils.clamp(pitch, -MAX_PITCH, MAX_PITCH);
+  dragFirstPersonLook(event.movementX, event.movementY);
 });
 
 addEventListener("resize", () => {
