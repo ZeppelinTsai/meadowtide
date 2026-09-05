@@ -6,9 +6,10 @@ import { dialogQueue, activeChoice } from "./dialogue";
 import { isInventoryOpen } from "./inventory-ui";
 import { isGameplayPaused } from "./time-pause";
 import { showUiToast } from "./ui-toast";
-import { findReachablePath, type GridPoint } from "./navigation";
+import { findReachablePath, firstNavigationWaypointIndex, type GridPoint } from "./navigation";
 export type NavigationInteraction = { id: string; radius: number; getPosition: () => GridPoint | null; isValid: () => boolean; execute: () => void };
 type NavigationState = { path: GridPoint[]; pathIndex: number; desired: GridPoint; interaction: NavigationInteraction | null; lastTarget: GridPoint | null; replans: number };
+export type AutoMoveDirection = GridPoint & { remainingDistance: number };
 let navigation: NavigationState | null = null;
 const listeners = new Set<(destination: GridPoint | null) => void>();
 function notify() { const end = navigation && navigation.path.length ? navigation.path[navigation.path.length - 1] : null; listeners.forEach((listener) => listener(end)); }
@@ -54,22 +55,23 @@ export function findReachablePlayerDestination(desired: GridPoint) {
 export function requestPlayerNavigation(desired: GridPoint, interaction: NavigationInteraction | null = null) {
   const path = plan(desired, interaction);
   if (!path || path.length < 1) { cancelPlayerNavigation(); showUiToast("\u7121\u6cd5\u79fb\u52d5", "\u7121\u6cd5\u8d70\u5230\u90a3\u88e1\u3002"); return false; }
-  navigation = { path, pathIndex: path.length > 1 ? 1 : 0, desired, interaction, lastTarget: interaction ? { ...desired } : null, replans: 0 }; notify(); return true;
+  const pathIndex = firstNavigationWaypointIndex(path, gameState.player.position);
+  navigation = { path, pathIndex, desired, interaction, lastTarget: interaction ? { ...desired } : null, replans: 0 }; notify(); return true;
 }
 export function cancelPlayerNavigation() { if (!navigation) return; navigation = null; notify(); }
 export const isPlayerNavigating = () => navigation !== null;
 function shouldStop() { return !gameState.player || gameState.cutsceneActive || gameState.isSitting || gameState.fishingState !== "idle" || dialogQueue.length > 0 || Boolean(activeChoice) || isInventoryOpen() || isGameplayPaused(); }
 function finish() { const interaction = navigation?.interaction ?? null; navigation = null; notify(); if (!interaction) return; const target = interaction.getPosition(); if (!target || !interaction.isValid()) return; const dx = target.x - gameState.player.position.x, dz = target.z - gameState.player.position.z; if (Math.hypot(dx,dz) > interaction.radius + 0.35) return; gameState.player.rotation.y = Math.atan2(-dx,-dz); interaction.execute(); }
-export function getAutoMoveDirection(): GridPoint | null {
+export function getAutoMoveDirection(): AutoMoveDirection | null {
   if (!navigation) return null; if (shouldStop()) { cancelPlayerNavigation(); return null; }
   const interaction = navigation.interaction;
   if (interaction) {
     const target = interaction.getPosition(); if (!target || !interaction.isValid()) { cancelPlayerNavigation(); return null; }
     const moved = navigation.lastTarget ? Math.hypot(target.x-navigation.lastTarget.x,target.z-navigation.lastTarget.z) : 0;
-    if (moved > 0.9) { if (navigation.replans >= 3 || moved > 5) { cancelPlayerNavigation(); return null; } const path = plan(target,interaction); if (!path) { cancelPlayerNavigation(); return null; } navigation.path=path; navigation.pathIndex=path.length>1?1:0; navigation.lastTarget={...target}; navigation.replans++; notify(); }
+    if (moved > 0.9) { if (navigation.replans >= 3 || moved > 5) { cancelPlayerNavigation(); return null; } const path = plan(target,interaction); if (!path) { cancelPlayerNavigation(); return null; } navigation.path=path; navigation.pathIndex=firstNavigationWaypointIndex(path,gameState.player.position); navigation.lastTarget={...target}; navigation.replans++; notify(); }
   }
   const waypoint=navigation.path[navigation.pathIndex], dx=waypoint.x-gameState.player.position.x, dz=waypoint.z-gameState.player.position.z;
   if (Math.hypot(dx,dz)<=0.12) { navigation.pathIndex++; if (navigation.pathIndex>=navigation.path.length) { finish(); return null; } return getAutoMoveDirection(); }
-  const length=Math.hypot(dx,dz); return {x:dx/length,z:dz/length};
+  const length=Math.hypot(dx,dz); return {x:dx/length,z:dz/length,remainingDistance:length};
 }
 export function onNavigationDestinationChanged(listener: (destination: GridPoint | null) => void) { listeners.add(listener); return () => listeners.delete(listener); }

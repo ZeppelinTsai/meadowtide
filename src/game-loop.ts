@@ -26,6 +26,7 @@ import {
 } from "./game-clock";
 import { isGameplayPaused } from "./time-pause";
 import { cancelPlayerNavigation, getAutoMoveDirection } from "./player-navigation";
+import { clampedNavigationTravel } from "./navigation";
 import {
   isAnimalCarried,
   recordAnimalFeedingDay,
@@ -421,7 +422,8 @@ export function animate(now) {
   // 序幕演出(cutsceneActive)期間整段跳過：船、下船與村長同行走位都由
   // updatePrologueCutscene() 接管；需要玩家實際操作的教學階段會明確解除鎖定。
   let dx = 0,
-    dz = 0;
+    dz = 0,
+    autoMoveRemaining: number | null = null;
   if (
     !gameState.cutsceneActive &&
     !isCameraAdjustModeActive()
@@ -448,7 +450,11 @@ export function animate(now) {
     if (manualInput) cancelPlayerNavigation();
     else if (!gameState.isSitting && gameState.fishingState === "idle") {
       const autoDirection = getAutoMoveDirection();
-      if (autoDirection) { dx = autoDirection.x; dz = autoDirection.z; }
+      if (autoDirection) {
+        dx = autoDirection.x;
+        dz = autoDirection.z;
+        autoMoveRemaining = autoDirection.remainingDistance;
+      }
     }
     const inputLen = Math.hypot(dx, dz);
     // dt===0 代表對話開著／遊戲暫停：主角完全鎖住，不只是不移動位置，
@@ -466,8 +472,13 @@ export function animate(now) {
     // 個量級，直接套用「快」反而會比現在的「一般」還慢，所以這裡改成
     // 校準過的實際數值，見 WALK_SPEED_BY_LEVEL。
     const moveSpeed = WALK_SPEED_BY_LEVEL[gameSettings.walkSpeed]; // 格/秒
-    const stepX = dx * moveSpeed * dt,
-      stepZ = dz * moveSpeed * dt;
+    const moveDistance = clampedNavigationTravel(
+      moveSpeed,
+      dt,
+      autoMoveRemaining,
+    );
+    const stepX = dx * moveDistance,
+      stepZ = dz * moveDistance;
     const canTraverseVillageHeight = (fromX, fromZ, toX, toZ) => {
       if (gameState.currentMapName === "oldVillage")
         return (

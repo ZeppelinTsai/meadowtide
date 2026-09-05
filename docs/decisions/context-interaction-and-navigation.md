@@ -64,10 +64,14 @@ click replaces the old destination. Dialogue, menus, cutscenes, fishing, and
 other paused states cancel it. Pointer release is treated as a click only below
 the drag threshold, so camera dragging does not trigger movement.
 
-First-person mode does not accept world-click navigation. Its left-button `pointerdown`
-immediately runs the same primary interaction path as keyboard `E` (including while a fish
-is biting, because pointer lock may consume `pointerup`). Switching back to the standard
-camera restores point-and-click movement. Clicking a registered water surface uses the same
+Continuous movement first returns to the center of the current BFS tile before
+following adjacent tile centers. Each frame clamps its travel distance to the
+remaining waypoint distance, so high movement speed cannot overshoot a waypoint
+and oscillate against nearby collision geometry.
+
+First-person mode uses the same world-click navigation as the standard camera. A short
+click/tap walks or approaches an interaction target, dragging turns the view, and a stationary
+600 ms hold takes a photo without also starting movement. Clicking a registered water surface uses the same
 reachable-destination search to approach a connected shore, faces the clicked water, then
 dispatches the existing E fishing flow.
 

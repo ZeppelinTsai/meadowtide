@@ -1,5 +1,27 @@
 export type GridPoint = { x: number; z: number };
 const keyOf = (point: GridPoint) => `${point.x},${point.z}`;
+
+export function firstNavigationWaypointIndex(
+  path: GridPoint[],
+  current: GridPoint,
+  tolerance = 0.12,
+) {
+  if (path.length <= 1) return 0;
+  return Math.hypot(path[0].x - current.x, path[0].z - current.z) <= tolerance
+    ? 1
+    : 0;
+}
+
+export function clampedNavigationTravel(
+  speed: number,
+  dt: number,
+  remainingDistance: number | null,
+) {
+  return Math.min(
+    speed * dt,
+    remainingDistance ?? Number.POSITIVE_INFINITY,
+  );
+}
 function rebuildPath(end: GridPoint, cameFrom: Map<string, GridPoint>) {
   const path = [end]; let key = keyOf(end);
   while (cameFrom.has(key)) { const previous = cameFrom.get(key)!; path.unshift(previous); key = keyOf(previous); }
