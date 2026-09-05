@@ -16,6 +16,10 @@
   same `advanceDialogSequence()` path as `E`. Choice buttons and other
   interactive UI controls keep priority and never pass the pointer action
   through to dialogue advancement.
+- Browser defaults are suppressed across the game surface: right click never
+  opens the browser context menu, and pointer dragging cannot select text or
+  drag images. Inputs, textareas, selects, and contenteditable regions retain
+  native selection and context-menu behavior.
 
 ## Context resolution
 

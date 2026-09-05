@@ -1016,9 +1016,18 @@ export function initContextInteraction() {
   };
   addEventListener("blur", resetWorldPointers);
   document.addEventListener("visibilitychange", resetWorldPointers);
-  canvas.addEventListener("contextmenu", (event) => {
-    if (isFirstPersonModeActive()) event.preventDefault();
-  });
+  const isEditablePointerTarget = (target: EventTarget | null) =>
+    target instanceof Element &&
+    Boolean(target.closest('input, textarea, select, [contenteditable="true"]'));
+  addEventListener("contextmenu", (event) => {
+    if (!isEditablePointerTarget(event.target)) event.preventDefault();
+  }, true);
+  addEventListener("dragstart", (event) => {
+    if (!isEditablePointerTarget(event.target)) event.preventDefault();
+  }, true);
+  addEventListener("selectstart", (event) => {
+    if (!isEditablePointerTarget(event.target)) event.preventDefault();
+  }, true);
   onNavigationDestinationChanged((destination) => {
     if (!destination) {
       destinationMarker.visible = false;
