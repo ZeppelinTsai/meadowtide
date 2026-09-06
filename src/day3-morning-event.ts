@@ -1,3 +1,4 @@
+import { isEventDebugSession } from "./event-debug-state";
 import { gameState, TIME_CONFIG, dayLength, isBeehiveUnlocked, unlockBeehive } from "./game-state";
 import {
   DAY_THREE_BOTANIST_ARRIVAL,
@@ -68,6 +69,7 @@ const BOTANIST_EVENT_END_HOUR = 12;
 export const dayThreeMorningEvent = { due: false };
 
 export function canStartDayThreeMorningEvent(): boolean {
+  if (import.meta.env.DEV && isEventDebugSession()) return false;
   if (botanistQuest.stage !== "not_started") return false;
   // 老存檔遷移(見 game-state.ts 蜂箱那段開頭註解)可能已經直接補上
   // beehive.unlocked，這種存檔不該再把這場戲重播一次。

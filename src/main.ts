@@ -18,7 +18,14 @@ import { installPerfHarness } from "./debug-perf";
 setLocale(gameSettings.locale);
 translateDocument();
 onLocaleChanged(() => translateDocument());
-initTitleScreen();
+async function boot() {
+  if (import.meta.env.DEV) {
+    const { initEventDebug } = await import("./event-debug");
+    if (await initEventDebug()) return;
+  }
+  initTitleScreen();
+}
+void boot();
 initUiFocusNavigation();
 initContextInteraction();
 // 遊戲中 Esc 暫停選單(pause-menu.ts)——跟標題畫面各自獨立初始化，靠

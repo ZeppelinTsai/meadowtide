@@ -1,3 +1,4 @@
+import { isEventDebugSession, isEventDebugMenuOpen } from "./event-debug-state";
 import { executeContextInteraction, consumeLegacyPrimaryBypass, consumeLegacySecondaryBypass } from "./context-interaction-ui";
 import { isPrimaryInteractionKey } from "./context-interaction";
 import { exportAnimalInteractionState, restoreAnimalInteractionState } from "./animal-interactions";
@@ -109,15 +110,7 @@ import {
   reportPrologueFishingSuccess,
   restorePrologueSaveState,
 } from "./prologue";
-// event-system Phase 1 概念驗證（F9 熱鍵，見下方 keydown 區塊）——
-// 只在 dev.phase1Probe 這個獨立測試事件用，不接進正式 STORY_EVENTS
-// registry。詳見 docs/decisions/event-system.md「Phase 1」。
-import { runStoryEvent } from "./story/story-runner";
-import { createStoryRuntimeAdapter } from "./story/story-runtime-adapter";
-import { createBrowserStoryRuntimeBindings } from "./story/story-runtime-browser";
-import { createDevPhase1ProbeEvent } from "./story/chapters/dev-phase1-probe";
-import { storyState } from "./story/story-state";
-import { getStoryEvent } from "./story/story-registry";
+
 import { openCookingMenu } from "./cooking-ui";
 import { standFromSeat } from "./seat-system";
 import {
@@ -346,7 +339,7 @@ export function getSaveSlotSummaries(): SaveSlotSummary[] {
   return summaries;
 }
 
-export function saveGame(slot = "default") {
+export function captureGameSnapshot() {
   npcs.forEach((npc) => getRelationship(npc.id));
   const data = {
     version: 17,
@@ -381,6 +374,7 @@ export function saveGame(slot = "default") {
     prologue: exportPrologueSaveState(),
     npcNameRevealStages: exportNpcNameRevealState(),
     carpenterQuest: { ...carpenterQuest },
+    chefQuest: { ...chefQuest },
     artistQuest: { ...artistQuest },
     // scenePos 是演出中途才有意義的暫時值，跟座標一起存也無妨(readGame
     // 那邊會在還原時清成 null，不會拿舊座標播錯場景)。
@@ -413,6 +407,15 @@ export function saveGame(slot = "default") {
     mountainMineFloor: gameState.mountainMineFloor,
     mountainOreNodes: JSON.parse(JSON.stringify(MOUNTAIN_ORE_NODES)),
   };
+  return data;
+}
+
+export function saveGame(slot = "default") {
+  const data = captureGameSnapshot();
+  if (import.meta.env.DEV && isEventDebugSession()) {
+    console.info("[Event Debug] 測試中，已阻止寫入存檔：" + slot);
+    return data;
+  }
   localStorage.setItem(SAVE_KEY_PREFIX + slot, JSON.stringify(data));
   return data;
 }
@@ -441,9 +444,19 @@ export function loadGame(
   slot = "default",
   options: { initializeTargetMap?: boolean } = {},
 ) {
+  if (import.meta.env.DEV && isEventDebugSession()) {
+    console.warn("[Event Debug] 請先還原快照再讀取一般存檔");
+    return false;
+  }
   const raw = localStorage.getItem(SAVE_KEY_PREFIX + slot);
   if (!raw) return false;
-  const data = JSON.parse(raw);
+  return restoreGameSnapshot(JSON.parse(raw), options);
+}
+
+export function restoreGameSnapshot(
+  data: ReturnType<typeof captureGameSnapshot>,
+  options: { initializeTargetMap?: boolean; onRestored?: () => void; preserveSnapshot?: boolean } = {},
+) {
   // v6 以前没有 story 栏位；restore 会补齐默认值，不让旧存档失效。
   restoreStoryState(data.story);
   restorePrologueSaveState(data.prologue, loadMap);
@@ -565,6 +578,7 @@ export function loadGame(
       ),
     );
   }
+  if (data.chefQuest) Object.assign(chefQuest, data.chefQuest);
   if (data.carpenterQuest) {
     Object.assign(carpenterQuest, data.carpenterQuest);
     if (carpenterQuest.stage === "en_route_village")
@@ -707,16 +721,21 @@ export function loadGame(
     );
   }
   const finishRestoringVisualState = () => {
+    if (options.preserveSnapshot) {
+      gameState.currentWeather = data.currentWeather;
+      gameState.previousWeather = data.currentWeather;
+    }
     updateAvenueTreeColors();
     updateSeasonalTreeColors();
     updateSeasonalGroundColors();
-    growCropsForNewDay();
+    if (!options.preserveSnapshot) growCropsForNewDay();
     syncFarmVisuals();
-    growFlowerBedForNewDay();
+    if (!options.preserveSnapshot) growFlowerBedForNewDay();
     syncFlowerBedVisuals();
     clearMeteors();
     scheduleNextMeteor(true);
     updateHud();
+    options.onRestored?.();
   };
 
   // 標題畫面讀檔時尚未建立玩家或正式場景，必須走完整的 loadMap 流程。
@@ -800,6 +819,8 @@ export function loadGame(
 addEventListener(
   "keydown",
   (event) => {
+    if (import.meta.env.DEV && isEventDebugMenuOpen()) return;
+    if (import.meta.env.DEV && event.key === "F9") return;
     if (!restoreDialogUiVisibility()) return;
     event.preventDefault();
     event.stopImmediatePropagation();
@@ -809,6 +830,7 @@ addEventListener(
 addEventListener(
   "pointerdown",
   (event) => {
+    if (import.meta.env.DEV && isEventDebugMenuOpen()) return;
     if (!restoreDialogUiVisibility()) return;
     event.preventDefault();
     event.stopImmediatePropagation();
@@ -828,6 +850,7 @@ addEventListener(
 addEventListener(
   "keydown",
   (event) => {
+    if (import.meta.env.DEV && isEventDebugMenuOpen()) return;
     if (
       event.key !== "Escape" ||
       dialogUiTemporarilyHidden ||
@@ -844,6 +867,7 @@ addEventListener(
 addEventListener(
   "pointerdown",
   (event) => {
+    if (import.meta.env.DEV && isEventDebugMenuOpen()) return;
     if (
       event.button !== 2 ||
       dialogUiTemporarilyHidden ||
@@ -861,6 +885,7 @@ addEventListener(
 addEventListener(
   "contextmenu",
   (event) => {
+    if (import.meta.env.DEV && isEventDebugMenuOpen()) return;
     if (dialogUiTemporarilyHidden || activeChoice || !dialogQueue.length)
       return;
     event.preventDefault();
@@ -877,6 +902,7 @@ addEventListener(
 addEventListener(
   "keydown",
   (event) => {
+    if (import.meta.env.DEV && isEventDebugMenuOpen()) return;
     if (
       event.key.toLowerCase() !== "p" ||
       event.repeat ||
@@ -926,77 +952,6 @@ addEventListener("keydown", (event) => {
         gameState.player.position.z,
       );
     }
-  } else if (import.meta.env.DEV && event.key === "F9") {
-    // event-system Phase 1 概念驗證熱鍵——見 story/chapters/
-    // dev-phase1-probe.ts 開頭註解跟 docs/decisions/event-system.md。
-    // 跟現有劇情內容無關，純粹拿來測 story/ 系統＋
-    // story-runtime-browser.ts 這套 binding 能不能真的動起來。
-    event.preventDefault();
-    if (!gameState.player) return;
-    if (storyState.activeEventId) {
-      console.warn(
-        `[Phase1 概念驗證] 已有事件執行中：${storyState.activeEventId}，忽略這次 F9`,
-      );
-      return;
-    }
-    const probe = createDevPhase1ProbeEvent(
-      gameState.player.position.x,
-      gameState.player.position.z,
-    );
-    const adapter = createStoryRuntimeAdapter(createBrowserStoryRuntimeBindings());
-    runStoryEvent(
-      probe,
-      {
-        mapId: gameState.currentMapName,
-        day: gameState.currentDay,
-        season: gameState.currentSeason,
-        phase: 0,
-        relationships: {},
-        inventory: {},
-      },
-      adapter,
-      { allowManual: true },
-    )
-      .then(() => console.info("[Phase1 概念驗證] dev.phase1_probe.mayor_wave 執行完成"))
-      .catch((error) =>
-        console.error("[Phase1 概念驗證] dev.phase1_probe.mayor_wave 執行失敗：", error),
-      );
-  } else if (import.meta.env.DEV && event.key === "F10") {
-    // event-system Phase A 概念驗證熱鍵——播放 chapters/data/*.json 裡
-    // 手寫的草稿事件（目前是 dev.carpenter_dock_intro_draft，Zeppelin
-    // 2026-09-01 重寫的木匠碼頭初登場個性化版本）。跟 F9 一樣只能手動
-    // 觸發、跟正式 carpenter-quest.ts 流程完全無關，純粹拿來實測 JSON
-    // 手寫事件格式在真實畫面上能不能正確播放。見 docs/decisions/
-    // event-system.md「Phase A」。
-    event.preventDefault();
-    if (!gameState.player) return;
-    if (storyState.activeEventId) {
-      console.warn(
-        `[Phase A JSON 草稿] 已有事件執行中：${storyState.activeEventId}，忽略這次 F10`,
-      );
-      return;
-    }
-    const draft = getStoryEvent("dev.carpenter_dock_intro_draft");
-    if (!draft) {
-      console.warn("[Phase A JSON 草稿] 找不到 dev.carpenter_dock_intro_draft，檢查 chapters/data/ 底下的 JSON 檔案是否還在");
-      return;
-    }
-    const adapter = createStoryRuntimeAdapter(createBrowserStoryRuntimeBindings());
-    runStoryEvent(
-      draft,
-      {
-        mapId: gameState.currentMapName,
-        day: gameState.currentDay,
-        season: gameState.currentSeason,
-        phase: 0,
-        relationships: {},
-        inventory: {},
-      },
-      adapter,
-      { allowManual: true },
-    )
-      .then(() => console.info(`[Phase A JSON 草稿] ${draft.id} 執行完成`))
-      .catch((error) => console.error(`[Phase A JSON 草稿] ${draft.id} 執行失敗：`, error));
   } else if (import.meta.env.DEV && event.key.toLowerCase() === "c") {
     if (isCameraAdjustModeActive()) {
       event.preventDefault();

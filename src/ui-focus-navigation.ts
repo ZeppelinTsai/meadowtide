@@ -6,6 +6,10 @@ const UI_ROOT_SELECTORS = [
   "#dialogChoices",
 ];
 
+export function registerUiFocusRoot(selector: string) {
+  if (!UI_ROOT_SELECTORS.includes(selector)) UI_ROOT_SELECTORS.unshift(selector);
+}
+
 const FOCUSABLE_SELECTOR = [
   "button:not(:disabled)",
   "a[href]",
@@ -90,8 +94,7 @@ function moveFocus(root: HTMLElement, direction: "up" | "down" | "left" | "right
   best?.element.focus();
 }
 
-export function initUiFocusNavigation() {
-  addEventListener("keydown", (event) => {
+export function handleUiFocusKeyDown(event: KeyboardEvent) {
     if (event.defaultPrevented) return;
     const direction =
       event.key === "ArrowUp" ? "up" :
@@ -110,5 +113,8 @@ export function initUiFocusNavigation() {
     }
     event.preventDefault();
     moveFocus(root, direction);
-  });
+}
+
+export function initUiFocusNavigation() {
+  addEventListener("keydown", handleUiFocusKeyDown);
 }

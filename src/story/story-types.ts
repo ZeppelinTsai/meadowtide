@@ -74,6 +74,7 @@ export type StoryStep =
       hidePortrait?: boolean;
       revealNameAfter?: { npcId: string; stage: 1 | 2 };
       cg?: string;
+      cgDescription?: string;
     }
   | {
       type: "choice";
@@ -129,6 +130,7 @@ export interface StoryEvent {
   priority: number;
   once: boolean;
   execution?: "steps" | "external";
+  debug?: { category?: "main" | "intro" | "heart2" | "heart4" | "heart6" | "confession" | "married" | "festival" | "special"; weather?: string };
   conditions: StoryCondition[];
   steps: StoryStep[];
 }

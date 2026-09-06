@@ -82,6 +82,7 @@ export function createBrowserStoryRuntimeBindings(): StoryRuntimeBindings {
         hidePortrait: step.hidePortrait,
         comicCue: step.comicCue,
         cg: step.cg,
+        cgDescription: step.cgDescription,
       };
       await new Promise<void>((resolve) => {
         showDialogSequence([line], resolve);

@@ -1,3 +1,4 @@
+import { EXTERNAL_STORY_EVENTS } from "./chapters/external-events";
 import { ACT1_STORY_EVENTS } from "./chapters/act1";
 import { JSON_STORY_EVENTS } from "./chapters/json-events";
 import type { StoryEvent, StoryEventId } from "./story-types";
@@ -14,6 +15,7 @@ const PROLOGUE_STORY_EVENTS: StoryEvent[] = [];
 // conditions（目前都是 manual only 的草稿/測試事件）。
 export const STORY_EVENTS: StoryEvent[] = [
   ...PROLOGUE_STORY_EVENTS,
+  ...EXTERNAL_STORY_EVENTS,
   ...ACT1_STORY_EVENTS,
   ...JSON_STORY_EVENTS,
 ];

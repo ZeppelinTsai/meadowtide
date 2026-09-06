@@ -1354,6 +1354,8 @@ export function isPrologueShipStage(): boolean {
 // game-loop.ts 的 animate() 每幀呼叫；只有 gameState.cutsceneActive 為真
 // 時才有事做，其餘時間直接是個 no-op。
 export function updatePrologueCutscene(dt: number) {
+  // Other events share cutsceneActive; completed prologues must not reset their clock/zoom.
+  if (!isPrologueActive() && !externalGuidedWalk && !freeMayorGuide) return;
   if (!gameState.cutsceneActive && !freeMayorGuide) return;
   if (!externalGuidedWalk) lockPrologueDateTime();
   // 2026-08-26 加了過場鏡頭系統(cutscene-camera.ts)之後才發現的衝突：

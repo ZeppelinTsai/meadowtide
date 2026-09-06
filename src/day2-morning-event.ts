@@ -1,3 +1,4 @@
+import { isEventDebugSession } from "./event-debug-state";
 import { gameState, inventory, TIME_CONFIG, dayLength } from "./game-state";
 import {
   DAY_TWO_MORNING_ARRIVAL,
@@ -106,6 +107,7 @@ const DAY_TWO_EVENT_START_HOUR = 8;
 const DAY_TWO_EVENT_END_HOUR = 10;
 
 export function canStartDayTwoMorningEvent(): boolean {
+  if (import.meta.env.DEV && isEventDebugSession()) return false;
   if (dayTwoMorningEvent.triggered) return false;
   // 對話開著／已經有其他演出鎖住時不要硬插一段跨圖傳送進去，跟
   // carpenter-quest.ts 的 handleCarpenterDockTouch() 擋 dialogQueue 是

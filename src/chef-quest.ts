@@ -1,3 +1,4 @@
+import { isEventDebugSession } from "./event-debug-state";
 import {
   gameState,
   inventory,
@@ -37,6 +38,7 @@ if (import.meta.env.DEV) {
     console.warn("[廚師] 讀取開發模式除錯覆寫值失敗，維持預設值", err);
   }
   const persist = () => {
+    if (isEventDebugSession()) return;
     try {
       localStorage.setItem(DEBUG_STORAGE_KEY, JSON.stringify(chefQuest));
     } catch (err) {

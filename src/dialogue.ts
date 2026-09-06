@@ -1,3 +1,4 @@
+import { createCgPlaceholder } from "./cg-placeholder";
 import { npcs } from "./npc-runtime";
 import {
   responsiveWebpUrl,
@@ -60,6 +61,15 @@ export const cgImgNextEl = document.getElementById(
 // ==============================================================
 export let currentCgId = null;
 let currentPortraitId = null;
+let cgRequestVersion = 0;
+let placeholderCg: { id: string; description: string } | null = null;
+window.addEventListener("resize", () => {
+  if (!placeholderCg || currentCgId !== placeholderCg.id) return;
+  // Recreate at the current viewport size so image scaling cannot shrink UI text below 18px.
+  const src = createCgPlaceholder(placeholderCg.id, placeholderCg.description);
+  cgImgEl.src = src;
+  cgImgNextEl.src = src;
+});
 export function setDialogPortrait(speakerId) {
   if (speakerId === currentPortraitId) {
     if (currentCgId || !speakerId) {
@@ -109,8 +119,10 @@ export function setDialogPortrait(speakerId) {
     PORTRAIT_RESPONSIVE_WIDTHS,
   );
 }
-export function setDialogCg(cgId) {
+export function setDialogCg(cgId, description = "") {
   if (cgId === currentCgId) return; // 沒變化，不用重新觸發淡入淡出
+  const requestVersion = ++cgRequestVersion;
+  placeholderCg = null;
   if (!cgId) {
     currentCgId = null;
     cgOverlayEl.style.opacity = "0";
@@ -132,18 +144,20 @@ export function setDialogCg(cgId) {
   const isDifferentialSwap = Boolean(currentCgId);
   currentCgId = cgId;
   const applyCg = (src: string) => {
-    if (currentCgId !== cgId) return; // 載入期間對話已經跳到別行，放棄套用
+    if (currentCgId !== cgId || requestVersion !== cgRequestVersion) return; // 載入期間對話已經跳到別行，放棄套用
     if (isDifferentialSwap) {
       cgImgNextEl.src = src;
       cgOverlayEl.style.display = "block";
       requestAnimationFrame(() => {
+        if (requestVersion !== cgRequestVersion) return;
+        cgOverlayEl.style.opacity = "1";
         cgImgNextEl.style.opacity = "1";
       });
       window.setTimeout(() => {
         // 上面這段淡入跑完了，把新圖「扶正」成 cgImg 本體、cgImgNext
         // 歸零準備下一次差分。中途又被切到別張圖(currentCgId 已經不是
         // 這次的 cgId)就不要蓋回去，讓新的那輪自己收尾就好。
-        if (currentCgId !== cgId) return;
+        if (currentCgId !== cgId || requestVersion !== cgRequestVersion) return;
         cgImgEl.src = src;
         cgImgEl.style.opacity = "1";
         cgImgNextEl.style.opacity = "0";
@@ -154,6 +168,7 @@ export function setDialogCg(cgId) {
     cgImgEl.style.opacity = "1";
     cgOverlayEl.style.display = "block";
     requestAnimationFrame(() => {
+      if (requestVersion !== cgRequestVersion) return;
       cgOverlayEl.style.opacity = "1";
     });
   };
@@ -162,8 +177,10 @@ export function setDialogCg(cgId) {
     const pngImg = new Image();
     pngImg.onload = () => applyCg(pngImg.src);
     pngImg.onerror = () => {
-      console.warn(`[CG] 找不到 CG 圖檔，維持原本畫面：${cgId}`);
-      if (currentCgId === cgId) currentCgId = null;
+      console.warn(`[CG] 缺少 CG asset：${cgId}`);
+      if (currentCgId !== cgId || requestVersion !== cgRequestVersion) return;
+      placeholderCg = { id: cgId, description };
+      applyCg(createCgPlaceholder(cgId, description));
     };
     pngImg.src = `/assets/cg/${cgId}.png`;
   };
@@ -223,7 +240,7 @@ export function renderDialogLine(line) {
     : 0;
   if (isNewCg) holdDialogUiHiddenForCg(cgHoldMs);
   dialogTextEl.textContent = translateText(line.text);
-  setDialogCg(nextCgId);
+  setDialogCg(nextCgId, line.cgDescription || "");
   setDialogPortrait(line.hidePortrait ? null : line.speaker || null);
   if (line.name || line.speaker) {
     const npc = npcs.find((n) => n.id === line.speaker);

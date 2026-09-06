@@ -178,6 +178,7 @@ export function startCarpenterMoveInScene() {
       speaker: "carpenter",
       name: t("carpenter.name.carpenter"),
       cg: "carpenter_movein",
+      cgDescription: "木匠入住收尾",
     },
   ]);
   const carpenterNpc = npcs.find((n) => n.id === "carpenter");
