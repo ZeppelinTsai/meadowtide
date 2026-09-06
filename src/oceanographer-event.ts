@@ -1,3 +1,4 @@
+import { isEventDebugSession } from "./event-debug-state";
 import { TIME_CONFIG, dayLength, gameState, unlockOysterFarming } from "./game-state";
 import {
   DAY_THREE_BOTANIST_ARRIVAL,
@@ -35,6 +36,7 @@ const marineCg = (text: string) => ({ ...marine(text), cg: "day3Oceanographer-01
 const heroCg = (text: string) => ({ ...hero(text), cg: "day3Oceanographer-01" });
 
 export function canStartOceanographerEvent() {
+  if (import.meta.env.DEV && isEventDebugSession()) return false;
   if (oceanographerQuest.stage !== "not_started") return false;
   if (botanistQuest.stage !== "complete") return false;
   if (dialogQueue.length || gameState.cutsceneActive) return false;
@@ -175,7 +177,7 @@ function revealOysterRack() {
             marineCg("「其實更多時候……只是每天回到同一個地方。」"),
             marineCg("「採樣、記錄、比較。然後等。」"),
             heroCg("「……」"),
-            marineCg("「自然變化很慢。所以我們也得學會慢一點。」"),
+            { ...marine("「自然變化很慢。所以我們也得學會慢一點。」"), cg: "day3Oceanographer-02" },
             "[牡蠣架完成]",
             marine("「好了。」"),
             hero("「？」"),
@@ -192,28 +194,36 @@ function revealOysterRack() {
             hero("「……」"),
             marine("「謝謝你。」"),
             marine("「差不多了。我接下來會沿著海岸再走一圈。」"),
-            "[走出幾步，又回頭]",
-            marine("「對了。」"),
-            marine("「你平常應該比我更常在島上四處走吧？」"),
-            hero("「？」"),
-            marine("「如果在海邊看到不認識的生物，可以的話，拍張照片告訴我。」"),
-            hero("「？」"),
-            marine("「出現的位置、時間，如果記得的話也一起告訴我。」"),
-            marine("「研究資料不一定要從研究室裡得到。」"),
-            "[他看向海面]",
-            marine("「一個人不可能同時看著整座島。」"),
-            "[看回主角]",
-            marine("「所以，多一雙眼睛很有幫助。」"),
-            hero("「！」"),
-            marine("「先謝了。」"),
-            "[海洋學家離開，沿海岸開始調查]",
-            systemDialog("海洋學家好感 +30\n個人事件完成"),
           ],
-          completeOceanographerEvent,
+          () => {
+            void runBlackTransition("short", () => {
+              showDialogSequence(
+                [
+                  "[走出幾步，又回頭]",
+                  marine("「對了。」"),
+                  marine("「你平常應該比我更常在島上四處走吧？」"),
+                  hero("「？」"),
+                  marine("「如果在海邊看到不認識的生物，可以的話，拍張照片告訴我。」"),
+                  hero("「？」"),
+                  marine("「出現的位置、時間，如果記得的話也一起告訴我。」"),
+                  marine("「研究資料不一定要從研究室裡得到。」"),
+                  "[他看向海面]",
+                  marine("「一個人不可能同時看著整座島。」"),
+                  "[看回主角]",
+                  marine("「所以，多一雙眼睛很有幫助。」"),
+                  hero("「！」"),
+                  marine("「先謝了。」"),
+                  "[海洋學家離開，沿海岸開始調查]",
+                  systemDialog("海洋學家好感 +30\n個人事件完成"),
+                ],
+                completeOceanographerEvent,
+              );
+            });
+          },
         );
         resolve();
       });
-    }),
+    })
   );
 }
 
