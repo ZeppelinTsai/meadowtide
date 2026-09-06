@@ -12,6 +12,7 @@
     "build:win": "npm run build && tsx scripts/check-responsive-images.ts && electron-builder --win nsis",
     "preview": "vite preview",
     "map-debug": "tsx scripts/map-debug.ts",
+    "mountain-debug": "tsx scripts/mountain-debug.ts",
     "building-debug": "tsx scripts/building-debug.ts",
     "audit-coordinates": "tsx scripts/audit-raw-coordinates.ts src/layout-maps.ts src/build-map.ts",
     "assets:webp": "python scripts/export-responsive-images.py",

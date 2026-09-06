@@ -2424,7 +2424,12 @@ export function buildMap(mapName) {
         mountain.summit.x + Math.floor(mountain.summit.width / 2);
       const summitCenterZ =
         mountain.summit.z + Math.floor(mountain.summit.depth / 2);
-      const bench = makeBench(summitCenterX - 5, summitCenterZ - 2, Math.PI, true);
+      const bench = makeBench(
+        summitCenterX + mountain.summitBenchOffsetX,
+        summitCenterZ + mountain.summitBenchOffsetZ,
+        Math.PI,
+        true,
+      );
       bench.position.y += mountain.summit.elevation;
       gameState.mapGroup.add(bench);
       const summitShrine = mountain.summitShrine;
@@ -3514,8 +3519,10 @@ export function buildMap(mapName) {
 
       gameState.oceanMesh = new THREE.Mesh(
         geo,
-        new THREE.MeshBasicMaterial({
+        new THREE.MeshStandardMaterial({
           vertexColors: true,
+          roughness: 0.28,
+          metalness: 0.04,
           transparent: true,
           // 深水（北邊主海域）幾乎不透明，跟淺水（湖、港口船塢）區分開——
           // 水深當作簡化過的透明度依據，不用真的算深度貼圖。

@@ -19,6 +19,10 @@ export const NORTH_EXPANSION = 5;
 export const STAIR_SLOPE_DEGREES = 50;
 export const STAIR_SLOPE_TAN = Math.tan((STAIR_SLOPE_DEGREES * Math.PI) / 180);
 export const DECORATIVE_STAIR_WIDTH = 3;
+export const MOUNTAIN_BASE_WIDTH = 38;
+// 山區西側擴充的單一資料源。改這個數字後，地圖欄位、山區座標與三層
+// 平台的西側範圍會一起重算，避免只改視覺平台而漏掉碰撞/採集候選。
+export const MOUNTAIN_WEST_EXPANSION = 10;
 // 舊城鎮波上宮與 mountain (20,14) 共用的地標鳥居尺寸。
 export const LANDMARK_TORII_SCALE = 2;
 export const LAYOUT = {
@@ -627,7 +631,7 @@ export const LAYOUT = {
     ],
   },
   mountain: {
-    width: 38,
+    width: MOUNTAIN_BASE_WIDTH,
     height: 68,
     // 2026-08-25 左右各擴張 1 格(從單點變 3 格寬)，對應 oldVillage
     // 側的 mountainGate/mountainArrival 一起改；lowerStair(x=21,
@@ -656,6 +660,8 @@ export const LAYOUT = {
       collisionHalfWidth: 0.75,
       collisionHalfDepth: 0.55,
     },
+    summitBenchOffsetX: -5,
+    summitBenchOffsetZ: -2,
     // 2026-08-25 二次調整：x 從 32.65 改成 33.5，貼齊 waist 平台邊界
     // (centerX+halfWidth=33.5，跟 build-map.ts addPlatform() 算的
     // 是同一個數字)——石梯第一階緊接平台邊緣，不再留一小截空隙。
@@ -959,16 +965,42 @@ function makeMountainMapTiles() {
       radius: 2,
     },
   ];
+  const treeClearanceRects = [
+    {
+      x: mountain.cave.entranceX - 2,
+      z: mountain.cave.entranceStartZ - 2,
+      width: mountain.cave.entranceWidth + 4,
+      depth: mountain.cave.z + mountain.cave.depth - mountain.cave.entranceStartZ + 2,
+    },
+    // 洞口下方的視線與落腳區，以及山頂入口轉折的視線區；這兩塊雖然
+    // 不完全落在洞口/樓梯矩形內，樹冠仍會遮住入口與上階梯的方向。
+    { x: 24, z: 51, width: 3, depth: 3 },
+    { x: 24, z: 49, width: 8, depth: 4 },
+    { x: 14, z: 12, width: 5, depth: 4 },
+    { x: 31, z: 12, width: 5, depth: 4 },
+    ...[mountain.lowerStair, mountain.upperStair].map((stair) => ({
+      x: stair.x - 2,
+      z: stair.fromZ - 2,
+      width: stair.width + 4,
+      depth: stair.toZ - stair.fromZ + 5,
+    })),
+  ];
+  const isTreeProtected = (x: number, z: number) =>
+    protectedClearings.some(
+      (clearing) =>
+        Math.hypot(x - clearing.x, z - clearing.z) <= clearing.radius,
+    ) ||
+    treeClearanceRects.some(
+      (clearance) =>
+        x >= clearance.x &&
+        x < clearance.x + clearance.width &&
+        z >= clearance.z &&
+        z < clearance.z + clearance.depth,
+    );
   for (let z = 0; z < mountain.height; z++) {
     for (let x = 0; x < mountain.width; x++) {
       if (tiles[z][x] !== 0) continue;
-      if (
-        protectedClearings.some(
-          (clearing) =>
-            Math.hypot(x - clearing.x, z - clearing.z) <= clearing.radius,
-        )
-      )
-        continue;
+      if (isTreeProtected(x, z)) continue;
       if (hash2(x * 5.17 + 12.3, z * 7.31 + 4.9) < mountain.treeDensity)
         tiles[z][x] = 2;
     }
@@ -979,11 +1011,7 @@ function makeMountainMapTiles() {
     tiles[mountain.homeGate.z + i][mountain.homeGate.x] = 3;
   tiles[mountain.skyPalaceGate.trigger.z][mountain.skyPalaceGate.trigger.x] = 3;
   mountain.trees.forEach(([x, z]) => {
-    const insideClearing = protectedClearings.some(
-      (clearing) =>
-        Math.hypot(x - clearing.x, z - clearing.z) <= clearing.radius,
-    );
-    if (tiles[z]?.[x] === 0 && !insideClearing) tiles[z][x] = 2;
+    if (tiles[z]?.[x] === 0 && !isTreeProtected(x, z)) tiles[z][x] = 2;
   });
   // 山之洞入口鏤空——放在樹木灑點/手動樹木清單之後，確保入口跟
   // 岩塊範圍一定淨空，不會被隨機或手動的樹覆蓋掉(不需要另外登記
@@ -1997,6 +2025,33 @@ export const MAPS = {
     playerStart: { x: 4, z: 5 },
   },
 };
+
+// 山區西側擴充：先把合法 tile 欄位加在陣列前端，並同步搬動山門、樓梯、
+// 洞口與玩家起點；接著讓三層平台保留原本東緣，向新增的西側空間各展開
+// 10 格。樹木抵銷整張地圖的座標平移，採集候選會直接讀更新後的平台矩形。
+shiftMapLayout({
+  tiles: MAPS.mountain.tiles,
+  direction: "west",
+  amount: MOUNTAIN_WEST_EXPANSION,
+  fillValue: 1,
+  coordinateRoots: [LAYOUT.mountain],
+  playerStart: MAPS.mountain.playerStart,
+});
+LAYOUT.mountain.width = MAPS.mountain.tiles[0].length;
+LAYOUT.mountain.skyPalaceGate.trigger.x -= MOUNTAIN_WEST_EXPANSION - 3;
+LAYOUT.mountain.skyPalaceGate.arrival.x -= MOUNTAIN_WEST_EXPANSION - 3;
+LAYOUT.mountain.summitShrine.x -= MOUNTAIN_WEST_EXPANSION + 8;
+LAYOUT.mountain.summitBenchOffsetX += MOUNTAIN_WEST_EXPANSION;
+for (const zone of ["foot", "waist", "summit"] as const) {
+  const platform = LAYOUT.mountain[zone];
+  platform.x -= MOUNTAIN_WEST_EXPANSION;
+  platform.width += MOUNTAIN_WEST_EXPANSION;
+  LAYOUT.mountain.plazas[zone].forEach((part) => {
+    part.x -= MOUNTAIN_WEST_EXPANSION;
+    part.width += MOUNTAIN_WEST_EXPANSION;
+  });
+}
+MAPS.mountain.tiles = makeMountainMapTiles();
 
 // 舊城鎮外海擴充：西側插入 100 欄海、南側追加 100 列海。
 // 西擴會同步平移 LAYOUT、護欄、建築與玩家起點；南擴不改既有座標。
